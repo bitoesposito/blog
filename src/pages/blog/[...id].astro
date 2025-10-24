@@ -25,7 +25,7 @@ import {
 } from '@/lib/data-utils'
 import { formatDate } from '@/lib/utils'
 import { Icon } from 'astro-icon/components'
-import { Image } from 'astro:assets'
+// import { Image } from 'astro:assets'
 import { render } from 'astro:content'
 
 export async function getStaticPaths() {
@@ -108,7 +108,7 @@ const tocSections = await getTOCSections(currentPostId)
       />
     </div>
 
-    {
+    <!-- {
       post.data.image && (
         <Image
           src={post.data.image}
@@ -118,7 +118,7 @@ const tocSections = await getTOCSections(currentPostId)
           class="col-span-full mx-auto w-full max-w-5xl object-cover"
         />
       )
-    }
+    } -->
 
     <section class="col-start-2 flex flex-col gap-y-6 text-center">
       <div class="flex flex-col">
@@ -137,13 +137,13 @@ const tocSections = await getTOCSections(currentPostId)
               <div class="flex w-full items-center justify-center gap-x-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
                 {authors.map((author) => (
                   <div class="flex items-center gap-x-1.5">
-                    <Image
+                    {/* <Image
                       src={author.avatar}
                       alt={author.name}
                       width={20}
                       height={20}
                       class="rounded-full"
-                    />
+                    /> */}
                     {author.isRegistered ? (
                       <Link
                         href={`/authors/${author.id}`}
@@ -177,7 +177,7 @@ const tocSections = await getTOCSections(currentPostId)
                   combinedReadingTime !== postReadingTime && (
                     <span class="text-muted-foreground">
                       {' '}
-                      ({combinedReadingTime} total)
+                      ({combinedReadingTime} totale)
                     </span>
                   )
               }
@@ -188,7 +188,7 @@ const tocSections = await getTOCSections(currentPostId)
             subpostCount > 0 && (
               <div class="flex w-full items-center justify-center gap-1 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
                 <Icon name="lucide:file-text" class="size-3" />
-                {subpostCount} subpost{subpostCount === 1 ? '' : 's'}
+                {subpostCount} post{subpostCount === 1 ? '' : ''}
               </div>
             )
           }
@@ -210,11 +210,15 @@ const tocSections = await getTOCSections(currentPostId)
         </div>
       </div>
 
-      <PostNavigation
-        newerPost={navigation.newer}
-        olderPost={navigation.older}
-        parentPost={isCurrentSubpost ? navigation.parent : undefined}
-      />
+      {
+        postReadingTime && parseInt(postReadingTime) >= 3 && (
+          <PostNavigation
+            newerPost={navigation.newer}
+            olderPost={navigation.older}
+            parentPost={isCurrentSubpost ? navigation.parent : undefined}
+          />
+        )
+      }
     </section>
 
     {
@@ -250,8 +254,8 @@ const tocSections = await getTOCSections(currentPostId)
     size="icon"
     className="group fixed right-8 bottom-8 z-50 hidden"
     id="scroll-to-top"
-    title="Scroll to top"
-    aria-label="Scroll to top"
+    title="Torna in cima"
+    aria-label="Torna in cima"
   >
     <Icon
       name="lucide:arrow-up"

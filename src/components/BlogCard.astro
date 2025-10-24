@@ -10,7 +10,7 @@ import {
 } from '@/lib/data-utils'
 import { formatDate } from '@/lib/utils'
 import { Icon } from 'astro-icon/components'
-import { Image } from 'astro:assets'
+// import { Image } from 'astro:assets'
 import type { CollectionEntry } from 'astro:content'
 import Link from './Link.astro'
 
@@ -35,12 +35,11 @@ const subpostCount = !isSubpost(entry.id) ? await getSubpostCount(entry.id) : 0
     {
       entry.data.image && (
         <div class="w-full sm:max-w-3xs sm:shrink-0">
-          <Image
-            src={entry.data.image}
+          <img
+            src={entry.data.image.src}
             alt={entry.data.title}
-            width={1200}
-            height={630}
-            class="object-cover"
+            class="h-32 w-full rounded-lg object-cover sm:h-24 sm:w-32"
+            loading="lazy"
           />
         </div>
       )

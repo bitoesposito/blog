@@ -5,6 +5,11 @@ export async function getAllAuthors(): Promise<CollectionEntry<'authors'>[]> {
   return await getCollection('authors')
 }
 
+export async function getAuthorById(id: string): Promise<CollectionEntry<'authors'> | null> {
+  const authors = await getAllAuthors()
+  return authors.find((author) => author.id === id) || null
+}
+
 export async function getAllPosts(): Promise<CollectionEntry<'blog'>[]> {
   const posts = await getCollection('blog')
   return posts

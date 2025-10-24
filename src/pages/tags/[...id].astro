@@ -29,13 +29,13 @@ const { tag, posts } = Astro.props
 <Layout class="max-w-3xl">
   <PageHead
     slot="head"
-    title={`Posts tagged with "${tag}"`}
-    description={`A collection of posts tagged with ${tag}.`}
+    title={`Post con tag "${tag}"`}
+    description={`Una raccolta di post con tag ${tag}.`}
     noindex
   />
   <Breadcrumbs
     items={[
-      { href: '/tags', label: 'Tags', icon: 'lucide:tags' },
+      { href: '/tags', label: 'Tag', icon: 'lucide:tags' },
       { label: tag, icon: 'lucide:tag' },
     ]}
   />
