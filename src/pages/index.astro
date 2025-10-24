@@ -7,12 +7,14 @@ import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
 import { getAuthorById, getRecentPosts } from '@/lib/data-utils'
 import AuthorCard from '@/components/AuthorCard.astro'
+import Analytics from '@vercel/analytics/astro'
 
 const blog = await getRecentPosts(SITE.featuredPostCount)
 const author = await getAuthorById('vitoesposito')
 ---
 
 <Layout class="max-w-3xl">
+  <Analytics />
   <PageHead slot="head" title="Home" />
 
   <section>
