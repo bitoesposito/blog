@@ -7,14 +7,12 @@ import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
 import { getAuthorById, getRecentPosts } from '@/lib/data-utils'
 import AuthorCard from '@/components/AuthorCard.astro'
-import Analytics from '@vercel/analytics/astro'
 
 const blog = await getRecentPosts(SITE.featuredPostCount)
 const author = await getAuthorById('vitoesposito')
 ---
 
 <Layout class="max-w-3xl">
-  <Analytics />
   <PageHead slot="head" title="Home" />
 
   <section>
@@ -22,14 +20,13 @@ const author = await getAuthorById('vitoesposito')
 
     <div class="prose mt-4">
       <p class="mt-0">
-        Sviluppatore <strong>Front-end</strong> e <strong>UI designer</strong>
-        con una solida formazione in Graphic design e una forte passione per l’informatica.
+        <strong>Sviluppatore web</strong> e <strong>designer</strong> con una forte passione per l’informatica.
       </p>
       <p class="mt-0">
         Impegnato in un costante percorso di crescita nel campo dello sviluppo web, collaboro efficacemente in team Agile attraverso strumenti di gestione collaborativa dei progetti e versionamento del codice.
       </p>
       <p class="mt-0 mb-0">
-        Esperto nella progettazione e nello sviluppo di interfacce web responsive per sistemi gestionali ed e-commerce.
+        Esperto nella progettazione e sviluppo di interfacce web per sistemi complessi ed e-commerce.
       </p>
     </div>
   </section>

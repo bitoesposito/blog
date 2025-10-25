@@ -1,8 +1,60 @@
 ---
 title: 'Infrastruttura'
-description: 'Infrastruttura del progetto di cosmetico, un e-commerce per la vendita di prodotti di skin-care con un sistema di suggerimento di prodotti basato sulle analisi del viso'
+description: 'Infrastruttura del progetto di cosmetico, un e-commerce per la vendita di prodotti di skin-care con un sistema di suggerimento di prodotti basato sulla analisi del viso'
 date: 2025-10-24
 tags: ['infrastruttura']
 authors: ['vitoesposito']
 order: 1
 ---
+
+# L'infrastruttura tecnologica di Cosmetico
+
+Per costruire Cosmetico, ho scelto una combinazione di tecnologie moderne che garantiscano velocità, sicurezza e scalabilità. L'obiettivo è creare un'esperienza utente fluida e un sistema che possa crescere insieme al business.
+
+## Il motore dell'e-commerce: Saleor
+
+**Saleor** è il cuore del nostro negozio online. È una piattaforma open-source progettata specificamente per l'e-commerce che gestisce:
+
+- **Catalogo prodotti**: Organizzazione e categorizzazione dei prodotti di skin-care
+- **Gestione ordini**: Processo di acquisto dall'aggiunta al carrello alla spedizione
+- **Gestione clienti**: Profili utente e cronologia acquisti
+- **Sistema di pagamenti**: Integrazione con gateway di pagamento sicuri
+- **Promozioni e sconti**: Gestione automatica di offerte e campagne
+
+La scelta di Saleor deriva dalla sua flessibilità: permette di personalizzare ogni aspetto del negozio senza essere vincolati a soluzioni predefinite.
+
+## L'interfaccia utente: Next.js e React
+
+Per il frontend, ho scelto **Next.js** con **React** per creare un'esperienza utente moderna e veloce:
+
+- **Caricamento rapido**: Le pagine si caricano istantaneamente
+- **Design responsive**: Perfetto su desktop, tablet e smartphone
+- **Navigazione fluida**: Transizioni smooth tra le sezioni
+- **Ottimizzazione SEO**: Per essere facilmente trovati su Google
+
+## Containerizzazione con Docker
+
+**Docker** garantisce che il sistema funzioni sempre allo stesso modo, indipendentemente dall'ambiente. Questo significa:
+
+- **Deploy consistente**: Il sistema funziona identicamente in sviluppo e produzione
+- **Scalabilità facile**: Possiamo aggiungere più server quando necessario
+- **Manutenzione semplificata**: Aggiornamenti e backup automatizzati
+
+## Perché questa scelta tecnologica?
+
+Questa combinazione di tecnologie è stata scelta per:
+
+- **SEO e Performance**: Next.js garantisce caricamento veloce e ottimizzazione per i motori di ricerca
+- **Scalabilità**: Il sistema può crescere da 100 a 100.000 clienti senza problemi
+- **Preparazione al futuro**: Architettura pronta per evoluzioni avanzate come Kubernetes e microservizi
+- **Flessibilità**: Possiamo aggiungere nuove funzionalità senza ricostruire tutto
+
+## Il futuro dell'infrastruttura
+
+Questa base tecnologica ci permetterà di:
+- Integrare l'AI per l'analisi della pelle
+- Espandere a livello internazionale
+- Aggiungere funzionalità avanzate
+- Mantenere sempre alte le performance
+
+L'infrastruttura è progettata per crescere insieme al business, garantendo sempre la migliore esperienza possibile per i nostri clienti.

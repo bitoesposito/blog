@@ -3,8 +3,8 @@ import type { IconMap, SocialLink, Site } from '@/types'
 export const SITE: Site = {
   title: 'vito esposito',
   description:
-    'blog personale in cui scrivo e condivido le mie idee e pensieri sullo sviluppo software e altro.',
-  href: 'https://vitoesposito.it',
+    'blog personale in cui scrivo e condivido le mie idee e pensieri sullo sviluppo software, design e altro.',
+  href: 'https://blog.vitoesposito.it',
   author: 'vitoesposito',
   locale: 'it-IT',
   featuredPostCount: 2,
