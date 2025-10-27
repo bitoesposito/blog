@@ -71,6 +71,9 @@ export default defineConfig({
   ],
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      allowedHosts: ['blog.vitoesposito.it', 'localhost', '0.0.0.0'],
+    },
   },
   server: {
     port: 1234,

@@ -1,0 +1,42 @@
+---
+title: 'Refactor infrastruttura core - 27 ottobre 2025'
+description: 'Aggiornamento di Saleor core alla 3.22.3 e reset dello storefront per iniziare l&apos;integrazione del sistema di pagamento (Adyen)'
+date: 2025-10-27
+tags: ['cosmetico', 'log di sviluppo', 'infrastruttura', 'saleor', 'adyen']
+authors: ['vitoesposito']
+---
+
+# Refactor degli scritp e dei secrets
+
+Precedentemente a oggi i secrets erano creati da file ```.sh``` eseguiti tramite due script nella root del progetto
+
+```
+├── saleor/
+├── services/
+├── storefront/
+├── cleanup.sh (pulizia/teardown di configurazioni o secrets)
+├── setup.conf (prodotto da setup.sh, utilizzato per le variabili d'ambiente comuni)
+└── setup.sh (inizializzazione e creazione dei secrets principali)
+```
+
+Ma il ```setup.sh``` altro non era che un orchestratore che eseguiva gli script per i singoli servizi nella direcotry ```{service}/scripts/setup.sh``` al cui interno si trovava il codice per la creazione dei .env specifici per ogni servizio ma con molti elementi in comune che procuravano problemi di gestione e di sicurezza.
+
+Per questo motivo ho deciso di refactorizzare gli script e i secrets in modo da semplificare la gestione e la sicurezza dell'infrastruttura centralizzando tramite input dallo script principale per poi creare i file .env specifici per ogni servizio con valori comuni.
+
+Per quanto riguarda i secrets sensibili, non ci sono problemi rilevanti in quanto i contenuti dei secrets sono in una folder segnata nel .dockerignore e non sono accessibili da nessuna altra parte se non che sulla macchina stessa, che se dovesse essere compromessa, sarebbero cazzi comunque quindi non c'è bisogno di ulteriori misure di sicurezza.
+
+# Refactor dello storefront
+
+Lo storefront di saleor è stato resettato poiché dopo un ultima analisi delle priorità, paventare una struttura già di base dello store senza una infrastruttura completa e funzionante sarebbe stato un costo e un tempo non giustificato.
+
+## Pianificazione del lavoro
+
+Nei prossimi giorni, il lavoro sarà organizzato secondo le seguenti priorità:
+
+| Priorità | Attività                                                                                                              |
+|----------|----------------------------------------------------------------------------------------------------------------------|
+| 1        | Integrazione sistema di pagamento (Adyen): implementare e testare il flusso di pagamento con Adyen.                  |
+| 2        | Creazione database articoli selezionati: strutturare e popolare il database degli articoli selezionati per lo store. |
+| 3        | Strutturazione di categorie e tag: definire e organizzare la gerarchia delle categorie e i tag dei prodotti per una migliore navigazione. |
+
+Questa pianificazione permette di mantenere il focus sulle funzionalità core: si parte dall'infrastruttura indispensabile (pagamenti), seguita dalla base di dati principali, per poi aggiungere le strutture di categorizzazione e chiudere con l'elemento predittivo di consiglio prodotti nella sua forma di servizio prima di cominciare a lavorare sulla sua parte frontend.
