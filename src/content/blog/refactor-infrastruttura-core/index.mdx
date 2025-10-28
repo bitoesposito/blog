@@ -1,33 +1,56 @@
 ---
-title: 'Refactor infrastruttura core - 27 ottobre 2025'
-description: 'Aggiornamento di Saleor core alla 3.22.3 e reset dello storefront per iniziare l&apos;integrazione del sistema di pagamento (Adyen)'
-date: 2025-10-27
-tags: ['cosmetico', 'log di sviluppo', 'infrastruttura', 'saleor', 'adyen']
+title: 'Refactor infrastruttura di base e pianificazione del lavoro'
+description: 'Aggiornamento di Saleor core alla 3.22.3 e reset dello storefront con relativa pulizia della macchina per preparare lo sviluppo del sistema di pagamento (Stripe)'
+date: 2025-10-28
+tags: ['cosmetico', 'log di sviluppo', 'infrastruttura', 'saleor', 'stripe']
 authors: ['vitoesposito']
 ---
 
-# Refactor degli scritp e dei secrets
+# Refactor degli script e dei secrets
 
-Precedentemente a oggi i secrets erano creati da file ```.sh``` eseguiti tramite due script nella root del progetto
+## Situazione precedente
+
+Fino a oggi, i secrets venivano creati tramite file `.sh` eseguiti da due script principali nella root del progetto:
 
 ```
 ├── saleor/
-├── services/
 ├── storefront/
 ├── cleanup.sh (pulizia/teardown di configurazioni o secrets)
 ├── setup.conf (prodotto da setup.sh, utilizzato per le variabili d'ambiente comuni)
 └── setup.sh (inizializzazione e creazione dei secrets principali)
 ```
 
-Ma il ```setup.sh``` altro non era che un orchestratore che eseguiva gli script per i singoli servizi nella direcotry ```{service}/scripts/setup.sh``` al cui interno si trovava il codice per la creazione dei .env specifici per ogni servizio ma con molti elementi in comune che procuravano problemi di gestione e di sicurezza.
+Il `setup.sh` fungeva da orchestratore che eseguiva gli script specifici per ogni servizio nella directory `{service}/scripts/setup.sh`. Questi script contenevano il codice per la creazione dei file `.env` specifici per ogni servizio, ma con molti elementi in comune che causavano problemi di gestione e sicurezza.
 
-Per questo motivo ho deciso di refactorizzare gli script e i secrets in modo da semplificare la gestione e la sicurezza dell'infrastruttura centralizzando tramite input dallo script principale per poi creare i file .env specifici per ogni servizio con valori comuni.
+## Soluzione implementata
 
-Per quanto riguarda i secrets sensibili, non ci sono problemi rilevanti in quanto i contenuti dei secrets sono in una folder segnata nel .dockerignore e non sono accessibili da nessuna altra parte se non che sulla macchina stessa, che se dovesse essere compromessa, sarebbero cazzi comunque quindi non c'è bisogno di ulteriori misure di sicurezza.
+Ho refactorizzato gli script e i secrets per semplificare la gestione e migliorare la sicurezza dell'infrastruttura. La nuova struttura centralizza l'input tramite lo script principale, che poi genera i file `.env` specifici per ogni servizio utilizzando valori comuni.
 
-# Refactor dello storefront
+### Unificazione della directory /services
 
-Lo storefront di saleor è stato resettato poiché dopo un ultima analisi delle priorità, paventare una struttura già di base dello store senza una infrastruttura completa e funzionante sarebbe stato un costo e un tempo non giustificato.
+Ho unificato la directory `/services` (che conteneva principalmente MinIO) all'interno di `/saleor`, ottimizzando gli script `.sh` per una gestione più efficiente.
+
+## Refactor dello storefront
+
+Lo storefront di Saleor è stato resettato dopo un'analisi delle priorità: sviluppare una struttura base dello store senza un'infrastruttura completa e funzionante sarebbe stato un investimento di tempo e risorse non giustificato.
+
+# Gestione VPS e aaPanel
+
+## Tentativo di implementazione aaPanel
+
+Ho tentato di installare aaPanel per gestire le risorse della VPS, ma questo ha causato:
+- Rallentamento significativo delle prestazioni
+- Problemi di gestione nel reverse proxy
+- Complessità aggiuntiva non necessaria
+
+## Soluzione finale
+
+Ho preferito mantenere una configurazione più semplice a livello macchina:
+- Nginx configurato manualmente
+- Container Docker per i vari servizi
+- Gestione diretta senza pannelli di controllo
+
+Questa scelta garantisce prestazioni migliori e un controllo più granulare sull'infrastruttura.
 
 ## Pianificazione del lavoro
 
@@ -35,8 +58,6 @@ Nei prossimi giorni, il lavoro sarà organizzato secondo le seguenti priorità:
 
 | Priorità | Attività                                                                                                              |
 |----------|----------------------------------------------------------------------------------------------------------------------|
-| 1        | Integrazione sistema di pagamento (Adyen): implementare e testare il flusso di pagamento con Adyen.                  |
+| 1        | Integrazione sistema di pagamento (Stripe): implementare e testare il flusso di pagamento con Stripe.                  |
 | 2        | Creazione database articoli selezionati: strutturare e popolare il database degli articoli selezionati per lo store. |
 | 3        | Strutturazione di categorie e tag: definire e organizzare la gerarchia delle categorie e i tag dei prodotti per una migliore navigazione. |
-
-Questa pianificazione permette di mantenere il focus sulle funzionalità core: si parte dall'infrastruttura indispensabile (pagamenti), seguita dalla base di dati principali, per poi aggiungere le strutture di categorizzazione e chiudere con l'elemento predittivo di consiglio prodotti nella sua forma di servizio prima di cominciare a lavorare sulla sua parte frontend.
