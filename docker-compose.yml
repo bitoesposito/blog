@@ -4,6 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "1234:80"
+      - "3001:80"
     environment:
       - NODE_ENV=production
