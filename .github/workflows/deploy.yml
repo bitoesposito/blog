@@ -1,0 +1,22 @@
+name: Rebuild and deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Rebuild and deploy
+
+    steps:
+      - name: Rebuild and deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST_DIRECTION }}
+          username: ${{ secrets.HOST_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.HOST_PORT }}
+          script: |
+            cd ~/blog && git pull origin main && docker compose down -v && docker compose up -d
