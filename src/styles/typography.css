@@ -101,7 +101,9 @@
     }
 
     :where(table):not(:where(.not-prose, .not-prose *)) {
-      @apply mx-auto my-6 block max-w-fit overflow-x-auto text-sm;
+      @apply w-full my-6 overflow-x-auto text-sm;
+      /* Rendi la tabella larga quanto il contenitore */
+      table-layout: auto;
     }
 
     :where(thead):not(:where(.not-prose, .not-prose *)) {
@@ -111,6 +113,8 @@
     :where(th):not(:where(.not-prose, .not-prose *)) {
       @apply px-4 py-2 font-medium;
       @apply text-left [&[align=center]]:text-center [&[align=right]]:text-right;
+      /* Assicura che le intestazioni si espandano */
+      width: auto;
     }
 
     :where(tr):not(:where(.not-prose, .not-prose *)) {
@@ -120,6 +124,8 @@
     :where(td):not(:where(.not-prose, .not-prose *)) {
       @apply text-foreground/80 small px-4 py-2 align-top break-words [&>*]:first:mt-0! [&>*]:last:mb-0!;
       @apply text-left [&[align=center]]:text-center [&[align=right]]:text-right;
+      /* Assicura che le celle occupino spazio disponibile */
+      width: auto;
     }
 
     :where(img, video, figure, .expressive-code):not(
