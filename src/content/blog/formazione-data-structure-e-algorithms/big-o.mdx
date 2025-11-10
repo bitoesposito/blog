@@ -1,0 +1,276 @@
+---
+title: 'Big O notation'
+description: 'Descrizione del concetto di Big O notation'
+date: 2025-11-10
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 1
+---
+
+import { BigOChart } from '@/content/blog/formazione-data-structure-e-algorithms/charts/O(n)'
+import { BigOQuadraticChart } from '@/content/blog/formazione-data-structure-e-algorithms/charts/O(n²)'
+import { BigOLogChart } from '@/content/blog/formazione-data-structure-e-algorithms/charts/O(log n)'
+import { BigOComparisonChart } from '@/content/blog/formazione-data-structure-e-algorithms/charts/Comparison'
+
+Come facciamo a capire quale codice è meglio di un altro? La **Big O notation** ci aiuta a capire quanto tempo un algoritmo impiega per eseguire una determinata operazione (time complexity) o quanto spazio occupa in memoria (space complexity).
+
+Di solito viene utilizzata principalmente per descrivere la time complexity, e nello specifico il **caso peggiore** di un algoritmo.
+
+Oltre a **Big O** (indicato come O(n)), abbiamo anche **Big Theta** (indicato come Θ(n)) e **Big Omega** (indicato come Ω(n)):
+
+| Notazione     | Caso descritto | Descrizione                                                      |
+|---------------|----------------|------------------------------------------------------------------|
+| **Big O**     | Caso peggiore   | Tempo computazionale massimo richiesto dall'algoritmo            |
+| **Big Omega** | Caso migliore   | Tempo computazionale minimo richiesto dall'algoritmo             |
+| **Big Theta** | Caso medio      | Tempo computazionale medio richiesto dall'algoritmo              |
+
+## O(n) - Complessità lineare
+
+**O(n)** rappresenta una complessità **lineare**: il numero di operazioni è proporzionale alla dimensione dell'input _n_.
+
+```javascript
+function logItems(n) {
+  for (let i = 0; i < n; i++) {
+    console.log(i);
+  }
+}
+```
+
+Passando _n_ alla funzione, il ciclo viene eseguito _n_ volte. Se passiamo 10, esegue 10 operazioni; se passiamo 100, esegue 100 operazioni. Il grafico mostra una **linea retta**: il numero di operazioni cresce proporzionalmente a _n_.
+
+<BigOChart client:load />
+
+## Regole di semplificazione
+
+Big O semplifica la notazione per renderla più leggibile.
+
+### Rimuovere le costanti
+
+La prima regola è **rimuovere le costanti** (drop constants).
+
+```javascript
+function logItems(n) {
+  for (let i = 0; i < n; i++) {
+    console.log(i);
+  }
+
+  for (let j = 0; j < n; j++) {
+    console.log(j);
+  }
+}
+```
+
+Questo codice esegue _n + n = 2n_ operazioni. Potremmo scriverlo come O(2n), ma in Big O **rimuoviamo le costanti**: non importa se è 2n, 3n o 100n, la complessità rimane **O(n)**. Ci interessa solo come cresce il tempo rispetto all'input, non i fattori costanti.
+
+## O(n²) - Complessità quadratica
+
+**O(n²)** rappresenta una complessità **quadratica**: il numero di operazioni è proporzionale al quadrato della dimensione dell'input.
+
+```javascript
+function logItems(n) {
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      console.log(i, j);
+    }
+  }
+}
+```
+
+Con un ciclo annidato, per ogni iterazione del ciclo esterno, il ciclo interno viene eseguito _n_ volte. Il totale è _n × n = n²_ operazioni.
+
+Se confrontiamo due algoritmi che risolvono lo stesso problema, uno O(n) e uno O(n²), l'algoritmo O(n) è più efficiente perché completa il task con meno operazioni. O(n²) è generalmente considerato **inefficiente**: se possibile, è meglio riscrivere il codice per ottenere O(n).
+
+<BigOQuadraticChart client:load />
+
+### Rimuovere i termini non dominanti
+
+La seconda regola di semplificazione è **rimuovere i termini non dominanti** (drop non-dominance). In Big O consideriamo solo il termine che cresce più rapidamente.
+
+```javascript
+function fun(n) {
+  // O(n^2)
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      console.log(i, j);
+    }
+  }
+  // O(n)
+  for (let k = 0; k < n; k++) {
+    console.log(k);
+  }
+}
+```
+
+Questo codice esegue _n² + n_ operazioni. Se _n = 100_, abbiamo 10.000 + 100 = 10.100 operazioni. Il termine _n_ aggiunge solo 100 operazioni rispetto alle 10.000 di _n²_, quindi il suo impatto è trascurabile.
+
+**O(n² + n) = O(n²)**: rimuoviamo il termine non dominante perché non influisce significativamente sulla scala dell'algoritmo per input grandi.
+
+### Termini diversi per input diversi
+
+**Different terms for inputs** è una trappola comune nei colloqui tecnici. Quando abbiamo **input diversi**, non possiamo semplificarli come se fossero lo stesso termine.
+
+Consideriamo questo codice:
+
+```javascript
+function logItems(a, b) {
+  for (let i = 0; i < a; i++) {
+    console.log(i);
+  }
+
+  for (let j = 0; j < b; j++) {
+    console.log(j);
+  }
+}
+```
+
+La reazione istintiva potrebbe essere: "Ogni ciclo è O(n), quindi O(n) + O(n) = O(2n) = O(n)". **Questo è sbagliato**.
+
+Non possiamo dire che _a_ = _n_ e _b_ = _n_ perché sono **variabili diverse**. Cosa succede se _a_ = 1 e _b_ = 1.000.000? Sono cicli molto diversi.
+
+La risposta corretta è: il primo ciclo è **O(a)** e il secondo è **O(b)**. Quando li sommiamo, otteniamo **O(a + b)**. Non possiamo semplificare ulteriormente.
+
+Allo stesso modo, se avessimo cicli annidati con input diversi:
+
+```javascript
+function logItems(a, b) {
+  for (let i = 0; i < a; i++) {
+    for (let j = 0; j < b; j++) {
+      console.log(i, j);
+    }
+  }
+}
+```
+
+La complessità sarebbe **O(a × b)**, non O(n²). Non possiamo usare _n_ quando abbiamo input diversi: dobbiamo usare **termini diversi per input diversi**.
+
+## O(log n) - Complessità logaritmica
+
+**O(log n)** rappresenta una complessità **logaritmica**, una delle più efficienti. Per utilizzarla, i dati devono essere **ordinati**.
+
+La tecnica utilizzata è il **divide et impera** (divide and conquer): ad ogni passo, dividiamo l'array a metà e scartiamo la metà che non contiene l'elemento cercato.
+
+Prendiamo un esempio: cerchiamo un numero in un array di 8 elementi. Dividiamo a metà: se l'elemento non è nella seconda metà, la scartiamo. Ripetiamo il processo fino a trovare l'elemento.
+
+Con 8 elementi, servono **3 passi** per trovare qualsiasi elemento. Notiamo che **2³ = 8**, quindi **log₂(8) = 3**.
+
+In generale, il logaritmo in base 2 di _n_ ci dice quante volte dobbiamo dividere _n_ a metà per arrivare a 1. Per un array di 8 elementi, servono 3 divisioni.
+
+Il vero vantaggio emerge con input grandi: per un array di **oltre un miliardo di elementi** (2³¹ ≈ 1.073.741.824), servono solo **31 passi** per trovare qualsiasi elemento. Con una ricerca lineare O(n), servirebbero fino a un miliardo di confronti.
+
+Questo rende O(log n) molto più efficiente di O(n) o O(n²), specialmente per input grandi. Il grafico mostra una crescita molto lenta, quasi piatta rispetto alle altre complessità.
+
+<BigOLogChart client:load />
+
+## Big O degli array
+
+È importante capire la Big O degli array per confrontarli con altre strutture dati e scegliere quella più adatta al nostro caso d'uso.
+
+### Aggiungere e rimuovere dalla fine
+
+Quando aggiungiamo o rimuoviamo elementi **dalla fine** dell'array (con `push` e `pop`), non dobbiamo ri-indicizzare gli altri elementi:
+
+```javascript
+const myArray = [11, 3, 23, 7]
+myArray.push(17)  // O(1) - aggiunge alla fine, nessuna ri-indicizzazione
+myArray.pop()     // O(1) - rimuove dalla fine, nessuna ri-indicizzazione
+```
+
+**`push` e `pop` sono entrambi O(1)**.
+
+### Aggiungere e rimuovere dall'inizio
+
+Quando aggiungiamo o rimuoviamo elementi **dall'inizio** dell'array (con `shift` e `unshift`), dobbiamo **ri-indicizzare tutti gli elementi**:
+
+```javascript
+const myArray = [11, 3, 23, 7]
+myArray.shift()   // O(n) - rimuove dall'inizio, tutti gli elementi devono essere ri-indicizzati
+myArray.unshift(11) // O(n) - aggiunge all'inizio, tutti gli elementi devono essere ri-indicizzati
+```
+
+Non è un problema con array piccoli, ma con migliaia di elementi diventa costoso. **`shift` e `unshift` sono entrambi O(n)**, dove _n_ è il numero di elementi nell'array.
+
+### Aggiungere e rimuovere dal mezzo
+
+Quando inseriamo o rimuoviamo elementi **nel mezzo** dell'array (con `splice`), dobbiamo ri-indicizzare tutti gli elementi successivi:
+
+```javascript
+const myArray = [11, 3, 23, 7]
+myArray.splice(1, 0, 'hi')  // O(n) - inserisce all'indice 1, ri-indicizza gli elementi successivi
+myArray.splice(1, 1)         // O(n) - rimuove dall'indice 1, ri-indicizza gli elementi successivi
+```
+
+Potresti pensare: "Se inserisco nel mezzo, non dovrebbe essere O(n/2)?". Ci sono due problemi con questa logica:
+1. Big O misura sempre il **caso peggiore**, non quello medio
+2. Anche se fosse O(n/2), 1/2 è una costante e **rimuoviamo le costanti**
+
+Quindi, sia aggiungere che rimuovere dal mezzo è **O(n)**.
+
+### Ricerca per valore
+
+Per trovare un elemento **per valore**, dobbiamo scorrere l'array dall'inizio:
+
+```javascript
+const myArray = [11, 3, 23, 7]
+myArray.indexOf(7)  // O(n) - deve controllare ogni elemento fino a trovare 7
+```
+
+**La ricerca per valore è O(n)**.
+
+### Accesso per indice
+
+Gli **indici** degli array permettono l'accesso diretto a una posizione in memoria:
+
+```javascript
+const myArray = [11, 3, 23, 7]
+myArray[2]  // O(1) - accesso diretto all'indice 2
+```
+
+Questo è uno dei grandi vantaggi degli array: possiamo accedere a qualsiasi elemento in un array con milioni di elementi in **O(1)**, indipendentemente dalla posizione.
+
+### Quando usare gli array
+
+Gli indici sono sia un vantaggio che uno svantaggio:
+- **Vantaggio**: accesso diretto per indice in O(1)
+- **Svantaggio**: aggiungere/rimuovere dall'inizio richiede ri-indicizzazione in O(n)
+
+Quando scegli una struttura dati, considera il tuo caso d'uso:
+- Se devi **accedere spesso per indice**: gli array sono ottimi
+- Se devi **aggiungere/rimuovere spesso dall'inizio**: considera altre strutture dati (come le linked list)
+
+La decisione va presa in base alla **Big O** delle operazioni che esegui più frequentemente.
+
+## Confronto delle complessità temporali
+
+Confrontiamo le complessità temporali per capire meglio le differenze. Prendiamo alcuni valori di _n_:
+
+| n     | O(1) | O(log n) | O(n)  | O(n²)    |
+|-------|------|----------|-------|----------|
+| 100   | 1    | ~7       | 100   | 10.000   |
+| 1.000 | 1    | ~10      | 1.000 | 1.000.000|
+
+Già con _n = 100_ si nota una grande disparità: O(n²) è 10.000 volte più costoso di O(n). Con _n = 1.000_, O(n²) diventa un milione di operazioni, mentre O(log n) rimane a circa 10.
+
+Questo mostra quanto O(n²) cresca rapidamente rispetto alle altre complessità.
+
+<BigOComparisonChart client:load />
+
+### Terminologia comune
+
+Ogni complessità ha termini e frasi associati che sentirai spesso:
+
+- **O(1)**: **"Constant time"** (tempo costante)
+- **O(log n)**: **"Divide and conquer"** (divide et impera)
+- **O(n)**: **"Proportional"** (proporzionale)
+- **O(n²)**: **"Loop within a loop"** (ciclo dentro un ciclo)
+
+Queste sono le **quattro complessità principali** che vedremo nel corso.
+
+### Risorse utili
+
+Un'ottima risorsa per imparare la Big O è [Big-O Cheat Sheet](https://www.bigocheatsheet.com/). Il sito include:
+
+- **Grafici comparativi** di tutte le complessità temporali
+- **Tabelle delle strutture dati** con time complexity (average Θ e worst O) e space complexity
+- **Tabelle degli algoritmi di sorting** con best (Ω), average (Θ) e worst (O) case, oltre alla space complexity
+
+Nota importante: per gli algoritmi di sorting, se stai ordinando **stringhe** o tipi di dati diversi dai numeri, la migliore complessità temporale che puoi ottenere è **O(n × log n)**.
