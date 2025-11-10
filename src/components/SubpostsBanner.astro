@@ -1,0 +1,114 @@
+---
+// Banner visibile che indica la presenza di subpost disponibili
+// Utile soprattutto su mobile dove i subpost sono nascosti nel dropdown
+import Link from '@/components/Link.astro'
+import { buttonVariants } from '@/components/ui/button'
+import {
+  getParentId,
+  getParentPost,
+  getPostById,
+  getSubpostsForParent,
+  isSubpost,
+} from '@/lib/data-utils'
+import { Icon } from 'astro-icon/components'
+
+const { parentId, currentPostId } = Astro.props
+const isCurrentSubpost = isSubpost(currentPostId)
+const rootParentId = isCurrentSubpost ? getParentId(currentPostId) : parentId
+
+const currentPost = !isCurrentSubpost ? await getPostById(currentPostId) : null
+const subposts = await getSubpostsForParent(rootParentId)
+const parentPost = isCurrentSubpost ? await getParentPost(currentPostId) : null
+
+// Mostra il banner solo se ci sono subpost disponibili
+const hasSubposts = subposts.length > 0
+const activePost = parentPost || currentPost
+
+// Se siamo su un subpost, prendiamo il primo subpost non ancora letto
+// Se siamo sul post principale, prendiamo il primo subpost disponibile
+const firstSubpost = subposts.length > 0 ? subposts[0] : null
+const currentSubpostIndex = isCurrentSubpost
+  ? subposts.findIndex((s) => s.id === currentPostId)
+  : -1
+const nextSubpost =
+  currentSubpostIndex >= 0 && currentSubpostIndex < subposts.length - 1
+    ? subposts[currentSubpostIndex + 1]
+    : null
+---
+
+{
+  hasSubposts && (
+    <div
+      class="col-start-2 mx-auto w-full max-w-3xl xl:hidden"
+      id="subposts-banner"
+    >
+      <div class="bg-muted/50 border-border rounded-lg border p-4">
+        <div class="flex flex-col gap-3">
+          <div class="flex items-start gap-3">
+            <Icon
+              name="lucide:book-open-text"
+              class="mt-0.5 size-5 flex-shrink-0 text-primary"
+              aria-hidden="true"
+            />
+            <div class="flex-1">
+              <h3 class="text-foreground mb-1 text-sm font-semibold">
+                {isCurrentSubpost
+                  ? 'Continua la lettura'
+                  : 'Questo articolo fa parte di una serie'}
+              </h3>
+              <p class="text-muted-foreground text-xs leading-relaxed">
+                {isCurrentSubpost
+                  ? nextSubpost
+                    ? `Leggi il prossimo capitolo: "${nextSubpost.data.title}"`
+                    : `Hai completato tutti i ${subposts.length + 1} capitoli di questa serie.`
+                  : `Questo articolo contiene ${subposts.length} capitolo${
+                      subposts.length === 1 ? '' : 'i'
+                    } aggiuntivi.`}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 sm:flex-row">
+            {isCurrentSubpost && nextSubpost ? (
+              <Link
+                href={`/blog/${nextSubpost.id}`}
+                class={buttonVariants({ variant: 'default', size: 'sm' })}
+              >
+                <span>Continua a leggere</span>
+                <Icon name="lucide:arrow-right" class="size-4" />
+              </Link>
+            ) : isCurrentSubpost && !nextSubpost && parentPost ? (
+              <Link
+                href={`/blog/${parentPost.id}`}
+                class={buttonVariants({ variant: 'outline', size: 'sm' })}
+              >
+                <Icon name="lucide:corner-left-up" class="size-4" />
+                <span>Torna all'indice</span>
+              </Link>
+            ) : firstSubpost ? (
+              <Link
+                href={`/blog/${firstSubpost.id}`}
+                class={buttonVariants({ variant: 'default', size: 'sm' })}
+              >
+                <span>Inizia a leggere</span>
+                <Icon name="lucide:arrow-right" class="size-4" />
+              </Link>
+            ) : null}
+
+            <button
+              type="button"
+              onclick="document.getElementById('mobile-subposts-container')?.querySelector('details')?.setAttribute('open', '')"
+              class={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              <Icon name="lucide:list" class="size-4" />
+              <span>
+                Vedi tutti ({subposts.length + (activePost ? 1 : 0)})
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
