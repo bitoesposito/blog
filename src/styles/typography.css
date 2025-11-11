@@ -131,7 +131,7 @@
     :where(img, video, figure, .expressive-code):not(
         :where(.not-prose, .not-prose *)
       ) {
-      @apply mx-auto my-6;
+      @apply mx-auto rounded-lg [&::-webkit-scrollbar-corner]:hidden;
     }
 
     :where(pre):not(:where(.not-prose, .not-prose *)) {
