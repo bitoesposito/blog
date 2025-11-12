@@ -1,0 +1,162 @@
+---
+title: 'Linked Lists'
+description: 'Introduzione alle Linked Lists, una struttura dati fondamentale per comprendere le strutture dati'
+date: 2025-11-12
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 3
+---
+
+## Introduzione
+
+Le **linked lists** sono la prima struttura dati che costruiremo. Per capirle meglio, le confronteremo con gli **array**, la struttura dati con cui vengono più spesso paragonate.
+
+### Confronto con gli array
+
+Le linked lists differiscono dagli array in alcuni aspetti fondamentali:
+
+1. **Nessun indice**: gli array hanno indici che permettono l'accesso diretto agli elementi, le linked lists no
+2. **Memoria non contigua**: gli array sono memorizzati in posizioni contigue in memoria, le linked lists possono essere sparse ovunque
+3. **Puntatori**: ogni elemento in una linked list punta al successivo, creando una catena di nodi
+
+## Struttura delle Linked Lists
+
+Una linked list è composta da:
+
+- **Head**: variabile che punta al primo elemento della lista
+- **Tail**: variabile che punta all'ultimo elemento della lista
+- **Nodi**: ogni elemento contiene un valore e un puntatore al nodo successivo
+- **Null terminated**: l'ultimo nodo punta a `null`, indicando la fine della lista
+
+```javascript
+// Rappresentazione grafica di una linked list
+// Head → [11] → [3] → [23] → [7] → null
+//                    ↑
+//                   Tail
+```
+
+Ogni nodo punta al successivo, creando una catena. L'ultimo nodo punta a `null`, da qui il termine "null terminated list".
+
+## Big O delle Linked Lists
+
+Analizziamo la complessità temporale delle operazioni principali sulle linked lists.
+
+### Aggiungere alla fine (Push)
+
+Per aggiungere un elemento alla fine della lista:
+
+```javascript
+// 1. L'ultimo nodo punta al nuovo nodo
+// 2. Tail viene aggiornato per puntare al nuovo nodo
+```
+
+Non importa se la lista ha 4 elementi o 100: il numero di operazioni è sempre lo stesso. **Push è O(1)**.
+
+### Rimuovere dalla fine (Pop)
+
+Per rimuovere l'ultimo elemento, dobbiamo:
+
+1. Trovare il penultimo nodo
+2. Farlo puntare a `null`
+3. Aggiornare `tail`
+
+Il problema è che **non possiamo andare all'indietro** in una linked list. Per trovare il penultimo nodo, dobbiamo partire da `head` e iterare attraverso tutta la lista fino a raggiungerlo.
+
+**Pop è O(n)** perché dobbiamo attraversare l'intera lista.
+
+### Aggiungere all'inizio (Unshift)
+
+Per aggiungere un elemento all'inizio:
+
+```javascript
+// 1. Il nuovo nodo punta al nodo attualmente puntato da head
+// 2. Head viene aggiornato per puntare al nuovo nodo
+```
+
+Abbiamo già un puntatore al primo nodo (`head`), quindi non serve iterare. **Unshift è O(1)**.
+
+### Rimuovere dall'inizio (Shift)
+
+Per rimuovere il primo elemento:
+
+```javascript
+// 1. Head viene spostato al nodo successivo (head.next)
+// 2. Il primo nodo viene rimosso
+```
+
+Anche qui abbiamo già il puntatore necessario. **Shift è O(1)**.
+
+### Inserire nel mezzo (Insert)
+
+Per inserire un elemento a un indice specifico, ad esempio l'indice 3:
+
+```javascript
+// 1. Partiamo da head e iteriamo fino all'indice 2 (il nodo prima di dove inserire)
+// 2. Il nuovo nodo punta allo stesso nodo del nodo precedente
+// 3. Il nodo precedente punta al nuovo nodo
+```
+
+Dobbiamo iterare dalla testa fino alla posizione desiderata. **Insert è O(n)**.
+
+### Rimuovere dal mezzo (Delete)
+
+Per rimuovere un elemento a un indice specifico:
+
+```javascript
+// 1. Partiamo da head e iteriamo fino al nodo prima di quello da rimuovere
+// 2. Il nodo precedente punta allo stesso nodo del nodo da rimuovere
+// 3. Il nodo viene rimosso
+```
+
+Anche qui dobbiamo iterare. **Delete è O(n)**.
+
+### Lookup by Index
+
+Per accedere a un elemento tramite il suo indice:
+
+```javascript
+// Partiamo da head e iteriamo contando gli indici fino a raggiungere quello desiderato
+```
+
+Dobbiamo partire da `head` e iterare. **Lookup by Index è O(n)**.
+
+Questo è una differenza importante con gli array: negli array possiamo accedere a un indice in **O(1)**, nelle linked lists dobbiamo sempre iterare.
+
+### Lookup by Value
+
+Per cercare un elemento per il suo valore:
+
+```javascript
+// Iteriamo dalla testa confrontando ogni valore fino a trovare quello cercato
+```
+
+Dobbiamo partire da `head` e iterare. **Lookup by Value è O(n)**.
+
+## Confronto Linked Lists vs Array
+
+Ecco una tabella comparativa delle complessità temporali:
+
+| Operazione | Linked List | Array |
+|------------|-------------|-------|
+| **Push** (fine) | O(1) | O(1) |
+| **Pop** (fine) | O(n) | O(1) |
+| **Shift** (inizio) | O(1) | O(n) |
+| **Unshift** (inizio) | O(1) | O(n) |
+| **Insert** (mezzo) | O(n) | O(n) |
+| **Delete** (mezzo) | O(n) | O(n) |
+| **Lookup by Index** | O(n) | O(1) |
+| **Lookup by Value** | O(n) | O(n) |
+
+**Nota**: Le operazioni evidenziate mostrano dove una struttura dati è più efficiente dell'altra. Le linked lists sono migliori per operazioni all'inizio (shift/unshift), mentre gli array sono migliori per pop e lookup by index.
+
+### Quando usare Linked Lists
+
+Le linked lists sono migliori quando:
+- Devi **aggiungere/rimuovere spesso dall'inizio**: `unshift` e `shift` sono O(1) invece di O(n) degli array
+- Non hai bisogno di **lookup by index** frequente
+
+Gli array sono migliori quando:
+- Devi **accedere spesso per indice** (lookup by index): O(1) vs O(n) delle linked lists
+- Devi **rimuovere dalla fine**: `pop` è O(1) vs O(n) delle linked lists
+
+La scelta dipende dalle operazioni che esegui più frequentemente. Considera la **Big O** delle operazioni principali per il tuo caso d'uso specifico.
