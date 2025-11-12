@@ -1,0 +1,370 @@
+---
+title: 'Linked Lists - Esercizi'
+description: 'Problemi comuni sulle Linked Lists'
+date: 2025-11-12
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 4
+---
+
+Questa sezione contiene problemi comuni sulle Linked Lists. Ogni problema include la strategia risolutiva e l'implementazione completa.
+
+## Find Middle Node
+
+**Problema**: Trovare il nodo centrale di una linked list senza conoscere la lunghezza. Non è permesso calcolare la lunghezza e si può iterare solo una volta.
+
+**Strategia - Two Pointers (Tortoise and Hare)**:
+- Usa due puntatori: `slow` (avanza di 1) e `fast` (avanza di 2)
+- Quando `fast` raggiunge la fine, `slow` è al centro
+- Con numero pari di nodi, ritorna il primo nodo della seconda metà
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+findMiddleNode() {
+  let slow = this.head;
+  let fast = this.head;
+  
+  // Fast avanza di 2, slow di 1
+  // Quando fast raggiunge la fine, slow è al centro
+  while (fast !== null && fast.next !== null) {
+    slow = slow.next;
+    fast = fast.next.next;
+  }
+  
+  return slow;
+}
+```
+
+</div>
+</details>
+
+## Has Loop
+
+**Problema**: Verificare se una linked list contiene un ciclo (loop).
+
+**Strategia - Floyd's Cycle Detection**:
+- Usa due puntatori: `slow` e `fast`
+- Se c'è un ciclo, `fast` raggiungerà `slow`
+- Se `fast` raggiunge `null`, non c'è ciclo
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+hasLoop() {
+  let slow = this.head;
+  let fast = this.head;
+  
+  while (fast !== null && fast.next !== null) {
+    slow = slow.next;
+    fast = fast.next.next;
+    
+    // Se slow e fast si incontrano, c'è un ciclo
+    if (slow === fast) {
+      return true;
+    }
+  }
+  
+  // Fast ha raggiunto la fine, non c'è ciclo
+  return false;
+}
+```
+
+</div>
+</details>
+
+## Find Kth From End
+
+**Problema**: Trovare il k-esimo nodo dalla fine senza conoscere la lunghezza della lista.
+
+**Strategia - Two Pointers con offset**:
+- Sposta `fast` di k posizioni avanti
+- Poi muovi `slow` e `fast` insieme fino alla fine
+- Quando `fast` raggiunge la fine, `slow` è al k-esimo nodo dalla fine
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+findKthFromEnd(k) {
+  let slow = this.head;
+  let fast = this.head;
+  
+  // Validazione input
+  if (fast === null) return null;
+  if (k <= 0) return null;
+  
+  // Sposta fast di k posizioni avanti
+  for (let i = 1; i < k; i++) {
+    fast = fast.next;
+    // Se k è maggiore della lunghezza della lista
+    if (fast === null) return null;
+  }
+  
+  // Muovi entrambi i puntatori fino alla fine
+  while (fast.next !== null) {
+    slow = slow.next;
+    fast = fast.next;
+  }
+  
+  return slow;
+}
+```
+
+</div>
+</details>
+
+## Remove Duplicates
+
+**Problema**: Rimuovere tutti i nodi duplicati dalla linked list.
+
+**Strategia - Nested Loops**:
+- `current` itera attraverso la lista
+- `runner` cerca duplicati del nodo corrente
+- Rimuovi i duplicati trovati
+
+**Nota**: Esiste una soluzione più efficiente con Set (O(n)), ma richiede conoscenza di Set.
+
+**Complessità**: O(n²) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+removeDuplicates() {
+  let current = this.head;
+  
+  // Itera attraverso ogni nodo
+  while (current !== null) {
+    let runner = current;
+    
+    // Runner cerca duplicati del nodo corrente
+    while (runner.next !== null) {
+      if (runner.next.value === current.value) {
+        // Rimuovi il duplicato
+        runner.next = runner.next.next;
+        this.length--;
+      } else {
+        runner = runner.next;
+      }
+    }
+    
+    current = current.next;
+  }
+}
+```
+
+</div>
+</details>
+
+## Binary to Decimal
+
+**Problema**: Convertire una linked list che rappresenta un numero binario in decimale.
+
+**Strategia - Accumulo progressivo**:
+- Inizia assumendo che il primo nodo valga 1
+- Per ogni nodo successivo, raddoppia il valore accumulato e aggiungi il valore del nodo
+- Pattern: ogni posizione a sinistra vale il doppio della precedente
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+binaryToDecimal() {
+  let current = this.head;
+  let num = 0;
+  
+  // Edge case: lista vuota
+  if (this.head === null) return 0;
+  
+  // Per ogni nodo: raddoppia il valore accumulato e aggiungi il valore corrente
+  while (current !== null) {
+    num *= 2;              // Raddoppia (shift a sinistra in binario)
+    num += current.value;  // Aggiungi il bit corrente
+    current = current.next;
+  }
+  
+  return num;
+}
+```
+
+</div>
+</details>
+
+## Partition List
+
+**Problema**: Partizionare una linked list in modo che tutti i nodi con valore < x vengano prima dei nodi con valore ≥ x, mantenendo l'ordine relativo.
+
+**Strategia - Dummy Nodes**:
+- Crea due liste separate usando dummy nodes
+- Una lista per valori < x, una per valori ≥ x
+- Collega le due liste alla fine
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+partitionList(x) {
+  // Crea due dummy nodes per le due partizioni
+  const dummy1 = new Node(0);  // Per valori < x
+  const dummy2 = new Node(0);  // Per valori >= x
+  
+  let prev1 = dummy1;
+  let prev2 = dummy2;
+  let current = this.head;
+  
+  if (current === null) return null;
+  
+  // Distribuisci i nodi nelle due liste
+  while (current !== null) {
+    if (current.value < x) {
+      prev1.next = current;
+      prev1 = prev1.next;
+    } else {
+      prev2.next = current;
+      prev2 = prev2.next;
+    }
+    
+    current = current.next;
+  }
+  
+  // Collega le due liste
+  prev2.next = null;        // Termina la seconda lista
+  prev1.next = dummy2.next; // Collega la prima alla seconda
+  this.head = dummy1.next;  // Aggiorna head
+}
+```
+
+</div>
+</details>
+
+## Reverse Between
+
+**Problema**: Invertire i nodi tra due indici m e n (inclusi), mantenendo il resto della lista invariato.
+
+**Strategia - Dummy Node e inserimento progressivo**:
+- Usa un dummy node per gestire il caso in cui m = 0
+- Trova il nodo precedente al range da invertire
+- Inverti i nodi nel range spostandoli uno alla volta all'inizio del range
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+reverseBetween(m, n) {
+  if (this.head === null) return;
+  
+  // Dummy node per gestire il caso m = 0
+  const dummy = new Node(0);
+  dummy.next = this.head;
+  let prev = dummy;
+  
+  // Sposta prev al nodo prima del range da invertire
+  for (let i = 0; i < m; i++) {
+    prev = prev.next;
+  }
+  
+  let current = prev.next;
+  
+  // Inverti i nodi nel range (n - m iterazioni)
+  for (let i = 0; i < n - m; i++) {
+    let temp = current.next;
+    current.next = temp.next;
+    temp.next = prev.next;
+    prev.next = temp;
+  }
+  
+  this.head = dummy.next;
+}
+```
+
+</div>
+</details>
+
+## Swap Pairs
+
+**Problema**: Scambiare ogni coppia di nodi adiacenti nella linked list. Se il numero di nodi è dispari, l'ultimo nodo rimane invariato.
+
+**Strategia - Dummy Node e iterazione**:
+- Usa un dummy node per semplificare la gestione del primo swap
+- Per ogni coppia: scambia i puntatori mantenendo i riferimenti corretti
+- Aggiorna `previous` per la prossima iterazione
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+swapPairs() {
+  const dummy = new Node(0);
+  dummy.next = this.head;
+  
+  let previous = dummy;
+  let first = this.head;
+  
+  // Scambia coppie finché ci sono almeno due nodi
+  while (first !== null && first.next !== null) {
+    let second = first.next;
+    
+    // Scambia i nodi
+    previous.next = second;
+    first.next = second.next;
+    second.next = first;
+    
+    // Prepara per la prossima iterazione
+    previous = first;
+    first = first.next;
+  }
+  
+  this.head = dummy.next;
+}
+```
+
+</div>
+</details>
+
+## Pattern comuni
+
+Questi problemi condividono pattern ricorrenti:
+
+1. **Two Pointers (Slow/Fast)**: Find Middle Node, Has Loop, Find Kth From End
+   - Pattern fondamentale per problemi su linked lists
+   - Permette di risolvere problemi senza conoscere la lunghezza
+
+2. **Dummy Nodes**: Partition List, Reverse Between, Swap Pairs
+   - Semplificano la gestione dei casi limite (es. quando si modifica il primo nodo)
+   - Evitano di dover gestire separatamente il caso `head`
+
+3. **Inserimento progressivo**: Reverse Between
+   - Sposta nodi uno alla volta all'inizio di un range
+   - Mantiene l'ordine relativo degli altri nodi
+
+4. **Nested Loops**: Remove Duplicates
+   - Utile per confronti tra tutti i nodi
+   - Attenzione alla complessità O(n²)
+
+Pratica questi pattern: compaiono spesso e sono la base per problemi più complessi.
+
