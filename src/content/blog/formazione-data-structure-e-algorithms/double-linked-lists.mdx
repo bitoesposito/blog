@@ -1,0 +1,767 @@
+---
+title: 'Double Linked Lists'
+description: 'Introduzione alle Double Linked Lists, una struttura dati che permette navigazione bidirezionale'
+date: 2025-11-12
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 5
+---
+
+## Introduzione
+
+Le **double linked lists** (liste doppiamente collegate) sono una struttura dati che estende le linked lists semplici aggiungendo la capacità di navigare in entrambe le direzioni. Ogni nodo contiene un puntatore al nodo successivo (`next`) e uno al nodo precedente (`prev`), permettendo di attraversare la lista sia in avanti che all'indietro.
+
+## Confronto con Singly Linked Lists
+
+Le double linked lists differiscono dalle singly linked lists in un aspetto fondamentale:
+
+1. **Navigazione bidirezionale**: ogni nodo ha sia un puntatore `next` che `prev`
+2. **Pop più efficiente**: rimuovere l'ultimo elemento è O(1) invece di O(n)
+3. **Get ottimizzato**: il metodo `get` può partire da `tail` se l'indice è nella seconda metà della lista
+4. **Maggiore complessità**: ogni operazione deve gestire sia i puntatori `next` che `prev`
+
+## Struttura delle Double Linked Lists
+
+### Componenti principali
+
+Una double linked list è composta da:
+
+- **Head**: variabile che punta al primo elemento della lista
+- **Tail**: variabile che punta all'ultimo elemento della lista
+- **Nodi**: ogni elemento contiene un valore, un puntatore al nodo successivo (`next`) e uno al nodo precedente (`prev`)
+- **Null terminated**: il primo nodo ha `prev = null` e l'ultimo nodo ha `next = null`
+
+```javascript
+// Rappresentazione grafica di una double linked list
+//  null ← [11] ⇄ [3] ⇄ [23] ⇄ [7] → null
+//           ↑                    ↑
+//         Head                  Tail
+```
+
+Ogni nodo punta sia al successivo che al precedente, creando una catena bidirezionale.
+
+### Struttura interna dei nodi
+
+#### Cosa è un nodo
+
+Un nodo in una double linked list è un **oggetto** composto da:
+
+- **value**: il valore memorizzato nel nodo
+- **next**: un puntatore al nodo successivo (o `null` se è l'ultimo)
+- **prev**: un puntatore al nodo precedente (o `null` se è il primo)
+
+```javascript
+// Rappresentazione grafica (semplificata)
+// null ← [7] ⇄ [4] → null
+
+// Struttura reale in memoria
+{
+  value: 7,
+  next: {
+    value: 4,
+    next: null,
+    prev: { /* riferimento al nodo 7 */ }
+  },
+  prev: null
+}
+```
+
+#### Come funziona il puntamento bidirezionale
+
+Quando diciamo che un nodo "punta" a un altro, stiamo impostando sia `next` che `prev`:
+
+```javascript
+// Il nodo con valore 7 punta al nodo con valore 4 (next)
+// Il nodo con valore 4 punta al nodo con valore 7 (prev)
+node7.next = node4;  // Puntatore in avanti
+node4.prev = node7;  // Puntatore all'indietro
+```
+
+#### Struttura completa di una double linked list
+
+Una double linked list è quindi un insieme di oggetti annidati con riferimenti bidirezionali:
+
+```javascript
+// Esempio: null ← [11] ⇄ [3] ⇄ [23] ⇄ [7] → null
+{
+  head: {
+    value: 11,
+    next: { /* nodo 3 */ },
+    prev: null
+  },
+  tail: {
+    value: 7,
+    next: null,
+    prev: { /* nodo 23 */ }
+  },
+  length: 4
+}
+```
+
+`head` punta al primo oggetto nodo, mentre `tail` punta all'ultimo oggetto nodo. Entrambi sono riferimenti agli stessi oggetti nella catena bidirezionale.
+
+## Complessità temporale (Big O)
+
+Le double linked lists hanno complessità simili alle singly linked lists, con alcune differenze importanti:
+
+### Operazioni di aggiunta
+
+- **Push** (fine): O(1) - abbiamo già un puntatore all'ultimo nodo (`tail`)
+- **Unshift** (inizio): O(1) - abbiamo già un puntatore al primo nodo (`head`)
+- **Insert** (mezzo): O(n) - dobbiamo iterare fino alla posizione desiderata
+
+### Operazioni di rimozione
+
+- **Pop** (fine): O(1) - possiamo usare `tail.prev` direttamente (miglioramento rispetto a O(n) delle singly linked lists)
+- **Shift** (inizio): O(1) - abbiamo già un puntatore al primo nodo (`head`)
+- **Remove** (mezzo): O(n) - dobbiamo iterare fino alla posizione desiderata
+
+### Operazioni di accesso
+
+- **Lookup by Index**: O(n) - ma può essere ottimizzato: se l'indice è nella prima metà parte da `head`, altrimenti da `tail` (O(n/2) nel caso migliore)
+- **Lookup by Value**: O(n) - dobbiamo iterare confrontando ogni valore
+
+**Nota importante**: Il metodo `get` può essere ottimizzato nelle double linked lists: se l'indice è nella seconda metà della lista, si parte da `tail` e si va all'indietro, riducendo il numero di iterazioni.
+
+### Confronto Double Linked Lists vs Singly Linked Lists
+
+Ecco una tabella comparativa delle complessità temporali:
+
+| Operazione | Double Linked List | Singly Linked List |
+|------------|-------------------|---------------------|
+| **Push** (fine) | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Pop** (fine) | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Shift** (inizio) | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Unshift** (inizio) | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Insert** (mezzo) | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Delete** (mezzo) | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Lookup by Index** | <span class="text-yellow-600 dark:text-yellow-400 font-semibold">O(n/2)</span> ottimizzato | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Lookup by Value** | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+
+**Legenda**: <span class="text-green-600 dark:text-green-400 font-semibold">Verde</span> = O(1) efficiente | <span class="text-yellow-600 dark:text-yellow-400 font-semibold">Giallo</span> = O(n/2) ottimizzato | <span class="text-red-600 dark:text-red-400 font-semibold">Rosso</span> = O(n) meno efficiente
+
+**Nota**: La differenza principale è che `pop` è O(1) nelle double linked lists grazie ai puntatori `prev`, e `get` può essere ottimizzato partendo da `tail` se l'indice è nella seconda metà.
+
+### Quando usare Double Linked Lists
+
+Le double linked lists sono migliori quando:
+- Devi **rimuovere spesso dalla fine**: `pop` è O(1) invece di O(n) delle singly linked lists
+- Devi **navigare all'indietro** nella lista
+- Hai bisogno di **lookup ottimizzati** quando l'indice è nella seconda metà della lista
+
+Le singly linked lists sono migliori quando:
+- Non hai bisogno di navigazione all'indietro
+- Vuoi risparmiare memoria (ogni nodo ha un puntatore in meno)
+- La semplicità del codice è più importante delle prestazioni
+
+La scelta dipende dalle operazioni che esegui più frequentemente. Considera la **Big O** delle operazioni principali per il tuo caso d'uso specifico.
+
+## Implementazione
+
+### Classe Node
+
+Prima di implementare la double linked list, creiamo una classe separata per i nodi. La differenza principale rispetto alle singly linked lists è la presenza del puntatore `prev`.
+
+```javascript
+// Classe per creare un singolo nodo
+class Node {
+  constructor(value) {
+    // Assegna il valore passato al costruttore
+    this.value = value;
+    // Inizialmente il nodo non punta a nulla in avanti
+    this.next = null;
+    // Inizialmente il nodo non punta a nulla all'indietro
+    this.prev = null;
+  }
+}
+
+// Esempio di utilizzo
+const newNode = new Node(4);
+// Crea un oggetto: { value: 4, next: null, prev: null }
+```
+
+**Perché una classe separata?** I metodi `constructor`, `push`, `unshift` e `insert` hanno tutti bisogno di creare nuovi nodi. Invece di riscrivere il codice ogni volta, usiamo la classe `Node`.
+
+### Costruttore della DoublyLinkedList
+
+Il costruttore inizializza una double linked list con il primo nodo:
+
+```javascript
+class DoublyLinkedList {
+  constructor(value) {
+    // Crea il primo nodo con il valore passato
+    const newNode = new Node(value);
+    
+    // Head punta al primo nodo (il nuovo nodo appena creato)
+    this.head = newNode;
+    
+    // Tail punta allo stesso nodo di head (quando c'è un solo nodo)
+    // Equivale a: this.tail = newNode
+    this.tail = this.head;
+    
+    // La lista inizia con lunghezza 1
+    this.length = 1;
+  }
+}
+
+// Esempio di utilizzo
+const myDoublyLinkedList = new DoublyLinkedList(4);
+// Crea una double linked list con un nodo di valore 4
+// head e tail puntano entrambi a questo nodo
+// length = 1
+```
+
+**Spiegazione del costruttore**:
+1. **Crea il primo nodo**: `new Node(value)` crea un oggetto con `value`, `next: null` e `prev: null`
+2. **Imposta head**: `this.head = newNode` fa sì che `head` punti al nuovo nodo
+3. **Imposta tail**: `this.tail = this.head` fa sì che `tail` punti allo stesso oggetto di `head` (quando c'è un solo nodo, sono la stessa cosa)
+4. **Inizializza length**: `this.length = 1` perché abbiamo creato un nodo
+
+**Risultato in memoria**:
+
+```javascript
+{
+  head: { value: 4, next: null, prev: null },
+  tail: { value: 4, next: null, prev: null },  // punta allo stesso oggetto di head
+  length: 1
+}
+```
+
+`head` e `tail` sono entrambi riferimenti allo stesso oggetto nodo. Quando aggiungeremo altri nodi, `tail` verrà aggiornato per puntare all'ultimo nodo della catena.
+
+## Operazioni di aggiunta
+
+### Push - Aggiungere alla fine
+
+Aggiunge un nodo alla fine della lista. **Complessità: O(1)**
+
+**Logica**:
+1. Crea un nuovo nodo
+2. L'ultimo nodo punta al nuovo nodo (`tail.next = newNode`)
+3. Il nuovo nodo punta all'ultimo nodo (`newNode.prev = tail`) - **differenza rispetto alle singly linked lists**
+4. `tail` viene aggiornato per puntare al nuovo nodo
+
+**Edge case**: Se la lista è vuota, `head` e `tail` puntano entrambi al nuovo nodo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+push(value) {
+  // Crea il nuovo nodo
+  const newNode = new Node(value);
+  
+  // Se la lista è vuota, head e tail puntano al nuovo nodo
+  if (!this.head) {
+    this.head = newNode;
+    this.tail = newNode;
+  } else {
+    // L'ultimo nodo punta al nuovo nodo (puntatore in avanti)
+    this.tail.next = newNode;
+    // Il nuovo nodo punta all'ultimo nodo (puntatore all'indietro)
+    newNode.prev = this.tail;
+    // Tail viene aggiornato per puntare al nuovo nodo
+    this.tail = newNode;
+  }
+  
+  // Incrementa la lunghezza
+  this.length++;
+  return this; // Ritorna l'intera linked list
+}
+```
+
+</div>
+</details>
+
+**Differenza con singly linked lists**: L'unica riga aggiuntiva è `newNode.prev = this.tail`, che collega il puntatore all'indietro del nuovo nodo.
+
+### Unshift - Aggiungere all'inizio
+
+Aggiunge un nodo all'inizio della lista. **Complessità: O(1)**
+
+**Logica**:
+1. Crea un nuovo nodo
+2. Il nuovo nodo punta al nodo attualmente puntato da `head` (`newNode.next = this.head`)
+3. Il primo nodo punta al nuovo nodo (`this.head.prev = newNode`) - **differenza rispetto alle singly linked lists**
+4. `head` viene aggiornato per puntare al nuovo nodo
+
+**Edge case**: Se la lista è vuota, `head` e `tail` puntano entrambi al nuovo nodo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+unshift(value) {
+  // Crea il nuovo nodo
+  const newNode = new Node(value);
+  
+  // Se la lista è vuota, head e tail puntano al nuovo nodo
+  if (!this.head) {
+    this.head = newNode;
+    this.tail = newNode;
+  } else {
+    // Il nuovo nodo punta al primo nodo attuale (puntatore in avanti)
+    newNode.next = this.head;
+    // Il primo nodo punta al nuovo nodo (puntatore all'indietro)
+    this.head.prev = newNode;
+    // Head viene aggiornato per puntare al nuovo nodo
+    this.head = newNode;
+  }
+  
+  // Incrementa la lunghezza
+  this.length++;
+  return this;
+}
+```
+
+</div>
+</details>
+
+**Differenza con singly linked lists**: La riga aggiuntiva è `this.head.prev = newNode`, che collega il puntatore all'indietro del primo nodo.
+
+### Insert - Inserire in una posizione specifica
+
+Inserisce un nuovo nodo all'indice specificato. **Complessità: O(n)**
+
+**Logica**:
+1. **Edge cases**:
+   - Indice 0: usa `unshift`
+   - Indice = length: usa `push`
+   - Indice non valido: ritorna `false`
+2. Trova il nodo precedente all'indice desiderato
+3. Il nuovo nodo punta al nodo che era all'indice (`newNode.next = after`)
+4. Il nodo precedente punta al nuovo nodo (`before.next = newNode`)
+5. **Gestione puntatori prev**: collega i puntatori all'indietro (`newNode.prev = before` e `after.prev = newNode`)
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+insert(index, value) {
+  // Edge case: inserimento all'inizio
+  if (index === 0) return this.unshift(value);
+  
+  // Edge case: inserimento alla fine
+  if (index === this.length) return this.push(value);
+  
+  // Edge case: indice non valido
+  if (index < 0 || index > this.length) return false;
+  
+  // Crea il nuovo nodo
+  const newNode = new Node(value);
+  
+  // Trova il nodo precedente all'indice desiderato
+  const before = this.get(index - 1);
+  // Trova il nodo che sarà dopo il nuovo nodo (più efficiente di usare get di nuovo)
+  const after = before.next;
+  
+  // Il nodo precedente punta al nuovo nodo (puntatore in avanti)
+  before.next = newNode;
+  // Il nuovo nodo punta al nodo precedente (puntatore all'indietro)
+  newNode.prev = before;
+  // Il nuovo nodo punta al nodo che era all'indice (puntatore in avanti)
+  newNode.next = after;
+  // Il nodo dopo punta al nuovo nodo (puntatore all'indietro)
+  after.prev = newNode;
+  
+  // Incrementa la lunghezza
+  this.length++;
+  
+  return true;
+}
+```
+
+</div>
+</details>
+
+**Differenza con singly linked lists**: Aggiungiamo due righe per gestire i puntatori `prev`: `newNode.prev = before` e `after.prev = newNode`.
+
+## Operazioni di rimozione
+
+### Pop - Rimuovere dalla fine
+
+Rimuove l'ultimo nodo dalla lista e lo ritorna. **Complessità: O(1)** - miglioramento rispetto a O(n) delle singly linked lists!
+
+**Logica**:
+1. Salva il riferimento all'ultimo nodo (`temp = this.tail`)
+2. Sposta `tail` all'indietro usando `tail.prev` - **vantaggio delle double linked lists**
+3. Imposta `tail.next = null` per rimuovere il collegamento
+4. Imposta `temp.prev = null` per rimuovere il collegamento all'indietro
+5. Ritorna il nodo rimosso
+
+**Edge cases**:
+- Lista vuota: ritorna `undefined`
+- Un solo nodo: dopo la rimozione, `head` e `tail` devono puntare a `null`
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+pop() {
+  // Se la lista è vuota, ritorna undefined
+  if (this.length === 0) return undefined;
+  
+  // Salva il riferimento all'ultimo nodo
+  let temp = this.tail;
+  
+  // Edge case: se c'è un solo nodo
+  if (this.length === 1) {
+    this.head = null;
+    this.tail = null;
+  } else {
+    // Sposta tail all'indietro usando prev (vantaggio delle double linked lists!)
+    this.tail = this.tail.prev;
+    // Rimuove il collegamento in avanti
+    this.tail.next = null;
+    // Rimuove il collegamento all'indietro del nodo rimosso
+    temp.prev = null;
+  }
+  
+  // Decrementa la lunghezza
+  this.length--;
+  
+  // Ritorna il nodo rimosso
+  return temp;
+}
+```
+
+</div>
+</details>
+
+**Vantaggio rispetto alle singly linked lists**: Non dobbiamo iterare attraverso tutta la lista per trovare il penultimo nodo. Possiamo usare direttamente `tail.prev`!
+
+### Shift - Rimuovere dall'inizio
+
+Rimuove il primo nodo dalla lista e lo ritorna. **Complessità: O(1)**
+
+**Logica**:
+1. Salva il riferimento al primo nodo (`temp = this.head`)
+2. Sposta `head` al nodo successivo (`head = head.next`)
+3. Rimuove il collegamento all'indietro del nuovo primo nodo (`head.prev = null`)
+4. Rimuove il collegamento in avanti del nodo rimosso (`temp.next = null`)
+5. Ritorna il nodo rimosso
+
+**Edge cases**:
+- Lista vuota: ritorna `undefined`
+- Un solo nodo: dopo la rimozione, `tail` deve puntare a `null`
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+shift() {
+  // Se la lista è vuota, ritorna undefined
+  if (this.length === 0) return undefined;
+  
+  // Salva il riferimento al primo nodo
+  let temp = this.head;
+  
+  // Edge case: se c'è un solo nodo
+  if (this.length === 1) {
+    this.head = null;
+    this.tail = null;
+  } else {
+    // Sposta head al nodo successivo
+    this.head = this.head.next;
+    // Rimuove il collegamento all'indietro del nuovo primo nodo
+    this.head.prev = null;
+    // Rimuove il collegamento in avanti del nodo rimosso
+    temp.next = null;
+  }
+  
+  // Decrementa la lunghezza
+  this.length--;
+  
+  // Ritorna il nodo rimosso
+  return temp;
+}
+```
+
+</div>
+</details>
+
+**Differenza con singly linked lists**: Aggiungiamo `this.head.prev = null` per rimuovere il collegamento all'indietro.
+
+### Remove - Rimuovere da una posizione specifica
+
+Rimuove il nodo all'indice specificato e lo ritorna. **Complessità: O(n)**
+
+**Logica**:
+1. **Edge cases**:
+   - Indice 0: usa `shift`
+   - Indice = length - 1: usa `pop`
+   - Indice non valido: ritorna `undefined`
+2. Trova il nodo da rimuovere usando `get`
+3. Usa i puntatori `prev` e `next` per collegare i nodi adiacenti - **più semplice rispetto alle singly linked lists**
+4. Rimuove i collegamenti del nodo rimosso
+5. Ritorna il nodo rimosso
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+remove(index) {
+  // Edge case: rimozione dall'inizio
+  if (index === 0) return this.shift();
+  
+  // Edge case: rimozione dalla fine
+  if (index === this.length - 1) return this.pop();
+  
+  // Edge case: indice non valido
+  if (index < 0 || index >= this.length) return undefined;
+  
+  // Trova il nodo da rimuovere
+  let temp = this.get(index);
+  
+  // Collega il nodo precedente al nodo successivo (puntatore in avanti)
+  temp.prev.next = temp.next;
+  // Collega il nodo successivo al nodo precedente (puntatore all'indietro)
+  temp.next.prev = temp.prev;
+  // Rimuove i collegamenti del nodo rimosso
+  temp.next = null;
+  temp.prev = null;
+  
+  // Decrementa la lunghezza
+  this.length--;
+  
+  // Ritorna il nodo rimosso
+  return temp;
+}
+```
+
+</div>
+</details>
+
+**Vantaggio rispetto alle singly linked lists**: Non abbiamo bisogno di una variabile `before` perché possiamo usare direttamente `temp.prev` e `temp.next` per collegare i nodi adiacenti.
+
+## Operazioni di accesso e modifica
+
+### Get - Ottenere un nodo per indice
+
+Ritorna il nodo all'indice specificato. **Complessità: O(n/2) nel caso migliore** - ottimizzazione rispetto a O(n) delle singly linked lists!
+
+**Logica**:
+1. Valida l'indice (deve essere >= 0 e < length)
+2. **Ottimizzazione**: se l'indice è nella prima metà, parte da `head` e va in avanti
+3. **Ottimizzazione**: se l'indice è nella seconda metà, parte da `tail` e va all'indietro
+4. Ritorna il nodo trovato
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+get(index) {
+  // Valida l'indice: deve essere valido
+  if (index < 0 || index >= this.length) {
+    return undefined;
+  }
+  
+  let temp;
+  
+  // Ottimizzazione: se l'indice è nella prima metà, parte da head
+  if (index < this.length / 2) {
+    temp = this.head;
+    // Itera in avanti fino all'indice desiderato
+    for (let i = 0; i < index; i++) {
+      temp = temp.next;
+    }
+  } else {
+    // Ottimizzazione: se l'indice è nella seconda metà, parte da tail
+    temp = this.tail;
+    // Itera all'indietro fino all'indice desiderato
+    for (let i = this.length - 1; i > index; i--) {
+      temp = temp.prev;
+    }
+  }
+  
+  // Ritorna il nodo all'indice specificato
+  return temp;
+}
+```
+
+</div>
+</details>
+
+**Vantaggio rispetto alle singly linked lists**: Possiamo partire da `tail` se l'indice è nella seconda metà, riducendo il numero di iterazioni da O(n) a O(n/2) nel caso migliore.
+
+### Set - Modificare il valore di un nodo
+
+Cambia il valore del nodo all'indice specificato. **Complessità: O(n/2) nel caso migliore** grazie all'ottimizzazione di `get`.
+
+**Logica**:
+1. Usa il metodo `get` per trovare il nodo (che è ottimizzato per partire da `tail` se necessario)
+2. Se il nodo esiste, aggiorna il suo valore
+3. Ritorna `true` se l'operazione è riuscita, `false` altrimenti
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+set(index, value) {
+  // Usa get per trovare il nodo all'indice specificato (ottimizzato!)
+  let temp = this.get(index);
+  
+  // Se il nodo esiste, aggiorna il valore
+  if (temp) {
+    temp.value = value;
+    return true; // Operazione riuscita
+  }
+  
+  // Se l'indice non è valido, ritorna false
+  return false;
+}
+```
+
+</div>
+</details>
+
+**Nota**: Il codice è identico a quello delle singly linked lists, ma `get` è più efficiente grazie all'ottimizzazione bidirezionale.
+
+## Implementazione completa
+
+Ecco il codice completo delle classi `Node` e `DoublyLinkedList`:
+
+```javascript
+// Classe per creare un singolo nodo
+class Node {
+  constructor(value) {
+    this.value = value;
+    this.next = null;
+    this.prev = null;
+  }
+}
+
+// Classe per la double linked list
+class DoublyLinkedList {
+  constructor(value) {
+    const newNode = new Node(value);
+    this.head = newNode;
+    this.tail = this.head;
+    this.length = 1;
+  }
+
+  push(value) {
+    const newNode = new Node(value);
+    if (this.length === 0) {
+      this.head = newNode;
+      this.tail = newNode;
+    } else {
+      this.tail.next = newNode;
+      newNode.prev = this.tail;
+      this.tail = newNode;
+    }
+    this.length++;
+    return this;
+  }
+
+  pop() {
+    if (this.length === 0) return undefined;
+    let temp = this.tail;
+    if (this.length === 1) {
+      this.head = null;
+      this.tail = null;
+    } else {
+      this.tail = this.tail.prev;
+      this.tail.next = null;
+      temp.prev = null;
+    }
+    this.length--;
+    return temp;
+  }
+
+  unshift(value) {
+    const newNode = new Node(value);
+    if (this.length === 0) {
+      this.head = newNode;
+      this.tail = newNode;
+    } else {
+      newNode.next = this.head;
+      this.head.prev = newNode;
+      this.head = newNode;
+    }
+    this.length++;
+    return this;
+  }
+
+  shift() {
+    if (this.length === 0) return undefined;
+    let temp = this.head;
+    if (this.length === 1) {
+      this.head = null;
+      this.tail = null;
+    } else {
+      this.head = this.head.next;
+      this.head.prev = null;
+      temp.next = null;
+    }
+    this.length--;
+    return temp;
+  }
+
+  get(index) {
+    if (index < 0 || index >= this.length) return undefined;
+    let temp;
+    if (index < this.length / 2) {
+      temp = this.head;
+      for (let i = 0; i < index; i++) {
+        temp = temp.next;
+      }
+    } else {
+      temp = this.tail;
+      for (let i = this.length - 1; i > index; i--) {
+        temp = temp.prev;
+      }
+    }
+    return temp;
+  }
+
+  set(index, value) {
+    let temp = this.get(index);
+    if (temp) {
+      temp.value = value;
+      return true;
+    }
+    return false;
+  }
+
+  insert(index, value) {
+    if (index === 0) return this.unshift(value);
+    if (index === this.length) return this.push(value);
+    if (index < 0 || index > this.length) return false;
+    const newNode = new Node(value);
+    const before = this.get(index - 1);
+    const after = before.next;
+    before.next = newNode;
+    newNode.prev = before;
+    newNode.next = after;
+    after.prev = newNode;
+    this.length++;
+    return true;
+  }
+
+  remove(index) {
+    if (index === 0) return this.shift();
+    if (index === this.length - 1) return this.pop();
+    if (index < 0 || index >= this.length) return undefined;
+    let temp = this.get(index);
+    temp.prev.next = temp.next;
+    temp.next.prev = temp.prev;
+    temp.next = null;
+    temp.prev = null;
+    this.length--;
+    return temp;
+  }
+}
+```
+
+## Esercizi e problemi comuni
+
+Per praticare e approfondire le double linked lists, consulta la sezione dedicata agli [**esercizi e problemi comuni**](/blog/formazione-data-structure-e-algorithms/double-linked-lists-esercizi)

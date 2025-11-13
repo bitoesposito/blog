@@ -1,0 +1,344 @@
+---
+title: 'Double Linked Lists - Esercizi'
+description: 'Problemi comuni sulle Double Linked Lists'
+date: 2025-11-12
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 6
+---
+
+Questa sezione contiene problemi comuni sulle Double Linked Lists. Ogni problema include la strategia risolutiva e l'implementazione completa.
+
+## Is Palindrome
+
+**Problema**: Verificare se una double linked list è un palindromo (si legge uguale in avanti e all'indietro).
+
+**Strategia - Two Pointers da entrambe le estremità**:
+- Usa due puntatori: `forward` parte da `head`, `backward` parte da `tail`
+- Confronta i valori mentre i puntatori si avvicinano
+- Se tutti i valori corrispondono, è un palindromo
+- Con numero dispari di nodi, non serve controllare il nodo centrale
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+isPalindrome() {
+  // Edge case: lista vuota o con un solo nodo è sempre palindromo
+  if (this.length <= 1) return true;
+  
+  // Puntatore che parte da head (inizio)
+  let forward = this.head;
+  // Puntatore che parte da tail (fine)
+  let backward = this.tail;
+  
+  // Itera per metà della lunghezza (floor per gestire numeri dispari)
+  for (let i = 0; i < Math.floor(this.length / 2); i++) {
+    // Se i valori corrispondono e i puntatori non si sono incontrati
+    if (forward.value === backward.value && forward !== backward) {
+      // Avanza forward in avanti
+      forward = forward.next;
+      // Avanza backward all'indietro
+      backward = backward.prev;
+    } else {
+      // Se i valori non corrispondono, non è un palindromo
+      return false;
+    }
+  }
+  
+  // Tutti i valori corrispondono, è un palindromo
+  return true;
+}
+```
+
+</div>
+</details>
+
+**Nota**: Questo problema sfrutta la capacità delle double linked lists di navigare all'indietro, rendendo la soluzione più elegante rispetto alle singly linked lists.
+
+## Reverse
+
+**Problema**: Invertire completamente l'ordine dei nodi nella double linked list.
+
+**Strategia - Scambio bidirezionale**:
+- Itera attraverso la lista scambiando `next` e `prev` di ogni nodo
+- Usa una variabile temporanea per non perdere i riferimenti durante lo scambio
+- Alla fine, scambia `head` e `tail`
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+reverse() {
+  // Puntatore che parte da head
+  let current = this.head;
+  // Variabile temporanea per salvare i riferimenti durante lo scambio
+  let temp = null;
+  
+  // Itera attraverso tutta la lista
+  while (current !== null) {
+    // Salva il puntatore prev prima di modificarlo
+    temp = current.prev;
+    // Scambia: prev diventa next
+    current.prev = current.next;
+    // Scambia: next diventa prev (salvato in temp)
+    current.next = temp;
+    // Avanza al prossimo nodo usando prev (che ora punta dove prima c'era next)
+    current = current.prev;
+  }
+  
+  // Scambia head e tail
+  temp = this.head;
+  this.head = this.tail;
+  this.tail = temp;
+}
+```
+
+</div>
+</details>
+
+**Nota**: La logica è simile a quella delle singly linked lists, ma dobbiamo gestire entrambi i puntatori (`next` e `prev`) per ogni nodo.
+
+## Partition List
+
+**Problema**: Partizionare una double linked list in modo che tutti i nodi con valore < x vengano prima dei nodi con valore ≥ x, mantenendo l'ordine relativo.
+
+**Strategia - Dummy Nodes**:
+- Crea due liste separate usando dummy nodes
+- Una lista per valori < x, una per valori ≥ x
+- Collega le due liste alla fine
+- **Edge case importante**: gestisci il caso in cui la seconda lista è vuota
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+partitionList(x) {
+  // Edge case: lista vuota
+  if (!this.head) return;
+  
+  // Crea due dummy nodes per le due partizioni
+  const dummy1 = new Node(0);  // Per valori < x
+  const dummy2 = new Node(0);  // Per valori >= x
+  
+  // Puntatori per costruire le due liste
+  let prev1 = dummy1;
+  let prev2 = dummy2;
+  
+  // Puntatore per iterare attraverso la lista originale
+  let current = this.head;
+  
+  // Distribuisci i nodi nelle due liste
+  while (current !== null) {
+    // Salva il prossimo nodo prima di staccare current
+    const nextNode = current.next;
+    
+    // Stacca current dalla lista originale
+    current.next = null;
+    current.prev = null;
+    
+    // Se il valore è minore di x, aggiungi alla prima lista
+    if (current.value < x) {
+      prev1.next = current;
+      current.prev = prev1;
+      prev1 = current;
+    } else {
+      // Altrimenti, aggiungi alla seconda lista
+      prev2.next = current;
+      current.prev = prev2;
+      prev2 = current;
+    }
+    
+    // Passa al prossimo nodo
+    current = nextNode;
+  }
+  
+  // Termina la seconda lista
+  prev2.next = null;
+  
+  // Collega le due liste
+  prev1.next = dummy2.next;
+  // Edge case importante: verifica che la seconda lista non sia vuota
+  if (dummy2.next) {
+    dummy2.next.prev = prev1;
+  }
+  
+  // Aggiorna head alla nuova testa
+  this.head = dummy1.next;
+  
+  // Assicura che head non abbia un puntatore prev
+  if (this.head) {
+    this.head.prev = null;
+  }
+}
+```
+
+</div>
+</details>
+
+**Nota importante**: L'edge case della seconda lista vuota è critico. Se `dummy2.next` è `null`, non possiamo accedere a `dummy2.next.prev` senza causare un errore.
+
+## Reverse Between
+
+**Problema**: Invertire i nodi tra due indici m e n (inclusi), mantenendo il resto della lista invariato.
+
+**Strategia - Dummy Node e inserimento progressivo**:
+- Usa un dummy node per gestire il caso in cui m = 0
+- Trova il nodo precedente al range da invertire
+- Inverti i nodi nel range spostandoli uno alla volta all'inizio del range
+- Gestisci sia i puntatori `next` che `prev`
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+reverseBetween(startIndex, endIndex) {
+  // Edge case: lista vuota o range non valido
+  if (!this.head || startIndex === endIndex) return;
+  
+  // Crea un dummy node per semplificare le operazioni
+  const dummy = new Node(0);
+  dummy.next = this.head;
+  this.head.prev = dummy;
+  
+  // Trova il nodo prima del range da invertire
+  let prev = dummy;
+  for (let i = 0; i < startIndex; i++) {
+    prev = prev.next;
+  }
+  
+  // Inizio del sottolista da invertire
+  let current = prev.next;
+  
+  // Inverti i nodi spostandoli uno alla volta all'inizio del range
+  for (let i = 0; i < endIndex - startIndex; i++) {
+    // Nodo da spostare
+    const nodeToMove = current.next;
+    
+    // Rimuovi nodeToMove dalla sua posizione corrente
+    current.next = nodeToMove.next;
+    if (nodeToMove.next) {
+      nodeToMove.next.prev = current;
+    }
+    
+    // Inserisci nodeToMove dopo prev
+    nodeToMove.next = prev.next;
+    prev.next.prev = nodeToMove;
+    
+    prev.next = nodeToMove;
+    nodeToMove.prev = prev;
+  }
+  
+  // Ripristina head al primo nodo dopo dummy
+  this.head = dummy.next;
+  this.head.prev = null;
+}
+```
+
+</div>
+</details>
+
+**Nota**: La logica è simile a quella delle singly linked lists, ma dobbiamo aggiornare anche i puntatori `prev` ad ogni passo.
+
+## Swap Pairs
+
+**Problema**: Scambiare ogni coppia di nodi adiacenti nella double linked list. Se il numero di nodi è dispari, l'ultimo nodo rimane invariato.
+
+**Strategia - Dummy Node e iterazione**:
+- Usa un dummy node per semplificare la gestione del primo swap
+- Per ogni coppia: scambia i puntatori mantenendo i riferimenti corretti
+- Aggiorna sia `next` che `prev` per entrambi i nodi
+- Aggiorna `previous` per la prossima iterazione
+
+**Complessità**: O(n) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+swapPairs() {
+  // Crea un dummy node per semplificare la gestione del primo swap
+  const dummy = new Node(0);
+  dummy.next = this.head;
+  
+  // Puntatore al nodo precedente alla coppia corrente
+  let prev = dummy;
+  
+  // Scambia coppie finché ci sono almeno due nodi
+  while (this.head !== null && this.head.next !== null) {
+    // Primo nodo della coppia
+    const firstNode = this.head;
+    // Secondo nodo della coppia
+    const secondNode = this.head.next;
+    
+    // Collega prev al secondo nodo (che diventerà il primo)
+    prev.next = secondNode;
+    // Il primo nodo punta a ciò che era dopo il secondo
+    firstNode.next = secondNode.next;
+    // Il secondo nodo punta al primo (scambio)
+    secondNode.next = firstNode;
+    
+    // Gestione puntatori prev
+    secondNode.prev = prev;
+    firstNode.prev = secondNode;
+    // Se c'è un nodo dopo firstNode, aggiorna il suo prev
+    if (firstNode.next !== null) {
+      firstNode.next.prev = firstNode;
+    }
+    
+    // Avanza head alla prossima coppia
+    this.head = firstNode.next;
+    // Aggiorna prev per la prossima iterazione
+    prev = firstNode;
+  }
+  
+  // Aggiorna head al primo nodo dopo dummy
+  this.head = dummy.next;
+  // Assicura che head non abbia un puntatore prev
+  if (this.head) {
+    this.head.prev = null;
+  }
+}
+```
+
+</div>
+</details>
+
+**Nota**: La gestione dei puntatori `prev` è cruciale per mantenere la coerenza della double linked list durante lo scambio.
+
+## Pattern comuni
+
+Questi problemi condividono pattern ricorrenti:
+
+1. **Two Pointers bidirezionali**: Is Palindrome
+   - Sfrutta la capacità di navigare all'indietro
+   - Permette confronti efficienti da entrambe le estremità
+
+2. **Dummy Nodes**: Partition List, Reverse Between, Swap Pairs
+   - Semplificano la gestione dei casi limite (es. quando si modifica il primo nodo)
+   - Evitano di dover gestire separatamente il caso `head`
+
+3. **Scambio bidirezionale**: Reverse, Reverse Between
+   - Quando si inverte, bisogna gestire sia `next` che `prev`
+   - Usa variabili temporanee per non perdere riferimenti
+
+4. **Gestione puntatori prev**: Tutti i problemi
+   - Ogni modifica ai puntatori `next` richiede spesso un aggiornamento corrispondente a `prev`
+   - Edge case: verificare sempre che i nodi esistano prima di accedere a `prev` o `next`
+
+5. **Ottimizzazione con get**: Reverse Between, Remove
+   - Il metodo `get` ottimizzato può partire da `tail` se l'indice è nella seconda metà
+   - Questo migliora le prestazioni rispetto alle singly linked lists
