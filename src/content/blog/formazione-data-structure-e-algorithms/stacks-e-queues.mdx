@@ -1,0 +1,711 @@
+---
+title: 'Stacks e Queues'
+description: 'Introduzione a Stacks e Queues, strutture dati fondamentali LIFO e FIFO'
+date: 2025-11-14
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 7
+---
+
+## Introduzione
+
+In questa sezione esploreremo due strutture dati fondamentali: **Stacks** (pile) e **Queues** (code). Entrambe sono strutture lineari che differiscono per l'ordine di accesso agli elementi. Potremo riutilizzare molto codice dalle linked lists, rendendo questa sezione relativamente semplice.
+
+# Stacks
+
+## Cos'è uno Stack
+
+Uno **stack** (pila) è una struttura dati basata sul principio **LIFO** (Last In, First Out): l'ultimo elemento inserito è il primo a essere rimosso.
+
+**Analogia**: Una lattina di palline da tennis - puoi solo aggiungere o rimuovere dalla cima.
+
+```javascript
+// Esempio visivo di uno stack
+// Push: aggiungere elementi
+// [3] ← top
+// [2]
+// [1]
+
+// Pop: rimuovere dalla cima
+// [2] ← top (dopo pop)
+// [1]
+```
+
+### Concetto LIFO
+
+**LIFO - Last In, First Out**: l'ultimo elemento aggiunto è il primo a essere rimosso.
+
+### Esempi pratici di utilizzo
+
+1. **Browser History**: il pulsante "indietro" usa uno stack - ogni pagina visitata viene aggiunta allo stack, premendo "indietro" si esegue un pop
+2. **Call Stack**: JavaScript usa uno stack per gestire le chiamate di funzioni
+3. **Undo/Redo**: editor di testo usano stack per annullare/ripetere operazioni
+
+### Terminologia Stack
+
+- **Push**: aggiungere un elemento alla cima dello stack
+- **Pop**: rimuovere l'elemento dalla cima dello stack
+- **Top**: riferimento all'elemento in cima allo stack
+- **Peek**: visualizzare l'elemento in cima senza rimuoverlo
+
+## Implementazioni Stack
+
+### Array
+
+Con un array, push e pop sono operazioni native di JavaScript:
+
+```javascript
+// Stack con array
+const stack = [];
+stack.push(1);    // [1]
+stack.push(2);    // [1, 2]
+stack.push(3);    // [1, 2, 3]
+stack.pop();      // ritorna 3, array diventa [1, 2]
+```
+
+**Complessità con array**:
+- **Push** (fine): O(1) ✅
+- **Pop** (fine): O(1) ✅
+- **Unshift** (inizio): O(n) ❌ - richiede re-indicizzazione
+- **Shift** (inizio): O(n) ❌ - richiede re-indicizzazione
+
+**Importante**: Se usi un array per uno stack, **usa sempre la fine** (`push`/`pop`), mai l'inizio (`unshift`/`shift`).
+
+### Linked List
+
+Implementiamo lo stack con una **linked list modificata**:
+
+```javascript
+// Stack con linked list
+// top → [3] → [2] → [1] → null
+//       ↑
+//     Primo elemento (LIFO)
+```
+
+**Complessità con linked list**:
+- **Push** (inizio): O(1) ✅
+- **Pop** (inizio): O(1) ✅
+- **Push** (fine): O(1) ma pop sarebbe O(n) ❌
+- **Pop** (fine): O(n) ❌ - richiede iterazione
+
+**Importante**: Con una linked list, usa sempre **l'inizio** come cima dello stack (`head`), non la fine (`tail`), per avere entrambe le operazioni O(1).
+
+## Implementazione Stack
+
+### Classe Node per Stack
+
+Il nodo è identico a quello delle linked lists:
+
+```javascript
+// Classe per creare un singolo nodo
+class Node {
+  constructor(value) {
+    // Assegna il valore passato al costruttore
+    this.value = value;
+    // Inizialmente il nodo non punta a nulla
+    this.next = null;
+  }
+}
+
+// Esempio di utilizzo
+const newNode = new Node(11);
+// Crea un oggetto: { value: 11, next: null }
+```
+
+### Costruttore dello Stack
+
+Il costruttore crea uno stack con il primo elemento. Usiamo `top` invece di `head`, e non abbiamo bisogno di `bottom` (equivalente di `tail`).
+
+```javascript
+class Stack {
+  constructor(value) {
+    // Crea il primo nodo con il valore passato
+    const newNode = new Node(value);
+    
+    // Top punta al primo nodo (cima dello stack)
+    this.top = newNode;
+    
+    // Lo stack inizia con lunghezza 1
+    this.length = 1;
+  }
+}
+
+// Esempio di utilizzo
+const myStack = new Stack(7);
+// Crea uno stack con un nodo di valore 7
+// top punta a questo nodo, length = 1
+```
+
+**Differenze rispetto a Linked List**:
+- Usiamo `top` invece di `head`
+- Non abbiamo `bottom` (non serve `tail`)
+- Il resto è identico
+
+**Risultato in memoria**:
+
+```javascript
+{
+  top: { value: 7, next: null },
+  length: 1
+}
+```
+
+## Operazioni Stack
+
+### Push - Aggiungere alla cima
+
+Aggiunge un nodo alla cima dello stack. **Complessità: O(1)**
+
+**Logica**:
+1. Crea un nuovo nodo
+2. Il nuovo nodo punta al nodo attualmente in cima (`newNode.next = top`)
+3. `top` viene aggiornato per puntare al nuovo nodo
+
+**Edge case**: Se lo stack è vuoto, `top` punta semplicemente al nuovo nodo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+push(value) {
+  // Crea il nuovo nodo
+  const newNode = new Node(value);
+  
+  // Se lo stack è vuoto, top punta al nuovo nodo
+  if (this.length === 0) {
+    this.top = newNode;
+  } else {
+    // Il nuovo nodo punta al nodo attualmente in cima
+    newNode.next = this.top;
+    // Top viene aggiornato per puntare al nuovo nodo
+    this.top = newNode;
+  }
+  
+  // Incrementa la lunghezza
+  this.length++;
+  return this; // Ritorna l'intero stack
+}
+```
+
+</div>
+</details>
+
+**Nota**: Push su uno stack con linked list è identico a `unshift` su una linked list normale.
+
+### Pop - Rimuovere dalla cima
+
+Rimuove il nodo dalla cima dello stack e lo ritorna. **Complessità: O(1)**
+
+**Logica**:
+1. Salva il riferimento al nodo in cima (`temp = top`)
+2. Sposta `top` al nodo successivo (`top = top.next`)
+3. Rimuove il collegamento del nodo rimosso (`temp.next = null`)
+4. Ritorna il nodo rimosso
+
+**Edge case**: Se lo stack è vuoto, ritorna `undefined`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+pop() {
+  // Se lo stack è vuoto, ritorna undefined
+  if (this.length === 0) return undefined;
+  
+  // Salva il riferimento al nodo in cima
+  let temp = this.top;
+  // Sposta top al nodo successivo
+  this.top = this.top.next;
+  // Rimuove il collegamento del nodo rimosso
+  temp.next = null;
+  
+  // Decrementa la lunghezza
+  this.length--;
+  
+  // Ritorna il nodo rimosso
+  return temp;
+}
+```
+
+</div>
+</details>
+
+**Nota**: Pop su uno stack con linked list è identico a `shift` su una linked list normale.
+
+### Peek - Visualizzare la cima
+
+Ritorna il valore della cima dello stack senza rimuoverlo. **Complessità: O(1)**
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+peek() {
+  // Se lo stack è vuoto, ritorna undefined
+  if (this.length === 0) return undefined;
+  
+  // Ritorna il valore del nodo in cima
+  return this.top.value;
+}
+```
+
+</div>
+</details>
+
+### IsEmpty - Controllare se vuoto
+
+Verifica se lo stack è vuoto. **Complessità: O(1)**
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+isEmpty() {
+  // Ritorna true se la lunghezza è 0
+  return this.length === 0;
+}
+```
+
+</div>
+</details>
+
+## Implementazione completa Stack
+
+Ecco il codice completo delle classi `Node` e `Stack`:
+
+```javascript
+// Classe per creare un singolo nodo
+class Node {
+  constructor(value) {
+    this.value = value;
+    this.next = null;
+  }
+}
+
+// Classe per lo stack
+class Stack {
+  constructor(value) {
+    const newNode = new Node(value);
+    this.top = newNode;
+    this.length = 1;
+  }
+
+  push(value) {
+    const newNode = new Node(value);
+    if (this.length === 0) {
+      this.top = newNode;
+    } else {
+      newNode.next = this.top;
+      this.top = newNode;
+    }
+    this.length++;
+    return this;
+  }
+
+  pop() {
+    if (this.length === 0) return undefined;
+    let temp = this.top;
+    this.top = this.top.next;
+    temp.next = null;
+    this.length--;
+    return temp;
+  }
+
+  peek() {
+    if (this.length === 0) return undefined;
+    return this.top.value;
+  }
+
+  isEmpty() {
+    return this.length === 0;
+  }
+}
+```
+
+# Queues
+
+## Cos'è una Queue
+
+Una **queue** (coda) è una struttura dati basata sul principio **FIFO** (First In, First Out): il primo elemento inserito è il primo a essere rimosso.
+
+**Analogia**: Una coda di persone - la prima persona che entra in fila è la prima a essere servita.
+
+```javascript
+// Esempio visivo di una queue
+// Enqueue (aggiungi): ←
+// Dequeue (rimuovi): →
+
+// first → [1] → [2] → [3] ← last
+//         ↑           ↑
+//      Rimuovi     Aggiungi
+```
+
+### Concetto FIFO
+
+**FIFO - First In, First Out**: il primo elemento aggiunto è il primo a essere rimosso.
+
+### Esempi pratici di utilizzo
+
+1. **Coda di stampa**: i documenti vengono stampati nell'ordine in cui sono stati inviati
+2. **Gestione task**: i task vengono processati nell'ordine in cui sono stati aggiunti
+3. **BFS (Breadth-First Search)**: gli algoritmi di ricerca in ampiezza usano queue
+4. **Message Queue**: sistemi di messaggistica processano messaggi in ordine FIFO
+
+### Terminologia Queue
+
+- **Enqueue**: aggiungere un elemento alla fine della queue
+- **Dequeue**: rimuovere l'elemento dall'inizio della queue
+- **First**: riferimento al primo elemento della queue (quello che verrà rimosso per primo)
+- **Last**: riferimento all'ultimo elemento della queue (dove vengono aggiunti nuovi elementi)
+
+## Implementazioni Queue
+
+### Array
+
+Con un array ci sono due approcci, entrambi con un'operazione O(n):
+
+```javascript
+// Approccio 1: Enqueue con push, Dequeue con shift
+const queue = [];
+queue.push(1);    // Enqueue: O(1) ✅
+queue.push(2);    
+queue.shift();    // Dequeue: O(n) ❌ - richiede re-indicizzazione
+
+// Approccio 2: Enqueue con unshift, Dequeue con pop
+const queue2 = [];
+queue2.unshift(1);  // Enqueue: O(n) ❌ - richiede re-indicizzazione
+queue2.unshift(2);
+queue2.pop();       // Dequeue: O(1) ✅
+```
+
+**Problema**: Con un array, **non possiamo avere entrambe le operazioni O(1)**. Una delle due sarà sempre O(n).
+
+### Linked List
+
+Con una linked list modificata, possiamo avere **entrambe le operazioni O(1)**:
+
+```javascript
+// Queue con linked list
+// first → [1] → [2] → [3] ← last
+//         ↑           ↑
+//      Dequeue    Enqueue
+//       O(1)        O(1)
+```
+
+**Complessità con linked list**:
+- **Enqueue** (fine con `last`): O(1) ✅
+- **Dequeue** (inizio con `first`): O(1) ✅
+- ❌ Non usare: Enqueue dall'inizio o Dequeue dalla fine (una sarebbe O(n))
+
+**Importante**: Con una linked list per queue:
+- **Enqueue** avviene dalla **fine** usando `last` (equivalente di `tail`)
+- **Dequeue** avviene dall'**inizio** usando `first` (equivalente di `head`)
+
+## Implementazione Queue
+
+### Classe Node per Queue
+
+Il nodo è identico a quello delle linked lists e degli stack:
+
+```javascript
+// Classe per creare un singolo nodo
+class Node {
+  constructor(value) {
+    // Assegna il valore passato al costruttore
+    this.value = value;
+    // Inizialmente il nodo non punta a nulla
+    this.next = null;
+  }
+}
+
+// Esempio di utilizzo
+const newNode = new Node(4);
+// Crea un oggetto: { value: 4, next: null }
+```
+
+### Costruttore della Queue
+
+Il costruttore crea una queue con il primo elemento. Usiamo `first` e `last` invece di `head` e `tail`.
+
+```javascript
+class Queue {
+  constructor(value) {
+    // Crea il primo nodo con il valore passato
+    const newNode = new Node(value);
+    
+    // First punta al primo nodo (inizio della queue)
+    this.first = newNode;
+    
+    // Last punta allo stesso nodo di first (quando c'è un solo nodo)
+    this.last = newNode;
+    
+    // La queue inizia con lunghezza 1
+    this.length = 1;
+  }
+}
+
+// Esempio di utilizzo
+const myQueue = new Queue(4);
+// Crea una queue con un nodo di valore 4
+// first e last puntano entrambi a questo nodo
+// length = 1
+```
+
+**Differenze rispetto a Linked List**:
+- Usiamo `first` invece di `head`
+- Usiamo `last` invece di `tail`
+- Il resto è identico
+
+**Risultato in memoria**:
+
+```javascript
+{
+  first: { value: 4, next: null },
+  last: { value: 4, next: null },  // punta allo stesso oggetto di first
+  length: 1
+}
+```
+
+## Operazioni Queue
+
+### Enqueue - Aggiungere alla fine
+
+Aggiunge un nodo alla fine della queue. **Complessità: O(1)**
+
+**Logica**:
+1. Crea un nuovo nodo
+2. L'ultimo nodo punta al nuovo nodo (`last.next = newNode`)
+3. `last` viene aggiornato per puntare al nuovo nodo
+
+**Edge case**: Se la queue è vuota, `first` e `last` puntano entrambi al nuovo nodo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+enqueue(value) {
+  // Crea il nuovo nodo
+  const newNode = new Node(value);
+  
+  // Se la queue è vuota, first e last puntano al nuovo nodo
+  if (this.length === 0) {
+    this.first = newNode;
+    this.last = newNode;
+  } else {
+    // L'ultimo nodo punta al nuovo nodo
+    this.last.next = newNode;
+    // Last viene aggiornato per puntare al nuovo nodo
+    this.last = newNode;
+  }
+  
+  // Incrementa la lunghezza
+  this.length++;
+  return this; // Ritorna l'intera queue
+}
+```
+
+</div>
+</details>
+
+**Nota**: Enqueue su una queue è identico a `push` su una linked list normale (aggiungere alla fine).
+
+### Dequeue - Rimuovere dall'inizio
+
+Rimuove il primo nodo dalla queue e lo ritorna. **Complessità: O(1)**
+
+**Logica**:
+1. Salva il riferimento al primo nodo (`temp = first`)
+2. Sposta `first` al nodo successivo (`first = first.next`)
+3. Rimuove il collegamento del nodo rimosso (`temp.next = null`)
+4. Ritorna il nodo rimosso
+
+**Edge cases**:
+- Queue vuota: ritorna `undefined`
+- Un solo nodo: dopo la rimozione, `last` deve puntare a `null`
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+dequeue() {
+  // Se la queue è vuota, ritorna undefined
+  if (this.length === 0) return undefined;
+  
+  // Salva il riferimento al primo nodo
+  let temp = this.first;
+  
+  // Edge case: se c'è un solo nodo
+  if (this.length === 1) {
+    this.first = null;
+    this.last = null;
+  } else {
+    // Sposta first al nodo successivo
+    this.first = this.first.next;
+    // Rimuove il collegamento del nodo rimosso
+    temp.next = null;
+  }
+  
+  // Decrementa la lunghezza
+  this.length--;
+  
+  // Ritorna il nodo rimosso
+  return temp;
+}
+```
+
+</div>
+</details>
+
+**Nota**: Dequeue su una queue è identico a `shift` su una linked list normale (rimuovere dall'inizio).
+
+### IsEmpty - Controllare se vuota
+
+Verifica se la queue è vuota. **Complessità: O(1)**
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+isEmpty() {
+  // Ritorna true se la lunghezza è 0
+  return this.length === 0;
+}
+```
+
+</div>
+</details>
+
+### Peek - Visualizzare il primo elemento
+
+Ritorna il valore del primo elemento senza rimuoverlo. **Complessità: O(1)**
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+peek() {
+  // Se la queue è vuota, ritorna undefined
+  if (this.length === 0) return undefined;
+  
+  // Ritorna il valore del primo nodo
+  return this.first.value;
+}
+```
+
+</div>
+</details>
+
+## Implementazione completa Queue
+
+Ecco il codice completo delle classi `Node` e `Queue`:
+
+```javascript
+// Classe per creare un singolo nodo
+class Node {
+  constructor(value) {
+    this.value = value;
+    this.next = null;
+  }
+}
+
+// Classe per la queue
+class Queue {
+  constructor(value) {
+    const newNode = new Node(value);
+    this.first = newNode;
+    this.last = newNode;
+    this.length = 1;
+  }
+
+  enqueue(value) {
+    const newNode = new Node(value);
+    if (this.length === 0) {
+      this.first = newNode;
+      this.last = newNode;
+    } else {
+      this.last.next = newNode;
+      this.last = newNode;
+    }
+    this.length++;
+    return this;
+  }
+
+  dequeue() {
+    if (this.length === 0) return undefined;
+    let temp = this.first;
+    if (this.length === 1) {
+      this.first = null;
+      this.last = null;
+    } else {
+      this.first = this.first.next;
+      temp.next = null;
+    }
+    this.length--;
+    return temp;
+  }
+
+  peek() {
+    if (this.length === 0) return undefined;
+    return this.first.value;
+  }
+
+  isEmpty() {
+    return this.length === 0;
+  }
+}
+```
+
+# Confronto Stack vs Queue
+
+Ora che abbiamo implementato entrambe le strutture, confrontiamole:
+
+## Tabella comparativa
+
+| Caratteristica | Stack | Queue |
+|---------------|-------|-------|
+| **Principio** | LIFO (Last In, First Out) | FIFO (First In, First Out) |
+| **Aggiunta** | Push (top) | Enqueue (last) |
+| **Rimozione** | Pop (top) | Dequeue (first) |
+| **Accesso** | Solo dalla cima | Solo dall'inizio |
+| **Analogia** | Lattina di palline | Coda di persone |
+| **Uso** | Undo/Redo, Call Stack, DFS | Task Queue, BFS, Message Queue |
+
+## Complessità con implementazioni diverse
+
+| Operazione | Stack (Array fine) | Stack (Linked List inizio) | Queue (Array) | Queue (Linked List) |
+|------------|-------------------|---------------------------|---------------|---------------------|
+| **Push/Enqueue** | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> una delle due | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Pop/Dequeue** | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> una delle due | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+
+**Conclusione chiave**: 
+- Gli **stack** possono essere implementati efficientemente sia con array che con linked list
+- Le **queue** richiedono linked list per avere entrambe le operazioni O(1) con gli array una delle due sarà sempre O(n)
+
+## Quando usare Stack vs Queue
+
+### Usa uno Stack quando:
+- Devi gestire operazioni **LIFO** (Last In, First Out)
+- Hai bisogno di **backtracking** (tornare indietro nelle operazioni)
+- Devi implementare **undo/redo**
+- Lavori con **chiamate ricorsive** o **call stack**
+- Devi fare **parsing** di espressioni (es. parentesi bilanciate)
+
+### Usa una Queue quando:
+- Devi gestire operazioni **FIFO** (First In, First Out)
+- Hai bisogno di processare elementi **nell'ordine di arrivo**
+- Devi implementare **BFS** (Breadth-First Search)
+- Lavori con **task scheduling** o **message processing**
+- Vuoi gestire **buffer** o **stream** di dati
+
+## Esercizi e problemi comuni
+
+Per praticare e approfondire stacks e queues, consulta la sezione dedicata agli [**esercizi e problemi comuni**](/blog/formazione-data-structure-e-algorithms/stacks-e-queues-esercizi)
+

@@ -1,0 +1,461 @@
+---
+title: 'Stacks e Queues - Esercizi'
+description: 'Problemi comuni su Stacks e Queues'
+date: 2025-11-14
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 8
+---
+
+Questa sezione contiene problemi comuni su Stacks e Queues. Ogni problema include la strategia risolutiva e l'implementazione completa.
+
+# Esercizi Stack
+
+## Reverse String
+
+**Problema**: Invertire una stringa utilizzando uno stack.
+
+**Strategia - Utilizzo del LIFO**:
+- Itera attraverso ogni carattere della stringa e push nello stack
+- Pop ogni carattere dallo stack e aggiungilo alla stringa invertita
+- Il principio LIFO dello stack inverte automaticamente l'ordine
+
+**Esempio**: `"hello"` → push `h`, `e`, `l`, `l`, `o` → pop `o`, `l`, `l`, `e`, `h` → `"olleh"`
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function reverseString(string) {
+  // Crea una nuova istanza dello stack
+  const stack = new Stack();
+  // Stringa che conterrà il risultato invertito
+  let reversedString = "";
+  
+  // Itera attraverso ogni carattere della stringa
+  for (const c of string) {
+    // Push ogni carattere nello stack
+    stack.push(c);
+  }
+  
+  // Finché lo stack non è vuoto
+  while (!stack.isEmpty()) {
+    // Pop caratteri dallo stack e aggiungili alla stringa invertita
+    reversedString += stack.pop();
+  }
+  
+  // Ritorna la stringa invertita
+  return reversedString;
+}
+```
+
+**Esempio di utilizzo**:
+```javascript
+reverseString("hello");  // "olleh"
+reverseString("world");  // "dlrow"
+```
+
+</div>
+</details>
+
+**Nota**: Questo problema dimostra perfettamente il principio LIFO: l'ultimo carattere inserito (push) è il primo a uscire (pop).
+
+## Balanced Parentheses
+
+**Problema**: Verificare se una stringa contenente solo parentesi `(` e `)` è bilanciata.
+
+**Strategia - Stack per tracking delle aperture**:
+- Per ogni `(` (apertura): push nello stack
+- Per ogni `)` (chiusura): pop dallo stack
+  - Se lo stack è vuoto prima del pop, le parentesi non sono bilanciate
+- Alla fine, se lo stack è vuoto, le parentesi sono bilanciate
+
+**Esempi**:
+- `"(())"` → bilanciato ✅
+- `"()()"` → bilanciato ✅
+- `"(()"` → non bilanciato ❌ (stack non vuoto alla fine)
+- `"())"` → non bilanciato ❌ (stack vuoto prima di poter fare pop)
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function isBalancedParentheses(parentheses) {
+  // Crea una nuova istanza dello stack
+  const stack = new Stack();
+  
+  // Itera attraverso ogni carattere della stringa
+  for (const p of parentheses) {
+    // Se il carattere è una parentesi aperta
+    if (p === '(') {
+      // Push nello stack
+      stack.push(p);
+    } 
+    // Se il carattere è una parentesi chiusa
+    else if (p === ')') {
+      // Verifica se lo stack è vuoto o se il pop non corrisponde
+      if (stack.isEmpty() || stack.pop() !== '(') {
+        // Ritorna false, le parentesi non sono bilanciate
+        return false;
+      }
+    }
+  }
+  
+  // Ritorna true se lo stack è vuoto (tutte le parentesi bilanciate)
+  return stack.isEmpty();
+}
+```
+
+**Esempio di utilizzo**:
+```javascript
+isBalancedParentheses("(())");    // true
+isBalancedParentheses("()()");    // true
+isBalancedParentheses("(()");     // false
+isBalancedParentheses("())");     // false
+```
+
+</div>
+</details>
+
+**Nota**: Questo pattern è la base per verificare bilanciamento di altri simboli (es. `[]`, `{}`). Può essere esteso per gestire più tipi di parentesi contemporaneamente.
+
+## Sort Stack
+
+**Problema**: Ordinare gli elementi di uno stack in ordine crescente (il più piccolo in cima) utilizzando solo un altro stack temporaneo.
+
+**Strategia - Stack ausiliario per ordinamento**:
+- Usa un secondo stack (`additionalStack`) per mantenere gli elementi ordinati
+- Per ogni elemento dello stack originale:
+  - Pop l'elemento (`temp`)
+  - Confronta `temp` con la cima di `additionalStack`
+  - Se la cima di `additionalStack` è maggiore di `temp`, sposta elementi da `additionalStack` allo stack originale finché trovi la posizione corretta per `temp`
+  - Push `temp` in `additionalStack`
+- Alla fine, sposta tutti gli elementi da `additionalStack` allo stack originale
+
+**Esempio**: 
+```
+Stack originale: [4, 2, 3, 1] (top → bottom)
+↓
+Stack ordinato: [1, 2, 3, 4] (top → bottom)
+```
+
+**Complessità**: O(n²) tempo (nel caso peggiore), O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function sortStack(stack) {
+  // Crea uno stack ausiliario per mantenere gli elementi ordinati
+  const additionalStack = new Stack();
+  
+  // Finché lo stack originale non è vuoto
+  while (!stack.isEmpty()) {
+    // Pop l'elemento corrente dallo stack originale
+    const temp = stack.pop();
+    
+    // Finché additionalStack non è vuoto e la cima è maggiore di temp
+    while (!additionalStack.isEmpty() && additionalStack.peek() > temp) {
+      // Sposta l'elemento da additionalStack allo stack originale
+      // Questo libera spazio per inserire temp nella posizione corretta
+      stack.push(additionalStack.pop());
+    }
+    
+    // Push temp in additionalStack nella posizione corretta
+    additionalStack.push(temp);
+  }
+  
+  // Sposta tutti gli elementi ordinati da additionalStack allo stack originale
+  while (!additionalStack.isEmpty()) {
+    stack.push(additionalStack.pop());
+  }
+}
+```
+
+**Esempio di utilizzo**:
+```javascript
+const myStack = new Stack(3);
+myStack.push(1);
+myStack.push(4);
+myStack.push(2);
+// Stack: [2, 4, 1, 3] (top → bottom)
+
+sortStack(myStack);
+// Stack: [1, 2, 3, 4] (top → bottom)
+```
+
+</div>
+</details>
+
+**Nota**: Questo algoritmo non è il più efficiente per ordinare, ma dimostra come manipolare stack usando solo le operazioni push/pop. In pratica, convertirebbe in array e userebbe un algoritmo di ordinamento più efficiente.
+
+# Esercizi Queue
+
+## Queue Using Stacks - Enqueue
+
+**Problema**: Implementare una queue utilizzando **due stack** invece di una linked list. Questa è una domanda comune nei colloqui tecnici.
+
+**Contesto**: Questa implementazione **non è efficiente** ma è importante come esercizio concettuale per capire la differenza tra LIFO e FIFO.
+
+**Strategia - Enqueue con due stack**:
+1. Usa due stack: `stack1` (principale) e `stack2` (ausiliario)
+2. Per fare enqueue di un nuovo elemento:
+   - Sposta tutti gli elementi da `stack1` a `stack2` (inverte l'ordine)
+   - Push il nuovo elemento in `stack1` (va sul fondo)
+   - Sposta tutti gli elementi da `stack2` a `stack1` (ripristina l'ordine)
+3. Così facendo, il primo elemento enqueued sarà sempre in cima a `stack1`, pronto per essere dequeued per primo
+
+**Esempio**:
+```
+Enqueue 1: stack1 = [1]
+Enqueue 2: stack1 → stack2 = [1], push 2, stack2 → stack1 = [1, 2]
+Enqueue 3: stack1 → stack2 = [1, 2], push 3, stack2 → stack1 = [1, 2, 3]
+// Il primo elemento (1) è in cima, pronto per dequeue
+```
+
+**Complessità**: O(n) tempo per enqueue, O(1) spazio aggiuntivo
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+class MyQueue {
+  constructor() {
+    // Stack principale dove manteniamo la queue
+    this.stack1 = new Stack();
+    // Stack ausiliario per riordinare gli elementi
+    this.stack2 = new Stack();
+  }
+
+  enqueue(value) {
+    // Sposta tutti gli elementi da stack1 a stack2
+    // Questo inverte l'ordine degli elementi
+    while (!this.stack1.isEmpty()) {
+      this.stack2.push(this.stack1.pop());
+    }
+    
+    // Push il nuovo valore in stack1 (ora vuoto)
+    // Il nuovo elemento va sul "fondo" della queue
+    this.stack1.push(value);
+    
+    // Sposta tutti gli elementi da stack2 a stack1
+    // Questo ripristina l'ordine originale con il nuovo elemento sul fondo
+    while (!this.stack2.isEmpty()) {
+      this.stack1.push(this.stack2.pop());
+    }
+  }
+  
+  // Metodo helper per verificare se la queue è vuota
+  isEmpty() {
+    return this.stack1.isEmpty();
+  }
+}
+```
+
+**Esempio di utilizzo**:
+```javascript
+const myQueue = new MyQueue();
+myQueue.enqueue(1);  // Queue: [1]
+myQueue.enqueue(2);  // Queue: [1, 2]
+myQueue.enqueue(3);  // Queue: [1, 2, 3]
+// Il primo elemento (1) sarà il primo a essere dequeued
+```
+
+</div>
+</details>
+
+**Nota**: Questo approccio rende enqueue molto inefficiente (O(n)), ma è un ottimo esercizio per capire le differenze tra stack e queue.
+
+## Queue Using Stacks - Dequeue
+
+**Problema**: Implementare l'operazione dequeue per una queue basata su due stack (continuazione dell'esercizio precedente).
+
+**Strategia - Dequeue con configurazione esistente**:
+- Grazie alla configurazione fatta con enqueue, il primo elemento da rimuovere è sempre in cima a `stack1`
+- Dequeue diventa semplicemente un pop da `stack1`
+- Se la queue è vuota, ritorna `null`
+
+**Complessità**: O(1) tempo, O(1) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+class MyQueue {
+  constructor() {
+    this.stack1 = new Stack();
+    this.stack2 = new Stack();
+  }
+
+  enqueue(value) {
+    // Sposta tutti gli elementi da stack1 a stack2
+    while (!this.stack1.isEmpty()) {
+      this.stack2.push(this.stack1.pop());
+    }
+    
+    // Push il nuovo valore in stack1
+    this.stack1.push(value);
+    
+    // Sposta tutti gli elementi da stack2 a stack1
+    while (!this.stack2.isEmpty()) {
+      this.stack1.push(this.stack2.pop());
+    }
+  }
+
+  dequeue() {
+    // Se la queue è vuota, ritorna null
+    if (this.isEmpty()) {
+      return null;
+    } else {
+      // Altrimenti, rimuovi e ritorna il primo elemento
+      // dalla queue facendo pop da stack1
+      return this.stack1.pop();
+    }
+  }
+  
+  isEmpty() {
+    return this.stack1.isEmpty();
+  }
+}
+```
+
+**Esempio di utilizzo**:
+```javascript
+const myQueue = new MyQueue();
+myQueue.enqueue(1);
+myQueue.enqueue(2);
+myQueue.enqueue(3);
+// Queue: [1, 2, 3]
+
+myQueue.dequeue();  // Ritorna 1
+myQueue.dequeue();  // Ritorna 2
+myQueue.dequeue();  // Ritorna 3
+myQueue.dequeue();  // Ritorna null (queue vuota)
+```
+
+</div>
+</details>
+
+**Nota**: Dequeue è O(1) perché l'elemento da rimuovere è già in cima a stack1 grazie al lavoro fatto da enqueue. Il trade-off è che enqueue è O(n).
+
+## Implementazione completa: Queue with Stacks
+
+Ecco l'implementazione completa della classe `MyQueue`:
+
+```javascript
+// Assumiamo che abbiamo già una classe Stack implementata
+class MyQueue {
+  constructor() {
+    // Stack principale dove manteniamo la queue
+    this.stack1 = new Stack();
+    // Stack ausiliario per riordinare gli elementi
+    this.stack2 = new Stack();
+  }
+
+  // Aggiunge un elemento alla fine della queue
+  enqueue(value) {
+    // Sposta tutti gli elementi da stack1 a stack2
+    while (!this.stack1.isEmpty()) {
+      this.stack2.push(this.stack1.pop());
+    }
+    
+    // Push il nuovo valore in stack1
+    this.stack1.push(value);
+    
+    // Sposta tutti gli elementi da stack2 a stack1
+    while (!this.stack2.isEmpty()) {
+      this.stack1.push(this.stack2.pop());
+    }
+  }
+
+  // Rimuove e ritorna il primo elemento della queue
+  dequeue() {
+    if (this.isEmpty()) {
+      return null;
+    } else {
+      return this.stack1.pop();
+    }
+  }
+
+  // Verifica se la queue è vuota
+  isEmpty() {
+    return this.stack1.isEmpty();
+  }
+
+  // Ritorna il primo elemento senza rimuoverlo
+  peek() {
+    if (this.isEmpty()) {
+      return null;
+    } else {
+      return this.stack1.peek();
+    }
+  }
+}
+```
+
+## Analisi dell'efficienza: Queue con Stack
+
+**Trade-off dell'implementazione con stack**:
+
+| Operazione | Queue (Linked List) | Queue (2 Stacks) |
+|------------|-------------------|------------------|
+| **Enqueue** | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Dequeue** | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Spazio** | O(n) | O(n) |
+
+**Conclusione**: L'implementazione con due stack è **molto inefficiente** per enqueue (O(n) invece di O(1)), ma è un ottimo esercizio per capire:
+- La differenza tra LIFO (stack) e FIFO (queue)
+- Come trasformare una struttura dati in un'altra
+- I trade-off di performance nelle scelte implementative
+
+**In pratica**: Non useresti mai due stack per implementare una queue in produzione. Usa sempre una linked list o un array circolare.
+
+# Pattern comuni
+
+Questi problemi condividono pattern ricorrenti tra stack e queue:
+
+## Pattern Stack
+
+1. **LIFO per inversione**: Reverse String
+   - Il principio LIFO dello stack inverte naturalmente l'ordine degli elementi
+   - Utile per qualsiasi problema di inversione
+
+2. **Stack per matching/bilanciamento**: Balanced Parentheses
+   - Push elementi di apertura, pop quando trovi chiusure corrispondenti
+   - Verifica che lo stack sia vuoto alla fine
+   - Pattern fondamentale per parsing e validazione
+
+3. **Stack ausiliario per riorganizzazione**: Sort Stack
+   - Usa un secondo stack per mantenere elementi in ordine
+   - Sposta elementi avanti e indietro tra i due stack
+   - Utile per problemi che richiedono riordinamento con memoria limitata
+
+4. **Uso di peek()**: Sort Stack, Balanced Parentheses
+   - Controlla la cima dello stack senza rimuovere l'elemento
+   - Utile per decisioni basate sul prossimo elemento
+
+## Pattern Queue
+
+1. **Conversione LIFO → FIFO**: Queue Using Stacks
+   - Per ottenere FIFO da stack (LIFO), devi invertire gli elementi
+   - Richiede movimento continuo tra due stack
+   - Trade-off: complessità temporale vs concettuale
+
+2. **Uso di strutture ausiliarie**:
+   - `stack2` è una struttura temporanea per riordinamento
+   - Pattern comune: usa strutture extra per trasformazioni
+   - Importante capire quando il trade-off vale la pena
+
+3. **Edge case management**:
+   - Controlla sempre se la struttura è vuota prima di operazioni
+   - Ritorna valori appropriati (`null` o `undefined`) per casi limite
+   - Gestisci correttamente il caso di un solo elemento
