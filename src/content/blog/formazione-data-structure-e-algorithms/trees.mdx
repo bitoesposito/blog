@@ -1,0 +1,202 @@
+---
+title: 'Trees'
+description: 'Introduzione agli alberi e ai Binary Search Trees'
+date: 2025-11-17
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 9
+---
+
+## Cos'è un Tree
+
+Un **tree** è una struttura dati gerarchica composta da **nodi** collegati da puntatori. Ogni nodo può puntare a zero o più figli. Quando ciascun nodo ha al massimo **due** collegamenti, parliamo di **binary tree**.
+
+**Collegamento con le linked list**:
+- Una linked list è un caso particolare di tree in cui ogni nodo ha **solo il puntatore `next`**.
+- Nei binary tree ogni nodo possiede **due riferimenti**: `left` e `right`.
+
+```javascript
+// Nodo base di un tree binario
+class Node {
+  constructor(value) {
+    // Valore memorizzato nel nodo corrente
+    this.value = value;
+    // Puntatore al sotto-albero sinistro (può rimanere null)
+    this.left = null;
+    // Puntatore al sotto-albero destro (può rimanere null)
+    this.right = null;
+  }
+}
+```
+
+## Terminologia fondamentale
+
+- **Root**: nodo principale da cui parte l’albero.
+- **Parent / Child**: relazione tra nodo e figli diretti.
+- **Siblings**: figli che condividono lo stesso parent.
+- **Leaf**: nodo senza figli (`left` e `right` null).
+- **Depth / Level**: distanza del nodo dalla root.
+- **Subtree**: tree completo con una root interna all’albero principale.
+
+## Tipi di binary tree
+
+| Tipo | Descrizione |
+|------|-------------|
+| **Full** | Ogni nodo ha **0 oppure 2** figli. |
+| **Perfect** | Full + **tutti i livelli completi** (nessuno slot vuoto). |
+| **Complete** | Tutti i livelli sono pieni **da sinistra verso destra**, tranne l’ultimo che può essere incompleto. |
+
+**Osservazioni chiave**:
+- Un tree **perfect** è sempre **full** e **complete**.
+- Aggiungere nodi fuori ordine può rompere la perfezione, ma non necessariamente la completezza.
+
+## Binary Search Tree (BST)
+
+Un **Binary Search Tree** aggiunge la regola d’ordinamento:
+
+- Ogni nodo rispetta `left.value < node.value < right.value`.
+- La regola vale ricorsivamente per **ogni sotto-albero**.
+
+### Inserimento concettuale
+
+1. Parti dalla root.
+2. Confronta il nuovo valore con il nodo corrente.
+3. Vai a sinistra se è minore, a destra se è maggiore.
+4. Ripeti finché trovi uno slot vuoto e inserisci.
+5. I duplicati non sono ammessi (in alternativa si può usare un contatore interno al nodo).
+
+### Ricerca (`contains`)
+
+1. Parti dalla root.
+2. Se il valore cercato è minore vai a sinistra, se è maggiore vai a destra.
+3. Se trovi il valore ritorni `true`, se arrivi a `null` ritorni `false`.
+
+Questo schema applica **Divide & Conquer**: a ogni passo si scarta metà dell’albero.
+
+## Complessità Big O dei BST
+
+| Scenario | Lookup | Insert | Remove | Note |
+|----------|--------|--------|--------|------|
+| **Best / Perfect tree** | O(log n) | O(log n) | O(log n) | L’albero è bilanciato. |
+| **Average (Θ)** | O(log n) | O(log n) | O(log n) | Nodi distribuiti in modo abbastanza uniforme. |
+| **Worst (lineare)** | O(n) | O(n) | O(n) | L’albero degenera in una linked list (sempre a destra o sempre a sinistra). |
+
+- **Lookup/Remove** sono più veloci su BST rispetto a linked list e array perché non richiedono scansione sequenziale.
+- **Insert** in una linked list (`push`) rimane O(1): si rinuncia alla velocità di inserimento per ottenere ricerche veloci nei BST.
+
+## Confronto con altre strutture
+
+| Operazione | Linked List | Array (senza indice ordinato) | Binary Search Tree |
+|------------|-------------|-------------------------------|--------------------|
+| **Lookup per valore** | O(n) | O(n) | <span class="text-semibold text-green-500">O(log n)</span> medio |
+| **Insert in fondo** | <span class="text-semibold text-green-500">O(1)</span> | <span class="text-semibold text-green-500">O(1)</span> | O(log n) medio |
+| **Remove per valore** | O(n) | O(n) | <span class="text-semibold text-green-500">O(log n)</span> medio |
+
+> **Trade-off**: i BST sacrificano la semplicità di inserimento lineare per abilitare ricerche e rimozioni drasticamente più veloci (quando bilanciati).
+
+## Implementazione BST
+
+### Costruttore dell’albero
+
+```javascript
+// Binary Search Tree base: mantiene solo il riferimento alla root
+class BinarySearchTree {
+  constructor() {
+    // Root inizialmente a null finché non inseriamo il primo nodo
+    this.root = null;
+  }
+}
+```
+
+### insert(value)
+
+```javascript
+// Inserisce un nuovo valore rispettando la proprietà del BST
+insert(value) {
+  // 1. Crea il nodo da inserire
+  const newNode = new Node(value);
+
+  // 2. Se l'albero è vuoto il nuovo nodo diventa la root
+  if (this.root === null) {
+    this.root = newNode;
+    return this; // Consente chaining
+  }
+
+  // 3. Temp funge da cursore per attraversare il tree
+  let temp = this.root;
+
+  // 4. Loop finché non troviamo una posizione libera
+  while (true) {
+    // Evitiamo duplicati
+    if (newNode.value === temp.value) return undefined;
+
+    // 4a. Il nuovo valore è minore → spostati a sinistra
+    if (newNode.value < temp.value) {
+      // Se la sinistra è libera inseriamo qui
+      if (temp.left === null) {
+        temp.left = newNode;
+        return this;
+      }
+      // Altrimenti scendiamo di un livello
+      temp = temp.left;
+    } else {
+      // 4b. Il nuovo valore è maggiore → spostati a destra
+      if (temp.right === null) {
+        temp.right = newNode;
+        return this;
+      }
+      temp = temp.right;
+    }
+  }
+}
+```
+
+**Edge cases gestiti**:
+- Albero vuoto (`root === null`).
+- Inserimento su catena lunga (continuiamo a scendere).
+- Duplicati (ritorniamo `undefined` per evitare ambiguità).
+
+### contains(value)
+
+```javascript
+// Verifica se un valore è presente nel BST
+contains(value) {
+  // 1. Albero vuoto → assenza garantita
+  if (this.root === null) return false;
+
+  // 2. Temp parte dalla root e scende seguendo i confronti
+  let temp = this.root;
+
+  // 3. Continuiamo finché troviamo un nodo valido
+  while (temp) {
+    // 3a. Valore minore → andare a sinistra
+    if (value < temp.value) {
+      temp = temp.left;
+    }
+    // 3b. Valore maggiore → andare a destra
+    else if (value > temp.value) {
+      temp = temp.right;
+    }
+    // 3c. Valore uguale → trovato!
+    else {
+      return true;
+    }
+  }
+
+  // 4. Se usciamo dal while significa che abbiamo raggiunto un null
+  return false;
+}
+```
+
+**Pattern**: la logica di `contains` è identica a `lookup` in un array ordinato usando binary search, ma operiamo su nodi collegati.
+
+## Checklist mentale per operare sui BST
+
+1. **Root null?** → Caso base da gestire subito.
+2. **Loop/Recursion** → Ogni decisione “sinistra o destra” si ripete fino a raggiungere una foglia.
+3. **Duplicati** → Decide la tua strategia (vietati, contatore, o inserimento su un lato fisso).
+4. **Big O** → Valuta sempre se l’albero è bilanciato; in caso contrario considerare strutture autobilancianti (AVL, Red-Black).
+5. **Garbage collection** → Ogni nodo deve essere raggiungibile dalla root, altrimenti il runtime lo rimuoverà.
+
+Con queste basi, è possibile estendere i BST con operazioni avanzate (delete, traversals in-order / pre-order / post-order) e passare a strutture autobilancianti per garantire le prestazioni logaritmiche.
+
