@@ -7,10 +7,6 @@ authors: ['vitoesposito']
 order: 8
 ---
 
-Questa sezione contiene problemi comuni su Stacks e Queues. Ogni problema include la strategia risolutiva e l'implementazione completa.
-
-# Esercizi Stack
-
 ## Reverse String
 
 **Problema**: Invertire una stringa utilizzando uno stack.
@@ -74,10 +70,13 @@ reverseString("world");  // "dlrow"
 - Alla fine, se lo stack è vuoto, le parentesi sono bilanciate
 
 **Esempi**:
-- `"(())"` → bilanciato ✅
-- `"()()"` → bilanciato ✅
-- `"(()"` → non bilanciato ❌ (stack non vuoto alla fine)
-- `"())"` → non bilanciato ❌ (stack vuoto prima di poter fare pop)
+
+| Input | Esito |
+|-------|-------|
+| `"(())"` | <span class="text-semibold text-green-500">Bilanciato</span> |
+| `"()()"` | <span class="text-semibold text-green-500">Bilanciato</span> |
+| `"(()"` | <span class="text-semibold text-red-500">Non bilanciato</span> – stack non vuoto alla fine |
+| `"())"` | <span class="text-semibold text-red-500">Non bilanciato</span> – stack vuoto prima del pop |
 
 **Complessità**: O(n) tempo, O(n) spazio
 

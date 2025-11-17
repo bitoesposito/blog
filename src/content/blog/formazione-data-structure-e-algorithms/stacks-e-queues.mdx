@@ -7,12 +7,6 @@ authors: ['vitoesposito']
 order: 7
 ---
 
-## Introduzione
-
-In questa sezione esploreremo due strutture dati fondamentali: **Stacks** (pile) e **Queues** (code). Entrambe sono strutture lineari che differiscono per l'ordine di accesso agli elementi. Potremo riutilizzare molto codice dalle linked lists, rendendo questa sezione relativamente semplice.
-
-# Stacks
-
 ## Cos'è uno Stack
 
 Uno **stack** (pila) è una struttura dati basata sul principio **LIFO** (Last In, First Out): l'ultimo elemento inserito è il primo a essere rimosso.
@@ -30,10 +24,6 @@ Uno **stack** (pila) è una struttura dati basata sul principio **LIFO** (Last I
 // [2] ← top (dopo pop)
 // [1]
 ```
-
-### Concetto LIFO
-
-**LIFO - Last In, First Out**: l'ultimo elemento aggiunto è il primo a essere rimosso.
 
 ### Esempi pratici di utilizzo
 
@@ -82,13 +72,12 @@ Implementiamo lo stack con una **linked list modificata**:
 //     Primo elemento (LIFO)
 ```
 
-**Complessità con linked list**:
-- **Push** (inizio): O(1) ✅
-- **Pop** (inizio): O(1) ✅
-- **Push** (fine): O(1) ma pop sarebbe O(n) ❌
-- **Pop** (fine): O(n) ❌ - richiede iterazione
-
-**Importante**: Con una linked list, usa sempre **l'inizio** come cima dello stack (`head`), non la fine (`tail`), per avere entrambe le operazioni O(1).
+| Operazione         | Complessità | Note                                     |
+|--------------------|:-----------:|------------------------------------------|
+| **Push** (inizio)  | <span className="font-semibold text-green" style={{color: "green"}}>O(1)</span>   | Inserimento in testa                      |
+| **Pop** (inizio)   | <span className="font-semibold text-green" style={{color: "green"}}>O(1)</span>   | Rimozione dalla testa                     |
+| **Push** (fine)    | <span className="font-semibold text-green" style={{color: "green"}}>O(1)</span>   | Solo se si mantiene il puntatore `tail`   |
+| **Pop** (fine)     | <span className="font-semibold text-red" style={{color: "red"}}>O(n)</span>       | Serve scorrere tutta la lista             |
 
 ## Implementazione Stack
 
@@ -396,10 +385,11 @@ Con una linked list modificata, possiamo avere **entrambe le operazioni O(1)**:
 //       O(1)        O(1)
 ```
 
-**Complessità con linked list**:
-- **Enqueue** (fine con `last`): O(1) ✅
-- **Dequeue** (inizio con `first`): O(1) ✅
-- ❌ Non usare: Enqueue dall'inizio o Dequeue dalla fine (una sarebbe O(n))
+| Operazione                                       | Complessità | Note                                                    |
+|--------------------------------------------------|:-----------:|---------------------------------------------------------|
+| **Enqueue** (fine con `last`)                    | <span class="font-semibold text-green-500">O(1)</span>     | Aggiunta in fondo con puntatore `last`                  |
+| **Dequeue** (inizio con `first`)                 | <span class="font-semibold text-green-500">O(1)</span>     | Rimozione dall'inizio con puntatore `first`             |
+| Enqueue dall'inizio o Dequeue dalla fine         | <span class="font-semibold text-red-500">O(n)</span>       | **Sconsigliato** — richiede scorrimento di tutta la lista|
 
 **Importante**: Con una linked list per queue:
 - **Enqueue** avviene dalla **fine** usando `last` (equivalente di `tail`)
