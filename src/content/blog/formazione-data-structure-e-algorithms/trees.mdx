@@ -189,14 +189,3 @@ contains(value) {
 ```
 
 **Pattern**: la logica di `contains` è identica a `lookup` in un array ordinato usando binary search, ma operiamo su nodi collegati.
-
-## Checklist mentale per operare sui BST
-
-1. **Root null?** → Caso base da gestire subito.
-2. **Loop/Recursion** → Ogni decisione “sinistra o destra” si ripete fino a raggiungere una foglia.
-3. **Duplicati** → Decide la tua strategia (vietati, contatore, o inserimento su un lato fisso).
-4. **Big O** → Valuta sempre se l’albero è bilanciato; in caso contrario considerare strutture autobilancianti (AVL, Red-Black).
-5. **Garbage collection** → Ogni nodo deve essere raggiungibile dalla root, altrimenti il runtime lo rimuoverà.
-
-Con queste basi, è possibile estendere i BST con operazioni avanzate (delete, traversals in-order / pre-order / post-order) e passare a strutture autobilancianti per garantire le prestazioni logaritmiche.
-

@@ -1,0 +1,761 @@
+---
+title: 'Hash Tables - Esercizi'
+description: 'Problemi comuni su Hash Tables'
+date: 2025-11-18
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 11
+---
+
+Questa sezione contiene problemi comuni sulle Hash Tables. Ogni problema include la strategia risolutiva e l'implementazione completa.
+
+## Item In Common
+
+**Problema**: Scrivere una funzione che verifica se due array hanno almeno un elemento in comune.
+
+**Strategia - Hash Table per lookup veloce**:
+- Crea una hash table (oggetto o Map) con gli elementi del primo array
+- Itera attraverso il secondo array e verifica se ogni elemento esiste nella hash table
+- Se trovi un elemento comune, ritorna `true` immediatamente
+- Se completi l'iterazione senza trovare elementi comuni, ritorna `false`
+
+**Esempio**: 
+- `itemInCommon([1, 3, 5], [2, 4, 5])` → `true` (entrambi contengono `5`)
+- `itemInCommon([1, 3, 5], [2, 4, 6])` → `false` (nessun elemento comune)
+
+**Complessità**: O(n) tempo, O(n) spazio (molto migliore di O(n²) con nested loops)
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Map</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function itemInCommon(array1, array2) {
+  // Crea una Map per memorizzare gli elementi del primo array
+  const myMap = new Map();
+  
+  // Itera attraverso il primo array e aggiungi ogni elemento alla Map
+  for (let i of array1) {
+    // Imposta il valore a true (il valore non è importante, solo la chiave)
+    myMap.set(i, true);
+  }
+  
+  // Itera attraverso il secondo array
+  for (let j of array2) {
+    // Se l'elemento esiste nella Map, abbiamo trovato un elemento comune
+    if (myMap.has(j)) {
+      return true;
+    }
+  }
+  
+  // Se non abbiamo trovato elementi comuni, ritorna false
+  return false;
+}
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Object</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function itemInCommon(arr1, arr2) {
+  // Crea un oggetto per memorizzare gli elementi del primo array
+  let obj = {};
+  
+  // Itera attraverso il primo array e aggiungi ogni elemento come chiave
+  for (let i = 0; i < arr1.length; i++) {
+    // Imposta il valore a true (il valore non è importante, solo la chiave)
+    obj[arr1[i]] = true;
+  }
+  
+  // Itera attraverso il secondo array
+  for (let j = 0; j < arr2.length; j++) {
+    // Se l'elemento esiste come chiave nell'oggetto, abbiamo trovato un elemento comune
+    if (obj[arr2[j]]) {
+      return true;
+    }
+  }
+  
+  // Se non abbiamo trovato elementi comuni, ritorna false
+  return false;
+}
+```
+
+</div>
+</details>
+
+**Nota**: Questo problema dimostra come le hash table possono ridurre la complessità da O(n²) a O(n) trasformando nested loops in due loop sequenziali.
+
+## Find Duplicates
+
+**Problema**: Trovare tutti i numeri che appaiono più di una volta in un array.
+
+**Strategia - Conteggio con Hash Table**:
+- Crea una hash table per contare le occorrenze di ogni numero
+- Itera attraverso l'array e incrementa il conteggio per ogni numero
+- Itera attraverso la hash table e aggiungi alla lista dei duplicati i numeri con conteggio > 1
+
+**Esempio**: 
+- `findDuplicates([1, 2, 3, 4, 4, 5, 6, 6])` → `[4, 6]`
+- `findDuplicates([1, 2, 3])` → `[]`
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Map</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function findDuplicates(nums) {
+  // Crea una Map per contare le occorrenze di ogni numero
+  const numCounts = new Map();
+  
+  // Itera attraverso l'array e conta le occorrenze
+  for (let num of nums) {
+    // Se il numero esiste già, incrementa il conteggio
+    // Altrimenti, inizializza a 0 e aggiungi 1
+    numCounts.set(num, (numCounts.get(num) || 0) + 1);
+  }
+  
+  // Array per memorizzare i duplicati
+  const duplicates = [];
+  
+  // Itera attraverso la Map e trova i numeri con conteggio > 1
+  for (let [key, value] of numCounts.entries()) {
+    // Se il conteggio è maggiore di 1, è un duplicato
+    if (value > 1) {
+      duplicates.push(key);
+    }
+  }
+  
+  // Ritorna l'array dei duplicati
+  return duplicates;
+}
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Object</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function findDuplicates(nums) {
+  // Crea un oggetto per contare le occorrenze di ogni numero
+  const numCounts = {};
+  
+  // Itera attraverso l'array e conta le occorrenze
+  for (let num of nums) {
+    // Se il numero esiste già, incrementa il conteggio
+    // Altrimenti, inizializza a 0 e aggiungi 1
+    numCounts[num] = (numCounts[num] || 0) + 1;
+  }
+  
+  // Array per memorizzare i duplicati
+  const duplicates = [];
+  
+  // Itera attraverso l'oggetto e trova i numeri con conteggio > 1
+  for (let key in numCounts) {
+    // Se il conteggio è maggiore di 1, è un duplicato
+    if (numCounts[key] > 1) {
+      // Converti la chiave in numero (le chiavi degli oggetti sono stringhe)
+      duplicates.push(Number(key));
+    }
+  }
+  
+  // Ritorna l'array dei duplicati
+  return duplicates;
+}
+```
+
+</div>
+</details>
+
+**Pattern**: Usa una hash table per contare occorrenze, poi filtra gli elementi che compaiono più di una volta.
+
+## First Non-Repeating Character
+
+**Problema**: Trovare il primo carattere in una stringa che non si ripete.
+
+**Strategia - Doppio passaggio**:
+- Primo passaggio: conta le occorrenze di ogni carattere usando una hash table
+- Secondo passaggio: itera attraverso la stringa e trova il primo carattere con conteggio = 1
+
+**Esempio**: 
+- `firstNonRepeatingChar("aabbcc")` → `null` (tutti i caratteri si ripetono)
+- `firstNonRepeatingChar("aabbcde")` → `'c'` (primo carattere non ripetuto)
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Map</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function firstNonRepeatingChar(string) {
+  // Crea una Map per contare le occorrenze di ogni carattere
+  const charCounts = new Map();
+  
+  // Primo passaggio: conta le occorrenze
+  for (let i = 0; i < string.length; i++) {
+    const c = string.charAt(i);
+    // Incrementa il conteggio per il carattere corrente
+    charCounts.set(c, (charCounts.get(c) || 0) + 1);
+  }
+  
+  // Secondo passaggio: trova il primo carattere con conteggio = 1
+  for (let i = 0; i < string.length; i++) {
+    const c = string.charAt(i);
+    // Se il carattere appare solo una volta, è quello che cerchiamo
+    if (charCounts.get(c) === 1) {
+      return c;
+    }
+  }
+  
+  // Se non troviamo caratteri non ripetuti, ritorna null
+  return null;
+}
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Object</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function firstNonRepeatingChar(string) {
+  // Crea un oggetto per contare le occorrenze di ogni carattere
+  const charCounts = {};
+  
+  // Primo passaggio: conta le occorrenze
+  for (let i = 0; i < string.length; i++) {
+    const c = string.charAt(i);
+    // Incrementa il conteggio per il carattere corrente
+    charCounts[c] = (charCounts[c] || 0) + 1;
+  }
+  
+  // Secondo passaggio: trova il primo carattere con conteggio = 1
+  for (let i = 0; i < string.length; i++) {
+    const c = string.charAt(i);
+    // Se il carattere appare solo una volta, è quello che cerchiamo
+    if (charCounts[c] === 1) {
+      return c;
+    }
+  }
+  
+  // Se non troviamo caratteri non ripetuti, ritorna null
+  return null;
+}
+```
+
+</div>
+</details>
+
+**Nota**: Il doppio passaggio è necessario perché dobbiamo mantenere l'ordine originale della stringa per trovare il "primo" carattere non ripetuto.
+
+## Group Anagrams
+
+**Problema**: Raggruppare stringhe che sono anagrammi tra loro.
+
+**Strategia - Chiave canonica**:
+- Per ogni stringa, crea una "chiave canonica" ordinando i caratteri
+- Usa questa chiave come chiave nella hash table
+- Raggruppa tutte le stringhe con la stessa chiave canonica
+
+**Esempio**: 
+- `groupAnagrams(['eat', 'tea', 'tan', 'ate', 'nat', 'bat'])` → `[['eat', 'tea', 'ate'], ['tan', 'nat'], ['bat']]`
+
+**Complessità**: O(n * k log k) tempo dove k è la lunghezza media delle stringhe, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Map</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function groupAnagrams(strings) {
+  // Crea una Map per raggruppare gli anagrammi
+  const anagramGroups = new Map();
+  
+  // Itera attraverso ogni stringa
+  for (const string of strings) {
+    // Converti la stringa in array di caratteri
+    const chars = Array.from(string);
+    // Ordina i caratteri alfabeticamente
+    chars.sort();
+    // Ricrea la stringa ordinata (chiave canonica)
+    const canonical = chars.join('');
+    
+    // Se la chiave canonica esiste già nella Map
+    if (anagramGroups.has(canonical)) {
+      // Aggiungi la stringa originale al gruppo esistente
+      anagramGroups.get(canonical).push(string);
+    } else {
+      // Altrimenti, crea un nuovo gruppo con questa stringa
+      const group = [string];
+      anagramGroups.set(canonical, group);
+    }
+  }
+  
+  // Ritorna tutti i gruppi come array di array
+  return Array.from(anagramGroups.values());
+}
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Object</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function groupAnagrams(strings) {
+  // Crea un oggetto per raggruppare gli anagrammi
+  const anagramGroups = {};
+  
+  // Itera attraverso ogni stringa
+  for (const string of strings) {
+    // Converti la stringa in array di caratteri
+    const chars = Array.from(string);
+    // Ordina i caratteri alfabeticamente
+    chars.sort();
+    // Ricrea la stringa ordinata (chiave canonica)
+    const canonical = chars.join('');
+    
+    // Se la chiave canonica esiste già nell'oggetto
+    if (anagramGroups.hasOwnProperty(canonical)) {
+      // Aggiungi la stringa originale al gruppo esistente
+      anagramGroups[canonical].push(string);
+    } else {
+      // Altrimenti, crea un nuovo gruppo con questa stringa
+      anagramGroups[canonical] = [string];
+    }
+  }
+  
+  // Ritorna tutti i gruppi come array di array
+  return Object.values(anagramGroups);
+}
+```
+
+</div>
+</details>
+
+**Pattern chiave**: La "chiave canonica" (stringa ordinata) identifica univocamente tutti gli anagrammi di un gruppo.
+
+## Two Sum
+
+**Problema**: Trovare due numeri in un array che sommano a un target specifico. Ritorna gli indici dei due numeri.
+
+**Strategia - Complemento con Hash Table**:
+- Itera attraverso l'array una sola volta
+- Per ogni numero, calcola il complemento (target - numero corrente)
+- Se il complemento esiste nella hash table, abbiamo trovato la coppia
+- Altrimenti, aggiungi il numero corrente e il suo indice alla hash table
+
+**Esempio**: 
+- `twoSum([2, 7, 11, 15], 9)` → `[0, 1]` (2 + 7 = 9)
+- `twoSum([3, 2, 4], 6)` → `[1, 2]` (2 + 4 = 6)
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Map</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function twoSum(nums, target) {
+  // Crea una Map per memorizzare numeri e i loro indici
+  const numMap = new Map();
+  
+  // Itera attraverso l'array
+  for (let i = 0; i < nums.length; i++) {
+    const num = nums[i];
+    // Calcola il complemento necessario per raggiungere il target
+    const complement = target - num;
+    
+    // Se il complemento esiste nella Map, abbiamo trovato la coppia
+    if (numMap.has(complement)) {
+      // Ritorna gli indici: indice del complemento e indice corrente
+      return [numMap.get(complement), i];
+    }
+    
+    // Altrimenti, salva il numero corrente e il suo indice nella Map
+    numMap.set(num, i);
+  }
+  
+  // Se non troviamo una coppia, ritorna array vuoto
+  return [];
+}
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Object</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function twoSum(nums, target) {
+  // Crea un oggetto per memorizzare numeri e i loro indici
+  const numObject = {};
+  
+  // Itera attraverso l'array
+  for (let i = 0; i < nums.length; i++) {
+    const num = nums[i];
+    // Calcola il complemento necessario per raggiungere il target
+    const complement = target - num;
+    
+    // Se il complemento esiste nell'oggetto, abbiamo trovato la coppia
+    if (numObject.hasOwnProperty(complement)) {
+      // Ritorna gli indici: indice del complemento e indice corrente
+      return [numObject[complement], i];
+    }
+    
+    // Altrimenti, salva il numero corrente e il suo indice nell'oggetto
+    numObject[num] = i;
+  }
+  
+  // Se non troviamo una coppia, ritorna array vuoto
+  return [];
+}
+```
+
+</div>
+</details>
+
+**Pattern fondamentale**: Invece di cercare due numeri con nested loops O(n²), usiamo una hash table per cercare il complemento in O(1).
+
+## Subarray Sum
+
+**Problema**: Trovare un subarray contiguo la cui somma è uguale al target. Ritorna gli indici di inizio e fine del subarray.
+
+**Strategia - Prefix Sum con Hash Table**:
+- Usa una hash table per memorizzare le somme cumulative e i loro indici
+- Per ogni elemento, calcola la somma cumulativa
+- Se `somma_corrente - target` esiste nella hash table, abbiamo trovato il subarray
+- Il subarray inizia dall'indice successivo a quello memorizzato
+
+**Esempio**: 
+- `subarraySum([1, 4, 20, 3, 10, 5], 33)` → `[2, 4]` (20 + 3 + 10 = 33)
+- `subarraySum([1, 2, 3], 3)` → `[0, 1]` (1 + 2 = 3)
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Map</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function subarraySum(nums, target) {
+  // Crea una Map per memorizzare somme cumulative e i loro indici
+  const sumIndex = new Map();
+  
+  // Inizializza con somma 0 e indice -1
+  // Questo gestisce il caso in cui il subarray inizia dall'indice 0
+  sumIndex.set(0, -1);
+  
+  // Variabile per tenere traccia della somma cumulativa corrente
+  let currentSum = 0;
+  
+  // Itera attraverso l'array
+  for (let i = 0; i < nums.length; i++) {
+    // Aggiungi l'elemento corrente alla somma cumulativa
+    currentSum += nums[i];
+    
+    // Se abbiamo visto una somma che, quando sottratta da currentSum, dà il target
+    if (sumIndex.has(currentSum - target)) {
+      // Ritorna gli indici del subarray
+      // Inizio: indice successivo a quello memorizzato
+      // Fine: indice corrente
+      return [sumIndex.get(currentSum - target) + 1, i];
+    }
+    
+    // Salva la somma cumulativa corrente e il suo indice nella Map
+    sumIndex.set(currentSum, i);
+  }
+  
+  // Se non troviamo un subarray, ritorna array vuoto
+  return [];
+}
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione con Object</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function subarraySum(nums, target) {
+  // Crea un oggetto per memorizzare somme cumulative e i loro indici
+  const sumIndex = {};
+  
+  // Inizializza con somma 0 e indice -1
+  // Questo gestisce il caso in cui il subarray inizia dall'indice 0
+  sumIndex[0] = -1;
+  
+  // Variabile per tenere traccia della somma cumulativa corrente
+  let currentSum = 0;
+  
+  // Itera attraverso l'array
+  for (let i = 0; i < nums.length; i++) {
+    // Aggiungi l'elemento corrente alla somma cumulativa
+    currentSum += nums[i];
+    
+    // Se abbiamo visto una somma che, quando sottratta da currentSum, dà il target
+    if (sumIndex.hasOwnProperty(currentSum - target)) {
+      // Ritorna gli indici del subarray
+      // Inizio: indice successivo a quello memorizzato
+      // Fine: indice corrente
+      return [sumIndex[currentSum - target] + 1, i];
+    }
+    
+    // Salva la somma cumulativa corrente e il suo indice nell'oggetto
+    sumIndex[currentSum] = i;
+  }
+  
+  // Se non troviamo un subarray, ritorna array vuoto
+  return [];
+}
+```
+
+</div>
+</details>
+
+**Pattern avanzato**: Usa prefix sum per trasformare il problema di trovare un subarray in un problema di cercare una differenza nella hash table.
+
+# Esercizi con Set
+
+## Remove Duplicates
+
+**Problema**: Rimuovere tutti i duplicati da un array, ritornando un nuovo array con solo valori unici.
+
+**Strategia - Set per unicità**:
+- Crea un Set dall'array (i Set rimuovono automaticamente i duplicati)
+- Converti il Set in un array
+
+**Esempio**: 
+- `removeDuplicates([1, 2, 2, 3, 4, 4, 4])` → `[1, 2, 3, 4]`
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function removeDuplicates(myList) {
+  // Crea un Set dall'array
+  // I Set rimuovono automaticamente i duplicati
+  const uniqueSet = new Set(myList);
+  
+  // Converti il Set in un array e ritorna
+  return Array.from(uniqueSet);
+}
+```
+
+</div>
+</details>
+
+**Nota**: I Set sono perfetti per questo problema perché garantiscono automaticamente l'unicità degli elementi.
+
+## Has Unique Chars
+
+**Problema**: Verificare se tutti i caratteri in una stringa sono unici (nessun carattere si ripete).
+
+**Strategia - Set per tracking**:
+- Itera attraverso ogni carattere della stringa
+- Se il carattere è già nel Set, ritorna `false`
+- Altrimenti, aggiungi il carattere al Set
+- Se completi l'iterazione, ritorna `true`
+
+**Esempio**: 
+- `hasUniqueChars("hello")` → `false` (la 'l' si ripete)
+- `hasUniqueChars("world")` → `true` (tutti i caratteri sono unici)
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function hasUniqueChars(string) {
+  // Crea un Set vuoto per memorizzare i caratteri visti
+  const charSet = new Set();
+  
+  // Itera attraverso ogni carattere della stringa
+  for (const ch of string) {
+    // Se il carattere è già nel Set, non è unico
+    if (charSet.has(ch)) {
+      return false;
+    }
+    
+    // Altrimenti, aggiungi il carattere al Set
+    charSet.add(ch);
+  }
+  
+  // Se completiamo l'iterazione, tutti i caratteri sono unici
+  return true;
+}
+```
+
+</div>
+</details>
+
+**Pattern**: Usa un Set per verificare rapidamente se un elemento è già stato visto.
+
+## Find Pairs
+
+**Problema**: Trovare tutte le coppie di numeri dove un numero proviene da `arr1` e l'altro da `arr2`, e la loro somma è uguale al target.
+
+**Strategia - Set per lookup veloce**:
+- Aggiungi tutti gli elementi di `arr1` in un Set
+- Itera attraverso `arr2` e per ogni elemento calcola il complemento (target - elemento)
+- Se il complemento esiste nel Set, abbiamo trovato una coppia valida
+
+**Esempio**: 
+- `findPairs([1, 2, 3], [4, 5, 6], 7)` → `[[1, 6], [2, 5], [3, 4]]`
+
+**Complessità**: O(n + m) tempo dove n e m sono le lunghezze degli array, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function findPairs(arr1, arr2, target) {
+  // Crea un Set per memorizzare gli elementi del primo array
+  const mySet = new Set();
+  
+  // Array per memorizzare le coppie trovate
+  const pairs = [];
+  
+  // Aggiungi tutti gli elementi di arr1 al Set
+  for (const num of arr1) {
+    mySet.add(num);
+  }
+  
+  // Itera attraverso arr2
+  for (const num of arr2) {
+    // Calcola il complemento necessario per raggiungere il target
+    const complement = target - num;
+    
+    // Se il complemento esiste nel Set, abbiamo trovato una coppia
+    if (mySet.has(complement)) {
+      // Aggiungi la coppia all'array (complemento da arr1, num da arr2)
+      pairs.push([complement, num]);
+    }
+  }
+  
+  // Ritorna tutte le coppie trovate
+  return pairs;
+}
+```
+
+</div>
+</details>
+
+**Pattern**: Simile a Two Sum, ma con due array separati invece di uno solo.
+
+## Longest Consecutive Sequence
+
+**Problema**: Trovare la lunghezza della sequenza consecutiva più lunga in un array di numeri.
+
+**Strategia - Set per lookup O(1)**:
+- Aggiungi tutti i numeri in un Set per lookup O(1)
+- Per ogni numero, verifica se è l'inizio di una sequenza (il numero - 1 non esiste)
+- Se è l'inizio, conta quanti numeri consecutivi seguono
+- Tieni traccia della sequenza più lunga trovata
+
+**Esempio**: 
+- `longestConsecutiveSequence([100, 4, 200, 1, 3, 2])` → `4` (sequenza: 1, 2, 3, 4)
+- `longestConsecutiveSequence([1, 3, 5, 2, 4])` → `5` (sequenza: 1, 2, 3, 4, 5)
+
+**Complessità**: O(n) tempo, O(n) spazio
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function longestConsecutiveSequence(nums) {
+  // Crea un Set per memorizzare tutti i numeri
+  const numSet = new Set();
+  
+  // Aggiungi tutti i numeri al Set
+  for (const num of nums) {
+    numSet.add(num);
+  }
+  
+  // Variabile per tenere traccia della sequenza più lunga
+  let longestStreak = 0;
+  
+  // Itera attraverso ogni numero nel Set
+  for (const num of numSet) {
+    // Verifica se questo numero è l'inizio di una sequenza
+    // Un numero è l'inizio se il numero precedente (num - 1) non esiste
+    if (!numSet.has(num - 1)) {
+      // Inizia a contare la sequenza da questo numero
+      let currentNum = num;
+      let currentStreak = 1;
+      
+      // Continua a contare finché troviamo numeri consecutivi
+      while (numSet.has(currentNum + 1)) {
+        currentNum++;
+        currentStreak++;
+      }
+      
+      // Aggiorna la sequenza più lunga se necessario
+      longestStreak = Math.max(longestStreak, currentStreak);
+    }
+  }
+  
+  // Ritorna la lunghezza della sequenza più lunga
+  return longestStreak;
+}
+```
+
+</div>
+</details>
+
+**Pattern chiave**: Verifica solo i numeri che sono l'inizio di una sequenza (num - 1 non esiste) per evitare di contare la stessa sequenza più volte.
+
+## Pattern comuni
+
+Questi problemi condividono pattern ricorrenti:
+
+1. **Hash Table per lookup O(1)**: Item In Common, Two Sum, Find Pairs
+   - Trasforma problemi O(n²) in O(n)
+   - Memorizza elementi visti per verifiche rapide
+
+2. **Conteggio con Hash Table**: Find Duplicates, First Non-Repeating Character
+   - Usa la hash table per contare occorrenze
+   - Poi filtra o cerca elementi con caratteristiche specifiche
+
+3. **Chiave canonica**: Group Anagrams
+   - Crea una rappresentazione standardizzata per raggruppare elementi simili
+   - Utile per problemi di raggruppamento
+
+4. **Prefix Sum**: Subarray Sum
+   - Usa somme cumulative per trasformare problemi di subarray
+   - Cerca differenze nella hash table invece di iterare tutti i subarray
+
+5. **Set per unicità**: Remove Duplicates, Has Unique Chars
+   - I Set garantiscono automaticamente l'unicità
+   - Perfetti per verifiche di duplicati
+
+6. **Complemento**: Two Sum, Find Pairs
+   - Invece di cercare due numeri, cerca il complemento di uno
+   - Riduce la complessità da O(n²) a O(n)
+
+Pratica questi pattern: compaiono spesso nei problemi di interviste e sono fondamentali per risolvere problemi complessi in modo efficiente.
+

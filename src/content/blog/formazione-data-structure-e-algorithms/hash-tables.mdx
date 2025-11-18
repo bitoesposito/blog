@@ -1,0 +1,423 @@
+---
+title: 'Hash Tables'
+description: 'Introduzione alle Hash Tables, strutture dati per accesso rapido a coppie chiave-valore'
+date: 2025-11-18
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 10
+---
+
+## Cos'è una Hash Table
+
+Una **hash table** (tabella hash) è una struttura dati che permette di memorizzare e recuperare coppie **chiave-valore** in modo estremamente efficiente. In JavaScript, gli **oggetti** sono implementati come hash table.
+
+**Concetto fondamentale**: invece di cercare un elemento scansionando tutta la struttura, una hash table usa una **funzione hash** per calcolare direttamente la posizione in memoria dove memorizzare o cercare un elemento.
+
+```javascript
+// Esempio: inventario di un negozio di ferramenta
+// Chiave: "nails" → Valore: 1000
+// La funzione hash calcola l'indirizzo dove memorizzare questa coppia
+```
+
+## Come funziona una Hash Table
+
+### Struttura base
+
+Una hash table è composta da:
+- **Array di indirizzi**: spazio di memoria (array) dove vengono memorizzati gli elementi
+- **Funzione hash**: calcola l'indirizzo basandosi sulla chiave
+- **Coppie chiave-valore**: i dati memorizzati nella tabella
+
+```javascript
+// Rappresentazione grafica
+// Array di indirizzi: [0] [1] [2] [3] [4] [5] [6]
+// 
+// set("nails", 1000) → hash("nails") = 2 → memorizza a indirizzo [2]
+// set("screws", 800) → hash("screws") = 6 → memorizza a indirizzo [6]
+```
+
+### Processo di inserimento
+
+1. **Input**: chiave e valore (es. `"nails"` e `1000`)
+2. **Hash**: solo la chiave viene processata dalla funzione hash
+3. **Calcolo indirizzo**: la funzione hash produce un numero (es. `2`)
+4. **Memorizzazione**: la coppia `[chiave, valore]` viene memorizzata all'indirizzo calcolato
+
+### Processo di ricerca
+
+1. **Input**: chiave da cercare (es. `"nails"`)
+2. **Hash**: la chiave viene processata dalla stessa funzione hash
+3. **Calcolo indirizzo**: produce lo stesso numero (es. `2`)
+4. **Accesso diretto**: vai direttamente all'indirizzo calcolato per recuperare il valore
+
+**Vantaggio**: l'accesso è **O(1)** invece di O(n) come nelle linked lists o array non ordinati.
+
+## Funzione Hash
+
+### Caratteristiche fondamentali
+
+Le funzioni hash hanno due caratteristiche essenziali:
+
+1. **One-way (unidirezionale)**: 
+   - Se `hash("nails")` produce `2`, non puoi invertire il processo
+   - Non puoi prendere `2` e ottenere `"nails"`
+   - La funzione hash è unidirezionale
+
+2. **Deterministic (deterministica)**:
+   - Se `hash("nails")` produce `2` una volta, produrrà sempre `2`
+   - La stessa chiave produce sempre lo stesso indirizzo
+   - Questo permette di trovare gli elementi in modo consistente
+
+### Come funziona
+
+La funzione hash prende una stringa e la converte in un numero usando:
+- **Valori ASCII**: ogni carattere ha un valore numerico
+- **Equazione matematica**: combina i valori ASCII con operazioni matematiche
+- **Modulo**: garantisce che il risultato sia nell'intervallo valido (0 a size-1)
+
+```javascript
+// Esempio semplificato
+// "nails" → valori ASCII: n=110, a=97, i=105, l=108, s=115
+// Equazione: (valori combinati * 23) % 7
+// Risultato: un numero tra 0 e 6
+```
+
+## Collisioni
+
+### Cos'è una collisione
+
+Una **collisione** si verifica quando due chiavi diverse producono lo stesso indirizzo hash.
+
+```javascript
+// Esempio
+hash("nails") = 2
+hash("bolts") = 2  // Collisione! Stesso indirizzo
+```
+
+### Metodi per gestire le collisioni
+
+Esistono diversi approcci per gestire le collisioni:
+
+#### 1. Separate Chaining (concatenamento separato)
+
+Gli elementi che collidono vengono memorizzati in una struttura dati (array o linked list) nello stesso indirizzo.
+
+```javascript
+// Indirizzo 2 contiene un array con più coppie chiave-valore
+[2] = [["nails", 1000], ["bolts", 500]]
+```
+
+**Vantaggi**:
+- Semplice da implementare
+- Non richiede riallocazione quando l'array si riempie
+- Permette di memorizzare tutti gli elementi che collidono
+
+**Svantaggi**:
+- Richiede memoria extra per le strutture ausiliarie
+- In caso di molte collisioni, la ricerca diventa O(n) invece di O(1)
+
+#### 2. Linear Probing (sondaggio lineare)
+
+Se un indirizzo è occupato, cerca il prossimo indirizzo libero.
+
+```javascript
+// hash("nails") = 2 → occupato
+// Prova indirizzo 3 → occupato
+// Prova indirizzo 4 → libero, inserisci qui
+```
+
+**Vantaggi**:
+- Utilizza solo l'array principale
+- Nessuna struttura ausiliaria necessaria
+
+**Svantaggi**:
+- Può creare "cluster" di elementi
+- La ricerca può richiedere più passaggi
+- Rimozione più complessa
+
+**Nota**: in questo documento useremo **separate chaining con array** per la nostra implementazione.
+
+## Implementazione
+
+### Classe HashTable
+
+Iniziamo creando la classe base per la hash table:
+
+```javascript
+class HashTable {
+  constructor(size = 7) {
+    // Crea un array vuoto di dimensione specificata
+    // Se non viene passata una dimensione, usa 7 (numero primo)
+    this.dataMap = new Array(size);
+  }
+}
+```
+
+**Perché 7?**: Usare un numero primo come dimensione dell'array aiuta a distribuire meglio gli elementi, riducendo le collisioni.
+
+### Funzione Hash
+
+La funzione hash è un metodo privato (indicato dall'underscore `_`) che calcola l'indirizzo per una chiave:
+
+```javascript
+_hash(key) {
+  // Variabile per accumulare il valore hash
+  let hash = 0;
+  
+  // Itera attraverso ogni carattere della chiave
+  for (let i = 0; i < key.length; i++) {
+    // Calcola: hash corrente + (valore ASCII del carattere * 23) % dimensione array
+    // 23 è un numero primo che aiuta la randomizzazione
+    hash = (hash + key.charCodeAt(i) * 23) % this.dataMap.length;
+  }
+  
+  // Ritorna un numero tra 0 e (dimensione - 1)
+  return hash;
+}
+```
+
+**Spiegazione dettagliata**:
+- `key.charCodeAt(i)`: ottiene il valore ASCII del carattere alla posizione `i`
+- `* 23`: moltiplica per un numero primo per aumentare la randomizzazione
+- `% this.dataMap.length`: usa il modulo per garantire che il risultato sia nell'intervallo valido
+- Il risultato è sempre un numero tra `0` e `size - 1`
+
+### Set - Inserire una coppia chiave-valore
+
+Il metodo `set` inserisce una nuova coppia chiave-valore nella hash table:
+
+```javascript
+set(key, value) {
+  // 1. Calcola l'indirizzo usando la funzione hash
+  let index = this._hash(key);
+  
+  // 2. Se l'indirizzo è vuoto, crea un array vuoto
+  // Questo è necessario per gestire le collisioni con separate chaining
+  if (!this.dataMap[index]) {
+    this.dataMap[index] = [];
+  }
+  
+  // 3. Aggiungi la coppia [chiave, valore] all'array all'indirizzo calcolato
+  this.dataMap[index].push([key, value]);
+  
+  // 4. Ritorna l'istanza per permettere il method chaining
+  return this;
+}
+```
+
+**Edge cases gestiti**:
+- Indirizzo vuoto: crea un nuovo array
+- Collisione: aggiunge la nuova coppia all'array esistente
+- Duplicati: vengono aggiunti come nuove entry (per aggiornare un valore esistente, serve logica aggiuntiva)
+
+**Esempio di utilizzo**:
+```javascript
+const myHashTable = new HashTable();
+myHashTable.set("nails", 1000);
+myHashTable.set("bolts", 500);
+// Se hash("bolts") = hash("nails"), entrambi saranno nell'array all'indirizzo calcolato
+```
+
+### Get - Recuperare un valore
+
+Il metodo `get` recupera il valore associato a una chiave:
+
+```javascript
+get(key) {
+  // 1. Calcola l'indirizzo usando la funzione hash
+  let index = this._hash(key);
+  
+  // 2. Verifica se esiste qualcosa all'indirizzo calcolato
+  if (this.dataMap[index]) {
+    // 3. Itera attraverso l'array all'indirizzo (gestisce collisioni)
+    for (let i = 0; i < this.dataMap[index].length; i++) {
+      // 4. Se la chiave corrisponde, ritorna il valore
+      // dataMap[index][i][0] è la chiave, [1] è il valore
+      if (this.dataMap[index][i][0] === key) {
+        return this.dataMap[index][i][1];
+      }
+    }
+  }
+  
+  // 5. Se la chiave non è stata trovata, ritorna undefined
+  return undefined;
+}
+```
+
+**Logica**:
+- Se non c'è nulla all'indirizzo → la chiave non esiste
+- Se c'è un array → itera per trovare la chiave corretta (gestisce collisioni)
+- Ritorna il valore se trovato, altrimenti `undefined`
+
+### Keys - Ottenere tutte le chiavi
+
+Il metodo `keys` ritorna un array con tutte le chiavi presenti nella hash table:
+
+```javascript
+keys() {
+  // 1. Array per memorizzare tutte le chiavi
+  let allKeys = [];
+  
+  // 2. Itera attraverso tutti gli indirizzi dell'array
+  for (let i = 0; i < this.dataMap.length; i++) {
+    // 3. Se c'è qualcosa all'indirizzo corrente
+    if (this.dataMap[i]) {
+      // 4. Itera attraverso l'array all'indirizzo (gestisce collisioni)
+      for (let j = 0; j < this.dataMap[i].length; j++) {
+        // 5. Aggiungi la chiave all'array delle chiavi
+        // dataMap[i][j][0] è la chiave
+        allKeys.push(this.dataMap[i][j][0]);
+      }
+    }
+  }
+  
+  // 6. Ritorna l'array con tutte le chiavi
+  return allKeys;
+}
+```
+
+**Pattern**: doppio loop annidato per attraversare tutti gli elementi, incluso quelli che hanno colliso.
+
+## Implementazione completa
+
+Ecco il codice completo della classe `HashTable`:
+
+```javascript
+class HashTable {
+  constructor(size = 7) {
+    this.dataMap = new Array(size);
+  }
+
+  _hash(key) {
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = (hash + key.charCodeAt(i) * 23) % this.dataMap.length;
+    }
+    return hash;
+  }
+
+  set(key, value) {
+    let index = this._hash(key);
+    if (!this.dataMap[index]) {
+      this.dataMap[index] = [];
+    }
+    this.dataMap[index].push([key, value]);
+    return this;
+  }
+
+  get(key) {
+    let index = this._hash(key);
+    if (this.dataMap[index]) {
+      for (let i = 0; i < this.dataMap[index].length; i++) {
+        if (this.dataMap[index][i][0] === key) {
+          return this.dataMap[index][i][1];
+        }
+      }
+    }
+    return undefined;
+  }
+
+  keys() {
+    let allKeys = [];
+    for (let i = 0; i < this.dataMap.length; i++) {
+      if (this.dataMap[i]) {
+        for (let j = 0; j < this.dataMap[i].length; j++) {
+          allKeys.push(this.dataMap[i][j][0]);
+        }
+      }
+    }
+    return allKeys;
+  }
+}
+```
+
+## Complessità Big O
+
+### Analisi delle operazioni
+
+| Operazione | Complessità | Note |
+|------------|-------------|------|
+| **Set** | O(1) medio | Hash + inserimento in array |
+| **Get** | O(1) medio | Hash + ricerca nell'array |
+| **Keys** | O(n) | Deve iterare attraverso tutti gli elementi |
+
+### Caso peggiore
+
+Nel **caso peggiore**, tutte le chiavi collidono nello stesso indirizzo:
+- L'array a quell'indirizzo diventa molto lungo
+- `get` e `set` diventano O(n) perché devono iterare attraverso l'array
+
+**Tuttavia**, con una buona funzione hash e una dimensione appropriata:
+- Le collisioni sono rare
+- La distribuzione è uniforme
+- Le operazioni rimangono **O(1)** nella pratica
+
+### Confronto con altre strutture
+
+| Operazione | Array (non ordinato) | Linked List | Hash Table |
+|------------|----------------------|-------------|------------|
+| **Lookup per chiave** | O(n) | O(n) | <span class="text-semibold text-green-500">O(1)</span> medio |
+| **Insert** | O(1) | O(1) | <span class="text-semibold text-green-500">O(1)</span> medio |
+| **Delete** | O(n) | O(n) | <span class="text-semibold text-green-500">O(1)</span> medio |
+
+**Vantaggio principale**: le hash table permettono accesso rapido ai dati tramite chiave, senza dover scansionare tutta la struttura.
+
+## Quando usare Hash Tables
+
+### Usa una Hash Table quando:
+- Devi **accedere frequentemente a elementi per chiave**: lookup O(1) vs O(n) di array/linked list
+- Hai bisogno di **memorizzare coppie chiave-valore**: inventari, dizionari, cache
+- Vuoi **evitare duplicati**: puoi verificare l'esistenza di una chiave in O(1)
+- Lavori con **dati non ordinati**: non hai bisogno di mantenere un ordine specifico
+
+### Non usare una Hash Table quando:
+- Hai bisogno di **mantenere un ordine**: le hash table non preservano l'ordine di inserimento
+- Devi **iterare in ordine**: non puoi iterare in modo ordinato
+- Lo spazio è limitato: le hash table possono avere overhead di memoria
+- Le collisioni sono frequenti: se la funzione hash non distribuisce bene, le prestazioni peggiorano
+
+## Hash Tables in JavaScript
+
+In JavaScript, ci sono due modi principali per usare hash tables:
+
+### 1. Oggetti (Objects)
+
+```javascript
+const inventory = {};
+inventory["nails"] = 1000;
+inventory["bolts"] = 500;
+
+// Accesso
+console.log(inventory["nails"]); // 1000
+```
+
+**Caratteristiche**:
+- Chiavi devono essere stringhe (o convertite in stringhe)
+- Prototipo con proprietà ereditate
+- Non mantiene l'ordine di inserimento (in versioni vecchie di JS)
+
+### 2. Map
+
+```javascript
+const inventory = new Map();
+inventory.set("nails", 1000);
+inventory.set("bolts", 500);
+
+// Accesso
+console.log(inventory.get("nails")); // 1000
+```
+
+**Caratteristiche**:
+- Chiavi possono essere di qualsiasi tipo
+- Nessun prototipo, solo le chiavi che aggiungi
+- Mantiene l'ordine di inserimento
+- Metodi dedicati: `set()`, `get()`, `has()`, `delete()`
+
+**Quando usare Map vs Object**:
+- Usa **Map** quando le chiavi non sono stringhe o quando vuoi garantire l'ordine
+- Usa **Object** per semplicità e quando le chiavi sono sempre stringhe
+
+## Esercizi e problemi comuni
+
+Per praticare e approfondire le hash tables, consulta la sezione dedicata agli [**esercizi e problemi comuni**](/blog/formazione-data-structure-e-algorithms/hash-tables-esercizi)
+
