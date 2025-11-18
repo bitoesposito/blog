@@ -33,14 +33,14 @@ const authors = defineCollection({
 })
 
 const projects = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/projects' }),
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/projects' }),
   schema: ({ image }) =>
     z.object({
       name: z.string(),
       description: z.string(),
       tags: z.array(z.string()),
-      image: image(),
-      link: z.string().url(),
+      image: image().optional(),
+      link: z.string().url().optional(), // Link esterno opzionale
       startDate: z.coerce.date().optional(),
       endDate: z.coerce.date().optional(),
     }),

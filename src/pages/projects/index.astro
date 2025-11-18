@@ -1,0 +1,28 @@
+---
+import ProjectCard from '@/components/ProjectCard.astro'
+import Breadcrumbs from '@/components/Breadcrumbs.astro'
+import PageHead from '@/components/PageHead.astro'
+import Layout from '@/layouts/Layout.astro'
+import { getAllProjects } from '@/lib/data-utils'
+
+// Recupera tutti i progetti dalla collection e li ordina per data di inizio
+const projects = await getAllProjects()
+---
+
+<Layout class="max-w-3xl">
+  <PageHead slot="head" title="Progetti" />
+  <Breadcrumbs items={[{ label: 'Progetti', icon: 'lucide:briefcase' }]} />
+  {
+    projects.length > 0 ? (
+      <ul class="flex flex-col gap-4">
+        {projects.map((project) => (
+          <li>
+            <ProjectCard project={project} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="text-muted-foreground text-center">Nessun progetto trovato.</p>
+    )
+  }
+</Layout>
