@@ -1,0 +1,581 @@
+---
+title: 'Heaps'
+description: 'Introduzione agli Heaps, strutture dati per implementare Priority Queues in modo efficiente'
+date: 2025-11-19
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 13
+---
+
+## Introduzione
+
+Gli **heaps** (code a priorità) sono una struttura dati basata su un binary tree con proprietà specifiche. A prima vista possono sembrare simili ai binary search trees, ma hanno caratteristiche e regole completamente diverse.
+
+## Caratteristiche degli Heaps
+
+### Struttura base
+
+Un heap è un **binary tree** con le seguenti caratteristiche:
+
+1. **Complete tree**: l'albero è sempre completo, cioè si riempie da sinistra a destra senza gap
+2. **Heap property**: ogni nodo ha un valore maggiore (max heap) o minore (min heap) di tutti i suoi discendenti
+3. **Duplicati permessi**: a differenza dei BST, gli heaps permettono valori duplicati
+
+```javascript
+// Esempio di max heap
+//        [99]
+//       /    \
+//    [72]    [61]
+//    /  \    /  \
+//  [65] [50] [45] [40]
+```
+
+### Max Heap vs Min Heap
+
+- **Max Heap**: il valore massimo è sempre alla radice. Ogni nodo è maggiore dei suoi discendenti
+- **Min Heap**: il valore minimo è sempre alla radice. Ogni nodo è minore dei suoi discendenti
+
+**Nota**: In questo corso implementeremo un **max heap**.
+
+### Complete Tree
+
+Un albero è **completo** quando:
+- Si riempie da sinistra a destra senza gap
+- Ogni livello (tranne l'ultimo) è completamente riempito
+- L'ultimo livello ha tutti i nodi a sinistra
+
+```javascript
+// ✅ Complete tree
+//        [A]
+//       /   \
+//     [B]   [C]
+//     / \
+//   [D] [E]
+
+// ❌ Non completo (gap a destra)
+//        [A]
+//       /   \
+//     [B]   [C]
+//     /
+//   [D]
+```
+
+### Ordine parziale
+
+A differenza dei BST, gli heaps **non hanno un ordine completo**. L'unica regola è che ogni nodo deve essere maggiore (o minore) dei suoi discendenti. Questo significa che:
+
+- I nodi al secondo livello possono essere scambiati tra loro e rimanere validi
+- Non c'è un ordine specifico tra nodi allo stesso livello
+- L'unica garanzia è che il massimo (o minimo) è sempre in cima
+
+```javascript
+// Entrambi sono max heap validi:
+//        [99]              [99]
+//       /    \            /    \
+//    [72]    [61]      [61]    [72]
+//    /  \    /  \      /  \    /  \
+//  [65] [50] [45] [40] [65] [50] [45] [40]
+```
+
+## Implementazione con Array
+
+A differenza dei BST che usano classi Node, gli heaps vengono implementati usando un **array**. Questo rende l'implementazione più efficiente e semplice.
+
+### Rappresentazione in array
+
+I nodi vengono memorizzati nell'array seguendo un ordine specifico:
+1. La radice va all'indice 0
+2. Si procede livello per livello, da sinistra a destra
+
+```javascript
+// Heap tree:
+//        [99]
+//       /    \
+//    [72]    [61]
+//    /  \    /  \
+//  [65] [50] [45] [40]
+
+// Array rappresentazione:
+[99, 72, 61, 65, 50, 45, 40]
+// 0   1   2   3   4   5   6
+```
+
+**Nota**: Esistono due modi comuni:
+- **Usare index 0**: più semplice matematicamente, useremo questo
+- **Lasciare index 0 vuoto**: alcune implementazioni preferiscono questo per formule più intuitive
+
+### Complete tree requirement
+
+Il requisito che l'albero sia completo è **critico** perché:
+- Permette di rappresentare l'albero come un array contiguo
+- Senza gap, gli indici sono consecutivi
+- Se ci fossero gap, non potremmo usare un array semplice
+
+## Formule matematiche per la navigazione
+
+Grazie alla struttura completa e alla rappresentazione in array, possiamo calcolare parent e children usando semplici formule matematiche.
+
+### Left Child (Figlio sinistro)
+
+```javascript
+leftChild(index) = 2 * index + 1
+```
+
+**Esempi**:
+- Index 0 → left child = 2 * 0 + 1 = **1**
+- Index 1 → left child = 2 * 1 + 1 = **3**
+- Index 2 → left child = 2 * 2 + 1 = **5**
+
+### Right Child (Figlio destro)
+
+```javascript
+rightChild(index) = 2 * index + 2
+```
+
+**Esempi**:
+- Index 0 → right child = 2 * 0 + 2 = **2**
+- Index 1 → right child = 2 * 1 + 2 = **4**
+- Index 2 → right child = 2 * 2 + 2 = **6**
+
+**Nota**: Il right child è sempre `leftChild + 1`.
+
+### Parent (Genitore)
+
+```javascript
+parent(index) = Math.floor((index - 1) / 2)
+```
+
+**Esempi**:
+- Index 1 → parent = Math.floor((1 - 1) / 2) = **0**
+- Index 2 → parent = Math.floor((2 - 1) / 2) = **0**
+- Index 3 → parent = Math.floor((3 - 1) / 2) = **1**
+- Index 6 → parent = Math.floor((6 - 1) / 2) = **2**
+
+**Spiegazione**: Usiamo `Math.floor()` per arrotondare verso il basso, eliminando la parte decimale.
+
+## Implementazione
+
+### Costruttore del MaxHeap
+
+Il costruttore crea un heap vuoto usando un array privato:
+
+```javascript
+class MaxHeap {
+  constructor() {
+    // Array privato per memorizzare i valori dell'heap
+    // Non esponiamo direttamente questo array per evitare modifiche esterne
+    this.heap = [];
+  }
+}
+```
+
+**Spiegazione**:
+- `this.heap = []`: crea un array vuoto che conterrà tutti i valori
+- L'array è privato (non esposto direttamente) per mantenere l'integrità dell'heap
+
+### Get Heap - Ottenere una copia dell'heap
+
+Espone una copia dell'heap invece dell'array originale per prevenire modifiche esterne:
+
+```javascript
+getHeap() {
+  // Ritorna una copia dell'array usando spread operator
+  // Questo previene modifiche dirette all'heap dall'esterno
+  return [...this.heap];
+}
+```
+
+**Perché una copia?**: Se esponessimo direttamente `this.heap`, il codice esterno potrebbe modificarlo direttamente, rompendo la struttura dell'heap. La copia protegge l'integrità dei dati.
+
+### Helper Methods
+
+Prima di implementare insert e remove, creiamo metodi helper per semplificare il codice:
+
+#### Left Child
+
+```javascript
+leftChild(index) {
+  // Calcola l'indice del figlio sinistro
+  return 2 * index + 1;
+}
+```
+
+#### Right Child
+
+```javascript
+rightChild(index) {
+  // Calcola l'indice del figlio destro
+  return 2 * index + 2;
+}
+```
+
+#### Parent
+
+```javascript
+parent(index) {
+  // Calcola l'indice del genitore
+  // Math.floor arrotonda verso il basso
+  return Math.floor((index - 1) / 2);
+}
+```
+
+#### Swap
+
+```javascript
+swap(index1, index2) {
+  // Scambia i valori alle due posizioni nell'array
+  const temp = this.heap[index1];
+  this.heap[index1] = this.heap[index2];
+  this.heap[index2] = temp;
+}
+```
+
+## Operazioni
+
+### Insert - Inserire un valore
+
+Inserisce un nuovo valore nell'heap mantenendo la proprietà di heap. **Complessità: O(log n)**
+
+**Logica**:
+1. **Aggiungi alla fine**: per mantenere l'albero completo, aggiungi il valore alla fine dell'array
+2. **Bubble up**: confronta il valore con il suo parent
+3. **Scambia se necessario**: se il valore è maggiore del parent, scambiali
+4. **Ripeti**: continua finché non raggiungi la radice o il parent è maggiore
+
+**Due condizioni per uscire dal loop**:
+- Il valore raggiunge la radice (index = 0)
+- Il parent è maggiore del valore corrente
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+insert(value) {
+  // Aggiungi il valore alla fine dell'array per mantenere l'albero completo
+  this.heap.push(value);
+  
+  // current punta all'indice dell'elemento appena inserito
+  let current = this.heap.length - 1;
+  
+  // Bubble up: sposta il valore verso l'alto finché necessario
+  while (current > 0) {
+    // Calcola l'indice del parent
+    const parentIndex = this.parent(current);
+    
+    // Se il valore corrente è maggiore del parent, scambiali
+    if (this.heap[current] > this.heap[parentIndex]) {
+      this.swap(current, parentIndex);
+      // Aggiorna current per puntare alla nuova posizione
+      current = parentIndex;
+    } else {
+      // Se il parent è maggiore, l'heap è valido, esci dal loop
+      break;
+    }
+  }
+}
+```
+
+</div>
+</details>
+
+**Spiegazione dettagliata**:
+1. **Push**: `this.heap.push(value)` aggiunge il valore alla fine, mantenendo l'albero completo
+2. **Current**: punta all'indice del valore appena inserito
+3. **While loop**: continua finché `current > 0` (non abbiamo raggiunto la radice)
+4. **Confronto**: se il valore corrente è maggiore del parent, scambiali
+5. **Update current**: dopo lo swap, current punta alla nuova posizione (il parent)
+6. **Break**: se il parent è maggiore, l'heap è valido e possiamo fermarci
+
+**Esempio di utilizzo**:
+```javascript
+const heap = new MaxHeap();
+heap.insert(50);
+heap.insert(30);
+heap.insert(100);  // Bubble up fino alla radice
+// Risultato: [100, 50, 30]
+```
+
+### Remove - Rimuovere il valore massimo
+
+Rimuove e ritorna il valore massimo (radice) dell'heap. **Complessità: O(log n)**
+
+**Logica**:
+1. **Edge cases**: gestisci heap vuoto e heap con un solo elemento
+2. **Salva il massimo**: salva il valore alla radice (index 0)
+3. **Sostituisci con l'ultimo**: sposta l'ultimo elemento alla radice per mantenere l'albero completo
+4. **Sink down**: sposta il valore verso il basso confrontandolo con i suoi figli
+5. **Ritorna il massimo**: ritorna il valore salvato
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+remove() {
+  // Edge case: heap vuoto
+  if (this.heap.length === 0) {
+    return null;
+  }
+  
+  // Edge case: heap con un solo elemento
+  if (this.heap.length === 1) {
+    return this.heap.pop();
+  }
+  
+  // Salva il valore massimo (alla radice)
+  const maxValue = this.heap[0];
+  
+  // Sostituisci la radice con l'ultimo elemento per mantenere l'albero completo
+  this.heap[0] = this.heap.pop();
+  
+  // Sink down: sposta il valore verso il basso nella posizione corretta
+  this.sinkDown(0);
+  
+  // Ritorna il valore massimo
+  return maxValue;
+}
+```
+
+</div>
+</details>
+
+**Spiegazione dettagliata**:
+1. **Heap vuoto**: ritorna `null` se non ci sono elementi
+2. **Un solo elemento**: rimuovi e ritorna direttamente
+3. **Salva massimo**: il valore alla radice è il massimo
+4. **Sostituisci**: `this.heap[0] = this.heap.pop()` sposta l'ultimo elemento alla radice
+5. **Sink down**: chiama il metodo helper per riorganizzare l'heap
+
+### Sink Down - Metodo helper per remove
+
+Sposta un valore verso il basso confrontandolo con i suoi figli. **Complessità: O(log n)**
+
+**Logica**:
+1. Confronta il valore corrente con i suoi figli
+2. Trova il figlio con il valore maggiore
+3. Se il figlio maggiore è più grande del valore corrente, scambiali
+4. Continua finché il valore non è nella posizione corretta
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+sinkDown(index) {
+  // maxIndex punta al nodo con il valore maggiore tra current e i suoi figli
+  let maxIndex = index;
+  const size = this.heap.length;
+  
+  // Continua finché non troviamo la posizione corretta
+  while (true) {
+    // Calcola gli indici dei figli
+    const leftIndex = this.leftChild(index);
+    const rightIndex = this.rightChild(index);
+    
+    // Confronta con il figlio sinistro (se esiste)
+    if (leftIndex < size && this.heap[leftIndex] > this.heap[maxIndex]) {
+      maxIndex = leftIndex;
+    }
+    
+    // Confronta con il figlio destro (se esiste)
+    if (rightIndex < size && this.heap[rightIndex] > this.heap[maxIndex]) {
+      maxIndex = rightIndex;
+    }
+    
+    // Se maxIndex è cambiato, dobbiamo fare uno swap
+    if (maxIndex !== index) {
+      this.swap(index, maxIndex);
+      // Aggiorna index per continuare il sink down
+      index = maxIndex;
+    } else {
+      // Se maxIndex non è cambiato, il valore è nella posizione corretta
+      return;
+    }
+  }
+}
+```
+
+</div>
+</details>
+
+**Spiegazione dettagliata**:
+1. **maxIndex**: tiene traccia del nodo con il valore maggiore
+2. **Validazione indici**: controlla che `leftIndex < size` e `rightIndex < size` prima di accedere
+3. **Confronto figli**: confronta il valore corrente con entrambi i figli
+4. **Aggiorna maxIndex**: se un figlio è maggiore, aggiorna maxIndex
+5. **Swap**: se maxIndex è cambiato, scambia e continua
+6. **Return**: se maxIndex non è cambiato, il valore è nella posizione corretta
+
+**Importante**: Dobbiamo sempre verificare che gli indici dei figli siano validi (`< size`) prima di accedere all'array, altrimenti potremmo accedere a posizioni inesistenti.
+
+## Implementazione completa
+
+Ecco il codice completo della classe `MaxHeap`:
+
+```javascript
+class MaxHeap {
+  constructor() {
+    // Array privato per memorizzare i valori dell'heap
+    this.heap = [];
+  }
+
+  getHeap() {
+    // Ritorna una copia dell'array per prevenire modifiche esterne
+    return [...this.heap];
+  }
+
+  leftChild(index) {
+    // Calcola l'indice del figlio sinistro
+    return 2 * index + 1;
+  }
+
+  rightChild(index) {
+    // Calcola l'indice del figlio destro
+    return 2 * index + 2;
+  }
+
+  parent(index) {
+    // Calcola l'indice del genitore
+    return Math.floor((index - 1) / 2);
+  }
+
+  swap(index1, index2) {
+    // Scambia i valori alle due posizioni
+    const temp = this.heap[index1];
+    this.heap[index1] = this.heap[index2];
+    this.heap[index2] = temp;
+  }
+
+  insert(value) {
+    // Aggiungi il valore alla fine dell'array
+    this.heap.push(value);
+    let current = this.heap.length - 1;
+
+    // Bubble up: sposta il valore verso l'alto
+    while (current > 0) {
+      const parentIndex = this.parent(current);
+      if (this.heap[current] > this.heap[parentIndex]) {
+        this.swap(current, parentIndex);
+        current = parentIndex;
+      } else {
+        break;
+      }
+    }
+  }
+
+  remove() {
+    // Edge case: heap vuoto
+    if (this.heap.length === 0) {
+      return null;
+    }
+
+    // Edge case: heap con un solo elemento
+    if (this.heap.length === 1) {
+      return this.heap.pop();
+    }
+
+    // Salva il valore massimo
+    const maxValue = this.heap[0];
+
+    // Sostituisci la radice con l'ultimo elemento
+    this.heap[0] = this.heap.pop();
+
+    // Sink down: riorganizza l'heap
+    this.sinkDown(0);
+
+    // Ritorna il valore massimo
+    return maxValue;
+  }
+
+  sinkDown(index) {
+    let maxIndex = index;
+    const size = this.heap.length;
+
+    while (true) {
+      const leftIndex = this.leftChild(index);
+      const rightIndex = this.rightChild(index);
+
+      // Confronta con il figlio sinistro (se esiste)
+      if (leftIndex < size && this.heap[leftIndex] > this.heap[maxIndex]) {
+        maxIndex = leftIndex;
+      }
+
+      // Confronta con il figlio destro (se esiste)
+      if (rightIndex < size && this.heap[rightIndex] > this.heap[maxIndex]) {
+        maxIndex = rightIndex;
+      }
+
+      // Se maxIndex è cambiato, scambia e continua
+      if (maxIndex !== index) {
+        this.swap(index, maxIndex);
+        index = maxIndex;
+      } else {
+        // Il valore è nella posizione corretta
+        return;
+      }
+    }
+  }
+}
+```
+
+## Priority Queue
+
+Un **Priority Queue** è una struttura dati che ritorna sempre l'elemento con la priorità più alta. Gli heaps sono la struttura dati **più comune** per implementare priority queue.
+
+### Perché usare Heaps per Priority Queue?
+
+Confrontiamo le complessità delle operazioni principali:
+
+| Struttura Dati | Insert | Remove Max | Note |
+|----------------|--------|------------|------|
+| **Linked List** | O(1) | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | Deve scansionare tutta la lista per trovare il max |
+| **Array (non ordinato)** | O(1) | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | Deve iterare per trovare il max |
+| **Object/Map** | O(1) | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | Deve iterare tutte le chiavi per trovare il max |
+| **BST (bilanciato)** | <span class="text-yellow-600 dark:text-yellow-400 font-semibold">O(log n)</span> | <span class="text-yellow-600 dark:text-yellow-400 font-semibold">O(log n)</span> | Può diventare O(n) se sbilanciato |
+| **Heap** | <span class="text-green-600 dark:text-green-400 font-semibold">O(log n)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(log n)</span> | Sempre bilanciato, garantito O(log n) |
+
+**Vantaggi degli Heaps**:
+- **Sempre bilanciato**: grazie alla proprietà di complete tree, l'altezza è sempre log n
+- **Garantito O(log n)**: a differenza dei BST, non può degenerare in O(n)
+- **Efficiente**: insert e remove sono entrambi O(log n)
+
+**Altezza dell'albero**: L'altezza di un heap completo è sempre **log₂(n)**, dove n è il numero di nodi. Questo significa che:
+- Insert: bubble up al massimo log n livelli → **O(log n)**
+- Remove: sink down al massimo log n livelli → **O(log n)**
+
+## Complessità temporale (Big O)
+
+| Operazione | Complessità | Spiegazione |
+|------------|-------------|-------------|
+| **Insert** | <span class="text-green-600 dark:text-green-400 font-semibold">O(log n)</span> | Bubble up al massimo log n livelli |
+| **Remove** | <span class="text-green-600 dark:text-green-400 font-semibold">O(log n)</span> | Sink down al massimo log n livelli |
+| **Get Max** | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | Sempre alla radice (index 0) |
+| **Space** | O(n) | Array di n elementi |
+
+**Nota**: L'efficienza deriva dal fatto che l'albero è sempre completo, quindi l'altezza è sempre log n, garantendo operazioni O(log n).
+
+## Quando usare Heaps
+
+### Usa un Heap quando:
+- Devi implementare una **Priority Queue**: sempre ritornare l'elemento con priorità più alta
+- Hai bisogno di **operazioni O(log n) garantite**: a differenza dei BST, gli heaps sono sempre bilanciati
+- Non hai bisogno di **ricerca per valore**: gli heaps non supportano ricerca efficiente (O(n))
+- Hai bisogno di **duplicati**: gli heaps permettono valori duplicati
+
+### Esempi pratici:
+1. **Scheduling di processi**: processi con priorità diverse
+2. **Dijkstra's Algorithm**: trova il percorso più breve
+3. **Merge K sorted arrays**: fusione efficiente di array ordinati
+4. **Event simulation**: eventi con timestamp diversi
+5. **Load balancing**: distribuire carichi in base alla priorità
+
+### Non usare un Heap quando:
+- Hai bisogno di **ricerca per valore**: usa BST o Hash Table
+- Hai bisogno di **accesso casuale**: gli heaps non supportano accesso per indice
+- Hai bisogno di **ordinamento completo**: gli heaps mantengono solo ordine parziale
+
+## Esercizi e problemi comuni
+
+Per praticare e approfondire gli heaps, consulta la sezione dedicata agli [**esercizi e problemi comuni**](/blog/formazione-data-structure-e-algorithms/heaps-esercizi)
+

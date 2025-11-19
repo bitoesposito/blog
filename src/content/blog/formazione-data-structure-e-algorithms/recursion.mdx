@@ -1,0 +1,726 @@
+---
+title: 'Recursion'
+description: 'Introduzione alla Recursion, una tecnica di programmazione dove una funzione chiama se stessa'
+date: 2025-11-19
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 14
+---
+
+## Introduzione
+
+La **recursion** (ricorsione) è una tecnica di programmazione dove una funzione chiama se stessa per risolvere un problema. È un concetto fondamentale che permette di risolvere problemi complessi dividendoli in problemi più piccoli e simili.
+
+**Concetto chiave**: invece di usare loop iterativi, la recursion risolve un problema chiamando la stessa funzione con input progressivamente più piccoli fino a raggiungere un caso base.
+
+## Analogia: Scatole Regalo
+
+Immagina di avere una scatola regalo che potrebbe contenere:
+- Un'altra scatola regalo (che potrebbe contenere un'altra scatola...)
+- Una pallina (l'oggetto che stiamo cercando)
+
+```javascript
+// Funzione ricorsiva per aprire scatole regalo
+function openGiftBox(box) {
+  // Base case: se troviamo la pallina, fermiamoci
+  if (box.contains === 'ball') {
+    return 'ball';
+  }
+  
+  // Recursive case: se c'è un'altra scatola, apriamo quella
+  return openGiftBox(box.contains);
+}
+```
+
+**Come funziona**:
+1. Apriamo la prima scatola
+2. Se contiene la pallina → **base case**, ritorniamo
+3. Se contiene un'altra scatola → **recursive case**, apriamo quella scatola
+4. Ripetiamo finché non troviamo la pallina
+
+## Componenti fondamentali della Recursion
+
+Ogni funzione ricorsiva deve avere **due componenti essenziali**:
+
+### 1. Base Case (Caso Base)
+
+Il **base case** è la condizione che ferma la ricorsione. Senza di esso, la funzione continuerebbe a chiamare se stessa all'infinito.
+
+```javascript
+function openGiftBox(box) {
+  // Base case: quando troviamo la pallina, fermiamoci
+  if (box.contains === 'ball') {
+    return 'ball';  // ← BASE CASE
+  }
+  
+  // Recursive case
+  return openGiftBox(box.contains);
+}
+```
+
+**Caratteristiche del base case**:
+- Deve essere una condizione che **prima o poi diventa vera**
+- Quando è vera, la funzione **non chiama più se stessa**
+- Deve avere un **return statement** per fermare l'esecuzione
+
+### 2. Recursive Case (Caso Ricorsivo)
+
+Il **recursive case** è dove la funzione chiama se stessa con un input più piccolo o modificato.
+
+```javascript
+function openGiftBox(box) {
+  // Base case
+  if (box.contains === 'ball') {
+    return 'ball';
+  }
+  
+  // Recursive case: chiama se stessa con la scatola interna
+  return openGiftBox(box.contains);  // ← RECURSIVE CASE
+}
+```
+
+**Caratteristiche del recursive case**:
+- Deve chiamare la funzione con un input **progressivamente più piccolo**
+- L'input deve avvicinarsi al base case
+- Senza progresso verso il base case, si crea un loop infinito
+
+## Errori comuni nella Recursion
+
+### 1. Base case che non diventa mai vero
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esempio errore e spiegazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+// ❌ ERRORE: il base case non sarà mai vero
+function badRecursion(n) {
+  if (n > 2) {  // Se n inizia da 1, questo non sarà mai vero
+    return n;
+  }
+  return badRecursion(n + 1);  // Loop infinito!
+}
+```
+
+**Problema**: Se chiamiamo `badRecursion(1)`, la condizione `n > 2` non sarà mai vera, causando un loop infinito. La funzione continuerà a chiamare se stessa con valori sempre più grandi (`2, 3, 4, 5...`) senza mai raggiungere il base case.
+
+</div>
+</details>
+
+### 2. Manca il return statement nel base case
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esempio errore e soluzione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+// ❌ ERRORE: manca il return statement
+function badRecursion(box) {
+  if (box.contains === 'ball') {
+    console.log('Found ball!');  // Solo console.log, nessun return
+  }
+  return badRecursion(box.contains);  // Continua comunque!
+}
+```
+
+**Problema**: Anche se il base case è raggiunto, senza `return` la funzione continua l'esecuzione e chiama se stessa di nuovo, causando un loop infinito.
+
+**Soluzione corretta**:
+```javascript
+// ✅ CORRETTO: return statement nel base case
+function goodRecursion(box) {
+  if (box.contains === 'ball') {
+    return 'ball';  // Return ferma l'esecuzione
+  }
+  return goodRecursion(box.contains);
+}
+```
+
+</div>
+</details>
+
+### 3. Input che non si avvicina al base case
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esempio errore e soluzione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+// ❌ ERRORE: l'input non si avvicina al base case
+function badRecursion(n) {
+  if (n === 0) {
+    return 0;
+  }
+  return badRecursion(n);  // Stesso input, loop infinito!
+}
+```
+
+**Problema**: L'input `n` non cambia, quindi non si avvicina mai al base case `n === 0`.
+
+**Soluzione corretta**:
+```javascript
+// ✅ CORRETTO: l'input si avvicina al base case
+function goodRecursion(n) {
+  if (n === 0) {
+    return 0;
+  }
+  return goodRecursion(n - 1);  // Input diminuisce
+}
+```
+
+</div>
+</details>
+
+## Call Stack
+
+Per comprendere completamente la recursion, è essenziale capire come funziona il **call stack** (pila di chiamate).
+
+### Cos'è il Call Stack
+
+Il call stack è una struttura dati di tipo **stack** (LIFO - Last In, First Out) che tiene traccia delle chiamate di funzione. Quando una funzione viene chiamata, viene aggiunta (push) al call stack. Quando termina, viene rimossa (pop).
+
+**Analogia**: Come una pila di palline da tennis - puoi accedere solo alla pallina in cima. Per raggiungere quella in fondo, devi rimuovere tutte quelle sopra.
+
+### Call Stack con funzioni non ricorsive
+
+```javascript
+function functionOne() {
+  console.log('1');
+  functionTwo();
+  console.log('1');
+}
+
+function functionTwo() {
+  console.log('2');
+  functionThree();
+  console.log('2');
+}
+
+function functionThree() {
+  console.log('3');
+}
+
+functionOne();
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esecuzione dettagliata e Call Stack</summary>
+<div class="px-4 pb-4">
+
+**Esecuzione e Call Stack**:
+
+```
+1. functionOne() viene chiamata → push su call stack
+   Call Stack: [functionOne]
+
+2. functionOne esegue console.log('1') → stampa "1"
+
+3. functionOne chiama functionTwo() → push su call stack
+   Call Stack: [functionOne, functionTwo]
+
+4. functionTwo esegue console.log('2') → stampa "2"
+
+5. functionTwo chiama functionThree() → push su call stack
+   Call Stack: [functionOne, functionTwo, functionThree]
+
+6. functionThree esegue console.log('3') → stampa "3"
+
+7. functionThree termina → pop dal call stack
+   Call Stack: [functionOne, functionTwo]
+
+8. functionTwo esegue console.log('2') → stampa "2"
+
+9. functionTwo termina → pop dal call stack
+   Call Stack: [functionOne]
+
+10. functionOne esegue console.log('1') → stampa "1"
+
+11. functionOne termina → pop dal call stack
+    Call Stack: []
+```
+
+**Output**: `3, 2, 1` (ordine inverso rispetto alle chiamate!)
+
+**Nota importante**: Le funzioni vengono eseguite in ordine **inverso** rispetto a come sono state aggiunte al call stack (LIFO).
+
+</div>
+</details>
+
+### Call Stack con funzioni ricorsive
+
+Con la recursion, la stessa funzione viene aggiunta al call stack più volte:
+
+```javascript
+function factorial(n) {
+  if (n === 1) {
+    return 1;
+  }
+  return n * factorial(n - 1);
+}
+
+factorial(4);
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esecuzione dettagliata e Call Stack</summary>
+<div class="px-4 pb-4">
+
+**Esecuzione e Call Stack**:
+
+```
+1. factorial(4) viene chiamata → push su call stack
+   Call Stack: [factorial(4)]
+
+2. n !== 1, quindi chiama factorial(3) → push su call stack
+   Call Stack: [factorial(4), factorial(3)]
+
+3. n !== 1, quindi chiama factorial(2) → push su call stack
+   Call Stack: [factorial(4), factorial(3), factorial(2)]
+
+4. n !== 1, quindi chiama factorial(1) → push su call stack
+   Call Stack: [factorial(4), factorial(3), factorial(2), factorial(1)]
+
+5. n === 1, base case raggiunto → return 1
+   factorial(1) termina → pop dal call stack
+   Call Stack: [factorial(4), factorial(3), factorial(2)]
+
+6. factorial(2) calcola 2 * 1 = 2 → return 2
+   factorial(2) termina → pop dal call stack
+   Call Stack: [factorial(4), factorial(3)]
+
+7. factorial(3) calcola 3 * 2 = 6 → return 6
+   factorial(3) termina → pop dal call stack
+   Call Stack: [factorial(4)]
+
+8. factorial(4) calcola 4 * 6 = 24 → return 24
+   factorial(4) termina → pop dal call stack
+   Call Stack: []
+```
+
+**Risultato**: `24`
+
+</div>
+</details>
+
+## Esempio classico: Factorial
+
+Il **factorial** (fattoriale) è l'esempio più comune usato per spiegare la recursion. È perfetto perché il problema si scompone naturalmente in sottoproblemi identici.
+
+### Cos'è il Factorial
+
+Il factorial di un numero `n` (scritto come `n!`) è il prodotto di tutti i numeri interi positivi da 1 a n:
+
+```
+4! = 4 × 3 × 2 × 1 = 24
+5! = 5 × 4 × 3 × 2 × 1 = 120
+```
+
+### Pattern ricorsivo
+
+Il factorial ha un pattern naturale che si presta alla recursion:
+
+```
+4! = 4 × 3 × 2 × 1
+    = 4 × (3 × 2 × 1)
+    = 4 × 3!
+    
+3! = 3 × 2 × 1
+    = 3 × (2 × 1)
+    = 3 × 2!
+    
+2! = 2 × 1
+    = 2 × 1!
+    
+1! = 1  ← BASE CASE
+```
+
+**Pattern generale**: `n! = n × (n-1)!`
+
+### Implementazione ricorsiva
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function factorial(n) {
+  // Base case: quando n è 1, ritorna 1
+  // 1! = 1 è il caso più semplice
+  if (n === 1) {
+    return 1;
+  }
+  
+  // Recursive case: n! = n × (n-1)!
+  // Chiama se stessa con n-1, che si avvicina al base case
+  return n * factorial(n - 1);
+}
+```
+
+</div>
+</details>
+
+### Esecuzione passo-passo
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra analisi passo-passo di factorial(4)</summary>
+<div class="px-4 pb-4">
+
+Analizziamo `factorial(4)` passo per passo:
+
+```javascript
+factorial(4)
+```
+
+**Passo 1**: `factorial(4)` viene chiamata
+- `n = 4`, non è 1, quindi va al recursive case
+- Deve calcolare `4 * factorial(3)`
+- **Aspetta** che `factorial(3)` ritorni un valore
+
+**Passo 2**: `factorial(3)` viene chiamata
+- `n = 3`, non è 1, quindi va al recursive case
+- Deve calcolare `3 * factorial(2)`
+- **Aspetta** che `factorial(2)` ritorni un valore
+
+**Passo 3**: `factorial(2)` viene chiamata
+- `n = 2`, non è 1, quindi va al recursive case
+- Deve calcolare `2 * factorial(1)`
+- **Aspetta** che `factorial(1)` ritorni un valore
+
+**Passo 4**: `factorial(1)` viene chiamata
+- `n = 1`, **base case raggiunto!**
+- Ritorna `1` immediatamente
+
+**Passo 5**: `factorial(2)` riceve il risultato
+- `factorial(1)` ha ritornato `1`
+- Calcola `2 * 1 = 2`
+- Ritorna `2` a `factorial(3)`
+
+**Passo 6**: `factorial(3)` riceve il risultato
+- `factorial(2)` ha ritornato `2`
+- Calcola `3 * 2 = 6`
+- Ritorna `6` a `factorial(4)`
+
+**Passo 7**: `factorial(4)` riceve il risultato
+- `factorial(3)` ha ritornato `6`
+- Calcola `4 * 6 = 24`
+- Ritorna `24` come risultato finale
+
+**Risultato**: `24`
+
+</div>
+</details>
+
+### Visualizzazione con scatole regalo
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra visualizzazione con scatole regalo</summary>
+<div class="px-4 pb-4">
+
+Possiamo visualizzare la recursion del factorial come scatole regalo annidate:
+
+```
+factorial(4) ──┐
+               │ chiama
+               ▼
+          factorial(3) ──┐
+                          │ chiama
+                          ▼
+                     factorial(2) ──┐
+                                    │ chiama
+                                    ▼
+                               factorial(1) ──┐ BASE CASE
+                                              │ return 1
+                                              ▼
+                                    return 2 ←┘ (2 × 1)
+                          return 6 ←───────────┘ (3 × 2)
+               return 24 ←──────────────────────┘ (4 × 6)
+```
+
+Ogni scatola rappresenta una chiamata ricorsiva. La scatola più interna (`factorial(1)`) è il base case che ritorna il valore, e i valori vengono propagati verso l'esterno.
+
+</div>
+</details>
+
+### Visualizzazione con Call Stack
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra visualizzazione del Call Stack</summary>
+<div class="px-4 pb-4">
+
+```
+Call Stack durante l'esecuzione:
+
+1. [factorial(4)]                    ← Inizio
+2. [factorial(4), factorial(3)]       ← Chiamata ricorsiva
+3. [factorial(4), factorial(3), factorial(2)]  ← Chiamata ricorsiva
+4. [factorial(4), factorial(3), factorial(2), factorial(1)]  ← Base case
+5. [factorial(4), factorial(3), factorial(2)]   ← factorial(1) ritorna 1
+6. [factorial(4), factorial(3)]       ← factorial(2) ritorna 2
+7. [factorial(4)]                    ← factorial(3) ritorna 6
+8. []                                 ← factorial(4) ritorna 24
+```
+
+Nota come la stessa funzione `factorial` appare più volte nel call stack, ognuna con un valore di `n` diverso. Quando il base case viene raggiunto, le funzioni vengono rimosse una alla volta (LIFO).
+
+</div>
+</details>
+
+### Crescita del Factorial
+
+Il factorial cresce **estremamente velocemente**:
+
+| n  | n!        |
+|----|-----------|
+| 1  | 1         |
+| 2  | 2         |
+| 3  | 6         |
+| 4  | 24        |
+| 5  | 120       |
+| 6  | 720       |
+| 7  | 5,040     |
+| 8  | 40,320    |
+| 9  | 362,880   |
+| 10 | 3,628,800 |
+| 20 | 2,432,902,008,176,640,000 |
+
+**Nota**: Con numeri grandi, il factorial diventa rapidamente enorme. Questo è importante da considerare quando si implementa la recursion per evitare stack overflow.
+
+## Quando usare la Recursion
+
+### Vantaggi della Recursion
+
+1. **Codice più pulito e leggibile**: per alcuni problemi, la soluzione ricorsiva è più naturale e facile da capire
+2. **Divide et impera**: divide problemi complessi in sottoproblemi più semplici
+3. **Strutture dati ricorsive**: perfetta per lavorare con strutture dati che hanno natura ricorsiva (tree, graph)
+
+### Svantaggi della Recursion
+
+1. **Stack overflow**: se la recursion è troppo profonda, può causare stack overflow
+2. **Performance**: generalmente più lenta delle soluzioni iterative a causa del overhead del call stack
+3. **Memoria**: ogni chiamata ricorsiva occupa spazio nel call stack
+
+### Quando usare la Recursion
+
+**Usa la recursion quando**:
+- Il problema può essere diviso in sottoproblemi identici
+- La soluzione ricorsiva è più naturale e leggibile
+- Lavori con strutture dati ricorsive (tree, graph)
+- La profondità della recursion è limitata e prevedibile
+
+**Non usare la recursion quando**:
+- La profondità della recursion può essere molto grande (rischio stack overflow)
+- La performance è critica (le soluzioni iterative sono generalmente più veloci)
+- Il problema è semplice da risolvere iterativamente
+
+### Recursion vs Iterazione
+
+Molti problemi possono essere risolti sia ricorsivamente che iterativamente:
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra confronto tra soluzioni ricorsive e iterative</summary>
+<div class="px-4 pb-4">
+
+**Factorial ricorsivo**:
+```javascript
+function factorialRecursive(n) {
+  if (n === 1) return 1;
+  return n * factorialRecursive(n - 1);
+}
+```
+
+**Factorial iterativo**:
+```javascript
+function factorialIterative(n) {
+  let result = 1;
+  for (let i = 2; i <= n; i++) {
+    result *= i;
+  }
+  return result;
+}
+```
+
+**Confronto**:
+- **Ricorsivo**: più elegante, ma usa più memoria (call stack)
+- **Iterativo**: più efficiente in memoria, ma codice più verboso
+
+La scelta dipende dal contesto e dai requisiti del problema.
+
+</div>
+</details>
+
+## Pattern comuni nella Recursion
+
+### 1. Accumulazione di risultati
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esempio: somma elementi array</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function sumArray(arr, index = 0) {
+  // Base case: fine dell'array
+  if (index >= arr.length) {
+    return 0;
+  }
+  
+  // Recursive case: somma elemento corrente + somma del resto
+  return arr[index] + sumArray(arr, index + 1);
+}
+```
+
+**Spiegazione**: La funzione accumula il risultato sommando l'elemento corrente con la somma del resto dell'array. Il base case ritorna 0 quando si raggiunge la fine dell'array.
+
+</div>
+</details>
+
+### 2. Trasformazione di strutture dati
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esempio: invertire stringa</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function reverseString(str) {
+  // Base case: stringa vuota o con un solo carattere
+  if (str.length <= 1) {
+    return str;
+  }
+  
+  // Recursive case: ultimo carattere + reverse del resto
+  return str[str.length - 1] + reverseString(str.slice(0, -1));
+}
+```
+
+**Spiegazione**: La funzione costruisce la stringa invertita prendendo l'ultimo carattere e concatenandolo con il reverse del resto. Il base case ritorna la stringa quando ha 0 o 1 carattere.
+
+</div>
+</details>
+
+### 3. Navigazione di strutture dati ricorsive
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esempio: contare nodi in un tree</summary>
+<div class="px-4 pb-4">
+
+```javascript
+function countNodes(tree) {
+  // Base case: nodo nullo
+  if (!tree) {
+    return 0;
+  }
+  
+  // Recursive case: 1 (nodo corrente) + count dei figli
+  return 1 + countNodes(tree.left) + countNodes(tree.right);
+}
+```
+
+**Spiegazione**: La funzione conta i nodi visitando ricorsivamente il tree. Conta 1 per il nodo corrente e somma i conteggi dei sottoalberi sinistro e destro. Il base case ritorna 0 quando si raggiunge un nodo nullo.
+
+</div>
+</details>
+
+## Debugging della Recursion
+
+Debugging di funzioni ricorsive può essere complesso. Ecco alcune strategie:
+
+### 1. Usa il debugger del browser
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra come usare il debugger</summary>
+<div class="px-4 pb-4">
+
+Il debugger del browser è uno strumento potente per debuggare funzioni ricorsive. Permette di:
+
+- **Vedere il call stack in tempo reale**: visualizza tutte le chiamate ricorsive attive
+- **Inseguire l'esecuzione passo-passo**: esegui una riga alla volta per vedere il flusso
+- **Vedere i valori delle variabili**: ispeziona i valori di `n` (o altre variabili) ad ogni livello di recursion
+- **Impostare breakpoint**: ferma l'esecuzione in punti specifici per analizzare lo stato
+
+**Come usarlo**:
+1. Apri DevTools (F12)
+2. Vai alla tab "Sources" o "Debugger"
+3. Imposta un breakpoint sulla funzione ricorsiva
+4. Usa i pulsanti "Step Over", "Step Into", "Step Out" per navigare
+5. Osserva il call stack nel pannello laterale
+
+</div>
+</details>
+
+### 2. Aggiungi console.log strategici
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra esempio con console.log</summary>
+<div class="px-4 pb-4">
+
+Aggiungere `console.log` strategici aiuta a tracciare il flusso di esecuzione:
+
+```javascript
+function factorial(n) {
+  console.log(`Chiamata factorial(${n})`);
+  
+  if (n === 1) {
+    console.log(`Base case raggiunto, ritorno 1`);
+    return 1;
+  }
+  
+  const result = n * factorial(n - 1);
+  console.log(`factorial(${n}) ritorna ${result}`);
+  return result;
+}
+```
+
+**Output per `factorial(4)`**:
+```
+Chiamata factorial(4)
+Chiamata factorial(3)
+Chiamata factorial(2)
+Chiamata factorial(1)
+Base case raggiunto, ritorno 1
+factorial(2) ritorna 2
+factorial(3) ritorna 6
+factorial(4) ritorna 24
+```
+
+Questo mostra chiaramente l'ordine di esecuzione e quando viene raggiunto il base case.
+
+</div>
+</details>
+
+### 3. Verifica il base case
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra checklist per il base case</summary>
+<div class="px-4 pb-4">
+
+Quando debugghi una funzione ricorsiva, verifica sempre questi aspetti del base case:
+
+- **Il base case sia raggiungibile**: l'input deve progressivamente avvicinarsi alla condizione del base case
+- **Il base case abbia un return statement**: senza `return`, la funzione continua l'esecuzione
+- **L'input si avvicini progressivamente al base case**: ogni chiamata ricorsiva deve modificare l'input in modo da avvicinarsi al base case
+
+**Esempio di verifica**:
+```javascript
+function factorial(n) {
+  // ✅ Base case raggiungibile: n diminuisce ad ogni chiamata
+  if (n === 1) {
+    return 1;  // ✅ Ha return statement
+  }
+  // ✅ Input si avvicina: n - 1 si avvicina a 1
+  return n * factorial(n - 1);
+}
+```
+
+</div>
+</details>
+
+## Conclusione
+
+La recursion è una tecnica potente che permette di risolvere problemi complessi in modo elegante. La chiave per padroneggiarla è:
+
+1. **Identificare il base case**: quando fermarsi
+2. **Identificare il recursive case**: come dividere il problema
+3. **Assicurarsi che l'input si avvicini al base case**: evitare loop infiniti
+4. **Comprendere il call stack**: come funziona l'esecuzione
+
+Con la pratica, la recursion diventerà uno strumento naturale per risolvere molti problemi di programmazione.
+

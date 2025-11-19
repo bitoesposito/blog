@@ -1,0 +1,547 @@
+---
+title: 'Graphs'
+description: 'Introduzione ai Graphs, strutture dati per rappresentare relazioni e connessioni tra elementi'
+date: 2025-11-19
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 11
+---
+
+## Introduzione
+
+I **graphs** (grafi) sono una struttura dati fondamentale per rappresentare relazioni e connessioni tra elementi. A differenza di altre strutture dati che abbiamo visto, i graphs permettono connessioni multiple e non lineari tra gli elementi.
+
+## Terminologia
+
+Prima di approfondire i graphs, è importante comprendere la terminologia corretta:
+
+- **Vertex** (vertice): un elemento del grafo. Talvolta chiamato anche "node" (nodo), ma "vertex" è la terminologia corretta
+- **Edge** (arco): una connessione tra due vertici. Talvolta chiamata "connection", ma "edge" è la terminologia corretta
+
+```javascript
+// Rappresentazione grafica di un grafo
+//  [A] ——— [B]
+//   |       |
+//   |       |
+//  [E] ——— [C] ——— [D]
+```
+
+## Caratteristiche dei Graphs
+
+### Connessioni multiple
+
+Una caratteristica fondamentale dei graphs è che **non ci sono limitazioni** al numero di connessioni che un vertice può avere. Un vertice può connettersi a uno, due, o molti altri vertici.
+
+```javascript
+// Esempio: vertice A può connettersi a B, E, e molti altri
+//  [A] ——— [B]
+//   | \
+//   |  \
+//  [E]  [C]
+```
+
+### Edges pesati (Weighted Edges)
+
+Gli edges possono avere un **peso** (weight) che rappresenta il costo o la distanza tra due vertici. Questo è utile per problemi di routing e ottimizzazione.
+
+```javascript
+// Esempio: grafo con edges pesati
+//  [A] ———5——— [B]
+//   |           |
+//   3           2
+//   |           |
+//  [E] ———1——— [C]
+```
+
+**Caso d'uso**: In un'app di navigazione GPS, gli edges rappresentano strade e i pesi rappresentano il tempo di percorrenza o la distanza. Il percorso più efficiente non è necessariamente quello con meno "salti", ma quello con il peso totale minore.
+
+### Edges bidirezionali vs unidirezionali
+
+#### Bidirezionali (Undirected)
+
+Gli edges bidirezionali rappresentano relazioni reciproche. Se A è connesso a B, allora B è connesso ad A.
+
+```javascript
+// Rappresentazione: linee senza frecce
+//  [A] ——— [B]
+// Rappresenta: A ↔ B (bidirezionale)
+```
+
+**Esempio**: In Facebook, se tu sei amico di qualcuno, quella persona è amica di te. La relazione è bidirezionale.
+
+#### Unidirezionali (Directed)
+
+Gli edges unidirezionali rappresentano relazioni direzionali. Se A punta a B, non significa che B punti ad A.
+
+```javascript
+// Rappresentazione: linee con frecce
+//  [A] ——→ [B]
+// Rappresenta: A → B (unidirezionale)
+```
+
+**Esempio**: Su Twitter o Instagram, puoi seguire qualcuno senza che quella persona ti segua. La relazione è unidirezionale.
+
+**Nota**: In questo corso implementeremo graphs con **edges bidirezionali e non pesati** per semplicità, ma è importante sapere che esistono anche graphs diretti e pesati.
+
+## Graphs e altre strutture dati
+
+I graphs sono una struttura dati molto generale. Infatti, altre strutture dati che abbiamo visto sono **casi speciali** di graphs:
+
+1. **Binary Tree**: è un grafo con la limitazione che ogni vertice può avere al massimo due connessioni e le connessioni sono direzionali
+2. **Linked List**: è un tipo di tree, e quindi anche un tipo di grafo
+3. **Tree**: è un grafo senza cicli
+
+**Conclusione**: Linked Lists → Trees → Graphs (gerarchia di generalità)
+
+## Rappresentazione dei Graphs
+
+Esistono due modi principali per rappresentare un grafo in memoria:
+
+### 1. Adjacency Matrix (Matrice di adiacenza)
+
+Una **adjacency matrix** è una matrice bidimensionale dove ogni riga e colonna rappresenta un vertice. Il valore nella cella `[i][j]` indica se esiste un edge tra il vertice `i` e il vertice `j`.
+
+```javascript
+// Grafo: A ↔ B, B ↔ C, C ↔ D, D ↔ E, E ↔ A
+// 
+// Adjacency Matrix:
+//      A  B  C  D  E
+//   A [0][1][0][0][1]
+//   B [1][0][1][0][0]
+//   C [0][1][0][1][0]
+//   D [0][0][1][0][1]
+//   E [1][0][0][1][0]
+```
+
+**Caratteristiche**:
+- Se il grafo ha edges bidirezionali, la matrice è **simmetrica** rispetto alla diagonale
+- La diagonale principale contiene sempre zeri (un vertice non può connettersi a se stesso)
+- Se il grafo ha edges direzionali, la matrice **non è simmetrica**
+- Per edges pesati, invece di 0/1, si memorizzano i pesi
+
+**Esempio con edges direzionali**:
+```javascript
+// Se A → B ma B ↛ A:
+//      A  B
+//   A [0][1]
+//   B [0][0]  ← non simmetrico!
+```
+
+**Esempio con edges pesati**:
+```javascript
+// Invece di 0/1, memorizziamo i pesi:
+//      A  B  C
+//   A [0][5][0]
+//   B [5][0][3]
+//   C [0][3][0]
+```
+
+### 2. Adjacency List (Lista di adiacenza)
+
+Una **adjacency list** è un oggetto (o hash table) dove ogni chiave è un vertice e il valore è un array contenente tutti i vertici connessi.
+
+```javascript
+// Stesso grafo: A ↔ B, B ↔ C, C ↔ D, D ↔ E, E ↔ A
+// 
+// Adjacency List:
+{
+  A: ['B', 'E'],
+  B: ['A', 'C'],
+  C: ['B', 'D'],
+  D: ['C', 'E'],
+  E: ['A', 'D']
+}
+```
+
+**Vantaggio**: Molto più semplice e intuitivo da implementare e comprendere.
+
+**Nota**: In questo corso useremo l'**adjacency list** perché è più semplice da implementare e più efficiente in termini di spazio per la maggior parte dei casi d'uso.
+
+## Complessità temporale (Big O)
+
+Confrontiamo le complessità delle operazioni principali tra adjacency matrix e adjacency list:
+
+### Space Complexity (Complessità spaziale)
+
+| Rappresentazione | Complessità | Spiegazione |
+|------------------|-------------|-------------|
+| **Adjacency Matrix** | O(V²) | Deve memorizzare V × V celle, anche quelle vuote |
+| **Adjacency List** | O(V + E) | Memorizza solo i vertici e gli edges effettivi |
+
+**Problema con adjacency matrix**: Per grafi sparsi (pochi edges rispetto ai vertici possibili), la maggior parte della matrice contiene zeri. Ad esempio, se Facebook avesse 1 miliardo di utenti e ogni persona avesse 1000 amici, la matrice avrebbe 1 miliardo × 1 miliardo = 10¹⁸ celle, ma solo 10¹² connessioni reali. Il rapporto tra zeri e uno sarebbe 1 milione a 1!
+
+### Add Vertex (Aggiungere un vertice)
+
+| Rappresentazione | Complessità | Spiegazione |
+|------------------|-------------|-------------|
+| **Adjacency Matrix** | O(V²) | Deve creare una nuova matrice più grande |
+| **Adjacency List** | O(1) | Aggiunge semplicemente una nuova chiave all'oggetto |
+
+### Add Edge (Aggiungere un edge)
+
+| Rappresentazione | Complessità | Spiegazione |
+|------------------|-------------|-------------|
+| **Adjacency Matrix** | O(1) | Modifica due celle nella matrice |
+| **Adjacency List** | O(1) | Aggiunge due elementi agli array |
+
+### Remove Edge (Rimuovere un edge)
+
+| Rappresentazione | Complessità | Spiegazione |
+|------------------|-------------|-------------|
+| **Adjacency Matrix** | O(1) | Modifica due celle nella matrice |
+| **Adjacency List** | O(E) | Deve iterare attraverso l'array per trovare e rimuovere l'elemento |
+
+**Nota**: Per l'adjacency list, la complessità dipende dal numero di edges del vertice. Nel caso peggiore, un vertice può essere connesso a tutti gli altri vertici, quindi O(E).
+
+### Remove Vertex (Rimuovere un vertice)
+
+| Rappresentazione | Complessità | Spiegazione |
+|------------------|-------------|-------------|
+| **Adjacency Matrix** | O(V²) | Deve creare una nuova matrice più piccola |
+| **Adjacency List** | O(V + E) | Deve rimuovere il vertice e tutti i riferimenti ad esso in tutti gli altri vertici |
+
+**Ottimizzazione per adjacency list**: Se il grafo è bidirezionale, possiamo usare l'array del vertice da rimuovere per trovare tutti i vertici connessi, evitando di scansionare tutti i vertici. Questo migliora l'efficienza.
+
+### Confronto riepilogativo
+
+| Operazione | Adjacency Matrix | Adjacency List |
+|------------|------------------|----------------|
+| **Space** | <span class="text-red-600 dark:text-red-400 font-semibold">O(V²)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(V + E)</span> |
+| **Add Vertex** | <span class="text-red-600 dark:text-red-400 font-semibold">O(V²)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Add Edge** | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Remove Edge** | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(E)</span> |
+| **Remove Vertex** | <span class="text-red-600 dark:text-red-400 font-semibold">O(V²)</span> | <span class="text-yellow-600 dark:text-yellow-400 font-semibold">O(V + E)</span> |
+
+**Legenda**: <span class="text-green-600 dark:text-green-400 font-semibold">Verde</span> = Efficiente | <span class="text-yellow-600 dark:text-yellow-400 font-semibold">Giallo</span> = Moderato | <span class="text-red-600 dark:text-red-400 font-semibold">Rosso</span> = Meno efficiente
+
+**Conclusione**: L'adjacency list è generalmente più efficiente per grafi sparsi (pochi edges), mentre l'adjacency matrix può essere migliore per grafi densi (molti edges) quando si ha bisogno di verificare rapidamente se esiste un edge tra due vertici.
+
+## Implementazione
+
+### Costruttore del Graph
+
+Il costruttore crea un grafo vuoto usando un oggetto per l'adjacency list:
+
+```javascript
+class Graph {
+  constructor() {
+    // Crea un oggetto vuoto per memorizzare l'adjacency list
+    // Ogni chiave sarà un vertice, ogni valore sarà un array di vertici connessi
+    this.adjacencyList = {};
+  }
+}
+```
+
+**Spiegazione**:
+- `this.adjacencyList = {}`: crea un oggetto vuoto che conterrà tutti i vertici e le loro connessioni
+- Ogni vertice sarà una chiave nell'oggetto
+- Ogni valore sarà un array contenente i vertici connessi
+
+**Risultato in memoria**:
+```javascript
+{
+  adjacencyList: {}
+}
+```
+
+### Add Vertex - Aggiungere un vertice
+
+Aggiunge un nuovo vertice al grafo. **Complessità: O(1)**
+
+**Logica**:
+1. Verifica se il vertice esiste già (non possiamo avere duplicati)
+2. Se non esiste, aggiungi il vertice con un array vuoto
+3. Ritorna `true` se aggiunto con successo, `false` altrimenti
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+addVertex(vertex) {
+  // Verifica se il vertice non esiste già nell'adjacency list
+  if (!this.adjacencyList[vertex]) {
+    // Inizializza un array vuoto per il nuovo vertice
+    // Questo array conterrà tutti i vertici connessi a questo vertice
+    this.adjacencyList[vertex] = [];
+    // Ritorna true, indicando che il vertice è stato aggiunto con successo
+    return true;
+  }
+  // Se il vertice esiste già, ritorna false
+  return false;
+}
+```
+
+</div>
+</details>
+
+**Edge cases gestiti**:
+- Vertice duplicato: ritorna `false` senza modificare il grafo
+- Vertice valido: aggiunge il vertice e ritorna `true`
+
+**Esempio di utilizzo**:
+```javascript
+const myGraph = new Graph();
+myGraph.addVertex('A');  // true
+myGraph.addVertex('A');  // false (duplicato)
+// Risultato: { A: [] }
+```
+
+### Add Edge - Aggiungere un edge
+
+Aggiunge un edge bidirezionale tra due vertici. **Complessità: O(1)**
+
+**Logica**:
+1. Verifica che entrambi i vertici esistano nel grafo
+2. Aggiungi `vertex2` all'array di `vertex1`
+3. Aggiungi `vertex1` all'array di `vertex2` (bidirezionale)
+4. Ritorna `true` se aggiunto con successo, `false` altrimenti
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+addEdge(vertex1, vertex2) {
+  // Verifica che entrambi i vertici esistano nel grafo
+  if (this.adjacencyList[vertex1] && this.adjacencyList[vertex2]) {
+    // Aggiungi vertex2 all'array di connessioni di vertex1
+    this.adjacencyList[vertex1].push(vertex2);
+    // Aggiungi vertex1 all'array di connessioni di vertex2
+    // Questo rende l'edge bidirezionale
+    this.adjacencyList[vertex2].push(vertex1);
+    // Ritorna true, indicando che l'edge è stato aggiunto con successo
+    return true;
+  }
+  // Se uno o entrambi i vertici non esistono, ritorna false
+  return false;
+}
+```
+
+</div>
+</details>
+
+**Edge cases gestiti**:
+- Vertice inesistente: ritorna `false` senza modificare il grafo
+- Entrambi i vertici esistenti: aggiunge l'edge bidirezionale e ritorna `true`
+
+**Esempio di utilizzo**:
+```javascript
+const myGraph = new Graph();
+myGraph.addVertex('A');
+myGraph.addVertex('B');
+myGraph.addEdge('A', 'B');  // true
+myGraph.addEdge('A', 'C');  // false (C non esiste)
+// Risultato: { A: ['B'], B: ['A'] }
+```
+
+### Remove Edge - Rimuovere un edge
+
+Rimuove un edge bidirezionale tra due vertici. **Complessità: O(E)**
+
+**Logica**:
+1. Verifica che entrambi i vertici esistano nel grafo
+2. Rimuovi `vertex2` dall'array di `vertex1` usando `filter`
+3. Rimuovi `vertex1` dall'array di `vertex2` usando `filter`
+4. Ritorna `true` se rimosso con successo, `false` altrimenti
+
+**Nota**: Usiamo `filter` invece di `splice` perché è più pulito e funzionale. `filter` crea un nuovo array contenente tutti gli elementi che soddisfano la condizione (tutti tranne quello da rimuovere).
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+removeEdge(vertex1, vertex2) {
+  // Verifica che entrambi i vertici esistano nel grafo
+  if (this.adjacencyList[vertex1] && this.adjacencyList[vertex2]) {
+    // Rimuovi vertex2 dall'array di connessioni di vertex1
+    // filter ritorna un nuovo array con tutti gli elementi tranne vertex2
+    this.adjacencyList[vertex1] = this.adjacencyList[vertex1]
+      .filter(v => v !== vertex2);
+    // Rimuovi vertex1 dall'array di connessioni di vertex2
+    // filter ritorna un nuovo array con tutti gli elementi tranne vertex1
+    this.adjacencyList[vertex2] = this.adjacencyList[vertex2]
+      .filter(v => v !== vertex1);
+    // Ritorna true, indicando che l'edge è stato rimosso con successo
+    return true;
+  }
+  // Se uno o entrambi i vertici non esistono, ritorna false
+  return false;
+}
+```
+
+</div>
+</details>
+
+**Spiegazione di `filter`**:
+- `filter` è un metodo degli array in JavaScript che crea un nuovo array
+- Prende una funzione callback che ritorna `true` per gli elementi da mantenere
+- `v => v !== vertex2` mantiene tutti i vertici tranne `vertex2`
+- Questo è equivalente a rimuovere `vertex2` dall'array
+
+**Edge cases gestiti**:
+- Vertice inesistente: ritorna `false` senza modificare il grafo
+- Entrambi i vertici esistenti: rimuove l'edge bidirezionale e ritorna `true`
+
+**Esempio di utilizzo**:
+```javascript
+const myGraph = new Graph();
+myGraph.addVertex('A');
+myGraph.addVertex('B');
+myGraph.addEdge('A', 'B');
+// Risultato: { A: ['B'], B: ['A'] }
+myGraph.removeEdge('A', 'B');
+// Risultato: { A: [], B: [] }
+```
+
+### Remove Vertex - Rimuovere un vertice
+
+Rimuove un vertice e tutti i suoi edges dal grafo. **Complessità: O(V + E)**
+
+**Logica**:
+1. Verifica che il vertice esista nel grafo
+2. **Rimuovi prima tutti gli edges**: itera attraverso l'array di connessioni del vertice
+3. Per ogni vertice connesso, rimuovi il riferimento usando `removeEdge`
+4. **Poi rimuovi il vertice**: elimina la chiave dall'oggetto
+5. Ritorna il grafo (per method chaining) o `undefined` se il vertice non esiste
+
+**Ottimizzazione**: Grazie agli edges bidirezionali, possiamo usare l'array del vertice da rimuovere per trovare tutti i vertici connessi, evitando di scansionare tutti i vertici del grafo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+removeVertex(vertex) {
+  // Se il vertice non esiste nell'adjacency list, ritorna undefined
+  if (!this.adjacencyList[vertex]) return undefined;
+  
+  // Itera finché l'array di connessioni del vertice non è vuoto
+  // Questo rimuove tutti gli edges connessi a questo vertice
+  while (this.adjacencyList[vertex].length) {
+    // Rimuovi l'ultimo elemento dall'array di connessioni
+    // Questo ci dice quale vertice è connesso al vertice che stiamo rimuovendo
+    let temp = this.adjacencyList[vertex].pop();
+    // Usa removeEdge per rimuovere l'edge tra vertex e temp
+    // Questo rimuove anche il riferimento da temp a vertex (bidirezionale)
+    this.removeEdge(vertex, temp);
+  }
+  
+  // Dopo aver rimosso tutti gli edges, elimina il vertice stesso
+  delete this.adjacencyList[vertex];
+  
+  // Ritorna il grafo per permettere il method chaining
+  return this;
+}
+```
+
+</div>
+</details>
+
+**Spiegazione dettagliata**:
+1. **Verifica esistenza**: Se il vertice non esiste, ritorna `undefined` immediatamente
+2. **Rimozione edges**: Il `while` loop continua finché l'array di connessioni non è vuoto
+3. **Pop e removeEdge**: `pop()` rimuove l'ultimo elemento dall'array e lo salva in `temp`. Poi `removeEdge(vertex, temp)` rimuove l'edge bidirezionale tra `vertex` e `temp`
+4. **Eliminazione vertice**: `delete` rimuove la chiave dall'oggetto
+5. **Return**: Ritorna `this` per permettere il method chaining
+
+**Vantaggio dell'ottimizzazione**: Invece di scansionare tutti i vertici del grafo per trovare i riferimenti al vertice da rimuovere, usiamo direttamente l'array del vertice. Questo è molto più efficiente!
+
+**Edge cases gestiti**:
+- Vertice inesistente: ritorna `undefined` senza modificare il grafo
+- Vertice connesso: rimuove prima tutti gli edges, poi il vertice
+- Vertice isolato: rimuove direttamente il vertice (l'array è già vuoto)
+
+**Esempio di utilizzo**:
+```javascript
+const myGraph = new Graph();
+myGraph.addVertex('A');
+myGraph.addVertex('B');
+myGraph.addVertex('C');
+myGraph.addEdge('A', 'B');
+myGraph.addEdge('B', 'C');
+// Risultato: { A: ['B'], B: ['A', 'C'], C: ['B'] }
+myGraph.removeVertex('B');
+// Risultato: { A: [], C: [] }
+// L'edge A-B e B-C sono stati rimossi automaticamente
+```
+
+## Implementazione completa
+
+Ecco il codice completo della classe `Graph`:
+
+```javascript
+class Graph {
+  constructor() {
+    // Crea un oggetto vuoto per memorizzare l'adjacency list
+    this.adjacencyList = {};
+  }
+
+  addVertex(vertex) {
+    // Verifica se il vertice non esiste già
+    if (!this.adjacencyList[vertex]) {
+      // Inizializza un array vuoto per il nuovo vertice
+      this.adjacencyList[vertex] = [];
+      return true;
+    }
+    return false;
+  }
+
+  addEdge(vertex1, vertex2) {
+    // Verifica che entrambi i vertici esistano
+    if (this.adjacencyList[vertex1] && this.adjacencyList[vertex2]) {
+      // Aggiungi edge bidirezionale
+      this.adjacencyList[vertex1].push(vertex2);
+      this.adjacencyList[vertex2].push(vertex1);
+      return true;
+    }
+    return false;
+  }
+
+  removeEdge(vertex1, vertex2) {
+    // Verifica che entrambi i vertici esistano
+    if (this.adjacencyList[vertex1] && this.adjacencyList[vertex2]) {
+      // Rimuovi edge bidirezionale usando filter
+      this.adjacencyList[vertex1] = this.adjacencyList[vertex1]
+        .filter(v => v !== vertex2);
+      this.adjacencyList[vertex2] = this.adjacencyList[vertex2]
+        .filter(v => v !== vertex1);
+      return true;
+    }
+    return false;
+  }
+
+  removeVertex(vertex) {
+    // Se il vertice non esiste, ritorna undefined
+    if (!this.adjacencyList[vertex]) return undefined;
+    
+    // Rimuovi tutti gli edges connessi al vertice
+    while (this.adjacencyList[vertex].length) {
+      let temp = this.adjacencyList[vertex].pop();
+      this.removeEdge(vertex, temp);
+    }
+    
+    // Elimina il vertice dall'adjacency list
+    delete this.adjacencyList[vertex];
+    
+    // Ritorna il grafo per method chaining
+    return this;
+  }
+}
+```
+
+## Quando usare Graphs
+
+### Usa un Graph quando:
+- Devi rappresentare **relazioni complesse** tra elementi: reti sociali, mappe, reti di computer
+- Hai bisogno di **navigazione tra elementi**: routing, pathfinding, algoritmi di ricerca
+- Le connessioni sono **non lineari**: non seguono una struttura gerarchica come i tree
+- Devi risolvere problemi di **ottimizzazione**: percorso più breve, flusso massimo
+
+### Esempi pratici:
+1. **Reti sociali**: Facebook (amici), Twitter (followers), LinkedIn (connessioni)
+2. **Navigazione GPS**: strade come edges, incroci come vertici
+3. **Routing di rete**: router come vertici, connessioni come edges
+4. **Sistemi di raccomandazione**: prodotti/utenti come vertici, preferenze come edges
+5. **Dependency management**: pacchetti come vertici, dipendenze come edges
