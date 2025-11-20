@@ -1,0 +1,248 @@
+---
+title: 'Tree Traversal'
+description: 'Breath First Search e Depth First Search: come attraversare un albero in modo sistematico'
+date: 2025-11-21
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 12
+---
+
+## Introduzione
+
+Gli **tree traversal** sono le tecniche utilizzate per visitare tutti i nodi di un albero in un ordine preciso. Solo dopo aver padroneggiato questi schemi è possibile:
+
+- trovare un valore all’interno di un binary search tree
+- convertire un albero in un array
+- serializzare/deserializzare una struttura
+- applicare algoritmi come `sum`, `max depth`, `path sum`
+
+In questo capitolo distingueremo due macro famiglie:
+
+1. **Breadth First Search (BFS)** – visita l’albero livello per livello usando una coda
+2. **Depth First Search (DFS)** – scende in profondità (solitamente con recursion) e ha tre varianti principali: `preorder`, `postorder`, `inorder`
+
+## Terminologia rapida
+
+- **Visita**: quando un nodo viene letto e aggiunto al risultato
+- **Queue**: struttura FIFO usata dal BFS
+- **Call stack**: struttura LIFO che supporta la recursion delle funzioni DFS
+- **Traversal order**: la sequenza finale dei valori visitati
+
+## Breadth First Search (BFS)
+
+Il BFS attraversa l’albero **livello per livello**. In pratica:
+
+1. Mettiamo la `root` in una coda
+2. Finché la coda non è vuota:
+   - estraiamo il nodo in testa (`shift`)
+   - salviamo il suo valore nel risultato
+   - se esiste, aggiungiamo il figlio sinistro alla coda
+   - se esiste, aggiungiamo il figlio destro alla coda
+
+### Visualizzazione passo-passo
+
+```text
+Queue: [47]                  Result: []
+Queue: [21, 76]              Result: [47]
+Queue: [76, 18, 27]          Result: [47, 21]
+Queue: [18, 27, 52, 82]      Result: [47, 21, 76]
+Queue: [27, 52, 82]          Result: [47, 21, 76, 18]
+...
+Queue: []                    Result: [47, 21, 76, 18, 27, 52, 82]
+```
+
+### Implementazione BFS
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra codice con commenti</summary>
+<div class="px-4 pb-4">
+
+```javascript
+class BinarySearchTree {
+  constructor() {
+    this.root = null
+  }
+
+  breadthFirstSearch() {
+    // Array che conterrà i valori visitati nell'ordine BFS
+    const results = []
+    // Queue per mantenere i nodi ancora da visitare
+    const queue = []
+
+    if (this.root) {
+      queue.push(this.root)
+    }
+
+    while (queue.length) {
+      // Il nodo corrente è sempre il primo in queue
+      const current = queue.shift()
+
+      // Visitiamo (push) il valore del nodo corrente
+      results.push(current.value)
+
+      // Aggiungiamo i figli alla queue per i livelli successivi
+      if (current.left) queue.push(current.left)
+      if (current.right) queue.push(current.right)
+    }
+
+    return results
+  }
+}
+```
+
+</div>
+</details>
+
+### Quando usare BFS
+
+- Quando serve conoscere il **livello** di un nodo (es. distanza minima dalla root)
+- Per trovare il primo nodo che soddisfa una condizione in un albero **bilanciato**
+- Per convertire l’albero in un **array level-order** (utile nella serializzazione)
+
+## Depth First Search (DFS)
+
+Il DFS percorre l’albero andando il più in profondità possibile prima di tornare indietro. Si appoggia quasi sempre alla **recursion**.
+
+### DFS vs BFS: panoramica rapida
+
+| Caratteristica          | BFS                                 | DFS                                                             |
+|-------------------------|-------------------------------------|-----------------------------------------------------------------|
+| Struttura dati          | Queue                               | Call stack (recursion) o stack manuale                          |
+| Ordine visitato         | Per livelli                         | Per profondità (dipende da preorder/postorder/inorder)          |
+| Quando usarlo           | Livelli, distanza minima            | Lavorare su sotto-alberi, generare ordinamenti                  |
+| Complessità             | O(n) tempo, O(n) spazio (queue)     | O(n) tempo, O(h) spazio (call stack, h = altezza dell’albero)   |
+
+### Pattern ricorsivo tipico
+
+```javascript
+function traverse(node) {
+  if (!node) return
+  // ...logica specifica della variante DFS...
+}
+
+traverse(this.root)
+```
+
+## DFS Preorder
+
+**Ordine**: `root → left → right`. Ottimo per copiare un albero o serializzarlo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra pseudo-codice e call stack</summary>
+<div class="px-4 pb-4">
+
+### Esecuzione
+/Visit root/ (47) → scendi a sinistra (21) → continua a sinistra (18) → torna indietro → visita 27 → risali → visita ramo destro ecc.
+
+### Codice
+
+```javascript
+class BinarySearchTree {
+  dfsPreorder() {
+    const results = []
+
+    function traverse(node) {
+      if (!node) return
+      results.push(node.value)      // Visita durante la discesa
+      traverse(node.left)           // Vai a sinistra
+      traverse(node.right)          // Poi a destra
+    }
+
+    traverse(this.root)
+    return results
+  }
+}
+```
+
+</div>
+</details>
+
+## DFS Postorder
+
+**Ordine**: `left → right → root`. Utile quando bisogna cancellare nodi o calcolare attributi cumulativi (es. altezza).
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra pseudo-codice</summary>
+<div class="px-4 pb-4">
+
+```javascript
+class BinarySearchTree {
+  dfsPostorder() {
+    const results = []
+
+    function traverse(node) {
+      if (!node) return
+      traverse(node.left)           // visita sotto-albero sinistro
+      traverse(node.right)          // poi quello destro
+      results.push(node.value)      // visita solo alla risalita
+    }
+
+    traverse(this.root)
+    return results
+  }
+}
+```
+
+</div>
+</details>
+
+## DFS Inorder
+
+**Ordine**: `left → root → right`. Su un **Binary Search Tree** restituisce i valori in ordine crescente.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra pseudo-codice</summary>
+<div class="px-4 pb-4">
+
+```javascript
+class BinarySearchTree {
+  dfsInorder() {
+    const results = []
+
+    function traverse(node) {
+      if (!node) return
+      traverse(node.left)
+      results.push(node.value)      // Visita tra sinistra e destra
+      traverse(node.right)
+    }
+
+    traverse(this.root)
+    return results
+  }
+}
+```
+
+</div>
+</details>
+
+## Comparazione delle varianti DFS
+
+| Traversal | Ordine di visita       | Risultato su BST           | Applicazioni tipiche                             |
+|-----------|------------------------|----------------------------|--------------------------------------------------|
+| Preorder  | root → left → right    | Tutti i nodi, root per primo | Serializzazione, copia albero, generare espressioni prefisse |
+| Postorder | left → right → root    | Root per ultimo              | Eliminazione sicura di nodi, valutazione bottom-up             |
+| Inorder   | left → root → right    | Valori ordinati (BST)        | Stampa ordinata, conversione tree → array ordinato             |
+
+## Complessità
+
+| Algoritmo | Time Complexity | Space Complexity | Note                                     |
+|-----------|-----------------|------------------|------------------------------------------|
+| BFS       | O(n)            | O(n)             | La coda può contenere l’intero livello   |
+| DFS       | O(n)            | O(h)             | h = altezza dell’albero (O(log n) se bilanciato, O(n) se skewed) |
+
+## Quando scegliere BFS o DFS
+
+| Scenario                                            | Suggerimento |
+|-----------------------------------------------------|--------------|
+| Trovare il nodo più vicino alla root                | **BFS**      |
+| Verificare la presenza di un valore in BST ordinato | **DFS Inorder** |
+| Somma di tutti i nodi o calcoli bottom-up           | **DFS Postorder** |
+| Serializzare la struttura (ad esempio per salvataggio) | **DFS Preorder** |
+| Calcolare la larghezza massima di un albero         | **BFS**      |
+
+## Suggerimenti pratici
+
+1. **BFS → Queue**: inizializza sempre la coda con la `root` (se esiste) prima del loop
+2. **DFS ricorsivi → base case**: ritorna immediatamente quando `node === null`
+3. **Ordine coerente**: per gli alberi binari usa sempre “sinistra prima di destra” per evitare ambiguità
+4. **Debug**: stampa il call stack con `console.log('enter', node.value)` e `console.log('exit', node.value)` per capire la sequenza

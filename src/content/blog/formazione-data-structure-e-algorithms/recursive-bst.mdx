@@ -1,0 +1,234 @@
+---
+title: 'Recursive Binary Search Trees'
+description: 'Costruiamo contains, insert e delete ricorsivi per i BST sfruttando il call stack'
+date: 2025-11-20
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 10
+---
+
+## Perché tornare sui BST
+
+Nel capitolo sui `Trees` abbiamo implementato i Binary Search Trees in modo **iterativo**. In molti casi, però, i BST sono più facili da ragionare ricorsivamente: ogni nodo è la root di un sotto-albero che obbedisce alle stesse regole (`left < node < right`). L'obiettivo di questo capitolo è trasformare `contains`, `insert` e `delete` in metodi **ricorsivi**, evidenziando come il call stack gestisca il flusso.
+
+> **Ripasso rapido**: una chiamata ricorsiva crea una nuova istanza della funzione sullo stack. Quando ritorna un valore (true/false, un nodo o `null`), l'istanza precedente riprende l'esecuzione con il risultato ricevuto.
+
+Per gli esempi useremo questa struttura di base:
+
+```javascript
+class Node {
+  constructor(value) {
+    this.value = value        // Valore salvato nel nodo
+    this.left = null          // Puntatore al sotto-albero sinistro
+    this.right = null         // Puntatore al sotto-albero destro
+  }
+}
+
+class rBST {
+  constructor() {
+    this.root = null          // BST vuoto finché non inseriamo il primo nodo
+  }
+
+  // I metodi pubblici inoltrano i valori verso gli helper privati (#)
+}
+```
+
+## Recursive `contains`
+
+### Regole operative
+
+- **Caso base #1**: se l'albero (o il sotto-albero) è vuoto (`currentNode === null`) ritorniamo `false`.
+- **Caso base #2**: se il valore coincide con `currentNode.value`, ritorniamo `true`.
+- **Passo ricorsivo**:
+  - se `value < currentNode.value`, cerchiamo nel sotto-albero sinistro;
+  - se `value > currentNode.value`, cerchiamo nel sotto-albero destro.
+
+Questo replica l'idea di **binary search**: ogni chiamata scarta metà dell'albero. Il call stack tiene traccia della catena di confronti; appena una chiamata ritorna `true`, il valore risale lo stack fino al chiamante originario.
+
+```javascript
+class rBST {
+  contains(value) {
+    // L'utente passa solo il valore; partiamo automaticamente dalla root
+    return this.#contains(value, this.root)
+  }
+
+  #contains(value, currentNode) {
+    if (currentNode === null) return false       // Albero vuoto → valore assente
+    if (value === currentNode.value) return true // Valore trovato
+
+    if (value < currentNode.value) {
+      // Continuiamo a sinistra, propagando il risultato della ricorsione
+      return this.#contains(value, currentNode.left)
+    }
+    // Value > currentNode.value: scendiamo a destra
+    return this.#contains(value, currentNode.right)
+  }
+}
+```
+
+**Esempio pratico**: cercare `21` in un albero con root `47`.
+
+1. `contains(21)` chiama `#contains(21, 47)`.
+2. 21 < 47 ⇒ parte una nuova chiamata `#contains(21, 21)`.
+3. Il secondo frame vede `value === currentNode.value` ⇒ ritorna `true`.
+4. Lo stack si svuota restituendo `true` alla chiamata originale.
+
+Se il valore non esiste, l'ultima chiamata raggiunge `null` e ritorna `false`, che “risale” lo stack senza modificare il tree.
+
+## Recursive `insert`
+
+### Perché usare un helper privato
+
+Nel caso ricorsivo dobbiamo gestire un edge case in più: **inserire in un albero vuoto**. È comodo esporre un metodo pubblico `insert` che:
+
+1. gestisce l'eventuale root vuota;
+2. inoltra il lavoro all'helper privato `#insert`, passando root (o il sotto-albero) come punto di partenza.
+
+### Regole operative
+
+- **Base case**: se `currentNode === null`, creiamo il nodo e lo ritorniamo (sarà collegato dal frame precedente).
+- **Duplicati**: come nei BST classici, ignoriamo i valori già presenti semplicemente ritornando il nodo corrente.
+- **Passo ricorsivo**:
+  - se `value < currentNode.value`, aggiorniamo `currentNode.left` con il risultato della ricorsione;
+  - se `value > currentNode.value`, facciamo lo stesso a destra.
+
+```javascript
+class rBST {
+  insert(value) {
+    if (this.root === null) {
+      this.root = new Node(value)        // Primo inserimento: la root diventa il nuovo nodo
+      return this
+    }
+
+    // Aggiorniamo la root con il risultato della chiamata ricorsiva
+    this.root = this.#insert(value, this.root)
+    return this
+  }
+
+  #insert(value, currentNode) {
+    if (currentNode === null) {
+      return new Node(value)             // Slot vuoto trovato: creiamo e ritorniamo il nodo
+    }
+
+    if (value === currentNode.value) {
+      return currentNode                 // Duplicato: nessuna modifica
+    }
+
+    if (value < currentNode.value) {
+      currentNode.left = this.#insert(value, currentNode.left)
+      return currentNode                 // Ricolleghiamo il sotto-albero aggiornato
+    }
+
+    currentNode.right = this.#insert(value, currentNode.right)
+    return currentNode
+  }
+}
+```
+
+**Call stack in azione (inserire 18)**:
+
+1. `insert(18)` chiama `#insert(18, 47)` perché la root non è vuota.
+2. 18 < 47 ⇒ nuova chiamata su `currentNode.left` (il nodo 21).
+3. 18 < 21 ⇒ nuova chiamata su `null`.
+4. Il frame con `currentNode === null` crea `Node(18)` e lo ritorna.
+5. Ogni frame precedente riaggancia il puntatore (`left = Node(18)`) e ritorna il proprio nodo, fino a risalire alla root.
+
+## Recursive `delete`
+
+La cancellazione è l'operazione ricorsiva più delicata perché combina:
+
+1. **Ricerca del nodo** (traversal sinistra/destra).
+2. **Gestione del caso specifico** una volta trovato il valore.
+
+### Helper pubblico + metodo privato
+
+```javascript
+class rBST {
+  delete(value) {
+    this.root = this.#deleteNode(value, this.root) // Aggiorniamo la root in caso venga rimosso
+    return this
+  }
+```
+
+L'helper privato riceve sia il valore sia il nodo corrente. Se l'albero è vuoto o il valore non esiste, ritornerà `null` mantenendo l'albero invariato.
+
+### I 4 scenari di cancellazione
+
+1. **Leaf node** (nessun figlio) → ritorni `null`.
+2. **Solo figlio destro** → ritorni `currentNode.right`.
+3. **Solo figlio sinistro** → ritorni `currentNode.left`.
+4. **Due figli** → serve il **successore in-order** (minimo del sotto-albero destro). Copiamo il valore e poi cancelliamo ricorsivamente il duplicato nel sotto-albero destro.
+
+```javascript
+class rBST {
+  #deleteNode(value, currentNode) {
+    if (currentNode === null) return null        // Valore non trovato → niente da fare
+
+    if (value < currentNode.value) {
+      currentNode.left = this.#deleteNode(value, currentNode.left)
+      return currentNode
+    }
+
+    if (value > currentNode.value) {
+      currentNode.right = this.#deleteNode(value, currentNode.right)
+      return currentNode
+    }
+
+    // Da qui in poi value === currentNode.value: gestiamo i 4 casi
+    if (currentNode.left === null && currentNode.right === null) {
+      return null                               // Caso 1: leaf node
+    }
+
+    if (currentNode.left === null) {
+      return currentNode.right                  // Caso 2: solo figlio destro
+    }
+
+    if (currentNode.right === null) {
+      return currentNode.left                   // Caso 3: solo figlio sinistro
+    }
+
+    // Caso 4: due figli → individuiamo il minimo nel sotto-albero destro
+    const successorValue = this.#getMinValue(currentNode.right)
+    currentNode.value = successorValue          // Copiamo il valore del successore
+    currentNode.right = this.#deleteNode(successorValue, currentNode.right)
+    return currentNode
+  }
+
+  #getMinValue(node) {
+    let current = node
+    while (current.left !== null) {
+      current = current.left                    // Scendiamo sempre a sinistra
+    }
+    return current.value                        // Ritorniamo il valore minimo trovato
+  }
+}
+```
+
+**Perché copiare il valore e non spostare il nodo?** Copiare il valore mantiene intatti i riferimenti dei parent lungo il cammino. Il nodo reale che eliminiamo (il successore) è sempre “aperto” a sinistra, quindi ricade in uno dei 3 casi semplici e rende l'algoritmo più lineare.
+
+### Sequenza tipica (eliminare 21 con due figli)
+
+1. `delete(21)` attraversa 47 → 21.
+2. L'else finale rileva due figli.
+3. `#getMinValue(25)` ritorna 24.
+4. Il nodo `21` ora vale `24`.
+5. `#deleteNode(24, currentNode.right)` ripulisce il duplicato. Nel sotto-albero destro il 24 ha al massimo un figlio destro, quindi rientriamo in un caso semplice.
+6. Lo stack risale aggiornando i riferimenti senza rompere la proprietà BST.
+
+## Quick test con contains/insert/delete
+
+```javascript
+const tree = new rBST()
+tree.insert(47).insert(21).insert(76).insert(18).insert(24).insert(52).insert(82)
+
+console.log(tree.contains(27)) // false: non ancora inserito
+tree.insert(27)
+console.log(tree.contains(27)) // true: il ramo destro di 24 ora ospita 27
+
+tree.delete(21)                // 21 ha due figli (18 e 24)
+console.log(tree.contains(21)) // false
+console.log(tree.contains(24)) // true: il valore è stato “promosso” in posizione 21
+```
+
+- Prima del `delete`, `contains(27)` restituisce `true` grazie alla catena di chiamate terminate sul nodo 27.
+- Dopo il `delete(21)`, l'albero rimane valido: la root continua a puntare a 47 perché ogni frame ha ritornato lo stesso nodo verso l'alto.
