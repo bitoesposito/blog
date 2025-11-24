@@ -1,0 +1,328 @@
+---
+title: 'Dynamic Programming'
+description: 'Introduzione alla programmazione dinamica: sottoproblemi sovrapposti, struttura ottimale e Fibonacci con memoization e soluzione iterativa'
+date: 2025-11-24
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 19
+---
+
+## Introduzione
+
+La **Dynamic Programming** (programmazione dinamica, DP) è una tecnica per ottimizzare algoritmi che:
+
+1. possono essere scomposti in **sottoproblemi**
+2. presentano **ripetizione** di alcuni sottoproblemi
+3. permettono di costruire la soluzione ottimale del problema grande a partire dalle soluzioni ottimali dei sottoproblemi
+
+In pratica:
+
+- evitiamo di **rifare gli stessi calcoli più volte**
+- memorizziamo i risultati intermedi in una struttura (array, oggetto, ecc.)
+- usiamo questi risultati per rispondere più velocemente a chiamate successive
+
+Per poter usare davvero la DP servono **due requisiti fondamentali**:
+
+1. **Overlapping subproblems** (sottoproblemi sovrapposti)
+2. **Optimal substructure** (struttura ottimale)
+
+---
+
+## Requisito 1: Overlapping Subproblems
+
+### Cosa significa
+
+Un problema ha **sottoproblemi sovrapposti** quando:
+
+- lo stesso sottoproblema viene risolto **più volte** durante l’esecuzione dell’algoritmo
+- cioè abbiamo **sottoproblemi ripetuti**, non tutti diversi
+
+Esempio concettuale:
+
+- abbiamo dei sottoproblemi `S1`, `S2`, `S3`, ecc.
+- supponiamo che:
+  - tutti i sottoproblemi di tipo `S1` siano **identici**
+  - tutti i sottoproblemi di tipo `S2` siano **identici**
+  - e così via
+
+Se risolvere `S1` richiede **un trilione di operazioni** e sappiamo che il risultato è `10`, ha **poco senso** rifare lo stesso lavoro ogni volta:
+
+- possiamo salvare il risultato (`10`) in un array (o mappa)
+- alla chiamata successiva, leggiamo il valore **in O(1)** invece di ricalcolarlo
+
+Questa tecnica di salvare i risultati dei sottoproblemi si chiama **memoization**.
+
+### Esempio di cosa NON ha overlapping subproblems: Merge Sort
+
+In **Merge Sort**:
+
+- spezzare `[5, 4, 7, 1, 3, 2]` in `[5, 4, 7]` e `[1, 3, 2]` è un sottoproblema
+- poi spezzare `[5, 4, 7]` in `[5]` e `[4, 7]` è un altro sottoproblema
+- etc.
+
+Ogni split e ogni merge lavora su **segmenti diversi**:
+
+- i sottoproblemi **non si ripetono**
+- non abbiamo le stesse combinazioni che ricompaiono più volte
+
+Conclusione:
+
+- Merge Sort ha sottoproblemi, ma **non** ha sottoproblemi sovrapposti
+- quindi **non è un candidato** per la programmazione dinamica
+
+---
+
+## Requisito 2: Optimal Substructure
+
+### Cosa significa
+
+Un problema ha **struttura ottimale** quando:
+
+> Se conosci le **soluzioni ottimali** dei sottoproblemi, puoi combinarle per ottenere la **soluzione ottimale** del problema più grande.
+
+Esempio con un **grafo pesato**:
+
+- vogliamo andare da `A` a `D` minimizzando il **costo totale**
+- abbiamo due possibili percorsi:
+  - `A → C → D` con costo `30 + 20 = 50`
+  - `A → B → D` con costo `10 + 15 = 25`
+- il percorso ottimale è `A → B → D` (costo 25)
+
+Qui i sottoproblemi sono:
+
+- trovare il miglior modo di andare da `A` a `B`
+- trovare il miglior modo di andare da `B` a `D`
+
+Se trovi:
+
+- il **percorso minimo** da `A` a `B`
+- il **percorso minimo** da `B` a `D`
+
+allora la loro concatenazione ti dà il **percorso minimo da `A` a `D`**.  
+Questo è esattamente ciò che chiamiamo **optimal substructure**.
+
+### Esempio di cosa NON ha optimal substructure
+
+Usiamo lo stesso grafo, ma ora vogliamo il **percorso di costo massimo** da `A` a `D` senza ripassare più volte sugli stessi nodi.
+
+Potrebbe succedere che:
+
+- il percorso di costo massimo da `A` a `C` **non** sia il tratto iniziale del percorso di costo massimo da `A` a `D`
+- lo stesso per altri sottopercorsi
+
+In questo caso:
+
+- non puoi costruire la soluzione ottimale globale combinando in modo semplice le soluzioni ottimali locali
+- quindi **non c’è struttura ottimale**
+
+---
+
+## Fibonacci: definizione del problema
+
+La **sequenza di Fibonacci** è definita così:
+
+- possiamo rappresentarla come array:
+  - con `0` iniziale: `[0, 1, 1, 2, 3, 5, 8, 13, ...]`
+  - oppure partendo da `1` (in matematica classica): `[1, 1, 2, 3, 5, 8, 13, ...]`
+- ogni numero è la **somma dei due precedenti**:
+  - `F(0) = 0`
+  - `F(1) = 1`
+  - `F(2) = F(1) + F(0) = 1`
+  - `F(3) = F(2) + F(1) = 2`
+  - `F(4) = 3`, `F(5) = 5`, `F(6) = 8`, `F(7) = 13`, ecc.
+
+---
+
+## Fibonacci ricorsivo “naive” (O(2ⁿ))
+
+### Implementazione base
+
+```javascript
+// Calcola F(n) in modo ricorsivo "naive"
+function fib(n) {
+  // Base case: F(0) = 0, F(1) = 1
+  if (n === 0 || n === 1) {
+    return n;
+  }
+
+  // Passo ricorsivo: F(n) = F(n - 1) + F(n - 2)
+  return fib(n - 1) + fib(n - 2);
+}
+```
+
+Questa implementazione segue direttamente la definizione matematica, ma è **molto inefficiente**.
+
+### Perché è inefficiente (overlapping subproblems)
+
+Se disegniamo l’albero delle chiamate per `fib(7)`:
+
+- `fib(7)` chiama `fib(6)` e `fib(5)`
+- `fib(6)` chiama `fib(5)` e `fib(4)`
+- `fib(5)` chiama di nuovo `fib(4)` e `fib(3)`
+- ecc.
+
+Osservazioni:
+
+- `fib(5)` viene calcolato **più volte**
+- `fib(4)` viene calcolato **più volte**
+- e così via per un sacco di sottoproblemi
+
+Questi sono esattamente **sottoproblemi sovrapposti**:
+
+- stessi input
+- stesso risultato
+- ma ricalcolati da zero ogni volta
+
+La complessità esplode:
+
+- **Time complexity**: **O(2ⁿ)** (numero di chiamate cresce esponenzialmente)
+
+Se conti il numero di chiamate:
+
+- per `fib(7)` ottieni 41 chiamate circa
+- per `fib(40)` arrivi a **centinaia di milioni** di chiamate
+
+---
+
+## Fibonacci con memoization (Top-Down DP)
+
+Per migliorare, applichiamo **memoization**:
+
+- teniamo un array `memo` dove `memo[n]` conterrà `F(n)` quando lo abbiamo già calcolato
+- prima di calcolare `fib(n)`:
+  - controlliamo se `memo[n]` è già definito
+  - se sì, lo ritorniamo subito in **O(1)**
+  - se no, lo calcoliamo, lo salviamo e poi lo ritorniamo
+
+### Implementazione con memoization
+
+```javascript
+// Fibonacci con memoization (Top-Down Dynamic Programming)
+function fibMemo(n, memo = []) {
+  // Se abbiamo già calcolato F(n), ritorniamo il valore memorizzato
+  if (memo[n] !== undefined) {
+    return memo[n];
+  }
+
+  // Base case: F(0) = 0, F(1) = 1
+  if (n === 0 || n === 1) {
+    return n;
+  }
+
+  // Calcolo ricorsivo:
+  // sommiamo F(n - 1) e F(n - 2), ciascuno a sua volta memoizzato
+  const result = fibMemo(n - 1, memo) + fibMemo(n - 2, memo);
+
+  // Salviamo il risultato in memo[n] per riutilizzarlo in futuro
+  memo[n] = result;
+
+  // Ritorniamo il valore calcolato
+  return result;
+}
+```
+
+Osservazioni:
+
+- `fibMemo(7)` effettua molte meno chiamate rispetto alla versione naive
+- i sottoproblemi come `fib(5)`, `fib(4)`, ecc. vengono calcolati **una sola volta**
+
+### Complessità
+
+- **Time complexity**: **O(n)**  
+  - ogni `n` tra `0` e `N` viene calcolato **al massimo una volta**
+- **Space complexity**: **O(n)**  
+  - per l’array `memo`
+  - più lo stack delle chiamate ricorsive (anch’esso O(n))
+
+Abbiamo trasformato un algoritmo **O(2ⁿ)** in un algoritmo **O(n)** semplicemente evitando calcoli ripetuti.
+
+---
+
+## Fibonacci iterativo (Bottom-Up DP)
+
+La programmazione dinamica può essere fatta anche in modo **bottom-up**:
+
+- invece di partire da `fib(n)` e scendere verso `fib(0)` (top-down)
+- partiamo da **valori base** (`F(0)`, `F(1)`) e **costruiamo** `F(2)`, `F(3)`, …, `F(n)`
+
+### Idea
+
+1. creiamo un array `fibArray`
+2. impostiamo:
+   - `fibArray[0] = 0`
+   - `fibArray[1] = 1`
+3. con un `for` da `2` a `n`:
+   - `fibArray[i] = fibArray[i - 1] + fibArray[i - 2]`
+4. alla fine ritorniamo `fibArray[n]`
+
+### Implementazione iterativa
+
+```javascript
+// Fibonacci iterativo (Bottom-Up Dynamic Programming)
+function fibIterative(n) {
+  // Array che conterrà tutti i valori da F(0) a F(n)
+  const fibArray = [];
+
+  // Inizializziamo i casi base
+  fibArray[0] = 0;
+  fibArray[1] = 1;
+
+  // Costruiamo tutti i valori successivi fino a F(n)
+  for (let i = 2; i <= n; i++) {
+    // Ogni posizione è la somma delle due precedenti
+    fibArray[i] = fibArray[i - 1] + fibArray[i - 2];
+  }
+
+  // Ritorniamo F(n)
+  return fibArray[n];
+}
+```
+
+### Complessità
+
+- **Time complexity**: **O(n)**  
+  - il ciclo for esegue (n - 1) iterazioni (da 2 a n)
+- **Space complexity**: **O(n)**  
+  - usiamo un array di dimensione n + 1
+
+In termini di numero di operazioni, la versione iterativa:
+
+- è **ancora O(n)**, come la versione memoizzata
+- ma evita il costo (e la complessità) delle chiamate ricorsive
+
+### Perché di solito non si memoizza la versione iterativa
+
+Nella versione iterativa:
+
+- ogni chiamata a `fibIterative(n)`:
+  - ricostruisce da zero l’array fino a `n`
+  - quindi è sempre **O(n)**
+- se memoizzassimo i risultati in una struttura globale:
+  - le chiamate successive potrebbero diventare **O(1)** (leggi direttamente il valore)
+  - ma:
+    - il codice diventerebbe più complesso
+    - occuperemmo memoria in modo permanente
+    - il guadagno di performance sarebbe meno drammatico rispetto al salto da O(2ⁿ) a O(n)
+
+Per questo motivo, spesso:
+
+- **ricorsivo + memoization** viene usato per chiarire il concetto di DP
+- **iterativo bottom-up** viene usato in produzione per la sua semplicità e prevedibilità
+
+---
+
+## Riepilogo
+
+- Dynamic Programming richiede:
+  - **overlapping subproblems** (sottoproblemi ripetuti)
+  - **optimal substructure** (la soluzione ottimale globale deriva da quelle locali)
+- Fibonacci ricorsivo naive è un esempio perfetto di:
+  - sottoproblemi sovrapposti
+  - algoritmo esponenziale **O(2ⁿ)**
+- Aggiungendo **memoization** (Top-Down):
+  - ogni `fib(n)` viene calcolato una sola volta → **O(n)**
+- Usando una versione **iterativa bottom-up**:
+  - costruiamo la soluzione passo dopo passo
+  - otteniamo ancora **O(n)**, spesso con meno overhead rispetto alla versione ricorsiva. 
+
+

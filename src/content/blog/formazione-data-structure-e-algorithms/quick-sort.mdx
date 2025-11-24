@@ -1,0 +1,257 @@
+---
+title: 'Quick Sort'
+description: 'Introduzione a Quick Sort, alla funzione helper pivot e analisi della complessità Big O'
+date: 2025-11-24
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 18
+---
+
+## Introduzione
+
+**Quick Sort** è un algoritmo di ordinamento molto veloce che utilizza:
+
+- la strategia **divide and conquer**
+- un elemento speciale chiamato **pivot**
+
+L’idea chiave:
+
+1. scegli un **pivot** (es. il primo elemento dell’array)
+2. riordina l’array in modo che:
+   - tutti gli elementi **minori del pivot** vadano a sinistra
+   - tutti gli elementi **maggiori del pivot** vadano a destra
+3. a questo punto il pivot è nella **posizione definitiva**
+4. ripeti ricorsivamente lo stesso processo sulla parte sinistra e sulla parte destra
+
+Quick Sort è:
+
+- **molto veloce nella pratica** su dati casuali (average/best case O(n × log n))
+- **in-place**: non crea grandi strutture aggiuntive, lavora direttamente sull’array
+
+---
+
+## Helper `swap`: scambiare due elementi in un array
+
+Per Quick Sort useremo spesso uno **scambio (swap)** tra due elementi dell’array.  
+Invece di riscrivere sempre le stesse tre righe, creiamo una piccola funzione di utilità:
+
+```javascript
+// Scambia due elementi di un array dati i loro indici
+function swap(array, index1, index2) {
+  // Salviamo temporaneamente il valore al primo indice
+  const temp = array[index1];
+  // Spostiamo il valore del secondo indice nella prima posizione
+  array[index1] = array[index2];
+  // Rimettiamo il valore salvato nella seconda posizione
+  array[index2] = temp;
+}
+```
+
+Questa funzione verrà riutilizzata sia nella funzione `pivot` sia all’interno di Quick Sort.
+
+---
+
+## Funzione helper: `pivot`
+
+### Idea intuitiva
+
+La funzione `pivot`:
+
+- sceglie un elemento come **pivot** (di solito l’elemento all’indice `pivotIndex`)
+- percorre il sotto-array compreso tra `pivotIndex + 1` ed `endIndex`
+- ogni volta che trova un elemento **minore del pivot**:
+  - avanza un indice chiamato `swapIndex`
+  - scambia l’elemento corrente con l’elemento in `swapIndex`
+- alla fine:
+  - scambia il pivot con l’elemento in `swapIndex`
+  - il pivot finisce nella sua posizione **definitiva**
+  - tutti i valori a sinistra sono `< pivot`
+  - tutti i valori a destra sono `>= pivot`
+
+La funzione deve **ritornare l’indice finale del pivot**, perché Quick Sort userà quell’indice per sapere **dove dividere** l’array nelle chiamate ricorsive.
+
+### Firma della funzione
+
+```javascript
+pivot(array, pivotIndex = 0, endIndex = array.length - 1)
+```
+
+- `array`: l’array da partizionare
+- `pivotIndex`: indice del pivot (default 0, cioè il primo elemento)
+- `endIndex`: indice dell’ultimo elemento del sotto-array su cui lavorare
+
+Quando Quick Sort richiama `pivot` su porzioni interne dell’array, passerà valori diversi per `pivotIndex` ed `endIndex`.
+
+### Implementazione di `pivot`
+
+```javascript
+// Partiziona l'array attorno a un pivot e ritorna l'indice finale del pivot
+function pivot(array, pivotIndex = 0, endIndex = array.length - 1) {
+  // pivotIndex indica la posizione dell'elemento che useremo come pivot
+  // swapIndex indica la posizione dove andranno gli elementi minori del pivot
+  let swapIndex = pivotIndex;
+
+  // Scorriamo gli elementi successivi al pivot fino a endIndex
+  for (let i = pivotIndex + 1; i <= endIndex; i++) {
+    // Se troviamo un valore più piccolo del pivot...
+    if (array[i] < array[pivotIndex]) {
+      // ...prima avanziamo swapIndex...
+      swapIndex++;
+      // ...poi scambiamo l'elemento corrente con quello in swapIndex
+      swap(array, swapIndex, i);
+    }
+  }
+
+  // A fine ciclo, mettiamo il pivot nella sua posizione definitiva:
+  // scambiamo il pivot con l'elemento in swapIndex
+  swap(array, pivotIndex, swapIndex);
+
+  // Ritorniamo l'indice finale del pivot, che ora è nella posizione corretta
+  return swapIndex;
+}
+```
+
+Risultato dopo `pivot`:
+
+- l’array è riordinato **parzialmente**
+- il pivot è nella **posizione corretta**
+- sappiamo esattamente dove dividere l’array:
+  - parte sinistra: da `left` a `pivotIndex - 1`
+  - parte destra: da `pivotIndex + 1` a `right`
+
+---
+
+## Implementazione di Quick Sort
+
+### Struttura generale
+
+Quick Sort userà `pivot` per dividere ricorsivamente l’array:
+
+1. **Base case**: se `left` è uguale o maggiore di `right`, significa che:
+   - c’è **un solo elemento** nel sotto-array, oppure
+   - il sotto-array è vuoto  
+   In entrambi i casi non c’è nulla da ordinare.
+2. **Caso ricorsivo**:
+   - chiama `pivot(array, left, right)` e salva l’indice restituito
+   - esegui Quick Sort sulla **parte sinistra**: da `left` a `pivotIndex - 1`
+   - esegui Quick Sort sulla **parte destra**: da `pivotIndex + 1` a `right`
+
+### Codice di Quick Sort
+
+```javascript
+// Quick Sort: ordina l'array in-place usando pivot e chiamate ricorsive
+function quickSort(array, left = 0, right = array.length - 1) {
+  // Base case:
+  // se left non è più strettamente minore di right, non ci sono elementi da ordinare
+  if (left < right) {
+    // Usiamo pivot per partizionare il sotto-array [left, right]
+    // e ottenere l'indice finale del pivot
+    const pivotIndex = pivot(array, left, right);
+
+    // Chiamata ricorsiva sulla parte sinistra del pivot
+    quickSort(array, left, pivotIndex - 1);
+
+    // Chiamata ricorsiva sulla parte destra del pivot
+    quickSort(array, pivotIndex + 1, right);
+  }
+
+  // Lavorando in-place, ritorniamo l'array per comodità (chaining / test)
+  return array;
+}
+```
+
+Esempio di utilizzo:
+
+```javascript
+const myArray = [4, 6, 1, 7, 3, 2, 5];
+quickSort(myArray); // ordina l'array in-place
+// myArray ora è [1, 2, 3, 4, 5, 6, 7]
+```
+
+---
+
+## Big O di Quick Sort
+
+### Space Complexity – O(1) aggiuntiva (in-place)
+
+Quick Sort lavora **sullo stesso array**, senza creare copie grandi come fa Merge Sort:
+
+- riordina gli elementi tramite `swap`
+- usa solo:
+  - poche **variabili locali**
+  - la **profondità dello stack** delle chiamate ricorsive
+
+Nella versione classica (come questa) si considera lo spazio aggiuntivo come:
+
+- **Space complexity aggiuntiva**: **O(1)** (ignorando lo stack di chiamata)
+
+In pratica:
+
+- Quick Sort è **più parsimonioso in memoria** rispetto a Merge Sort, che richiede O(n) spazio aggiuntivo.
+
+### Time Complexity – Best / Average Case: O(n × log n)
+
+Quando il pivot “taglia bene” l’array (cioè divide in modo ragionevolmente bilanciato):
+
+- a ogni livello dividiamo l’array in due parti → profondità ≈ **log n**
+- a ogni livello, il lavoro complessivo per partizionare è **O(n)** (il `for` di `pivot` scorre il sotto-array)
+
+Quindi:
+
+- **Best case**: **O(n × log n)**
+- **Average case**: **O(n × log n)**
+
+Questa è la situazione tipica con dati **casuali** o non particolarmente ordinati.
+
+### Worst Case: O(n²)
+
+Il caso peggiore accade quando il pivot è sempre “pessimo”, ad esempio:
+
+- l’array è **già ordinato** o quasi ordinato
+- scegliamo sempre come pivot il primo elemento
+
+Allora:
+
+- tutti gli elementi finiscono sempre **da una sola parte** del pivot
+- non c’è una vera divisione in due sotto-array
+- la profondità diventa **lineare** (≈ n)
+- per ogni livello facciamo un lavoro O(n)
+
+Risultato:
+
+- **Worst case**: **O(n²)**
+
+Per questo motivo:
+
+- Quick Sort **non è adatto** se sappiamo che i dati sono **già ordinati o quasi ordinati**
+- in quel caso, un algoritmo come **Insertion Sort** può essere più efficiente (può arrivare a O(n) nel best case)
+
+### Riepilogo complessità
+
+| Caso       | Time Complexity |
+|-----------|-----------------|
+| Best      | O(n × log n)    |
+| Average   | O(n × log n)    |
+| Worst     | O(n²)           |
+
+Space aggiuntiva (escludendo lo stack ricorsivo): **O(1)**.
+
+---
+
+## Confronto con Merge Sort
+
+- **Quick Sort**
+  - Best / Average: **O(n × log n)**
+  - Worst: **O(n²)**
+  - Spazio aggiuntivo: **O(1)** (in-place)
+  - Molto veloce su dati casuali
+- **Merge Sort**
+  - Best / Average / Worst: **O(n × log n)** garantito
+  - Spazio aggiuntivo: **O(n)** (serve un array di supporto per il merge)
+
+In sintesi:
+
+- se vuoi **prestazioni prevedibili** e puoi permetterti spazio extra → **Merge Sort**
+- se i dati sono **casuali** e la memoria è importante → **Quick Sort** è spesso la scelta migliore
+
+

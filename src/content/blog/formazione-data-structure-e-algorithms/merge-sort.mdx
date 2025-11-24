@@ -1,0 +1,339 @@
+---
+title: 'Merge Sort'
+description: 'Introduzione a Merge Sort, alla funzione helper merge e a un esercizio di merge tra due linked list ordinate'
+date: 2025-11-24
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 17
+---
+
+## Introduzione
+
+**Merge Sort** è il primo algoritmo di ordinamento di questa serie che utilizza la **ricorsione**.
+
+L’idea chiave è:
+
+1. **Divide**: spezza l’array a metà, poi spezza le metà a loro volta, finché non ottieni **array di un solo elemento** (che sono per definizione già ordinati)
+2. **Conquer (merge)**: combina due array **già ordinati** in un array più grande **ordinato**
+
+All’inizio sembra inefficiente “rompere tutto” in array di un solo elemento, ma in realtà Merge Sort è uno degli algoritmi di sorting più efficienti che possiamo scrivere per dati generici:
+
+- **Time complexity**: O(n × log n)
+- **Space complexity aggiuntiva**: O(n)
+
+---
+
+## Funzione helper: merge di due array ordinati
+
+### Idea intuitiva
+
+Prima di scrivere Merge Sort, serve una funzione helper `merge` che prenda **due array già ordinati** e li combini in **un unico array ordinato**:
+
+- teniamo due indici:
+  - `i` per il primo array
+  - `j` per il secondo array
+- finché entrambi gli array hanno elementi:
+  - confrontiamo `arr1[i]` e `arr2[j]`
+  - il valore **più piccolo** viene pushato nel nuovo array `combined`
+  - incrementiamo l’indice (`i` o `j`) dell’array da cui abbiamo preso l’elemento
+- quando uno dei due array finisce:
+  - pushiamo **in blocco** tutti gli elementi rimanenti dell’altro array
+
+### Implementazione di `merge`
+
+```javascript
+// Funzione helper che unisce due array ORDINATI in un unico array ORDINATO
+function merge(arr1, arr2) {
+  // Nuovo array che conterrà tutti gli elementi ordinati
+  const combined = [];
+
+  // Indici per scandire i due array di input
+  let i = 0; // indice per arr1
+  let j = 0; // indice per arr2
+
+  // Finché entrambi gli array hanno ancora elementi da confrontare
+  while (i < arr1.length && j < arr2.length) {
+    // Confronta l'elemento corrente di arr1 con quello di arr2
+    if (arr1[i] < arr2[j]) {
+      // Se arr1[i] è più piccolo, lo aggiungiamo al risultato
+      combined.push(arr1[i]);
+      // e passiamo all'elemento successivo di arr1
+      i++;
+    } else {
+      // Altrimenti arr2[j] è più piccolo o uguale
+      combined.push(arr2[j]);
+      // e passiamo all'elemento successivo di arr2
+      j++;
+    }
+  }
+
+  // A questo punto almeno uno dei due array è esaurito.
+  // Se in arr1 sono rimasti elementi, li aggiungiamo tutti in coda.
+  while (i < arr1.length) {
+    combined.push(arr1[i]);
+    i++;
+  }
+
+  // Se in arr2 sono rimasti elementi, li aggiungiamo tutti in coda.
+  while (j < arr2.length) {
+    combined.push(arr2[j]);
+    j++;
+  }
+
+  // Ritorniamo il nuovo array ordinato
+  return combined;
+}
+```
+
+Questa funzione segue esattamente la logica introdotta nella sezione precedente:
+
+- usa due indici (`i` e `j`)
+- confronta sempre il più piccolo tra i due
+- quando un array finisce, scarica tutto il resto dell’altro
+
+**Complessità di `merge`**:
+
+- Time: **O(n + m)** dove `n` e `m` sono le lunghezze dei due array
+- Space: **O(n + m)** per il nuovo array `combined`
+
+---
+
+## Implementazione di Merge Sort (ricorsivo)
+
+### Struttura generale
+
+Merge Sort esegue sempre gli stessi due passi ricorsivi:
+
+1. **Base case**: se l’array ha lunghezza 1, è già ordinato → lo ritorniamo così com’è
+2. **Caso ricorsivo**:
+   - calcoliamo un **midpoint** con `Math.floor(array.length / 2)`
+   - creiamo due nuovi array:
+     - `left = array.slice(0, midIndex)`
+     - `right = array.slice(midIndex)`
+   - chiamiamo ricorsivamente `mergeSort(left)` e `mergeSort(right)`
+   - combiniamo i due risultati usando la funzione `merge`
+
+> Importante: **Merge Sort non ordina l’array in-place**.  
+> Ritorna **un nuovo array** ordinato, lasciando intatto l’array originale.
+
+### Codice di Merge Sort
+
+```javascript
+// Merge Sort: ordina un array usando la strategia "divide and conquer"
+function mergeSort(array) {
+  // BASE CASE:
+  // Un array con un solo elemento è già ordinato → lo ritorniamo direttamente.
+  if (array.length === 1) {
+    return array;
+  }
+
+  // Calcoliamo l'indice centrale spezzando l'array a metà.
+  // Usiamo Math.floor per gestire correttamente anche lunghezze dispari.
+  const midIndex = Math.floor(array.length / 2);
+
+  // Creiamo il sotto-array di sinistra usando slice:
+  // parte dall'indice 0 e arriva fino (ma NON incluso) a midIndex.
+  const left = array.slice(0, midIndex);
+
+  // Creiamo il sotto-array di destra:
+  // parte da midIndex e va fino alla fine dell'array.
+  const right = array.slice(midIndex);
+
+  // Chiamate ricorsive:
+  // - ordiniamo ricorsivamente il sotto-array di sinistra
+  // - ordiniamo ricorsivamente il sotto-array di destra
+  const sortedLeft = mergeSort(left);
+  const sortedRight = mergeSort(right);
+
+  // Combiniamo i due sotto-array ORDINATI usando la funzione helper merge.
+  // Il risultato è un nuovo array ordinato che contiene tutti gli elementi.
+  return merge(sortedLeft, sortedRight);
+}
+```
+
+### Comportamento su un esempio
+
+Con un array `[4, 2, 6, 1]`:
+
+1. `mergeSort([4, 2, 6, 1])`
+   - `left = [4, 2]`, `right = [6, 1]`
+2. `mergeSort([4, 2])` → diventa `[4]` e `[2]` → `merge([4], [2])` → `[2, 4]`
+3. `mergeSort([6, 1])` → diventa `[6]` e `[1]` → `merge([6], [1])` → `[1, 6]`
+4. `merge([2, 4], [1, 6])` → `[1, 2, 4, 6]`
+
+L’array originale rimane `[4, 2, 6, 1]`; il risultato ordinato è il nuovo array ritornato da `mergeSort`.
+
+---
+
+## Big O di Merge Sort
+
+### Space Complexity – O(n)
+
+Per ordinare un array di `n` elementi:
+
+- abbiamo l’array originale
+- durante il processo creiamo:
+  - array `left`
+  - array `right`
+  - array combinati dei vari livelli
+
+In totale, lo spazio aggiuntivo usato per rappresentare gli elementi durante le fasi di split/merge è **proporzionale a n**:
+
+- **Space complexity**: **O(n)**
+
+### Time Complexity – O(n × log n)
+
+Merge Sort ha due componenti principali:
+
+- **Split (divide)**:
+  - ad ogni livello dividiamo l’array a metà
+  - numero di livelli ≈ \(\log_2(n)\) (es. con 8 elementi servono 3 “tagli”: \(2^3 = 8\))
+- **Merge (conquer)**:
+  - ad ogni livello, la somma degli elementi che stiamo mergeando è sempre `n`
+  - il lavoro per livello è quindi **O(n)** (grazie alla funzione `merge`)
+
+Combinando:
+
+- livelli ≈ **log n**
+- lavoro per livello ≈ **n**
+
+Otteniamo:
+
+- **Time complexity**: **O(n × log n)**
+
+In pratica, per array grandi, Merge Sort è molto più efficiente degli algoritmi O(n²) (Bubble, Selection, Insertion Sort).
+
+---
+
+## Esercizio: Merge di due Linked List ordinate (interview question)
+
+### Descrizione del problema
+
+Abbiamo una classe `LinkedList` **singly linked**, con:
+
+- `this.head`: nodo iniziale
+- `this.tail`: nodo finale
+- `this.length`: numero di nodi nella lista
+
+Vogliamo implementare un metodo:
+
+- **`merge(otherList)`**  
+  che unisce **la lista corrente** con `otherList`, assumendo che:
+  - entrambe le liste siano **già ordinate in ordine crescente**
+  - i nodi siano riutilizzati (non creiamo nuovi nodi, solo ricolleghiamo i `next`)
+
+Alla fine:
+
+- la lista **corrente** (`this`) conterrà tutti gli elementi ordinati
+- `otherList` sarà “consumata” (i suoi nodi vengono agganciati alla lista corrente)
+
+Esempio:
+
+```javascript
+// l1: 1 -> 3 -> 5 -> 7
+const l1 = new LinkedList(1);
+l1.push(3);
+l1.push(5);
+l1.push(7);
+
+// l2: 2 -> 4 -> 6 -> 8
+const l2 = new LinkedList(2);
+l2.push(4);
+l2.push(6);
+l2.push(8);
+
+// Dopo il merge:
+// l1: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
+l1.merge(l2);
+```
+
+### Idea (stessa logica di `merge` sugli array)
+
+Il pattern è identico al `merge` tra due array ordinati, ma invece di usare indici su un array:
+
+- usiamo puntatori a nodi:
+  - `this.head` per la lista corrente
+  - `otherHead` per l’altra lista
+- usiamo un **nodo fittizio** (`dummy`) come testa temporanea della lista fusa
+- `current` tiene traccia dell’ultimo nodo inserito nella lista risultante
+
+Passi:
+
+1. Confronta `this.head.value` con `otherHead.value`
+2. Collega il nodo con valore più piccolo a `current.next`
+3. Avanza nella lista da cui hai preso il nodo (`this.head = this.head.next` oppure `otherHead = otherHead.next`)
+4. Avanza `current` (`current = current.next`)
+5. Quando una delle due liste finisce, collega in coda tutti i nodi rimasti dell’altra
+6. Imposta `this.head = dummy.next` (saltiamo il nodo fittizio)
+7. Aggiorna `this.tail` (se necessario) e `this.length`
+
+### Implementazione di `merge` per LinkedList
+
+```javascript
+// Metodo di istanza della classe LinkedList
+// Unisce la lista corrente (this) con un'altra lista otherList,
+// assumendo che entrambe siano già ordinate in modo crescente.
+merge(otherList) {
+  // Puntatore alla testa della lista da unire
+  let otherHead = otherList.head;
+
+  // Nodo "fittizio" che ci aiuta a costruire facilmente la lista fusa
+  let dummy = { value: 0, next: null };
+
+  // 'current' punterà sempre all'ultimo nodo della lista fusa
+  let current = dummy;
+
+  // Finché entrambe le liste hanno ancora nodi
+  while (this.head !== null && otherHead !== null) {
+    // Confrontiamo il valore in testa alle due liste
+    if (this.head.value < otherHead.value) {
+      // Il nodo della lista corrente è più piccolo:
+      // lo colleghiamo in coda alla lista fusa
+      current.next = this.head;
+      // Avanziamo la testa della lista corrente
+      this.head = this.head.next;
+    } else {
+      // Il nodo della otherList è più piccolo:
+      // lo colleghiamo in coda alla lista fusa
+      current.next = otherHead;
+      // Avanziamo la testa della otherList
+      otherHead = otherHead.next;
+    }
+
+    // Avanziamo il puntatore 'current' al nuovo ultimo nodo
+    current = current.next;
+  }
+
+  // A questo punto almeno una delle due liste è finita.
+  // Se nella lista corrente ci sono ancora nodi, li colleghiamo in coda.
+  if (this.head !== null) {
+    current.next = this.head;
+  } else {
+    // Altrimenti colleghiamo tutti i nodi rimasti di otherList
+    current.next = otherHead;
+    // Se abbiamo attaccato nodi di otherList in coda,
+    // la tail della lista risultante deve diventare la tail di otherList
+    this.tail = otherList.tail;
+  }
+
+  // La nuova testa della lista fusa è il nodo successivo al dummy
+  this.head = dummy.next;
+
+  // Aggiorniamo la lunghezza: somma delle due liste
+  this.length += otherList.length;
+}
+```
+
+### Complessità del merge tra due LinkedList
+
+- **Time complexity**: **O(n + m)**  
+  - ogni nodo di entrambe le liste viene visitato al massimo una volta
+- **Space complexity aggiuntiva**: **O(1)**  
+  - non creiamo nuovi nodi, riusiamo quelli esistenti e un solo nodo fittizio in stack
+
+Questo esercizio è un’ottima variante “da colloquio” del concetto di `merge`:
+
+- la logica è la stessa del `merge` sugli array
+- cambia solo la struttura dati (liste collegate invece di array)
+
+
