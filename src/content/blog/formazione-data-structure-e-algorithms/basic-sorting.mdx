@@ -1,0 +1,335 @@
+---
+title: 'Basic Sorting'
+description: 'Introduzione agli algoritmi di ordinamento base: Bubble Sort, Selection Sort e Insertion Sort'
+date: 2025-11-21
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 17
+---
+
+## Introduzione
+
+Gli algoritmi di **sorting** (ordinamento) sono fondamentali nella programmazione. Esistono diversi approcci per ordinare un array, ciascuno con vantaggi e svantaggi specifici. In questa sezione vedremo tre algoritmi base:
+
+- **Bubble Sort**: il più semplice, "fa galleggiare" gli elementi più grandi verso la fine
+- **Selection Sort**: seleziona iterativamente il minimo e lo posiziona correttamente
+- **Insertion Sort**: costruisce l'array ordinato inserendo elementi uno alla volta
+
+## Bubble Sort
+
+### Concetto
+
+**Bubble Sort** confronta coppie di elementi adiacenti e li scambia se sono nell'ordine sbagliato. L'elemento più grande "risale" (bubble up) fino alla fine dell'array come una bolla.
+
+**Funzionamento**:
+1. Confronta il primo elemento con il secondo
+2. Se il primo è maggiore, li scambia
+3. Passa al secondo elemento e lo confronta con il terzo
+4. Continua fino alla fine dell'array
+5. L'elemento più grande è ora nella posizione corretta
+6. Ricomincia dal primo elemento, ma si ferma prima dell'ultimo (già ordinato)
+
+```javascript
+// Esempio visuale
+// Array iniziale: [4, 2, 6, 5, 1, 3]
+
+// Prima iterazione (5 confronti):
+// [4, 2, 6, 5, 1, 3] → confronta 4 e 2, scambia
+// [2, 4, 6, 5, 1, 3] → confronta 4 e 6, non scambia
+// [2, 4, 6, 5, 1, 3] → confronta 6 e 5, scambia
+// [2, 4, 5, 6, 1, 3] → confronta 6 e 1, scambia
+// [2, 4, 5, 1, 6, 3] → confronta 6 e 3, scambia
+// [2, 4, 5, 1, 3, 6] → 6 è ordinato!
+
+// Seconda iterazione (4 confronti):
+// Il 5 risale fino alla penultima posizione
+// [2, 4, 1, 3, 5, 6] → 5 è ordinato!
+
+// E così via...
+```
+
+### Implementazione
+
+```javascript
+// Ordina un array usando Bubble Sort
+function bubbleSort(array) {
+  // Loop esterno: controlla quante iterazioni fare
+  // Parte dalla fine perché a ogni iterazione l'ultimo elemento viene ordinato
+  for (let i = array.length - 1; i > 0; i--) {
+    
+    // Loop interno: confronta elementi adiacenti
+    // Si ferma a i perché gli elementi dopo i sono già ordinati
+    for (let j = 0; j < i; j++) {
+      
+      // Se l'elemento corrente è maggiore del successivo, scambiali
+      if (array[j] > array[j + 1]) {
+        // Swap usando una variabile temporanea
+        let temp = array[j];
+        array[j] = array[j + 1];
+        array[j + 1] = temp;
+      }
+    }
+  }
+  
+  // Ritorna l'array ordinato
+  return array;
+}
+```
+
+**Pattern dello swap**:
+```javascript
+// Tecnica standard per scambiare due elementi in un array
+let temp = array[j];       // Salva il primo elemento
+array[j] = array[j + 1];   // Sposta il secondo al posto del primo
+array[j + 1] = temp;       // Metti il primo (salvato in temp) al posto del secondo
+```
+
+## Selection Sort
+
+### Concetto
+
+**Selection Sort** cerca iterativamente l'elemento **minimo** nella parte non ordinata dell'array e lo scambia con il primo elemento non ordinato.
+
+**Funzionamento**:
+1. Imposta una variabile `min` che memorizza l'**indice** dell'elemento minimo
+2. Inizialmente `min` punta al primo elemento
+3. Confronta questo elemento con tutti gli altri elementi dell'array
+4. Ogni volta che trova un elemento più piccolo, aggiorna `min` con il suo indice
+5. Alla fine dell'iterazione, scambia l'elemento in posizione `min` con il primo elemento
+6. Il primo elemento è ora ordinato
+7. Ripeti per il resto dell'array
+
+```javascript
+// Esempio visuale con indici
+// Array:   [4, 2, 6, 5, 1, 3]
+// Indici:  [0, 1, 2, 3, 4, 5]
+
+// Prima iterazione:
+// min = 0 (valore 4)
+// Confronta con indice 1 (valore 2): 2 < 4, min = 1
+// Confronta con indice 2 (valore 6): 6 > 2, min resta 1
+// Confronta con indice 3 (valore 5): 5 > 2, min resta 1
+// Confronta con indice 4 (valore 1): 1 < 2, min = 4
+// Confronta con indice 5 (valore 3): 3 > 1, min resta 4
+// Scambia indice 0 con indice 4: [1, 2, 6, 5, 4, 3]
+// ↑ ordinato
+
+// Seconda iterazione inizia dall'indice 1:
+// min = 1 (valore 2)
+// Confronta con tutti i successivi, 2 è già il minimo
+// Nessuno scambio necessario
+// [1, 2, 6, 5, 4, 3]
+//     ↑ ordinato
+```
+
+### Implementazione
+
+```javascript
+// Ordina un array usando Selection Sort
+function selectionSort(array) {
+  // Loop esterno: itera attraverso l'array fino al penultimo elemento
+  // Ogni iterazione posiziona un elemento nella posizione corretta
+  for (let i = 0; i < array.length - 1; i++) {
+    
+    // Assume che il minimo sia all'indice corrente i
+    let min = i;
+    
+    // Loop interno: trova l'elemento minimo nella parte non ordinata
+    // Inizia da i+1 perché tutto prima di i è già ordinato
+    for (let j = i + 1; j < array.length; j++) {
+      
+      // Se trova un elemento più piccolo, aggiorna l'indice min
+      if (array[j] < array[min]) {
+        min = j;
+      }
+    }
+    
+    // Scambia solo se il minimo è diverso dalla posizione corrente
+    // Evita swap inutili quando l'elemento è già al posto giusto
+    if (i !== min) {
+      let temp = array[i];
+      array[i] = array[min];
+      array[min] = temp;
+    }
+  }
+  
+  // Ritorna l'array ordinato
+  return array;
+}
+```
+
+**Dettaglio importante**: lo swap avviene solo quando `i !== min` per evitare operazioni inutili quando l'elemento è già nella posizione corretta.
+
+## Insertion Sort
+
+### Concetto
+
+**Insertion Sort** costruisce l'array ordinato un elemento alla volta, inserendo ogni nuovo elemento nella posizione corretta all'interno della parte già ordinata.
+
+**Analogia**: Come ordinare le carte da gioco - prendi una carta alla volta e la inserisci nella posizione corretta rispetto alle carte già in mano.
+
+**Funzionamento**:
+1. Inizia dal secondo elemento (il primo è già "ordinato")
+2. Confronta l'elemento corrente con gli elementi prima di lui
+3. Sposta gli elementi maggiori verso destra
+4. Inserisce l'elemento corrente nella posizione liberata
+5. Ripeti per tutti gli elementi
+
+```javascript
+// Esempio visuale
+// Array: [4, 2, 6, 5, 1, 3]
+//        ↑ già ordinato
+
+// Iterazione 1: elemento 2
+// temp = 2
+// Confronta 2 con 4: 4 > 2, sposta 4 a destra
+// [4, 4, 6, 5, 1, 3]
+// Inserisci 2 nella posizione liberata
+// [2, 4, 6, 5, 1, 3]
+
+// Iterazione 2: elemento 6
+// temp = 6
+// Confronta 6 con 4: 4 < 6, stop
+// 6 resta al suo posto
+// [2, 4, 6, 5, 1, 3]
+
+// Iterazione 3: elemento 5
+// temp = 5
+// Confronta 5 con 6: 6 > 5, sposta 6 a destra
+// Confronta 5 con 4: 4 < 5, stop
+// Inserisci 5
+// [2, 4, 5, 6, 1, 3]
+
+// Iterazione 4: elemento 1
+// temp = 1
+// Sposta 6, 5, 4, 2 tutti a destra
+// Inserisci 1 all'inizio
+// [1, 2, 4, 5, 6, 3]
+```
+
+### Implementazione
+
+```javascript
+// Ordina un array usando Insertion Sort
+function insertionSort(array) {
+  // Loop esterno: inizia dal secondo elemento (indice 1)
+  // Il primo elemento è considerato già ordinato
+  for (let i = 1; i < array.length; i++) {
+    
+    // Salva l'elemento corrente da inserire nella parte ordinata
+    let temp = array[i];
+    
+    // Loop interno: confronta con gli elementi nella parte ordinata
+    // Usa var (non let) perché j viene usato fuori dal loop
+    // j > -1 previene di andare oltre l'inizio dell'array
+    for (var j = i - 1; array[j] > temp && j > -1; j--) {
+      
+      // Sposta l'elemento più grande una posizione a destra
+      // Crea spazio per inserire temp
+      array[j + 1] = array[j];
+    }
+    
+    // Inserisci temp nella posizione corretta (j+1)
+    // j è decrementato di 1 dal loop, quindi j+1 è la posizione giusta
+    array[j + 1] = temp;
+  }
+  
+  // Ritorna l'array ordinato
+  return array;
+}
+```
+
+**Dettagli tecnici**:
+- **`var j`** invece di `let`: necessario per usare `j` dopo il loop (riga `array[j+1] = temp`)
+- **`j > -1`**: condizione che previene di uscire dall'array quando temp deve andare all'inizio
+- **`array[j+1] = array[j]`**: sposta elementi a destra per fare spazio
+
+## Complessità Big O
+
+### Confronto degli algoritmi
+
+| Algoritmo | Best Case | Average Case | Worst Case | Space |
+|-----------|-----------|--------------|------------|-------|
+| **Bubble Sort** | O(n²) | O(n²) | O(n²) | O(1) |
+| **Selection Sort** | O(n²) | O(n²) | O(n²) | O(1) |
+| **Insertion Sort** | <span class="text-green-600 dark:text-green-400 font-semibold">O(n)</span> | O(n²) | O(n²) | O(1) |
+
+**Nota importante**: tutti e tre gli algoritmi hanno complessità **O(n²)** nel caso medio/peggiore a causa del doppio loop annidato.
+
+### Caso speciale: Insertion Sort con dati quasi ordinati
+
+Insertion Sort ha un **vantaggio significativo** quando l'array è già quasi ordinato:
+
+```javascript
+// Array quasi ordinato: [1, 2, 3, 4, 5, 7, 6]
+//                                      ↑ solo questo fuori posto
+
+// Insertion Sort fa sostanzialmente UN SOLO PASSAGGIO
+// Complessità: O(n) invece di O(n²)!
+
+// Gli algoritmi più avanzati (O(n log n)) non avranno
+// questo vantaggio e potrebbero essere più lenti in questo caso
+```
+
+**Quando usare Insertion Sort**:
+- Dati quasi ordinati o parzialmente ordinati
+- Array di piccole dimensioni
+- Quando la semplicità del codice è importante
+
+## Visualizzazione comparativa
+
+### Caratteristiche principali
+
+| Caratteristica | Bubble Sort | Selection Sort | Insertion Sort |
+|---------------|-------------|----------------|----------------|
+| **Strategia** | Scambia adiacenti | Seleziona minimo | Inserisce nella posizione corretta |
+| **Scambi** | Molti (ogni confronto) | Pochi (uno per iterazione) | Variabili (sposta elementi) |
+| **Stabilità** | ✅ Stabile | ❌ Non stabile | ✅ Stabile |
+| **Adattività** | ❌ No | ❌ No | ✅ Sì (veloce su dati quasi ordinati) |
+| **Memoria** | O(1) | O(1) | O(1) |
+
+**Legenda**:
+- **Stabile**: mantiene l'ordine relativo di elementi uguali
+- **Adattivo**: performance migliori su dati parzialmente ordinati
+
+### Pattern comune: Swap
+
+Tutti e tre gli algoritmi usano il pattern di swap per scambiare elementi:
+
+```javascript
+// Pattern standard per scambiare due elementi
+// Richiede una variabile temporanea per non perdere dati
+let temp = array[i];    // Salva il primo valore
+array[i] = array[j];    // Sovrascrivi il primo con il secondo
+array[j] = temp;        // Metti il primo (salvato) nel secondo
+```
+
+## Quando usare quale algoritmo
+
+### Bubble Sort
+- ✅ Scopo didattico (il più semplice da capire)
+- ❌ Raramente usato in produzione (troppo inefficiente)
+- ❌ Molti swap anche quando non necessari
+
+### Selection Sort
+- ✅ Pochi swap (utile quando lo swap è costoso)
+- ❌ Sempre O(n²) anche su dati ordinati
+- ⚠️ Non stabile (può cambiare ordine di elementi uguali)
+
+### Insertion Sort
+- ✅ **Migliore scelta** per dati quasi ordinati: O(n)
+- ✅ Ottimo per array piccoli
+- ✅ Stabile e adattivo
+- ✅ Usato come parte di algoritmi più complessi (es. Timsort)
+- ⚠️ O(n²) su dati completamente disordinati
+
+## Riepilogo
+
+Gli algoritmi di **basic sorting** sono:
+1. **Semplici da implementare** - poche righe di codice
+2. **Inefficienti su grandi dataset** - O(n²) non scala bene
+3. **Utili per scopi didattici** - insegnano i concetti base di ordinamento
+4. **Insertion Sort ha un caso d'uso reale** - eccellente su dati quasi ordinati
+
+**Prossimi passi**: Gli algoritmi più avanzati (Merge Sort, Quick Sort) hanno complessità O(n log n) e sono molto più efficienti su grandi dataset, ma sono anche più complessi da implementare e comprendere.
+
