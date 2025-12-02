@@ -1,0 +1,417 @@
+---
+name: 'DuoSync'
+description: 'Applicazione web PWA per sincronizzare appuntamenti tra due utenti. Next.js 16 con architettura feature-based, timeline visiva per disponibilità condivisa, appuntamenti ricorrenti, notifiche push, supporto multi-lingua e dark mode. Database PostgreSQL con Drizzle ORM.'
+tags: ['Next.js', 'TypeScript', 'PostgreSQL', 'Drizzle ORM', 'PWA', 'Push Notifications', 'React Context', 'Tailwind CSS', 'Radix UI', 'Web Push API']
+# image: './assets/cover.png'
+link: 'https://duosync.vitoesposito.it'
+startDate: '2025-11-20'
+endDate: '2025-12-02'
+---
+
+## Il Problema
+
+Quando due persone vivono insieme o condividono spazi e tempo, coordinare gli appuntamenti e trovare momenti di disponibilità comune può essere complesso. Spesso ci si trova a dover comunicare manualmente gli impegni, verificare sovrapposizioni e cercare slot liberi, con il rischio di perdere informazioni o dimenticare conflitti.
+
+DuoSync nasce dall'esigenza di avere uno strumento semplice e immediato per sincronizzare gli appuntamenti tra due utenti, visualizzare in tempo reale quando entrambi sono disponibili e ricevere notifiche quando l'altro utente aggiorna i propri impegni.
+
+## La Soluzione
+
+DuoSync è un'applicazione web progressiva (PWA) costruita con Next.js 16 che permette a due utenti di gestire i propri appuntamenti e visualizzare automaticamente i momenti di disponibilità condivisa. L'applicazione offre una timeline visiva che mostra la disponibilità personale e quella condivisa, gestione appuntamenti one-time e ricorrenti, notifiche push per sincronizzazione automatica, supporto multi-lingua (italiano/inglese), tema chiaro/scuro, e architettura feature-based per manutenibilità e scalabilità.
+
+{/* ![DuoSync - Dashboard principale](./assets/cover.png) */}
+
+## Come Funziona
+
+L'applicazione inizia con un processo di onboarding dove viene creato il primo utente amministratore e configurato un PIN di accesso. Una volta completato l'onboarding, l'utente può accedere alla dashboard principale dove può creare, modificare ed eliminare appuntamenti.
+
+Il cuore dell'applicazione è la **timeline di disponibilità**, che mostra due visualizzazioni: la timeline personale mostra tutti gli appuntamenti dell'utente attivo con colori distinti per categoria (sonno, altri impegni, disponibile), mentre la timeline condivisa evidenzia in verde i momenti in cui entrambi gli utenti sono liberi contemporaneamente, facilitando la pianificazione di attività comuni.
+
+Gli appuntamenti possono essere creati in due modalità: **one-time** per impegni specifici di una data, o **ricorrenti** con giorni della settimana selezionabili. Il sistema valida automaticamente che non ci siano sovrapposizioni e suggerisce il prossimo slot disponibile quando necessario.
+
+Quando un utente conferma i propri impegni tramite il pulsante "Conferma", viene inviata una notifica push all'altro utente (se ha abilitato le notifiche), avvisandolo che ci sono nuovi aggiornamenti da visualizzare.
+
+{/* ![DuoSync - Timeline di disponibilità](./assets/timeline.png) */}
+
+## Le Sfide Tecniche
+
+La costruzione della timeline condivisa è stata una delle sfide più complesse. Ho implementato un algoritmo che raccoglie tutti i punti temporali dagli appuntamenti di entrambi gli utenti, crea segmenti tra questi punti, e calcola la categoria di ogni segmento basandosi sulla disponibilità di entrambi. La logica di priorità è: se uno dei due sta dormendo, il segmento è marcato come "sleep"; se l'utente corrente è occupato, è "other"; se entrambi sono liberi, è "match" (disponibilità condivisa); se solo l'utente corrente è libero, è "available".
+
+La gestione degli appuntamenti ricorrenti ha richiesto un'architettura a due livelli: i template ricorrenti sono salvati nella tabella `recurring_appointments` con i giorni della settimana, mentre quando viene richiesta la lista per una data specifica, il sistema applica i template ricorrenti attivi per quel giorno e li combina con gli appuntamenti one-time. Questo approccio permette di modificare o eliminare i template senza dover aggiornare migliaia di record.
+
+L'implementazione delle notifiche push ha richiesto l'integrazione con Web Push API, gestione delle VAPID keys, registrazione delle subscription nel database, e un service worker per gestire l'arrivo delle notifiche. Ho implementato un sistema che invia notifiche solo quando un utente conferma esplicitamente i propri impegni, evitando spam e mantenendo l'utente informato solo quando necessario.
+
+{/* ![DuoSync - Gestione appuntamenti](./assets/appointments.png) */}
+
+## Architettura e Design Patterns
+
+L'applicazione segue un'architettura **feature-based** dove ogni dominio (appointments, users, availability) ha la propria cartella con servizi di business logic puri, context per la gestione dello stato, e barrel exports per l'API pubblica. I componenti sono presentazionali e ricevono dati tramite hook custom, mantenendo la separazione tra logica e presentazione.
+
+Il sistema di state management utilizza **React Context** con provider isolati per feature. Ogni feature espone un context provider e un hook custom (es. `useAppointments`, `useUsers`) che i componenti utilizzano per accedere allo stato. Questo pattern evita prop drilling e mantiene lo stato locale alla feature, migliorando le performance con re-render mirati.
+
+La persistenza dei dati è gestita tramite **Drizzle ORM** con PostgreSQL. Ho implementato un sistema di migrazioni schema-first dove lo schema è definito in TypeScript e sincronizzato con il database tramite Drizzle Kit. Le query sono ottimizzate con indici su `userId` e `date` per performance efficienti anche con molti appuntamenti.
+
+L'architettura API segue il pattern **Server/Client separation** di Next.js: le route API (`/app/api/*`) gestiscono la validazione e chiamano i servizi di database, mentre i servizi client-side (`features/*/services/*.service.ts`) utilizzano `fetch()` per chiamare le API routes. Questo mantiene una chiara separazione tra browser e server, con validazione sia lato client (per UX) che lato server (per sicurezza).
+
+{/* ![DuoSync - Architettura feature-based](./assets/architecture.png) */}
+
+---
+
+## Dettagli Tecnici
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Stack Tecnologico</summary>
+<div class="px-4 pb-4">
+
+| Categoria | Tecnologia | Versione | Scopo |
+|-----------|-----------|----------|-------|
+| **Framework** | Next.js | 16.0.3 | React framework con App Router |
+| | React | 19.2.0 | UI library |
+| **Linguaggio** | TypeScript | 5 | Type safety |
+| **Database** | PostgreSQL | 16 | Database relazionale |
+| | Drizzle ORM | 0.44.7 | ORM type-safe |
+| **Styling** | Tailwind CSS | 4 | Utility-first CSS |
+| **UI Components** | Radix UI | Latest | Accessible components |
+| | lucide-react | 0.554.0 | Icon library |
+| **Utilities** | dayjs | 1.11.19 | Date/time manipulation |
+| | date-fns | 4.1.0 | Date utilities |
+| | sonner | 2.0.7 | Toast notifications |
+| **PWA** | next-themes | 0.4.6 | Theme management |
+| | web-push | 3.6.7 | Push notifications |
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Funzionalità Principali</summary>
+<div class="px-4 pb-4">
+
+| Funzionalità | Descrizione |
+|--------------|-------------|
+| **Gestione Appuntamenti** | Creazione, modifica, eliminazione appuntamenti one-time e ricorrenti |
+| **Timeline Visiva** | Visualizzazione disponibilità personale e condivisa con colori distinti |
+| **Validazione Slot** | Controllo automatico sovrapposizioni e suggerimento prossimo slot disponibile |
+| **Appuntamenti Ricorrenti** | Template ricorrenti con giorni della settimana selezionabili |
+| **Notifiche Push** | Notifiche quando l'altro utente conferma i propri impegni |
+| **Multi-utente** | Supporto per due utenti con switch rapido tra profili |
+| **Internazionalizzazione** | Supporto italiano e inglese con context i18n |
+| **Tema Chiaro/Scuro** | Supporto per preferenze utente e tema di sistema |
+| **PWA** | Installabile come app nativa con service worker |
+| **Admin Panel** | Area amministrativa protetta da PIN per gestione utenti |
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Architettura</summary>
+<div class="px-4 pb-4">
+
+### Struttura Progetto
+
+```
+duosync/
+├── app/                    # Next.js App Router
+│   ├── api/                # API routes (server-side)
+│   │   ├── appointments/   # Endpoints per appuntamenti
+│   │   ├── notifications/  # Endpoints per push notifications
+│   │   └── users/          # Endpoints per utenti
+│   ├── admin/              # Area amministrativa
+│   ├── onboarding/         # Setup iniziale
+│   └── page.tsx            # Dashboard principale
+├── components/             # Componenti UI riutilizzabili
+│   ├── dashboard/          # Componenti specifici dashboard
+│   ├── header/              # Header con user switcher
+│   ├── layout/              # Layout components
+│   └── ui/                  # Radix UI components
+├── features/               # Logica di business isolata
+│   ├── appointments/        # Gestione appuntamenti
+│   │   ├── services/        # Business logic pura
+│   │   └── appointments-context.tsx
+│   ├── availability/        # Calcolo disponibilità
+│   │   └── services/
+│   └── users/               # Gestione utenti
+│       ├── services/
+│       └── users-context.tsx
+├── hooks/                  # Custom hooks riutilizzabili
+│   ├── use-other-user-appointments.ts
+│   ├── use-time-input-validation.ts
+│   └── useNotifications.ts
+├── lib/                    # Utilities e servizi
+│   ├── db/                  # Database schema e connection
+│   ├── time/                # Utility per gestione tempo
+│   └── notifications/       # Servizio push notifications
+├── types/                   # TypeScript types globali
+│   └── index.tsx
+└── i18n/                    # Traduzioni e context i18n
+    ├── en.json
+    └── it.json
+```
+
+### State Management
+
+- **Feature Contexts**: Ogni feature ha il proprio context provider isolato
+- **Custom Hooks**: API pubblica esposta tramite hook (es. `useAppointments()`)
+- **State Isolation**: Stato isolato per feature, evitando re-render globali
+- **Optimistic Updates**: Aggiornamenti ottimistici con rollback su errore
+
+### Timeline Algorithm
+
+- **Time Points Collection**: Raccoglie tutti i punti temporali da entrambi gli utenti
+- **Segment Creation**: Crea segmenti tra punti temporali consecutivi
+- **Category Calculation**: Calcola categoria basata su disponibilità di entrambi
+- **Priority Logic**: sleep > other > match > available
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Database Schema</summary>
+<div class="px-4 pb-4">
+
+### Tabelle Principali
+
+| Tabella | Chiave | Relazione |
+|---------|--------|-----------|
+| `app_settings` | id (PK) | Singleton table |
+| `users` | id (PK, serial) | - |
+| `appointments` | id (PK, text) | → users.id |
+| `recurring_appointments` | id (PK, text) | → users.id |
+| `push_subscriptions` | id (PK, serial) | → users.id |
+
+### Campi Principali
+
+**app_settings:**
+- `adminPin` (text) - PIN amministratore
+- `isInitialized` (boolean) - Stato inizializzazione
+
+**users:**
+- `id` (serial, PK)
+- `name` (text) - Nome utente
+
+**appointments:**
+- `id` (text, PK) - ID univoco appuntamento
+- `userId` (integer, FK → users.id)
+- `date` (date) - Data appuntamento
+- `startTime` (text) - Formato HH:mm
+- `endTime` (text) - Formato HH:mm
+- `category` (text) - "sleep" | "other"
+- `description` (text, nullable)
+
+**recurring_appointments:**
+- `id` (text, PK)
+- `userId` (integer, FK → users.id)
+- `startTime`, `endTime` (text) - Formato HH:mm
+- `category` (text) - "sleep" | "other"
+- `repeatDays` (text[]) - Array di day IDs (1-7)
+
+**push_subscriptions:**
+- `id` (serial, PK)
+- `userId` (integer, FK → users.id)
+- `endpoint` (text, unique) - Push subscription endpoint
+- `p256dh`, `auth` (text) - Chiavi crittografiche
+
+### Indici
+
+- `appointments_userId_date_idx` - Query efficienti per userId + date
+- `recurring_appointments_userId_idx` - Query template ricorrenti
+- `push_subscriptions_userId_idx` - Query subscription per utente
+- `push_subscriptions_endpoint_idx` - Lookup rapido per endpoint
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">API Endpoints</summary>
+<div class="px-4 pb-4">
+
+| Metodo | Endpoint | Descrizione | Accesso |
+|--------|----------|-------------|---------|
+| GET | `/api/appointments?userId=1&date=2025-01-20` | Lista appuntamenti per utente e data | Public |
+| GET | `/api/appointments/batch?userIds=1,2&date=2025-01-20` | Lista appuntamenti per multipli utenti | Public |
+| GET | `/api/appointments/recurring?userId=1` | Lista template ricorrenti | Public |
+| POST | `/api/appointments/add` | Crea nuovo appuntamento | Public |
+| PUT | `/api/appointments/update` | Aggiorna appuntamento esistente | Public |
+| POST | `/api/appointments/remove` | Elimina appuntamento | Public |
+| GET | `/api/users` | Lista utenti | Public |
+| POST | `/api/users` | Crea nuovo utente | Public |
+| PUT | `/api/users` | Aggiorna utente | Public |
+| DELETE | `/api/users` | Elimina utente | Public |
+| GET | `/api/notifications/vapid-public-key` | Ottiene chiave pubblica VAPID | Public |
+| POST | `/api/notifications/subscribe` | Registra subscription push | Public |
+| DELETE | `/api/notifications/subscribe` | Rimuove subscription push | Public |
+| POST | `/api/notifications/confirm` | Invia notifiche agli altri utenti | Public |
+| POST | `/api/onboarding` | Setup iniziale app | Public |
+| POST | `/api/admin/login` | Login area amministrativa | Public |
+
+**Response Structure:**
+```typescript
+// Success
+{ appointments: Appointment[] }
+{ appointmentsByUser: Record<number, Appointment[]> }
+{ users: UserProfile[] }
+
+// Error
+{ error: string }
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Validazioni & Regole</summary>
+<div class="px-4 pb-4">
+
+| Campo | Requisiti | Dipendenze |
+|-------|-----------|------------|
+| **Orario** | Formato HH:mm (00:00-23:59) | - |
+| **Fine giornata** | 00:00 convertito in 24:00 se startTime >= 12:00 | - |
+| **Sovrapposizioni** | Nessuna sovrapposizione con appuntamenti esistenti | Validazione lato client e server |
+| **Appuntamenti ricorrenti** | Almeno un giorno della settimana selezionato | - |
+| **PIN Admin** | 6 cifre numeriche | Solo onboarding |
+| **Nome utente** | Non vuoto, max 255 caratteri | - |
+| **Limite utenti** | Massimo 2 utenti | Validazione lato server |
+
+**Validazione Slot:**
+- Controllo formato orario (HH:mm)
+- Verifica che endTime > startTime
+- Controllo sovrapposizioni con appuntamenti esistenti
+- Suggerimento prossimo slot disponibile se invalido
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Push Notifications</summary>
+<div class="px-4 pb-4">
+
+### Configurazione
+
+**VAPID Keys:**
+- Generazione tramite `npx web-push generate-vapid-keys`
+- Chiave pubblica esposta via `/api/notifications/vapid-public-key`
+- Chiave privata utilizzata server-side per invio notifiche
+
+**Service Worker:**
+- Registrato in `/public/sw.js`
+- Gestisce l'arrivo delle notifiche push
+- Mostra notifiche con titolo e body personalizzati
+
+### Flusso Notifiche
+
+1. **Registrazione**: Utente abilita notifiche → browser richiede permesso → subscription registrata su server
+2. **Invio**: Utente clicca "Conferma" → chiamata `/api/notifications/confirm` → notifiche inviate a tutti gli altri utenti
+3. **Ricezione**: Service worker riceve notifica → mostra notifica browser → utente può aprire app
+
+### Sicurezza
+
+- Subscription endpoint univoco per utente
+- Validazione subscription prima dell'invio
+- Gestione errori con retry automatico
+- Notifiche inviate solo su azione esplicita utente
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">PWA Features</summary>
+<div class="px-4 pb-4">
+
+### Manifest
+
+- **Name**: DuoSync
+- **Short Name**: DuoSync
+- **Icons**: 16x16 fino a 512x512 (PNG)
+- **Theme Color**: Dinamico basato su tema
+- **Display**: standalone
+- **Start URL**: /
+
+### Service Worker
+
+- **Caching Strategy**: Network-first con fallback cache
+- **Offline Support**: App funzionante offline per visualizzazione dati cached
+- **Push Notifications**: Gestione notifiche push tramite service worker
+
+### Install Prompt
+
+- Prompt automatico dopo onboarding
+- Hook `usePWAInstall` per gestione installazione
+- Supporto per installazione su desktop e mobile
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Internazionalizzazione</summary>
+<div class="px-4 pb-4">
+
+### Lingue Supportate
+
+- **Italiano (it)**: Lingua principale
+- **Inglese (en)**: Traduzione completa
+
+### Implementazione
+
+- **Context i18n**: `I18nProvider` con hook `useI18n()`
+- **Traduzioni**: File JSON in `/i18n/` (en.json, it.json)
+- **Template Interpolation**: Supporto per valori dinamici `{{name}}`
+- **Locale Persistence**: Preferenza salvata in localStorage
+
+### Utilizzo
+
+```typescript
+const { t, locale, setLocale } = useI18n();
+const greeting = t("dashboard.greeting", { name: "Mario" });
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Deployment</summary>
+<div class="px-4 pb-4">
+
+### Docker Compose
+
+**Services:**
+- `postgres`: PostgreSQL 16 Alpine
+- `app`: Next.js application
+
+**Volumes:**
+- `postgres_data`: Persistenza database
+
+**Environment Variables:**
+- `DATABASE_URL`: Connection string PostgreSQL
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`: Chiavi push notifications
+- `VAPID_SUBJECT`: Email subject per VAPID
+
+### Database Initialization
+
+- Script `scripts/init-db.ts` per inizializzazione schema
+- Script `scripts/wait-for-db.ts` per attesa database ready
+- Migrazioni automatiche tramite Drizzle Kit
+
+### Build Process
+
+```bash
+npm run build        # Build Next.js
+npm run db:push      # Sincronizza schema database
+docker compose up    # Avvia servizi
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Documentazione</summary>
+<div class="px-4 pb-4">
+
+Tutta la documentazione è disponibile nel repository GitHub:
+
+- `NOTIFICHE_PUSH.md` - Guida configurazione push notifications
+- `api-docs/duosync-api.postman_collection.json` - Postman collection API
+- `api-docs/duosync-api.postman_environment.json` - Environment variables
+- Schema database definito in `lib/db/schema.ts`
+- Types globali in `types/index.tsx`
+
+</div>
+</details>
+
