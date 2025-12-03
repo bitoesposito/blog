@@ -35,6 +35,220 @@ export async function getAllProjects(): Promise<CollectionEntry<'projects'>[]> {
   })
 }
 
+export async function getAllEducation(): Promise<CollectionEntry<'education'>[]> {
+  const education = await getCollection('education')
+  return education
+    .filter((post) => !post.data.draft && !isEducationSubpost(post.id))
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+}
+
+export async function getAllEducationAndSubposts(): Promise<
+  CollectionEntry<'education'>[]
+> {
+  const education = await getCollection('education')
+  return education
+    .filter((post) => !post.data.draft)
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+}
+
+export function isEducationSubpost(postId: string): boolean {
+  return postId.includes('/')
+}
+
+export function getEducationParentId(subpostId: string): string {
+  return subpostId.split('/')[0]
+}
+
+export async function getEducationSubpostsForParent(
+  parentId: string,
+): Promise<CollectionEntry<'education'>[]> {
+  const posts = await getCollection('education')
+  return posts
+    .filter(
+      (post) =>
+        !post.data.draft &&
+        isEducationSubpost(post.id) &&
+        getEducationParentId(post.id) === parentId,
+    )
+    .sort((a, b) => {
+      const dateDiff = a.data.date.valueOf() - b.data.date.valueOf()
+      if (dateDiff !== 0) return dateDiff
+
+      const orderA = a.data.order ?? 0
+      const orderB = b.data.order ?? 0
+      return orderA - orderB
+    })
+}
+
+export async function getEducationById(
+  postId: string,
+): Promise<CollectionEntry<'education'> | null> {
+  const allEducation = await getAllEducationAndSubposts()
+  return allEducation.find((post) => post.id === postId) || null
+}
+
+export async function getEducationSubpostCount(parentId: string): Promise<number> {
+  const subposts = await getEducationSubpostsForParent(parentId)
+  return subposts.length
+}
+
+export async function getEducationCombinedReadingTime(postId: string): Promise<string> {
+  const post = await getEducationById(postId)
+  if (!post) return readingTime(0)
+
+  let totalWords = calculateWordCountFromHtml(post.body)
+
+  if (!isEducationSubpost(postId)) {
+    const subposts = await getEducationSubpostsForParent(postId)
+    for (const subpost of subposts) {
+      totalWords += calculateWordCountFromHtml(subpost.body)
+    }
+  }
+
+  return readingTime(totalWords)
+}
+
+export async function getEducationReadingTime(postId: string): Promise<string> {
+  const post = await getEducationById(postId)
+  if (!post) return readingTime(0)
+
+  const wordCount = calculateWordCountFromHtml(post.body)
+  return readingTime(wordCount)
+}
+
+export async function hasEducationSubposts(postId: string): Promise<boolean> {
+  const subposts = await getEducationSubpostsForParent(postId)
+  return subposts.length > 0
+}
+
+export async function getEducationParentPost(
+  subpostId: string,
+): Promise<CollectionEntry<'education'> | null> {
+  if (!isEducationSubpost(subpostId)) {
+    return null
+  }
+
+  const parentId = getEducationParentId(subpostId)
+  const allEducation = await getAllEducation()
+  return allEducation.find((post) => post.id === parentId) || null
+}
+
+export async function getAdjacentEducation(currentId: string): Promise<{
+  newer: CollectionEntry<'education'> | null
+  older: CollectionEntry<'education'> | null
+  parent: CollectionEntry<'education'> | null
+}> {
+  const allEducation = await getAllEducation()
+
+  if (isEducationSubpost(currentId)) {
+    const parentId = getEducationParentId(currentId)
+    const parent = allEducation.find((post) => post.id === parentId) || null
+
+    const posts = await getCollection('education')
+    const subposts = posts
+      .filter(
+        (post) =>
+          isEducationSubpost(post.id) &&
+          getEducationParentId(post.id) === parentId &&
+          !post.data.draft,
+      )
+      .sort((a, b) => {
+        const dateDiff = a.data.date.valueOf() - b.data.date.valueOf()
+        if (dateDiff !== 0) return dateDiff
+
+        const orderA = a.data.order ?? 0
+        const orderB = b.data.order ?? 0
+        return orderA - orderB
+      })
+
+    const currentIndex = subposts.findIndex((post) => post.id === currentId)
+    if (currentIndex === -1) {
+      return { newer: null, older: null, parent }
+    }
+
+    return {
+      newer:
+        currentIndex < subposts.length - 1 ? subposts[currentIndex + 1] : null,
+      older: currentIndex > 0 ? subposts[currentIndex - 1] : null,
+      parent,
+    }
+  }
+
+  const parentPosts = allEducation.filter((post) => !isEducationSubpost(post.id))
+  const currentIndex = parentPosts.findIndex((post) => post.id === currentId)
+
+  if (currentIndex === -1) {
+    return { newer: null, older: null, parent: null }
+  }
+
+  return {
+    newer: currentIndex > 0 ? parentPosts[currentIndex - 1] : null,
+    older:
+      currentIndex < parentPosts.length - 1
+        ? parentPosts[currentIndex + 1]
+        : null,
+    parent: null,
+  }
+}
+
+export function groupEducationByYear(
+  posts: CollectionEntry<'education'>[],
+): Record<string, CollectionEntry<'education'>[]> {
+  return posts.reduce(
+    (acc: Record<string, CollectionEntry<'education'>[]>, post) => {
+      const year = post.data.date.getFullYear().toString()
+      ;(acc[year] ??= []).push(post)
+      return acc
+    },
+    {},
+  )
+}
+
+export async function getEducationTOCSections(postId: string): Promise<TOCSection[]> {
+  const post = await getEducationById(postId)
+  if (!post) return []
+
+  const parentId = isEducationSubpost(postId) ? getEducationParentId(postId) : postId
+  const parentPost = isEducationSubpost(postId) ? await getEducationById(parentId) : post
+
+  if (!parentPost) return []
+
+  const sections: TOCSection[] = []
+
+  const { headings: parentHeadings } = await render(parentPost)
+  if (parentHeadings.length > 0) {
+    sections.push({
+      type: 'parent',
+      title: 'Overview',
+      headings: parentHeadings.map((heading) => ({
+        slug: heading.slug,
+        text: heading.text,
+        depth: heading.depth,
+      })),
+    })
+  }
+
+  const subposts = await getEducationSubpostsForParent(parentId)
+  for (const subpost of subposts) {
+    const { headings: subpostHeadings } = await render(subpost)
+    if (subpostHeadings.length > 0) {
+      sections.push({
+        type: 'subpost',
+        title: subpost.data.title,
+        headings: subpostHeadings.map((heading, index) => ({
+          slug: heading.slug,
+          text: heading.text,
+          depth: heading.depth,
+          isSubpostTitle: index === 0,
+        })),
+        subpostId: subpost.id,
+      })
+    }
+  }
+
+  return sections
+}
+
 // Recupera i progetti adiacenti per la navigazione
 export async function getAdjacentProjects(
   currentId: string,

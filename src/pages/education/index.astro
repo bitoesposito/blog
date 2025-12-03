@@ -1,0 +1,38 @@
+---
+import EducationCard from '@/components/EducationCard.astro'
+import Breadcrumbs from '@/components/Breadcrumbs.astro'
+import PageHead from '@/components/PageHead.astro'
+import Layout from '@/layouts/Layout.astro'
+import { getAllEducation, groupEducationByYear } from '@/lib/data-utils'
+
+const allEducation = await getAllEducation()
+const educationByYear = groupEducationByYear(allEducation)
+const years = Object.keys(educationByYear).sort((a, b) => parseInt(b) - parseInt(a))
+---
+
+<Layout class="max-w-3xl">
+  <PageHead slot="head" title="Formazione" />
+  <Breadcrumbs items={[{ label: 'Formazione', icon: 'lucide:graduation-cap' }]} />
+
+  <div class="flex min-h-[calc(100vh-18rem)] flex-col gap-y-8">
+    {
+      years.length > 0 ? (
+        years.map((year) => (
+          <section class="flex flex-col gap-y-4">
+            <div class="font-medium">{year}</div>
+            <ul class="flex flex-col gap-4">
+              {educationByYear[year].map((post) => (
+                <li>
+                  <EducationCard entry={post} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      ) : (
+        <p class="text-muted-foreground text-center">Nessun contenuto di formazione trovato.</p>
+      )
+    }
+  </div>
+</Layout>
+
