@@ -2,6 +2,7 @@
 import { SITE } from '@/consts'
 import { isSubpost } from '@/lib/data-utils'
 import type { CollectionEntry } from 'astro:content'
+import { getImage } from 'astro:assets'
 
 interface Props {
   post: CollectionEntry<'blog'>
@@ -11,11 +12,18 @@ const { post } = Astro.props
 
 const title = post.data.title || SITE.title
 const description = post.data.description || SITE.description
-const image = new URL('/static/1200x630.png', Astro.site)
+const defaultImage = new URL('/static/1200x630.png', Astro.site)
 const author =
   post.data.authors && post.data.authors.length > 0
     ? post.data.authors.join(', ')
     : SITE.author
+
+// Ottieni l'URL pubblico dell'immagine se presente
+let ogImage = defaultImage
+if (post.data.image) {
+  const optimizedImage = await getImage({ src: post.data.image, width: 1200, height: 630 })
+  ogImage = new URL(optimizedImage.src, Astro.site)
+}
 ---
 
 <title>{`${title} | ${SITE.title}`}</title>
@@ -27,12 +35,7 @@ const author =
 
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
-<meta
-  property="og:image"
-  content={post?.data?.image?.src
-    ? `${SITE.href}${post.data.image.src}`
-    : image}
-/>
+<meta property="og:image" content={ogImage.toString()} />
 <meta property="og:image:alt" content={title} />
 <meta property="og:type" content="website" />
 <meta property="og:locale" content={SITE.locale} />
@@ -42,12 +45,7 @@ const author =
 
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
-<meta
-  property="twitter:image"
-  content={post?.data?.image?.src
-    ? `${SITE.href}${post.data.image.src}`
-    : image}
-/>
+<meta property="twitter:image" content={ogImage.toString()} />
 <meta name="twitter:image:alt" content={title} />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:creator" content={author} />

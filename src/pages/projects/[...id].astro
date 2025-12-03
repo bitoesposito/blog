@@ -12,7 +12,7 @@ import { formatDate } from '@/lib/utils'
 import { Icon } from 'astro-icon/components'
 import { Image } from 'astro:assets'
 import { render } from 'astro:content'
-import PageHead from '@/components/PageHead.astro'
+import ProjectHead from '@/components/ProjectHead.astro'
 import Link from '@/components/Link.astro'
 import { cn } from '@/lib/utils'
 
@@ -32,7 +32,7 @@ const navigation = await getAdjacentProjects(currentProjectId)
 ---
 
 <Layout>
-  <PageHead slot="head" title={project.data.name} description={project.data.description} />
+  <ProjectHead slot="head" project={project} />
   
   <section
     class="grid grid-cols-[minmax(0px,1fr)_min(calc(var(--breakpoint-md)-2rem),100%)_minmax(0px,1fr)] gap-y-6"
