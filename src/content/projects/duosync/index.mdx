@@ -22,9 +22,9 @@ endDate: '2025-12-03'
 
 ## Il Problema
 
-Tutto è nato dalla difficoltà di trovare un orario per andare in palestra con un mio amico. Tra impegni di lavoro, appuntamenti e routine quotidiane, coordinare gli orari richiedeva continui messaggi e verifiche manuali. Serviva uno strumento semplice per vedere quando entrambi eravamo liberi, senza dover confrontare calendari.
+Tutto è nato dalla difficoltà di trovare un orario per andare in palestra con un mio amico. La situazione era particolare: non era semplice comprendere in maniera chiara quando fossimo liberi, e soprattutto non avevamo quasi mai orari definiti in anticipo. Tra impegni di lavoro, appuntamenti e routine quotidiane che cambiano di giorno in giorno, coordinare gli orari richiedeva continui messaggi che potevano richiedere molti messaggi e molto tempo solo per capire quando entrambi eravamo liberi.
 
-DuoSync nasce da questa esigenza concreta, ma è stato progettato per essere flessibile: funziona per coppie che condividono la vita quotidiana, gruppi di amici che vogliono organizzare attività insieme, o piccoli team che devono coordinare impegni. Supporta fino a 10 utenti, permettendo di visualizzare la disponibilità condivisa e ricevere notifiche quando qualcuno aggiorna i propri impegni.
+DuoSync nasce da questa esigenza concreta ed è stato progettato per funzionare in situazioni dove gli orari non sono fissi e la comunicazione diretta non è sempre la soluzione più pratica. Supporta fino a 10 utenti, permettendo di visualizzare la disponibilità condivisa e ricevere notifiche quando qualcuno aggiorna i propri impegni.
 
 ## La Soluzione
 
@@ -50,7 +50,7 @@ Il cuore dell'applicazione è la **timeline di disponibilità**, che mostra due 
 
 Gli appuntamenti possono essere creati in due modalità: **one-time** per impegni specifici di una data, o **ricorrenti** con giorni della settimana selezionabili. Il sistema valida automaticamente che non ci siano sovrapposizioni e suggerisce il prossimo slot disponibile quando necessario.
 
-Quando un utente conferma i propri impegni tramite il pulsante "Conferma", viene inviata una notifica push agli altri utenti (se hanno abilitato le notifiche), avvisandoli che l'utente specifico ha confermato i propri impegni.
+**Non è necessario inserire appuntamenti tutti i giorni**: l'applicazione è pensata per essere utilizzata quando serve, non come un calendario da aggiornare quotidianamente. Quando un utente si ricorda di aggiornare i propri impegni e conferma tramite il pulsante "Conferma", viene inviata automaticamente una notifica push agli altri utenti (se hanno abilitato le notifiche), avvisandoli che l'utente specifico ha confermato i propri impegni. Questo sistema evita che qualcuno si dimentichi di aggiornare: la notifica serve da promemoria e permette agli altri di vedere immediatamente quando la disponibilità è stata aggiornata.
 
 ![DuoSync - Timeline di disponibilità](./assets/timeline.png)
 
@@ -71,6 +71,22 @@ Il sistema di state management utilizza **React Context** con provider isolati p
 La persistenza dei dati è gestita tramite **Drizzle ORM** con PostgreSQL. Ho implementato un sistema di migrazioni schema-first dove lo schema è definito in TypeScript e sincronizzato con il database tramite Drizzle Kit. Le query sono ottimizzate con indici su `userId` e `date` per performance efficienti anche con molti appuntamenti.
 
 L'architettura API segue il pattern **Server/Client separation** di Next.js: le route API (`/app/api/*`) gestiscono la validazione e chiamano i servizi di database, mentre i servizi client-side (`features/*/services/*.service.ts`) utilizzano `fetch()` per chiamare le API routes. Questo mantiene una chiara separazione tra browser e server, con validazione sia lato client (per UX) che lato server (per sicurezza).
+
+---
+
+## Showcase video
+
+<div class="my-8 rounded-lg overflow-hidden border border-border bg-muted/30">
+  <video 
+    controls 
+    class="w-full aspect-video"
+    poster="./assets/dashboard.png"
+    preload="metadata"
+  >
+    <source src="./assets/demo.mp4" type="video/mp4" />
+    Il tuo browser non supporta il tag video.
+  </video>
+</div>
 
 ---
 
