@@ -1,7 +1,7 @@
 ---
 name: 'vitoesposito'
 pronouns: 'he/him'
-avatar: 'https://gravatar.com/avatar/32e8ddef00601df748216972eb77e76ebfbf314d767612dc0368276c64c227fc?v=1761308558000&size=256&d=initials'
+avatar: '/src/content/authors/vitoesposito.png'
 bio: 'Sviluppatore web & UI/UX Designer'
 linkedin: 'https://www.linkedin.com/in/vitoespo/'
 github: 'https://github.com/bitoesposito'
