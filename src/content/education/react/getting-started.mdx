@@ -1,0 +1,173 @@
+---
+title: 'Introduzione a React'
+description: "Cos'è React, perché usarlo e come iniziare con i primi progetti"
+date: 2025-12-08
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 1
+---
+
+## Cos'è React
+
+**React** è una libreria JavaScript per la costruzione di interfacce utente web e native. Si tratta di uno strumento che permette di creare interfacce utente complesse utilizzando JavaScript.
+
+Visitando il sito ufficiale react.dev, troviamo questa definizione: React è una libreria per interfacce utente web e native. In altre parole, React è una libreria per la costruzione di interfacce utente.
+
+## Perché usare React
+
+La risposta si trova osservando come funzionano i siti web moderni che utilizzano React, come Netflix. Quando si naviga su questi siti, tutte le transizioni sono fluide e istantanee, senza mai vedere l'effetto di caricamento di una nuova pagina che richiede l'attesa del server.
+
+L'esperienza utente è simile a quella di un'app mobile, dove il feedback immediato e le transizioni fluide sono lo standard. Librerie come React aiutano a costruire queste esperienze anche per il web.
+
+React utilizza JavaScript nel browser per aggiornare la pagina e l'interfaccia utente senza ricaricarla. JavaScript può fare questo perché viene eseguito in background su un sito web ed è in grado di leggere e manipolare la pagina web dopo che è stata caricata.
+
+Quando si clicca su una scheda, JavaScript può recuperare i dati in background senza ricaricare la pagina e aggiornare ciò che vediamo sullo schermo, creando una transizione fluida tra le pagine.
+
+## React vs JavaScript vanilla
+
+Se React è basato su JavaScript, perché abbiamo bisogno di questa libreria invece di usare solo JavaScript?
+
+Lavorare con il solo JavaScript è un'opzione, ma non è ideale. È macchinoso, richiede più lavoro, può essere più soggetto a errori e, soprattutto quando si costruiscono interfacce utente complesse come quelle di Netflix, usare solo JavaScript vanilla sarebbe estremamente difficile e non realistico.
+
+React offre un modello mentale più semplice e fornisce un modo più facile di costruire applicazioni web complesse e interfacce utente web.
+
+### Approccio imperativo vs dichiarativo
+
+Quando si scrive codice JavaScript vanilla, si sta scrivendo codice **imperativo**. Questo significa che non si definisce l'obiettivo, ma i passi necessari per raggiungerlo.
+
+In un'applicazione semplice con schede cliccabili, è necessario:
+- Trovare i pulsanti nel DOM
+- Aggiungere ascoltatori di click a questi pulsanti
+- Gestire la logica per aggiungere/rimuovere classi CSS attive
+- Aggiornare manualmente il contenuto visualizzato
+- Creare elementi DOM e inserirli nella pagina
+
+Questo approccio richiede molti passaggi anche per applicazioni semplici ed è facile dimenticare un passaggio o introdurre errori. Aggiornare il codice per gestire nuove funzionalità può diventare inutilmente complesso.
+
+Quando si scrive codice React, invece, si scrive codice **dichiarativo**. Si definiscono uno o più stati dell'interfaccia utente di destinazione e non i passaggi necessari per arrivarci. React capisce come arrivarci ed esegue i passi necessari automaticamente.
+
+In React:
+- Si definisce lo stato dell'interfaccia (quale scheda è attiva, quale contenuto mostrare)
+- Si scrive il codice HTML con condizioni che dipendono da questo stato
+- React osserva le variabili di stato e, quando cambiano, aggiorna automaticamente l'interfaccia
+
+React utilizza JavaScript sotto il cofano per aggiornare l'interfaccia utente, ma noi definiamo solo le condizioni, gli stati di destinazione e quando questi stati devono cambiare. React si occupa del resto.
+
+### JSX: HTML in JavaScript
+
+Una caratteristica principale di React è la possibilità di fondere codice HTML e JavaScript. Questa sintassi si chiama **JSX** e verrà approfondita più avanti.
+
+Nel codice React, è possibile scrivere codice HTML direttamente all'interno di funzioni JavaScript:
+
+```jsx
+function App() {
+  return (
+    <div>
+      <h1>Benvenuto</h1>
+      <button onClick={handleClick}>Clicca qui</button>
+    </div>
+  );
+}
+```
+
+Questo non funziona in JavaScript standard, ma funziona in React grazie alla configurazione del progetto. JSX permette di scrivere interfacce in modo più intuitivo e naturale.
+
+### Gestione dello stato con useState
+
+React fornisce funzioni come `useState` per creare e gestire variabili dinamiche che influenzano l'interfaccia utente:
+
+```javascript
+const [activeIndex, setActiveIndex] = useState(0);
+```
+
+Quando questa variabile cambia, React osserva il cambiamento, esamina il codice HTML, controlla tutte le condizioni, esegue il codice e vede se l'interfaccia utente deve essere aggiornata. Se necessario, React procede all'aggiornamento automaticamente.
+
+## Come creare progetti React
+
+Per iniziare a scrivere codice React, è necessario un progetto React configurato. Esistono due approcci principali: progetti basati sul web e progetti locali.
+
+### CodeSandbox: ambiente basato sul web
+
+Uno dei modi più rapidi per iniziare è digitare `react.` nella barra degli URL del browser e premere Invio. Questo crea un nuovo spazio di lavoro per il progetto React utilizzando **CodeSandbox**, che offre un ambiente di sviluppo all'interno del browser.
+
+Con CodeSandbox è possibile:
+- Lavorare sui file direttamente nel browser
+- Scrivere codice e vedere l'anteprima del sito web
+- Non installare nulla in locale
+
+Questo è un'ottima scelta per iniziare rapidamente e anche se non si hanno permessi di amministratore sul computer utilizzato.
+
+### Progetti locali con Vite
+
+Per creare un progetto React locale sul proprio computer, è necessario:
+
+1. **Installare Node.js** da nodejs.org (versione più recente o LTS)
+   - Node.js è necessario perché strumenti come Vite utilizzano Node.js sotto il cofano
+   - Anche se non si scrive codice Node.js, questi strumenti ne hanno bisogno
+
+2. **Usare uno strumento di build** come **Vite** o **Create React App**
+   - Vite è uno dei più popolari
+   - Create React App è un'alternativa consolidata
+
+3. **Creare il progetto** con un comando semplice:
+   ```bash
+   npm create vite@latest
+   ```
+   Durante il processo, si può scegliere di creare un progetto React.
+
+4. **Installare le dipendenze**:
+   ```bash
+   npm install
+   ```
+   Questo installa tutti i pacchetti necessari, incluso React.
+
+5. **Avviare il server di sviluppo**:
+   ```bash
+   npm run dev
+   ```
+   Il server deve rimanere attivo mentre si lavora sul codice. Questo processo osserva i file e aggiorna l'anteprima del sito web ogni volta che si salvano le modifiche.
+
+### Editor di codice consigliato
+
+Per progetti locali, **Visual Studio Code** è un editor molto popolare:
+- Gratuito e disponibile per tutti i principali sistemi operativi
+- Permette di configurare tutto secondo le proprie esigenze
+- Supporta estensioni che rendono lo sviluppo più facile
+
+## Perché serve un progetto complesso
+
+Perché abbiamo bisogno di un ambiente CodeSandbox o di un progetto locale creato con strumenti aggiuntivi come Vite se vogliamo semplicemente scrivere codice React? Perché non possiamo creare un file HTML e un file JavaScript e fare riferimento al file di script dall'interno del file HTML?
+
+La risposta è che quando si scrive codice React, si usa la sintassi speciale **JSX** che permette di scrivere HTML in JavaScript. Questa sintassi non funziona direttamente nel browser.
+
+Il codice che si scrive deve essere **trasformato** in codice che può essere eseguito nel browser. Inoltre, tipicamente si vuole **ottimizzare** il codice:
+- Accorciare i nomi delle variabili e delle funzioni
+- Rimuovere gli spazi bianchi in eccesso
+- Minimizzare il codice che deve essere scaricato dai visitatori del sito web
+
+Questo migliora le prestazioni del sito.
+
+Sono proprio questi strumenti aggiuntivi come Vite che trasformano il codice in codice che può essere eseguito in modo efficiente nel browser. Ecco perché non è sufficiente creare un file HTML e di script di base, ma è necessario disporre di strumenti aggiuntivi.
+
+Fortunatamente, la creazione di progetti con questi strumenti è piuttosto semplice, soprattutto se si utilizza l'ambiente CodeSandbox dove praticamente non si deve fare nulla.
+
+## Primo approccio pratico
+
+Per iniziare a lavorare con React, anche senza conoscere ancora tutti i dettagli, è possibile iniziare con applicazioni demo semplici.
+
+Un esempio pratico consiste in un'applicazione con schede cliccabili che cambiano il contenuto visualizzato. Questo tipo di applicazione permette di vedere:
+- Come React gestisce lo stato dell'interfaccia
+- Come le condizioni nel codice HTML determinano cosa viene visualizzato
+- Come gli eventi di click aggiornano lo stato e quindi l'interfaccia
+
+Anche se non si conoscono ancora tutti i dettagli di React, questo tipo di esercizio permette di iniziare a scrivere codice React e vedere come funziona in pratica.
+
+## Prossimi passi
+
+Ora che abbiamo visto cos'è React e perché è utile, possiamo iniziare a immergerci più profondamente nei concetti fondamentali di React. Le prossime sezioni copriranno:
+
+- I concetti fondamentali di React che ogni sviluppatore deve conoscere
+- Approfondimenti su concetti specifici
+- Esplorazione di idee e concetti più avanzati
+
+Ogni sezione si basa sulle precedenti, ma è anche possibile concentrarsi su argomenti specifici se si ha già una certa conoscenza di React.

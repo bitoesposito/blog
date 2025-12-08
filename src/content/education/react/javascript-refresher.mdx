@@ -1,0 +1,1050 @@
+---
+title: 'JavaScript Refresher'
+description: 'Ripasso delle nozioni fondamentali di JavaScript necessarie per React'
+date: 2025-12-08
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 2
+---
+
+## Introduzione
+
+Questa sezione permette di rinfrescare le conoscenze di JavaScript e di assicurarsi di avere tutti gli elementi essenziali necessari per costruire applicazioni React.
+
+Questa sezione è facoltativa e può essere saltata o consultata quando necessario. Se durante il corso si nota di avere bisogno di aiuto supplementare per JavaScript, si consiglia di consultare questa sezione. Non sostituisce un corso completo di JavaScript e non è adatta a chi non ha alcuna esperienza con il linguaggio.
+
+Vengono rivisti i concetti cruciali di JavaScript, in particolare quelli fondamentali necessari per la realizzazione di applicazioni React. Si esplorano la sintassi e le regole fondamentali di JavaScript, concentrandosi sulle caratteristiche essenziali del JavaScript moderno che si utilizzano quando si scrive codice React.
+
+JavaScript può essere eseguito in molti ambienti diversi: nel browser (dove è nato), con Node.js e Deno al di fuori del browser, e anche per costruire applicazioni mobili grazie a tecnologie come Capacitor o React Native. In questa sezione ci concentriamo su JavaScript nel browser, anche se la sintassi e le regole generali sono sempre le stesse, indipendentemente dall'ambiente.
+
+## Come aggiungere JavaScript a un sito web
+
+Il codice JavaScript può essere aggiunto a un sito web utilizzando l'elemento `<script>` in due modi: inline (codice direttamente nel HTML) o tramite file esterni (consigliato). Il tag `<script>` supporta attributi importanti come `defer` per ritardare l'esecuzione e `type="module"` per abilitare la sintassi di import/export.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Aggiungere JavaScript a una pagina HTML</summary>
+<div class="px-4 pb-4">
+
+Il codice JavaScript può essere aggiunto a un sito web in due modi principali, entrambi utilizzando l'elemento `<script>`:
+
+1. **Codice inline**: inserire il codice JavaScript direttamente tra i tag `<script>` nel file HTML
+2. **File esterni**: utilizzare l'attributo `src` per importare file JavaScript dedicati
+
+L'approccio inline viene generalmente evitato perché può portare rapidamente a file HTML complessi e non manutenibili. In genere, il codice JavaScript si trova in file dedicati per mantenere i progetti organizzati e facili da gestire.
+
+```html
+<!-- Approccio inline (sconsigliato per codice complesso) -->
+<script>
+  console.log('Hello World');
+</script>
+
+<!-- Approccio con file esterno (consigliato) -->
+<script src="./assets/scripts/app.js"></script>
+```
+
+### Struttura del progetto
+
+In un progetto tipico, si crea una cartella `assets` con una sottocartella `scripts` per organizzare i file JavaScript. Il file dovrebbe terminare con `.js` per indicare al browser e all'editor di codice che contiene codice JavaScript.
+
+### Attributi del tag script
+
+Il tag `<script>` può includere attributi aggiuntivi:
+
+**`defer`**: assicura che lo script venga eseguito solo dopo che il resto del documento HTML è stato letto e analizzato. Questo è importante quando lo script deve lavorare con elementi HTML che devono essere disponibili quando il codice JavaScript inizia a essere eseguito.
+
+```html
+<script src="./assets/scripts/app.js" defer></script>
+```
+
+**`type="module"`**: tratta il file JavaScript come un modulo JavaScript, sbloccando la sintassi di import/export. Questo attributo è necessario per utilizzare le parole chiave `import` ed `export` nel codice.
+
+```html
+<script type="module" src="./assets/scripts/app.js"></script>
+```
+
+**Importante**: quando si usa `type="module"`, è necessario aggiungere l'estensione `.js` ai percorsi di importazione. Nei progetti React con processo di compilazione, l'estensione viene aggiunta automaticamente, ma in progetti JavaScript vanilla senza processo di compilazione, deve essere aggiunta manualmente.
+
+</div>
+</details>
+
+## Processo di compilazione nei progetti React
+
+
+
+Nei progetti React, i tag `<script>` non vengono aggiunti manualmente al file HTML. Se si esamina un progetto React, si noterà che nel file `index.html` non ci sono tag `<script>` nella sezione head o nel body, solo un tag `<noscript>` per il fallback se JavaScript è disabilitato.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché i progetti React richiedono un processo di compilazione</summary>
+<div class="px-4 pb-4">
+
+Tuttavia, l'applicazione React funziona correttamente perché i progetti React utilizzano un processo di compilazione che inietta automaticamente questi tag nel codice HTML.
+
+### Perché è necessario il processo di compilazione
+
+Questo processo di compilazione è necessario per due motivi principali:
+
+**1. Trasformazione del codice**: React utilizza la sintassi JSX che non funziona direttamente nel browser. Se si prova a utilizzare codice JSX in un progetto JavaScript vanilla, si ottiene un errore perché questa non è una funzione standard di JavaScript. Il codice deve essere trasformato in JavaScript standard prima di essere eseguito.
+
+**2. Ottimizzazione**: il codice viene minificato (nomi di variabili e funzioni accorciati, spazi bianchi rimossi) per ridurre la quantità di codice che deve essere scaricata dai visitatori del sito web. Questo migliora le prestazioni del sito.
+
+### Come funziona
+
+Gli strumenti come Vite, Create React App o React Scripts gestiscono questo processo di compilazione automaticamente. Questi strumenti:
+
+- Osservano i file di codice sorgente
+- Trasformano il codice JSX in JavaScript standard
+- Ottimizzano e minificano il codice
+- Iniettano automaticamente i tag `<script>` nel file HTML
+
+Node.js è necessario perché questi strumenti utilizzano Node.js sotto il cofano per trasformare il codice. Anche se non si scrive codice Node.js, questi strumenti ne hanno bisogno per funzionare.
+
+**Nota**: quando si ispeziona una pagina React in esecuzione con gli strumenti di sviluppo del browser, si vedranno i tag `<script>` che sono stati generati e iniettati automaticamente dal processo di compilazione.
+
+</div>
+</details>
+
+## Import ed Export
+
+Le parole chiave `import` ed `export` permettono di organizzare il codice in moduli separati, rendendo i progetti più manutenibili. Si possono esportare valori con nomi specifici (export nominati) o un singolo valore predefinito (export default). La sintassi supporta anche alias e l'importazione di tutte le esportazioni in un oggetto. Questa funzionalità è fondamentale in React dove il codice è organizzato in molti file separati.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Sintassi di importazione ed esportazione</summary>
+<div class="px-4 pb-4">
+
+Nelle applicazioni React, come nella maggior parte dei progetti JavaScript avanzati, è considerata una pratica migliore dividere il codice in più file per mantenerlo manutenibile e gestibile. Questo si fa con l'aiuto delle parole chiave `import` ed `export`.
+
+**Prerequisito**: per utilizzare import/export, è necessario utilizzare `type="module"` nel tag `<script>` o lavorare in un progetto con processo di compilazione.
+
+### Export nominati
+
+Le esportazioni nominate permettono di esportare più valori da un file. Si possono esportare tutte le cose che si vogliono utilizzando la parola chiave `export` davanti a variabili o funzioni:
+
+```javascript
+// utils.js
+export const apiKey = 'abc123';
+export const abc = 'some value';
+
+// app.js
+import { apiKey, abc } from './utils.js';
+console.log(apiKey); // 'abc123'
+```
+
+**Importante**: quando si importa, il nome deve corrispondere esattamente al nome esportato perché JavaScript è case-sensitive. Si possono importare più valori separandoli con virgole tra le parentesi graffe.
+
+### Export default
+
+L'esportazione predefinita permette di esportare un singolo valore come predefinito. Si esporta direttamente un valore senza assegnare un nome:
+
+```javascript
+// utils.js
+export default 'some default value';
+
+// app.js
+import someName from './utils.js';
+console.log(someName); // 'some default value'
+```
+
+**Importante**: 
+- Può esserci solo un'esportazione predefinita per file. Se si prova ad aggiungerne un secondo, si riceve un errore.
+- Quando si importa un export default, si può usare qualsiasi nome perché la cosa esportata non ha un nome.
+- Si può combinare un export default con esportazioni nominate nello stesso file.
+
+### Import con alias e importazione di tutto
+
+È possibile importare tutte le esportazioni in un oggetto utilizzando un asterisco:
+
+```javascript
+// utils.js
+export const apiKey = 'abc123';
+export const abc = 'some value';
+export default 'default value';
+
+// app.js
+import * as utils from './utils.js';
+console.log(utils.apiKey); // 'abc123'
+console.log(utils.abc); // 'some value'
+console.log(utils.default); // 'default value'
+```
+
+È anche possibile assegnare alias utilizzando la parola chiave `as`:
+
+```javascript
+import { abc as content } from './utils.js';
+console.log(content); // 'some value'
+```
+
+### Combinare export default e export nominati
+
+```javascript
+// utils.js
+export const apiKey = 'abc123';
+export const abc = 'some value';
+export default 'default value';
+
+// app.js
+import defaultExport, { apiKey, abc } from './utils.js';
+```
+
+**Nota**: nei progetti React, l'estensione `.js` viene generalmente omessa perché il processo di compilazione la aggiunge automaticamente. In progetti JavaScript vanilla senza processo di compilazione, l'estensione deve essere aggiunta manualmente.
+
+</div>
+</details>
+
+## Variabili, valori e operatori
+
+JavaScript gestisce diversi tipi di valori: stringhe, numeri, booleani, `null`, `undefined` e oggetti. I valori possono essere creati direttamente o memorizzati in variabili utilizzando `let` (riassegnabile) o `const` (costante). JavaScript offre vari operatori per lavorare con questi valori: aritmetici per i calcoli, `+` per concatenare stringhe, e operatori di confronto che producono valori booleani. La convenzione prevede l'uso di camelCase per i nomi delle variabili.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Gestione dei dati in JavaScript</summary>
+<div class="px-4 pb-4">
+
+Quando si costruisce un'applicazione con JavaScript o React, si lavora con dati e valori. Se si guarda ad applicazioni come Twitter o Google Maps, queste applicazioni riguardano i dati: i tweet scritti e letti sono dati, la posizione è un dato, la destinazione è un dato.
+
+JavaScript può gestire una varietà di valori: stringhe, numeri, booleani, `null`, `undefined` e oggetti.
+
+### Creazione di valori
+
+I valori possono essere creati quando necessario o memorizzati in variabili:
+
+```javascript
+// Valore creato direttamente quando necessario
+console.log('Hello World');
+
+// Valore memorizzato in una variabile per riutilizzarlo
+let userMessage = 'Hello World';
+console.log(userMessage);
+console.log(userMessage); // Posso riutilizzare il valore
+```
+
+Le variabili permettono di riutilizzare un valore e aiutano la leggibilità del codice, perché spesso ha senso definire il valore in anticipo invece che nel punto in cui è necessario.
+
+### let e const
+
+JavaScript offre due modi principali per creare contenitori di dati:
+
+**`let`**: crea una variabile che può essere riassegnata
+
+```javascript
+let variable = 'Hello';
+variable = 'World'; // Funziona: posso riassegnare
+console.log(variable); // 'World'
+```
+
+**`const`**: crea una costante che non può essere riassegnata
+
+```javascript
+const constant = 'Hello';
+constant = 'World'; // Errore: non può essere riassegnata
+```
+
+**Convenzioni per i nomi**:
+- I nomi delle variabili seguono la notazione camelCase (es. `userName`, `apiKey`)
+- Non possono contenere trattini o spazi bianchi
+- Possono contenere numeri, ma non all'inizio
+- Non possono contenere caratteri speciali (eccetto `$` e `_`)
+- I nomi devono essere descrittivi di ciò che contengono
+
+**Filosofia**: alcuni sviluppatori preferiscono usare `const` il più spesso possibile per essere chiari sulle intenzioni. Se un valore non deve mai essere riassegnato, è meglio usare `const`. Altri preferiscono sempre `let` perché ha meno caratteri. La scelta dipende dalle preferenze personali, ma è importante conoscere la differenza.
+
+### Tipi di valori
+
+JavaScript può gestire diversi tipi di valori:
+
+- **Stringhe**: testo racchiuso tra virgolette singole o doppie (`'Hello'` o `"Hello"`)
+- **Numeri**: valori numerici senza virgolette (`10`, `3.14`)
+- **Booleani**: `true` o `false`
+- **null**: indica che una variabile non contiene ancora alcun valore
+- **undefined**: indica che una variabile non è stata ancora definita
+- **Oggetti**: raggruppamenti di valori (vedi sezione Oggetti)
+
+### Operatori
+
+JavaScript offre vari operatori per lavorare con i valori:
+
+**Operatori aritmetici**:
+
+```javascript
+10 + 5;  // 15 (addizione)
+10 - 5;  // 5 (sottrazione)
+10 / 5;  // 2 (divisione)
+10 * 5;  // 50 (moltiplicazione)
+```
+
+**Operatore + per concatenare stringhe**:
+
+```javascript
+'Hello' + ' ' + 'World'; // 'Hello World'
+```
+
+L'operatore `+` può essere usato sia per i numeri che per le stringhe. Con i numeri esegue l'addizione, con le stringhe le concatena.
+
+**Operatori di confronto**:
+
+```javascript
+10 === 5;  // false (uguaglianza stretta)
+10 === 10; // true
+10 !== 5;  // true (diverso)
+10 > 5;    // true (maggiore)
+10 < 5;    // false (minore)
+10 >= 10;  // true (maggiore o uguale)
+10 <= 10;  // true (minore o uguale)
+```
+
+Gli operatori di confronto producono valori booleani (`true` o `false`) e sono molto usati insieme alle istruzioni `if` per eseguire codice in modo condizionale.
+
+</div>
+</details>
+
+## Funzioni
+
+Le funzioni permettono di definire codice che non viene eseguito immediatamente, ma può essere chiamato quando necessario. Una funzione può essere chiamata più volte.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Definizione e utilizzo delle funzioni</summary>
+<div class="px-4 pb-4">
+
+In React, i componenti sono definiti come funzioni.
+
+### Funzioni con la parola chiave function
+
+```javascript
+function greet(userName, message) {
+  console.log(userName + ': ' + message);
+}
+
+greet('Max', 'Hello');
+greet('Manuel', 'Hi, how are you?');
+```
+
+**Struttura di una funzione**:
+- Nome della funzione (dopo la parola chiave `function`)
+- Lista dei parametri tra parentesi (può essere vuota)
+- Corpo della funzione tra parentesi graffe
+- Il codice nel corpo non viene eseguito immediatamente, ma quando la funzione viene chiamata
+
+**Chiamare una funzione**: si usa il nome della funzione seguito da parentesi. Se la funzione accetta parametri, si passano i valori tra le parentesi.
+
+### Parametri
+
+Le funzioni possono accettare parametri (valori di input) per essere riutilizzabili con valori diversi:
+
+```javascript
+function greet(userName, message) {
+  console.log(userName + ': ' + message);
+}
+
+greet('Max', 'Hello');
+greet('Manuel', 'Hi, how are you?');
+```
+
+I parametri sono disponibili solo all'interno della funzione. I nomi dei parametri dipendono da voi, ma devono seguire le stesse regole dei nomi delle variabili.
+
+### Parametri con valori predefiniti
+
+È possibile assegnare valori predefiniti ai parametri:
+
+```javascript
+function greet(userName, message = 'Hello') {
+  console.log(userName + ': ' + message);
+}
+
+greet('Max'); // Usa il valore predefinito 'Hello'
+greet('Manuel', 'Hi'); // Sovrascrive il valore predefinito
+```
+
+Se non si fornisce un valore per un parametro con valore predefinito, viene utilizzato il valore predefinito. Si può sempre sovrascrivere il valore predefinito fornendo un valore quando si chiama la funzione.
+
+### Return
+
+Le funzioni possono restituire valori utilizzando la parola chiave `return`:
+
+```javascript
+function createGreeting(userName, message) {
+  return 'Hello, I am ' + userName + '. ' + message;
+}
+
+const greeting = createGreeting('Max', 'Hello');
+console.log(greeting); // 'Hello, I am Max. Hello'
+```
+
+Quando una funzione restituisce un valore, quel valore può essere memorizzato in una variabile o costante e utilizzato successivamente. La parola chiave `return` può essere usata indipendentemente dai parametri.
+
+**Naming**: i nomi delle funzioni dovrebbero descrivere ciò che fanno. Se una funzione crea un saluto invece di salutare direttamente, il nome dovrebbe riflettere questo (es. `createGreeting` invece di `greet`).
+
+### Arrow Functions
+
+Le arrow functions offrono una sintassi più breve, particolarmente utile per funzioni anonime:
+
+```javascript
+// Sintassi completa
+const greet = (userName, message) => {
+  return userName + ': ' + message;
+};
+
+// Sintassi abbreviata (quando si ritorna direttamente un valore)
+const greet = (userName, message) => userName + ': ' + message;
+
+// Un solo parametro (parentesi opzionali)
+const greet = userName => 'Hello ' + userName;
+
+// Nessun parametro (parentesi obbligatorie)
+const greet = () => 'Hello';
+```
+
+**Note importanti**:
+- Se si ritorna un oggetto, è necessario avvolgerlo tra parentesi: `number => ({ age: number })`. Senza le parentesi, JavaScript tratterebbe le parentesi graffe come il corpo della funzione invece che come un oggetto.
+- Le arrow functions non hanno un nome proprio, ma possono essere memorizzate in variabili o costanti per renderle non anonime.
+- Le arrow functions sono particolarmente utili quando si passa una funzione come valore ad un'altra funzione (vedi sezione "Funzioni come valori").
+
+**Quando usare arrow functions vs function**: entrambi gli approcci sono validi. Le arrow functions sono spesso preferite per la loro brevità, specialmente per funzioni anonime. Le funzioni con `function` possono essere utili quando si vuole che la funzione abbia un nome esplicito o quando si lavora con `this`.
+
+</div>
+</details>
+
+## Oggetti
+
+Gli oggetti permettono di raggruppare più valori utilizzando coppie chiave-valore, accessibili tramite la notazione a punti. Gli oggetti possono contenere anche funzioni chiamate metodi, che possono accedere alle proprietà dell'oggetto tramite la parola chiave `this`. Le classi permettono di creare blueprint per oggetti con costruttori e metodi, anche se in React moderno si preferisce spesso utilizzare funzioni invece di classi per i componenti.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Raggruppare valori con oggetti</summary>
+<div class="px-4 pb-4">
+
+Gli oggetti permettono di raggruppare più valori utilizzando coppie chiave-valore. Mentre gli array memorizzano valori in base alla loro posizione, gli oggetti permettono di memorizzare valori con nomi descrittivi.
+
+### Creazione di oggetti
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 34
+};
+
+console.log(user); // { name: 'Max', age: 34 }
+console.log(user.name); // 'Max'
+console.log(user.age);  // 34
+```
+
+Gli oggetti vengono creati utilizzando parentesi graffe. All'interno si definiscono coppie chiave-valore separate da virgole. Le chiavi devono seguire le regole di denominazione delle variabili.
+
+### Accesso alle proprietà
+
+Si accede alle proprietà di un oggetto utilizzando la notazione a punti:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 34
+};
+
+console.log(user.name); // 'Max'
+console.log(user.age);  // 34
+```
+
+Il punto (`.`) è la chiave per accedere ai valori di un oggetto.
+
+### Metodi negli oggetti
+
+Gli oggetti possono contenere funzioni, chiamate metodi:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 34,
+  greet() {
+    console.log('Hello');
+    console.log(this.age); // 'this' si riferisce all'oggetto
+  }
+};
+
+user.greet(); // Chiama il metodo
+```
+
+Quando si definisce un metodo in un oggetto, non si usa la parola chiave `function`, solo il nome della funzione seguito dalle parentesi.
+
+### La parola chiave this
+
+All'interno di un metodo, si può accedere alle proprietà dell'oggetto utilizzando la parola chiave `this`:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 34,
+  greet() {
+    console.log('Hello');
+    console.log(this.age); // Accede alla proprietà age dell'oggetto
+  }
+};
+
+user.greet();
+```
+
+`this` si riferisce all'oggetto a cui appartiene il metodo. Questo concetto non sarà molto importante in questo corso perché non creeremo molti metodi, ma è importante conoscerlo.
+
+### Classi
+
+Le classi permettono di creare blueprint (modelli) per oggetti:
+
+```javascript
+class User {
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
+  }
+  
+  greet() {
+    console.log('Hello');
+  }
+}
+
+const user1 = new User('Manuel', 35);
+console.log(user1.name); // 'Manuel'
+user1.greet(); // 'Hello'
+```
+
+**Struttura di una classe**:
+- Nome della classe (deve iniziare con maiuscola)
+- Metodo `constructor`: funzione speciale che viene eseguita quando si crea un nuovo oggetto dalla classe
+- Metodi: funzioni che appartengono alla classe
+
+**Creare oggetti da una classe**: si usa la parola chiave `new` seguita dal nome della classe e dai parametri per il costruttore.
+
+**Nota**: le classi non vengono utilizzate frequentemente in questo corso, ma è importante conoscerle. In React moderno, si preferisce spesso utilizzare funzioni invece di classi per i componenti.
+
+</div>
+</details>
+
+## Array
+
+Gli array permettono di creare liste ordinate di valori, accessibili tramite il loro indice. Mentre gli oggetti raggruppano valori con coppie chiave-valore, gli array memorizzano solo valori in un certo ordine.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Lavorare con liste di valori</summary>
+<div class="px-4 pb-4">
+
+**Nota tecnica**: tecnicamente gli array sono oggetti, ma sono un tipo speciale di oggetto.
+
+### Creazione e accesso agli array
+
+```javascript
+const hobbies = ['sports', 'cooking', 'reading'];
+
+console.log(hobbies[0]); // 'sports' (primo elemento, indice 0)
+console.log(hobbies[1]); // 'cooking' (secondo elemento, indice 1)
+console.log(hobbies[2]); // 'reading' (terzo elemento, indice 2)
+```
+
+Gli array vengono creati utilizzando parentesi quadre. I singoli valori sono separati da virgole. L'indice parte da zero, quindi il primo elemento ha indice 0, il secondo ha indice 1, e così via.
+
+### Array possono contenere qualsiasi tipo di valore
+
+Gli array possono contenere qualsiasi tipo di valore: stringhe, numeri, oggetti, altri array, qualsiasi cosa:
+
+```javascript
+const mixedArray = [
+  'string',
+  42,
+  { name: 'Max' },
+  ['nested', 'array']
+];
+```
+
+### Metodi degli array
+
+Gli array offrono molti metodi utili per manipolare e trasformare i dati. Ecco alcuni dei più importanti:
+
+**push**: aggiunge un elemento alla fine dell'array
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies.push('reading');
+console.log(hobbies); // ['sports', 'cooking', 'reading']
+```
+
+**findIndex**: trova l'indice di un elemento che soddisfa una condizione
+
+```javascript
+const hobbies = ['sports', 'cooking', 'reading'];
+const index = hobbies.findIndex(item => item === 'sports');
+console.log(index); // 0
+```
+
+`findIndex` accetta una funzione che viene eseguita per ogni elemento dell'array. La funzione deve restituire `true` se l'elemento è quello che si sta cercando, `false` altrimenti. Questo è un ottimo caso d'uso per le arrow functions perché sono brevi da scrivere.
+
+**map**: trasforma ogni elemento dell'array in un altro elemento
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+const editedHobbies = hobbies.map(item => item + '!');
+console.log(editedHobbies); // ['sports!', 'cooking!']
+```
+
+`map` accetta una funzione che viene eseguita per ogni elemento. La funzione restituisce il valore in cui l'elemento deve essere trasformato. `map` non modifica l'array originale, ma restituisce un nuovo array.
+
+**Trasformare in oggetti**:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+const hobbiesAsObjects = hobbies.map(item => ({ text: item }));
+console.log(hobbiesAsObjects); 
+// [{text: 'sports'}, {text: 'cooking'}]
+```
+
+Quando si ritorna un oggetto da una arrow function, è necessario avvolgerlo tra parentesi per dire a JavaScript che le parentesi graffe definiscono un oggetto, non il corpo della funzione.
+
+**Altri metodi utili**:
+- `find()`: trova il primo elemento che soddisfa una condizione
+- `filter()`: crea un nuovo array con elementi che soddisfano una condizione
+- `reduce()`: riduce l'array a un singolo valore
+- `concat()`: unisce due o più array
+- `slice()`: estrae una porzione dell'array
+- `splice()`: modifica l'array aggiungendo o rimuovendo elementi
+
+**Importante**: `map` è estremamente importante in React perché viene spesso usato per trasformare dati in elementi JSX da visualizzare.
+
+</div>
+</details>
+
+## Destructuring
+
+La destructuring permette di estrarre valori da array e oggetti in modo conciso, assegnandoli direttamente a variabili. Per gli array si usano parentesi quadre, per gli oggetti parentesi graffe. La destructuring può essere utilizzata anche direttamente nei parametri delle funzioni, permettendo di accedere alle proprietà di un oggetto senza usare la notazione a punti. Questa sintassi è molto comune in React e rende il codice più pulito e leggibile.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Estrarre valori da array e oggetti</summary>
+<div class="px-4 pb-4">
+
+La destructuring permette di estrarre facilmente valori da array e oggetti e assegnarli a variabili. Questa sintassi è molto più breve rispetto all'accesso manuale agli elementi.
+
+### Destructuring di array
+
+Invece di accedere manualmente agli elementi di un array:
+
+```javascript
+const userNameData = ['Max', 'Schwarzmuller'];
+const firstName = userNameData[0];
+const lastName = userNameData[1];
+```
+
+Si può usare la destructuring:
+
+```javascript
+const userNameData = ['Max', 'Schwarzmuller'];
+const [firstName, lastName] = userNameData;
+
+console.log(firstName); // 'Max'
+console.log(lastName);  // 'Schwarzmuller'
+```
+
+La sintassi utilizza parentesi quadre a sinistra del segno di uguale. La prima variabile viene mappata sul primo elemento dell'array, la seconda sul secondo elemento, e così via. I nomi delle variabili dipendono da voi.
+
+### Destructuring di oggetti
+
+Invece di accedere manualmente alle proprietà di un oggetto:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 34
+};
+const name = user.name;
+const age = user.age;
+```
+
+Si può usare la destructuring:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 34
+};
+
+const { name, age } = user;
+console.log(name); // 'Max'
+console.log(age);  // 34
+```
+
+**Importante**: per gli oggetti, si devono usare gli stessi nomi delle proprietà perché gli oggetti vengono destrutturati per nome, non per posizione come gli array.
+
+### Destructuring con alias
+
+È possibile assegnare alias utilizzando i due punti:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 34
+};
+
+const { name: userName, age: userAge } = user;
+console.log(userName); // 'Max'
+console.log(userAge);  // 34
+```
+
+I due punti separano la proprietà che viene estratta dall'oggetto dal nome dell'alias che le viene assegnato.
+
+### Destructuring nei parametri delle funzioni
+
+La destructuring può essere utilizzata direttamente nei parametri delle funzioni:
+
+```javascript
+function storeOrder({ id, currency }) {
+  localStorage.setItem('id', id);
+  localStorage.setItem('currency', currency);
+}
+
+storeOrder({ id: 5, currency: 'USD', amount: 15.99 });
+```
+
+**Importante**: la funzione accetta ancora un solo parametro (un oggetto), che viene destrutturato internamente. Non accetta due parametri separati. La funzione viene chiamata passando un oggetto come argomento.
+
+Questo approccio è molto utile perché permette di accedere direttamente alle proprietà dell'oggetto senza dover usare la notazione a punti all'interno della funzione.
+
+</div>
+</details>
+
+## Spread Operator
+
+L'operatore spread (`...`) permette di estrarre ed espandere elementi da array o proprietà da oggetti. È estremamente utile per unire array, combinare oggetti e creare copie sicure (clonazione) di array e oggetti. Questo previene mutazioni indesiderate degli originali ed è fondamentale quando si lavora con React, specialmente per aggiornare lo stato in modo immutabile. L'operatore funziona sia con array che con oggetti.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Estrarre ed espandere valori</summary>
+<div class="px-4 pb-4">
+
+L'operatore spread (`...`) permette di estrarre elementi da array o proprietà da oggetti. Utilizza tre punti e viene utilizzato per espandere valori.
+
+### Spread con array
+
+Supponiamo di voler unire due array:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+const newHobbies = ['reading'];
+
+// Senza spread operator (sbagliato)
+const allHobbies = [hobbies, newHobbies];
+console.log(allHobbies); 
+// [['sports', 'cooking'], ['reading']] - array annidati!
+
+// Con spread operator (corretto)
+const allHobbies = [...hobbies, ...newHobbies];
+console.log(allHobbies); 
+// ['sports', 'cooking', 'reading'] - array unito
+```
+
+L'operatore spread estrae tutti gli elementi dagli array e li aggiunge come valori separati da virgole al nuovo array. Senza lo spread operator, si otterrebbero array annidati invece di un array unito.
+
+### Spread con oggetti
+
+L'operatore spread funziona anche con gli oggetti:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 34
+};
+
+const extendedUser = {
+  ...user,
+  isAdmin: true
+};
+
+console.log(extendedUser);
+// { name: 'Max', age: 34, isAdmin: true }
+```
+
+L'operatore spread estrae tutte le coppie chiave-valore dall'oggetto e le aggiunge al nuovo oggetto. Questo è molto utile per creare nuovi oggetti basati su oggetti esistenti.
+
+### Clonazione sicura
+
+L'operatore spread è estremamente utile per clonare array e oggetti in modo sicuro:
+
+```javascript
+// Clonare un array
+const originalArray = [1, 2, 3];
+const clonedArray = [...originalArray];
+
+// Clonare un oggetto
+const originalObject = { name: 'Max', age: 34 };
+const clonedObject = { ...originalObject };
+```
+
+Questo crea una copia superficiale (shallow copy) che previene mutazioni indesiderate degli originali. È importante notare che è una copia superficiale: se l'oggetto o l'array contiene oggetti annidati, quelli non vengono clonati.
+
+**Nota**: questo operatore verrà utilizzato spesso nel corso quando si lavora con React, specialmente per aggiornare lo stato in modo immutabile.
+
+</div>
+</details>
+
+## Strutture di controllo
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Controllare il flusso di esecuzione</summary>
+<div class="px-4 pb-4">
+
+Le strutture di controllo permettono di eseguire codice in modo condizionale o ripetuto. Sono fondamentali per gestire la logica dell'applicazione.
+
+### Istruzioni if
+
+Le istruzioni `if` permettono di eseguire codice solo se una condizione è soddisfatta:
+
+```javascript
+const password = prompt('Your password');
+
+if (password === 'Hello') {
+  console.log('Hello works');
+} else if (password === 'hello') {
+  console.log('Hello works');
+} else {
+  console.log('Access not granted');
+}
+```
+
+**Struttura**:
+- `if`: verifica la prima condizione
+- `else if`: verifica condizioni aggiuntive se la prima non è soddisfatta (si possono aggiungere tutti gli `else if` che si vogliono)
+- `else`: definisce il codice da eseguire se nessuna condizione è soddisfatta (solo un `else` per istruzione `if`)
+
+Naturalmente, controllare valori codificati non ha molto senso. In genere si usano le istruzioni `if` per controllare contenuti che non si conoscono in anticipo, come input dell'utente o dati da un server.
+
+### Ciclo for...of
+
+Il ciclo `for...of` permette di iterare attraverso gli elementi di un array:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+
+for (const hobby of hobbies) {
+  console.log(hobby);
+}
+// Output:
+// sports
+// cooking
+```
+
+**Come funziona**:
+- Crea una costante (o variabile) che viene ricreata per ogni iterazione
+- Con la parola chiave `of`, si dice a JavaScript di creare una nuova costante per ogni elemento dell'array
+- Il codice tra le parentesi graffe viene eseguito per ogni elemento
+
+Questo tipo di ciclo è molto comune e verrà utilizzato spesso nel corso.
+
+### Altri tipi di cicli
+
+JavaScript conosce diversi tipi di cicli `for`:
+- `for...of`: per iterare attraverso gli elementi di un array
+- `for...in`: per iterare attraverso le proprietà di un oggetto
+- `for` tradizionale: per eseguire codice un numero specifico di volte
+
+Nel contesto di React, `for...of` è quello che vedrete più spesso.
+
+### Nota sul DOM
+
+Quando si usa React, generalmente non si selezionano manualmente elementi del DOM con `querySelector` o simili per poi leggerli o modificarli. React gestisce questo automaticamente grazie al suo approccio dichiarativo. Si definisce come dovrebbe essere l'interfaccia e React si occupa di aggiornarla quando necessario.
+
+</div>
+</details>
+
+## Funzioni come valori
+
+In JavaScript, le funzioni possono essere passate come valori ad altre funzioni. Questo concetto è fondamentale in React per gestori di eventi e props. Quando si passa una funzione, si usa solo il nome senza parentesi (le parentesi eseguirebbero immediatamente la funzione). È possibile definire funzioni inline o in anticipo, e anche creare funzioni proprie che accettano funzioni come parametri. Le funzioni possono anche essere definite all'interno di altre funzioni, con scope limitato alla funzione contenitore.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Passare funzioni ad altre funzioni</summary>
+<div class="px-4 pb-4">
+
+In JavaScript, le funzioni possono essere passate come valori ad altre funzioni. Questo concetto è fondamentale in React, dove spesso si passano funzioni come props o come gestori di eventi.
+
+### Passare funzioni a funzioni integrate
+
+Molte funzioni integrate del browser accettano funzioni come parametri:
+
+```javascript
+// Definire la funzione in anticipo
+const handleTimeout = () => {
+  console.log('Timeout!');
+};
+
+setTimeout(handleTimeout, 2000); // Passare la funzione (senza parentesi)
+```
+
+**Importante**: quando si passa una funzione, si usa solo il nome senza parentesi. Le parentesi eseguirebbero immediatamente la funzione e passerebbero il valore di ritorno invece della funzione stessa.
+
+```javascript
+// Sbagliato: esegue la funzione immediatamente
+setTimeout(handleTimeout(), 2000);
+
+// Corretto: passa la funzione
+setTimeout(handleTimeout, 2000);
+```
+
+### Definire funzioni inline
+
+Si può anche definire la funzione direttamente nel punto in cui è necessaria:
+
+```javascript
+// Con function
+setTimeout(function() {
+  console.log('Timeout!');
+}, 2000);
+
+// Con arrow function (più comune)
+setTimeout(() => {
+  console.log('Timeout!');
+}, 2000);
+```
+
+Quando si definisce una funzione inline, non la si sta ancora eseguendo. La si sta solo definendo e passando come valore.
+
+### Creare funzioni che accettano funzioni
+
+Non è limitato alle funzioni integrate. Si possono creare funzioni proprie che accettano funzioni come parametri:
+
+```javascript
+function greeter(greetFn) {
+  greetFn();
+}
+
+greeter(() => {
+  console.log('Hello');
+});
+```
+
+La funzione `greeter` accetta un parametro `greetFn` che si aspetta di ricevere una funzione. All'interno della funzione, si esegue quella funzione chiamandola con le parentesi.
+
+### Funzioni annidate
+
+È possibile definire funzioni all'interno di altre funzioni:
+
+```javascript
+function init() {
+  function greet() {
+    console.log('Hello');
+  }
+  
+  greet(); // Funziona: greet è disponibile dentro init
+}
+
+init(); // Funziona: init è disponibile nello scope globale
+greet(); // Errore: greet non è disponibile fuori da init
+```
+
+**Scope**: le funzioni definite all'interno di un'altra funzione hanno uno scope limitato a quella funzione. Sono disponibili solo all'interno della funzione che le contiene, non al di fuori.
+
+Questo concetto è molto importante in React, dove spesso si definiscono funzioni all'interno di componenti. Queste funzioni hanno accesso alle variabili e alle props del componente, ma non sono disponibili al di fuori del componente.
+
+</div>
+</details>
+
+## Valori primitivi vs valori di riferimento
+
+JavaScript distingue tra valori primitivi (stringhe, numeri, booleani) che non possono essere modificati, e valori di riferimento (oggetti, array) che vengono memorizzati per indirizzo in memoria. Questa differenza spiega perché si può modificare un array con `push()` anche se è memorizzato in `const`: `const` impedisce solo la riassegnazione della variabile, non la modifica del valore a cui punta. Comprendere questa differenza è cruciale per evitare bug comuni quando si lavora con oggetti e array.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Comprendere la differenza tra tipi di valori</summary>
+<div class="px-4 pb-4">
+
+JavaScript distingue tra valori primitivi (stringhe, numeri, booleani) e valori di riferimento (oggetti, array). Comprendere questa differenza è cruciale per evitare bug comuni.
+
+### Valori primitivi
+
+I valori primitivi includono stringhe, numeri e booleani. La caratteristica principale è che non possono essere modificati:
+
+```javascript
+let userMessage = 'Hello';
+userMessage = 'World'; // Crea una nuova stringa, non modifica la vecchia
+```
+
+Quando si "modifica" una stringa, si crea in realtà una nuova stringa. La vecchia stringa viene semplicemente gettata via.
+
+```javascript
+const userMessage = 'Hello';
+const newMessage = userMessage.concat('!'); 
+// Crea una nuova stringa, non modifica userMessage
+
+console.log(userMessage); // 'Hello' (invariato)
+console.log(newMessage);  // 'Hello!' (nuova stringa)
+```
+
+I metodi delle stringhe restituiscono sempre nuove stringhe invece di modificare quella originale.
+
+### Valori di riferimento
+
+Gli oggetti e gli array sono valori di riferimento. Quando si memorizza un oggetto in una variabile, si memorizza l'indirizzo dell'oggetto in memoria, non il valore stesso:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies.push('reading'); // Modifica l'array originale
+
+console.log(hobbies); // ['sports', 'cooking', 'reading']
+```
+
+Quando si chiama `push`, JavaScript raggiunge l'indirizzo memorizzato nella variabile, apre il valore a quell'indirizzo (l'array) e modifica l'array esistente in memoria. L'indirizzo non cambia, ma il valore a quell'indirizzo sì.
+
+### const con oggetti
+
+È possibile modificare oggetti e array memorizzati in `const` perché `const` impedisce solo la riassegnazione della variabile, non la modifica del valore a cui punta:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies.push('reading'); // Funziona: modifica l'array
+hobbies = ['new']; // Errore: non può essere riassegnato
+```
+
+**Spiegazione**: `const` memorizza l'indirizzo dell'oggetto. L'indirizzo non cambia quando si modifica l'oggetto stesso, quindi non si sta violando la regola di `const`. Si sta modificando il valore che si trova dietro quell'indirizzo, non l'indirizzo stesso.
+
+Questo può essere confuso all'inizio, ma è importante capirlo perché spiega perché si può modificare un array con `push` nonostante sia memorizzato in una costante.
+
+### Implicazioni pratiche
+
+Questa differenza ha implicazioni importanti:
+
+```javascript
+// Con valori primitivi
+let a = 10;
+let b = a;
+b = 20;
+console.log(a); // 10 (a non è cambiato)
+
+// Con valori di riferimento
+let obj1 = { value: 10 };
+let obj2 = obj1;
+obj2.value = 20;
+console.log(obj1.value); // 20 (obj1 è cambiato!)
+```
+
+Quando si assegna un oggetto a una nuova variabile, si copia solo l'indirizzo, non l'oggetto stesso. Entrambe le variabili puntano allo stesso oggetto in memoria, quindi modificare una modifica anche l'altra.
+
+Per creare una copia indipendente, si usa l'operatore spread:
+
+```javascript
+let obj1 = { value: 10 };
+let obj2 = { ...obj1 }; // Crea una copia
+obj2.value = 20;
+console.log(obj1.value); // 10 (obj1 non è cambiato)
+```
+
+</div>
+</details>
+
+## Riepilogo
+
+Questi concetti fondamentali di JavaScript sono essenziali per lavorare con React. Le caratteristiche più importanti da ricordare sono:
+
+- **`let` e `const`**: per creare variabili e costanti. `const` dovrebbe essere preferito quando il valore non deve essere riassegnato.
+
+- **Arrow functions**: sintassi moderna per definire funzioni, particolarmente utile per funzioni anonime e quando si passa una funzione come valore.
+
+- **Import/Export**: per organizzare il codice in moduli. Export nominati permettono di esportare più valori, export default permette di esportare un singolo valore predefinito.
+
+- **Destructuring**: per estrarre valori da array e oggetti in modo conciso. Può essere utilizzata anche nei parametri delle funzioni.
+
+- **Spread operator**: per espandere array e oggetti, molto utile per clonare valori e unire array/oggetti.
+
+- **Metodi degli array**: `map()`, `find()`, `findIndex()`, `filter()`, `reduce()`, `concat()`, `slice()`, `splice()`. `map()` è particolarmente importante in React per trasformare dati in elementi JSX.
+
+- **Funzioni come valori**: passare funzioni ad altre funzioni è fondamentale in React per gestori di eventi e props.
+
+- **Valori primitivi vs riferimento**: comprendere la differenza è cruciale per evitare bug. I valori primitivi non possono essere modificati, mentre gli oggetti e gli array possono essere modificati anche se memorizzati in `const`.
+
+- **Strutture di controllo**: `if/else` per codice condizionale, `for...of` per iterare attraverso array.
+
+Questi concetti verranno utilizzati costantemente quando si scrive codice React, quindi è importante avere una solida comprensione di ciascuno di essi. Se si ha bisogno di rinfrescare la memoria su uno di questi argomenti durante il corso, si può sempre tornare a questa sezione.
