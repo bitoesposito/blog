@@ -29,6 +29,7 @@ const authors = defineCollection({
     github: z.string().url().optional(),
     linkedin: z.string().url().optional(),
     discord: z.string().url().optional(),
+    cv: z.string().url().or(z.string().startsWith('/')).optional(),
   }),
 })
 

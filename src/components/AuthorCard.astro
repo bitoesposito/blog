@@ -1,9 +1,11 @@
 ---
 import Link from '@/components/Link.astro'
 import AvatarComponent from '@/components/ui/avatar'
+import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { SocialLink } from '@/types'
 import type { CollectionEntry } from 'astro:content'
+import { Icon } from 'astro-icon/components'
 import SocialIcons from './SocialIcons.astro'
 
 interface Props {
@@ -25,7 +27,7 @@ const socialLinks: SocialLink[] = [
 ---
 
 <div
-  class="has-[a:hover]:bg-muted/50 overflow-hidden rounded-xl border p-4 transition-colors duration-300 ease-in-out"
+  class="bg-muted/30 overflow-hidden rounded-xl border p-4 transition-colors duration-300 ease-in-out"
 >
   <div class="flex flex-wrap gap-4">
     <AvatarComponent
@@ -51,7 +53,22 @@ const socialLinks: SocialLink[] = [
         </div>
         <p class="text-muted-foreground text-sm">{bio}</p>
       </div>
-      <SocialIcons links={socialLinks} />
+      <div class="flex flex-wrap items-center gap-2">
+        <SocialIcons links={socialLinks} />
+        {
+          author.data.cv && (
+            <Link
+              href={author.data.cv}
+              class={buttonVariants({ variant: 'outline' })}
+              external
+              download={author.data.cv.split('/').pop() || 'curriculum.pdf'}
+            >
+              <Icon name="lucide:download" class="size-4" />
+              <span>Curriculum</span>
+            </Link>
+          )
+        }
+      </div>
     </div>
   </div>
 </div>

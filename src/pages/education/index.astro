@@ -20,12 +20,17 @@ const years = Object.keys(educationByYear).sort((a, b) => parseInt(b) - parseInt
         years.map((year) => (
           <section class="flex flex-col gap-y-4">
             <div class="font-medium">{year}</div>
-            <ul class="flex flex-col gap-4">
-              {educationByYear[year].map((post) => (
-                <li>
-                  <EducationCard entry={post} />
-                </li>
-              ))}
+            <ul class="flex flex-col">
+              {educationByYear[year].map((post, index) => {
+                const isFirst = index === 0
+                const isLast = index === educationByYear[year].length - 1
+                const cardClass = `${isFirst ? 'rounded-tl-xl rounded-tr-xl' : 'rounded-t-none'} ${isLast ? 'rounded-bl-xl rounded-br-xl' : 'rounded-b-none'} ${!isFirst ? 'border-t-0 -mt-[1px]' : ''}`
+                return (
+                  <li>
+                    <EducationCard entry={post} cardClass={cardClass} />
+                  </li>
+                )
+              })}
             </ul>
           </section>
         ))

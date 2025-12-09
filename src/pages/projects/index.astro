@@ -14,12 +14,17 @@ const projects = await getAllProjects()
   <Breadcrumbs items={[{ label: 'Progetti', icon: 'lucide:briefcase' }]} />
   {
     projects.length > 0 ? (
-      <ul class="flex flex-col gap-4">
-        {projects.map((project) => (
-          <li>
-            <ProjectCard project={project} />
-          </li>
-        ))}
+      <ul class="flex flex-col">
+        {projects.map((project, index) => {
+          const isFirst = index === 0
+          const isLast = index === projects.length - 1
+          const cardClass = `${isFirst ? 'rounded-tl-xl rounded-tr-xl' : 'rounded-t-none'} ${isLast ? 'rounded-bl-xl rounded-br-xl' : 'rounded-b-none'} ${!isFirst ? 'border-t-0 -mt-[1px]' : ''}`
+          return (
+            <li>
+              <ProjectCard project={project} cardClass={cardClass} />
+            </li>
+          )
+        })}
       </ul>
     ) : (
       <p class="text-muted-foreground text-center">Nessun progetto trovato.</p>

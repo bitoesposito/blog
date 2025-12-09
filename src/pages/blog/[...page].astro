@@ -37,12 +37,17 @@ const years = Object.keys(postsByYear).sort((a, b) => parseInt(b) - parseInt(a))
       years.map((year) => (
         <section class="flex flex-col gap-y-4">
           <div class="font-medium">{year}</div>
-          <ul class="flex flex-col gap-4">
-            {postsByYear[year].map((post) => (
-              <li>
-                <BlogCard entry={post} />
-              </li>
-            ))}
+          <ul class="flex flex-col">
+            {postsByYear[year].map((post, index) => {
+              const isFirst = index === 0
+              const isLast = index === postsByYear[year].length - 1
+              const cardClass = `${isFirst ? 'rounded-tl-xl rounded-tr-xl' : 'rounded-t-none'} ${isLast ? 'rounded-bl-xl rounded-br-xl' : 'rounded-b-none'} ${!isFirst ? 'border-t-0 -mt-[1px]' : ''}`
+              return (
+                <li>
+                  <BlogCard entry={post} cardClass={cardClass} />
+                </li>
+              )
+            })}
           </ul>
         </section>
       ))

@@ -22,9 +22,6 @@ const projects = (await getAllProjects()).slice(0, 3)
     { author && <AuthorCard author={author} /> }
 
     <div class="prose mt-4">
-      <p class="mt-0">
-        <strong>Sviluppatore web</strong> e <strong>designer</strong> con una forte passione per l’informatica.
-      </p>
       <p class="mt-0 mb-0">
         Esperto nella progettazione e sviluppo di interfacce web per sistemi complessi ed e-commerce, al momento impegnato nella formazione per lo sviluppo di <Link href="/blog/costruzione-di-cosmetico">Cosmetico</Link>.
       </p>
@@ -34,7 +31,7 @@ const projects = (await getAllProjects()).slice(0, 3)
 
   <section class="flex flex-col gap-y-4">
     <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-medium">Gli ultimi post</h2>
+      <h2 class="text-2xl font-medium">Ultimi post</h2>
       <Link
         href="/blog"
         class={buttonVariants({ variant: 'ghost' }) + ' group'}
@@ -45,13 +42,18 @@ const projects = (await getAllProjects()).slice(0, 3)
         >
       </Link>
     </div>
-    <ul class="flex flex-col gap-y-4">
+    <ul class="flex flex-col">
       {
-        blog.map((post) => (
-          <li>
-            <BlogCard entry={post} />
-          </li>
-        ))
+        blog.map((post, index) => {
+          const isFirst = index === 0
+          const isLast = index === blog.length - 1
+          const cardClass = `${isFirst ? 'rounded-tl-xl rounded-tr-xl' : 'rounded-t-none'} ${isLast ? 'rounded-bl-xl rounded-br-xl' : 'rounded-b-none'} ${!isFirst ? 'border-t-0 -mt-[1px]' : ''}`
+          return (
+            <li>
+              <BlogCard entry={post} cardClass={cardClass} />
+            </li>
+          )
+        })
       }
     </ul>
   </section>
@@ -60,7 +62,7 @@ const projects = (await getAllProjects()).slice(0, 3)
     projects.length > 0 && (
       <section class="flex flex-col gap-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-2xl font-medium">Gli ultimi progetti</h2>
+          <h2 class="text-2xl font-medium">Ultimi progetti</h2>
           <Link
             href="/projects"
             class={buttonVariants({ variant: 'ghost' }) + ' group'}
@@ -71,13 +73,18 @@ const projects = (await getAllProjects()).slice(0, 3)
             >
           </Link>
         </div>
-        <ul class="flex flex-col gap-4">
+        <ul class="flex flex-col">
           {
-            projects.map((project) => (
+            projects.map((project, index) => {
+              const isFirst = index === 0
+              const isLast = index === projects.length - 1
+              const cardClass = `${isFirst ? 'rounded-tl-xl rounded-tr-xl' : 'rounded-t-none'} ${isLast ? 'rounded-bl-xl rounded-br-xl' : 'rounded-b-none'} ${!isFirst ? 'border-t-0 -mt-[1px]' : ''}`
+              return (
               <li>
-                <ProjectCard project={project} />
+                <ProjectCard project={project} cardClass={cardClass} />
               </li>
-            ))
+              )
+            })
           }
         </ul>
       </section>

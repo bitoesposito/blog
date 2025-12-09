@@ -40,13 +40,18 @@ const { tag, posts } = Astro.props
     ]}
   />
 
-  <ul class="flex flex-col gap-y-4">
+  <ul class="flex flex-col">
     {
-      posts.map((post) => (
-        <li>
-          <BlogCard entry={post} />
-        </li>
-      ))
+      posts.map((post, index) => {
+        const isFirst = index === 0
+        const isLast = index === posts.length - 1
+        const cardClass = `${isFirst ? 'rounded-tl-xl rounded-tr-xl' : 'rounded-t-none'} ${isLast ? 'rounded-bl-xl rounded-br-xl' : 'rounded-b-none'} ${!isFirst ? 'border-t-0 -mt-[1px]' : ''}`
+        return (
+          <li>
+            <BlogCard entry={post} cardClass={cardClass} />
+          </li>
+        )
+      })
     }
   </ul>
 </Layout>
