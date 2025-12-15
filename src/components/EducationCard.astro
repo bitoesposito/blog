@@ -80,7 +80,7 @@ const subpostCount = !isEducationSubpost(entry.id) ? await getEducationSubpostCo
             <>
               <Separator orientation="vertical" className="h-4!" />
               <span class="flex items-center gap-1">
-                <Icon name="lucide:file-text" class="size-3" />
+                <Icon name="lucide:file-text" class="size-3" aria-hidden="true" />
                 {subpostCount} subpost{subpostCount === 1 ? '' : 's'}
               </span>
             </>
@@ -93,7 +93,7 @@ const subpostCount = !isEducationSubpost(entry.id) ? await getEducationSubpostCo
           <div class="flex flex-wrap gap-2">
             {entry.data.tags.map((tag) => (
               <Badge variant="muted" className="flex items-center gap-x-1">
-                <Icon name="lucide:hash" class="size-3" />
+                <Icon name="lucide:hash" class="size-3" aria-hidden="true" />
                 {tag}
               </Badge>
             ))}

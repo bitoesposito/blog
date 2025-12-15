@@ -75,14 +75,14 @@ const nextSubpost =
                 class={buttonVariants({ variant: 'default', size: 'sm' })}
               >
                 <span>Continua a leggere</span>
-                <Icon name="lucide:arrow-right" class="size-4" />
+                <Icon name="lucide:arrow-right" class="size-4" aria-hidden="true" />
               </Link>
             ) : isCurrentSubpost && !nextSubpost && parentPost ? (
               <Link
                 href={`/blog/${parentPost.id}`}
                 class={buttonVariants({ variant: 'outline', size: 'sm' })}
               >
-                <Icon name="lucide:corner-left-up" class="size-4" />
+                <Icon name="lucide:corner-left-up" class="size-4" aria-hidden="true" />
                 <span>Torna all'indice</span>
               </Link>
             ) : firstSubpost ? (
@@ -91,7 +91,7 @@ const nextSubpost =
                 class={buttonVariants({ variant: 'default', size: 'sm' })}
               >
                 <span>Inizia a leggere</span>
-                <Icon name="lucide:arrow-right" class="size-4" />
+                <Icon name="lucide:arrow-right" class="size-4" aria-hidden="true" />
               </Link>
             ) : null}
 
@@ -100,7 +100,7 @@ const nextSubpost =
               onclick="document.getElementById('mobile-subposts-container')?.querySelector('details')?.setAttribute('open', '')"
               class={buttonVariants({ variant: 'outline', size: 'sm' })}
             >
-              <Icon name="lucide:list" class="size-4" />
+              <Icon name="lucide:list" class="size-4" aria-hidden="true" />
               <span>
                 Vedi tutti ({subposts.length + (activePost ? 1 : 0)})
               </span>

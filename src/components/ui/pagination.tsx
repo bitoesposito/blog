@@ -82,7 +82,7 @@ function PaginationPrevious({
       isDisabled={isDisabled}
       {...props}
     >
-      <ChevronLeftIcon />
+      <ChevronLeftIcon aria-hidden="true" />
       <span className="hidden sm:block">Precedente</span>
     </PaginationLink>
   )
@@ -102,7 +102,7 @@ function PaginationNext({
       {...props}
     >
       <span className="hidden sm:block">Prossima</span>
-      <ChevronRightIcon />
+      <ChevronRightIcon aria-hidden="true" />
     </PaginationLink>
   )
 }
@@ -118,7 +118,7 @@ function PaginationEllipsis({
       className={cn('flex size-9 items-center justify-center', className)}
       {...props}
     >
-      <MoreHorizontalIcon className="size-4" />
+      <MoreHorizontalIcon className="size-4" aria-hidden="true" />
       <span className="sr-only">More pages</span>
     </span>
   )

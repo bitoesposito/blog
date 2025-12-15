@@ -45,7 +45,7 @@ const { project, cardClass = '' } = Astro.props
         project.data.startDate && (
           <p class="text-muted-foreground/70 mb-2 flex items-center gap-x-1.5 text-xs">
             <span class="flex items-center gap-x-1.5">
-              <Icon name="lucide:calendar" class="size-3" />
+              <Icon name="lucide:calendar" class="size-3" aria-hidden="true" />
               <span>
                 {formatDate(project.data.startDate)}
                 {project.data.endDate

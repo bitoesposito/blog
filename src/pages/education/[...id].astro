@@ -194,9 +194,11 @@ const tocSections = await getEducationTOCSections(currentPostId)
                   href={post.data.certificate}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Certificato (si apre in una nuova finestra)"
                   class="text-foreground hover:text-foreground/80 transition-colors flex items-center gap-1.5"
                 >
-                  <Icon name="lucide:award" class="size-3" />
+                  <Icon name="lucide:award" class="size-3" aria-hidden="true" />
+                  <span class="sr-only"> (si apre in una nuova finestra)</span>
                   <span>Certificato</span>
                   <Icon name="lucide:external-link" class="size-3" />
                 </a>

@@ -79,7 +79,7 @@ const navigation = await getAdjacentProjects(currentProjectId)
               <div
                 class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0"
               >
-                <Icon name="lucide:calendar" class="size-3" />
+                <Icon name="lucide:calendar" class="size-3" aria-hidden="true" />
                 <span>
                   {formatDate(project.data.startDate)}
                   {project.data.endDate
@@ -99,10 +99,12 @@ const navigation = await getAdjacentProjects(currentProjectId)
                   href={project.data.link}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Link esterno (si apre in una nuova finestra)"
                   class="text-foreground hover:text-foreground/80 transition-colors flex items-center gap-1.5"
                 >
-                  <Icon name="lucide:external-link" class="size-3" />
+                  <Icon name="lucide:external-link" class="size-3" aria-hidden="true" />
                   <span>Link esterno</span>
+                  <span class="sr-only"> (si apre in una nuova finestra)</span>
                 </a>
               </div>
             )
@@ -113,7 +115,7 @@ const navigation = await getAdjacentProjects(currentProjectId)
           {
             project.data.tags && project.data.tags.length > 0 && project.data.tags.map((tag) => (
               <span class={badgeVariants({ variant: 'muted' })}>
-                <Icon name="lucide:hash" class="size-3" />
+                <Icon name="lucide:hash" class="size-3" aria-hidden="true" />
                 {tag}
               </span>
             ))
@@ -140,6 +142,7 @@ const navigation = await getAdjacentProjects(currentProjectId)
         <Icon
           name="lucide:arrow-left"
           class="mr-2 size-4 transition-transform group-hover:-translate-x-1"
+          aria-hidden="true"
         />
         <div class="flex flex-col items-start overflow-hidden text-wrap">
           <span class="text-muted-foreground text-left text-xs">
@@ -171,6 +174,7 @@ const navigation = await getAdjacentProjects(currentProjectId)
         <Icon
           name="lucide:arrow-right"
           class="ml-2 size-4 transition-transform group-hover:translate-x-1"
+          aria-hidden="true"
         />
       </Link>
     </nav>
@@ -187,6 +191,7 @@ const navigation = await getAdjacentProjects(currentProjectId)
     <Icon
       name="lucide:arrow-up"
       class="mx-auto size-4 transition-all group-hover:-translate-y-0.5"
+      aria-hidden="true"
     />
   </Button>
 
