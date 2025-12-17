@@ -1,0 +1,1054 @@
+---
+title: 'Componenti, Props e State in React'
+description: 'I concetti fondamentali di React: componenti riutilizzabili, passaggio di dati tramite props e gestione dello stato per creare interfacce interattive'
+date: 2025-12-08
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 3
+---
+
+## Introduzione
+
+React si basa su alcuni concetti fondamentali che sono essenziali per costruire qualsiasi applicazione, indipendentemente dalla complessità. Tra questi, i **componenti** rappresentano il concetto più importante: sono blocchi di costruzione riutilizzabili che permettono di suddividere interfacce complesse in parti più piccole e gestibili.
+
+Insieme ai componenti, altri due concetti cruciali sono le **props** (per passare dati ai componenti) e lo **state** (per gestire dati che cambiano nel tempo e rendere le applicazioni interattive). Questi tre concetti lavorano insieme per trasformare siti web statici in applicazioni dinamiche e interattive.
+
+## Componenti: I Blocchi Fondamentali di React
+
+I componenti sono funzioni JavaScript che restituiscono codice JSX da renderizzare sullo schermo. Ogni componente incapsula markup HTML, stili CSS e logica JavaScript correlata, permettendo di organizzare il codice in modo modulare e riutilizzabile.
+
+L'idea di pensare alle interfacce utente come combinazioni di componenti non è esclusiva di React, ma è diventata uno standard nel frontend development. Ogni parte visibile di un'interfaccia può essere identificata come un componente potenziale: un header, una card, un pulsante, una lista.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Vantaggi dell'approccio a componenti</summary>
+<div class="px-4 pb-4">
+
+I componenti offrono diversi vantaggi chiave:
+
+- **Riutilizzabilità**: Un componente può essere usato più volte con dati diversi, evitando duplicazione del codice
+- **Manutenibilità**: Le modifiche vanno applicate in un solo punto, riducendo la probabilità di errori
+- **Organizzazione**: Codice correlato (HTML, CSS, JavaScript) viene tenuto insieme, semplificando la navigazione
+- **Separazione delle responsabilità**: Ogni componente gestisce una parte specifica dell'interfaccia utente
+
+Senza componenti, si finirebbe rapidamente con file HTML molto grandi e difficili da gestire, dove le modifiche devono essere applicate in più punti e il codice correlato è sparso tra file diversi.
+
+</div>
+</details>
+
+### Creare il Primo Componente
+
+Un componente React è semplicemente una funzione JavaScript che segue due regole fondamentali:
+
+1. Il nome della funzione deve iniziare con una **lettera maiuscola**
+2. La funzione deve restituire un valore renderizzabile (tipicamente codice JSX)
+
+```jsx
+// Esempio di componente semplice
+function Header() {
+  return (
+    <header>
+      <img src="react-logo.png" alt="React logo" />
+      <h1>Concetti Fondamentali di React</h1>
+      <p>I blocchi di costruzione essenziali</p>
+    </header>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché il nome deve iniziare con maiuscola?</summary>
+<div class="px-4 pb-4">
+
+React distingue tra componenti incorporati (come `div`, `img`, `h1`) e componenti personalizzati attraverso la convenzione di naming. Gli elementi HTML incorporati iniziano sempre con minuscola, mentre i componenti personalizzati devono iniziare con maiuscola.
+
+Questa distinzione è importante perché React gestisce i due tipi in modo diverso:
+- Gli elementi incorporati vengono renderizzati come nodi DOM reali
+- I componenti personalizzati sono funzioni che vengono eseguite da React, che poi analizza il JSX restituito fino ad arrivare solo a elementi incorporati
+
+</div>
+</details>
+
+### Utilizzare i Componenti
+
+Per utilizzare un componente, non lo si chiama come una normale funzione JavaScript. Invece, si usa come un elemento HTML all'interno del codice JSX:
+
+```jsx
+function App() {
+  return (
+    <div id="app">
+      {/* Usare il componente come elemento HTML */}
+      <Header />
+      
+      {/* Oppure con tag di apertura e chiusura */}
+      <Header></Header>
+    </div>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Sintassi di autochiusura</summary>
+<div class="px-4 pb-4">
+
+Quando si usa un componente senza contenuto interno, si può utilizzare la sintassi di autochiusura `<ComponentName />`. È importante notare che:
+
+- La barra `/` finale è **obbligatoria** per i componenti personalizzati
+- Questa sintassi è simile a quella degli elementi HTML auto-chiudenti come `<img />` o `<br />`
+- Se si omette la barra, si otterrà un errore
+
+```jsx
+// ✅ Corretto
+<Header />
+
+// ❌ Errato - manca la barra finale
+<Header>
+```
+
+</div>
+</details>
+
+## JSX: JavaScript Syntax Extension
+
+JSX è un'estensione della sintassi JavaScript che permette di scrivere codice HTML-like direttamente nei file JavaScript. Non è JavaScript standard e non è supportato nativamente dai browser, ma viene trasformato in codice JavaScript valido durante il processo di build.
+
+```jsx
+// Questo è JSX - sembra HTML ma è dentro JavaScript
+function App() {
+  return (
+    <div>
+      <h1>Ciao Mondo</h1>
+      <p>Questo è JSX</p>
+    </div>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Estensioni di file: .jsx vs .js</summary>
+<div class="px-4 pb-4">
+
+L'estensione `.jsx` indica che un file contiene codice JSX, ma non è sempre obbligatoria. Dipende dalla configurazione del processo di build:
+
+- Alcuni progetti richiedono `.jsx` per i file con JSX
+- Altri progetti accettano JSX anche in file `.js`
+- Alcuni progetti richiedono l'estensione negli import (`import App from './App.jsx'`)
+- Altri permettono di ometterla (`import App from './App'`)
+
+Non c'è una regola universale: dipende dalla configurazione del progetto. L'importante è capire che l'estensione serve principalmente al processo di build, non al browser.
+
+</div>
+</details>
+
+### Valori Dinamici con le Parentesi Graffe
+
+Una delle caratteristiche più potenti di JSX è la possibilità di inserire valori dinamici usando le **parentesi graffe** `{}`. Qualsiasi espressione JavaScript inserita tra parentesi graffe verrà valutata e il risultato verrà visualizzato.
+
+```jsx
+function Header() {
+  // Array di possibili descrizioni
+  const reactDescriptions = ['Fundamental', 'Crucial', 'Core'];
+  
+  // Funzione per generare un indice casuale
+  function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+  }
+  
+  // Generare una descrizione casuale
+  const description = reactDescriptions[getRandomInt(3)];
+  
+  return (
+    <header>
+      <h1>{description} React Concepts</h1>
+      {/* Le parentesi graffe permettono di inserire JavaScript */}
+      <p>Numero casuale: {Math.random()}</p>
+      <p>Calcolo: {1 + 1}</p>
+    </header>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Dove si possono usare le parentesi graffe</summary>
+<div class="px-4 pb-4">
+
+Le parentesi graffe possono essere usate in diversi contesti:
+
+1. **Tra i tag**: per inserire contenuto dinamico
+   ```jsx
+   <h1>{title}</h1>
+   ```
+
+2. **Come valore di attributo**: per attributi dinamici
+   ```jsx
+   <img src={imagePath} alt={imageAlt} />
+   ```
+
+3. **Per valori booleani**: alcuni attributi accettano booleani
+   ```jsx
+   <button disabled={isLoading}>Invia</button>
+   ```
+
+**Importante**: quando si usa una parentesi graffa per un valore di attributo, non si devono aggiungere le virgolette. Il valore dinamico va direttamente dopo il segno `=`, senza virgolette.
+
+```jsx
+// ✅ Corretto
+<img src={imagePath} />
+
+// ❌ Errato - non servono le virgolette
+<img src="{imagePath}" />
+```
+
+</div>
+</details>
+
+### Importare Immagini in React
+
+Per includere immagini in un progetto React, è meglio usare le dichiarazioni di `import` invece di percorsi stringa relativi. Questo permette al processo di build di ottimizzare le immagini e includerle correttamente nel bundle finale.
+
+```jsx
+// Importare l'immagine come modulo
+import reactImg from './assets/react-core-concepts.png';
+
+function Header() {
+  return (
+    <header>
+      {/* Usare la variabile importata come valore dinamico */}
+      <img src={reactImg} alt="React logo" />
+    </header>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché importare invece di usare percorsi stringa?</summary>
+<div class="px-4 pb-4">
+
+Usare `import` per le immagini offre diversi vantaggi:
+
+- **Ottimizzazione**: Il processo di build può ottimizzare le immagini (compressione, formati moderni)
+- **Bundling**: Le immagini vengono incluse correttamente nel bundle di distribuzione
+- **Validazione**: Errori di percorso vengono rilevati in fase di build, non a runtime
+- **Cache busting**: Il processo di build può aggiungere hash ai nomi dei file per gestire la cache
+
+Quando si importa un'immagine, si ottiene una variabile che contiene il percorso ottimizzato dell'immagine, che può essere usato come valore dinamico nell'attributo `src`.
+
+</div>
+</details>
+
+## Props: Passare Dati ai Componenti
+
+Le **props** (abbreviazione di "properties") sono il meccanismo di React per passare dati da un componente padre a un componente figlio. Permettono di rendere i componenti riutilizzabili con dati diversi.
+
+### Definire e Utilizzare Props
+
+Per passare dati a un componente, si aggiungono attributi personalizzati al componente stesso. Questi attributi diventano proprietà dell'oggetto `props` che React passa automaticamente alla funzione del componente.
+
+```jsx
+// Componente che riceve props
+function CoreConcept({ title, description, image }) {
+  return (
+    <li>
+      <img src={image} alt={title} />
+      <h3>{title}</h3>
+      <p>{description}</p>
+    </li>
+  );
+}
+
+// Utilizzare il componente con dati diversi
+function App() {
+  return (
+    <ul>
+      <CoreConcept
+        title="Components"
+        description="I blocchi base dell'interfaccia utente"
+        image={componentsImg}
+      />
+      <CoreConcept
+        title="JSX"
+        description="Sintassi estesa di JavaScript"
+        image={jsxImg}
+      />
+    </ul>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Destrutturazione degli oggetti nelle props</summary>
+<div class="px-4 pb-4">
+
+Ci sono diversi modi per accedere alle props in un componente:
+
+**1. Accedere tramite l'oggetto props completo:**
+```jsx
+function CoreConcept(props) {
+  return (
+    <li>
+      <h3>{props.title}</h3>
+      <p>{props.description}</p>
+    </li>
+  );
+}
+```
+
+**2. Destrutturare direttamente nei parametri (consigliato):**
+```jsx
+function CoreConcept({ title, description, image }) {
+  return (
+    <li>
+      <h3>{title}</h3>
+      <p>{description}</p>
+    </li>
+  );
+}
+```
+
+La destrutturazione è preferibile perché:
+- Rende il codice più pulito e leggibile
+- Evita di dover scrivere `props.` ogni volta
+- Mostra chiaramente quali props il componente si aspetta
+
+</div>
+</details>
+
+### Spread Operator per Props
+
+Quando si hanno dati organizzati come oggetti JavaScript e i nomi delle proprietà corrispondono ai nomi delle props, si può usare l'operatore **spread** (`...`) per passare tutte le proprietà in una volta.
+
+```jsx
+// Dati organizzati come oggetto
+const conceptData = {
+  title: "Components",
+  description: "I blocchi base dell'interfaccia utente",
+  image: componentsImg
+};
+
+// Passare tutte le proprietà con spread
+<CoreConcept {...conceptData} />
+
+// Equivale a scrivere:
+<CoreConcept
+  title={conceptData.title}
+  description={conceptData.description}
+  image={conceptData.image}
+/>
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Altri pattern per le props</summary>
+<div class="px-4 pb-4">
+
+**Passare un singolo oggetto come prop:**
+```jsx
+// Passare l'intero oggetto come singola prop
+<CoreConcept concept={conceptData} />
+
+// Nel componente
+function CoreConcept({ concept }) {
+  return (
+    <li>
+      <h3>{concept.title}</h3>
+      <p>{concept.description}</p>
+    </li>
+  );
+}
+```
+
+**Valori di default per le props:**
+```jsx
+function Button({ caption, type = "button" }) {
+  // type ha un valore di default "button"
+  // se non viene passato, userà questo valore
+  return <button type={type}>{caption}</button>;
+}
+
+// Usabile con o senza type
+<Button caption="Clicca" />  // type sarà "button"
+<Button caption="Invia" type="submit" />  // type sarà "submit"
+```
+
+</div>
+</details>
+
+### La Prop Speciale `children`
+
+La prop `children` è speciale perché non viene passata come attributo, ma rappresenta il contenuto inserito tra i tag di apertura e chiusura di un componente. Permette di creare componenti che avvolgono altri contenuti.
+
+```jsx
+// Componente che usa children
+function Card({ name, children }) {
+  return (
+    <article className="card">
+      <h2>{name}</h2>
+      {/* children contiene tutto ciò che è tra i tag */}
+      {children}
+    </article>
+  );
+}
+
+// Utilizzo del componente con contenuto interno
+<Card name="Maria Miles">
+  <p>Maria è una professoressa di Computer Science.</p>
+  <p><a href="mailto:maria@example.com">Email Maria</a></p>
+</Card>
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Composizione di componenti</summary>
+<div class="px-4 pb-4">
+
+L'uso di `children` permette la **composizione di componenti**, un pattern molto comune in React. Questo approccio è utile quando:
+
+- Un componente deve avvolgere contenuto arbitrario
+- Si vuole creare un'interfaccia simile a HTML standard
+- Il contenuto interno può variare significativamente
+
+**Confronto tra props normali e children:**
+
+```jsx
+// Approccio con props normali
+<TabButton label="Components" />
+
+// Approccio con children (composizione)
+<TabButton>Components</TabButton>
+```
+
+Entrambi gli approcci sono validi. La scelta dipende dal caso d'uso:
+- Props normali: quando si passa un valore semplice
+- Children: quando si vuole passare contenuto JSX complesso o mantenere una sintassi più simile a HTML
+
+</div>
+</details>
+
+## Organizzare i Componenti in File Separati
+
+Man mano che un'applicazione cresce, è importante organizzare i componenti in file separati per mantenere il codice gestibile e navigabile. La convenzione comune è creare una cartella `components` nella cartella `src`.
+
+### Struttura dei File
+
+```jsx
+// components/Header.jsx
+import reactImg from '../assets/react-core-concepts.png';
+
+export default function Header() {
+  return (
+    <header>
+      <img src={reactImg} alt="React logo" />
+      <h1>Concetti Fondamentali di React</h1>
+    </header>
+  );
+}
+
+// App.jsx
+import Header from './components/Header';
+
+function App() {
+  return (
+    <div id="app">
+      <Header />
+    </div>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Export default vs named export</summary>
+<div class="px-4 pb-4">
+
+Ci sono due modi per esportare componenti:
+
+**Export default (più comune per i componenti):**
+```jsx
+// Componente
+export default function Header() { ... }
+
+// Import
+import Header from './components/Header';
+```
+
+**Named export:**
+```jsx
+// Componente
+export function Header() { ... }
+
+// Import (con parentesi graffe)
+import { Header } from './components/Header';
+```
+
+La maggior parte dei progetti React usa `export default` per i componenti perché:
+- Permette di importare con qualsiasi nome
+- È più comune nella comunità React
+- Semplifica gli import quando si ha un componente principale per file
+
+</div>
+</details>
+
+### Organizzare gli Stili CSS
+
+Gli stili CSS possono essere organizzati in file separati, tipicamente uno per componente. Per includere gli stili, si importa il file CSS nel componente corrispondente.
+
+```jsx
+// components/Header.jsx
+import './Header.css';  // Importare gli stili del componente
+
+export default function Header() {
+  return <header>...</header>;
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Limitazioni degli stili CSS standard</summary>
+<div class="px-4 pb-4">
+
+È importante notare che importare CSS in un componente **non limita** gli stili a quel componente. Gli stili vengono applicati globalmente alla pagina:
+
+```jsx
+// Header.css
+header {
+  background-color: blue;
+}
+
+// Questo stile si applica a TUTTI gli elementi <header> nella pagina,
+// non solo a quello nel componente Header
+```
+
+Per avere stili veramente isolati per componente, esistono soluzioni avanzate come:
+- CSS Modules
+- Styled Components
+- CSS-in-JS libraries
+
+Queste soluzioni verranno esplorate più avanti nel percorso di apprendimento.
+
+</div>
+</details>
+
+## Gestione degli Eventi
+
+Per rendere le applicazioni interattive, è necessario reagire agli eventi dell'utente (clic, input, hover, ecc.). In React, gli eventi vengono gestiti in modo dichiarativo usando props speciali che iniziano con `on`.
+
+### Aggiungere Event Listeners
+
+Gli elementi HTML incorporati supportano props speciali per gli eventi, come `onClick`, `onChange`, `onSubmit`. Il valore di questi props deve essere una funzione che verrà eseguita quando l'evento si verifica.
+
+```jsx
+function TabButton({ children, onSelect }) {
+  // Funzione che gestisce il click
+  function handleClick() {
+    console.log('Pulsante cliccato!');
+  }
+  
+  return (
+    <li>
+      {/* Passare la funzione come valore, NON eseguirla */}
+      <button onClick={handleClick}>
+        {children}
+      </button>
+    </li>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché non eseguire la funzione direttamente?</summary>
+<div class="px-4 pb-4">
+
+È fondamentale capire la differenza tra:
+
+```jsx
+// ✅ Corretto - passa la funzione come valore
+<button onClick={handleClick}>Clicca</button>
+
+// ❌ Errato - esegue la funzione immediatamente
+<button onClick={handleClick()}>Clicca</button>
+```
+
+Quando si aggiungono le parentesi `()`, la funzione viene eseguita **immediatamente** quando il componente viene renderizzato, non quando l'utente clicca. Questo è sbagliato perché:
+
+- La funzione viene eseguita troppo presto
+- React non può chiamarla di nuovo quando l'evento si verifica
+- Si perde il riferimento alla funzione
+
+Passando solo il nome della funzione (senza parentesi), si passa un riferimento alla funzione che React può chiamare al momento giusto.
+
+</div>
+</details>
+
+### Passare Parametri agli Event Handlers
+
+Spesso si vuole passare dati personalizzati all'event handler quando viene chiamato. Per fare questo, si avvolge la chiamata della funzione in una funzione freccia anonima.
+
+```jsx
+function App() {
+  function handleSelect(selectedButton) {
+    console.log('Selezionato:', selectedButton);
+  }
+  
+  return (
+    <div>
+      {/* Passare un parametro personalizzato */}
+      <TabButton onSelect={() => handleSelect('components')}>
+        Components
+      </TabButton>
+      
+      <TabButton onSelect={() => handleSelect('jsx')}>
+        JSX
+      </TabButton>
+    </div>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Pattern comune: forwarding di eventi</summary>
+<div class="px-4 pb-4">
+
+Un pattern molto comune è quello di "inoltrare" eventi da componenti personalizzati agli elementi HTML incorporati:
+
+```jsx
+// Componente personalizzato che riceve una prop per l'evento
+function TabButton({ children, onSelect }) {
+  return (
+    <li>
+      {/* Inoltrare la funzione all'elemento button incorporato */}
+      <button onClick={onSelect}>
+        {children}
+      </button>
+    </li>
+  );
+}
+
+// Nel componente padre
+function App() {
+  function handleSelect() {
+    console.log('Tab selezionata');
+  }
+  
+  return (
+    <TabButton onSelect={handleSelect}>
+      Components
+    </TabButton>
+  );
+}
+```
+
+Questo pattern permette ai componenti personalizzati di essere controllati dall'esterno, mantenendo la flessibilità e la riutilizzabilità.
+
+</div>
+</details>
+
+## State: Gestire Dati che Cambiano
+
+Lo **state** (stato) è uno dei concetti più importanti di React. Permette di gestire dati che cambiano nel tempo e di aggiornare automaticamente l'interfaccia utente quando questi dati cambiano.
+
+### Il Problema con le Variabili Normali
+
+Se si prova a usare una variabile JavaScript normale per aggiornare l'interfaccia, si scopre che non funziona:
+
+```jsx
+function App() {
+  let selectedTopic = 'components';
+  
+  function handleSelect() {
+    selectedTopic = 'jsx';  // Aggiorna la variabile
+    console.log(selectedTopic);  // Vede il nuovo valore
+  }
+  
+  return (
+    <div>
+      <p>{selectedTopic}</p>  {/* Non si aggiorna! */}
+      <button onClick={handleSelect}>Cambia</button>
+    </div>
+  );
+}
+```
+
+Il problema è che React esegue la funzione del componente **solo una volta** quando viene incontrata per la prima volta. Aggiornare una variabile normale non dice a React di rieseguire la funzione e aggiornare l'interfaccia.
+
+### Usare useState Hook
+
+La soluzione è usare lo **useState Hook**, che permette di registrare variabili gestite da React. Quando queste variabili cambiano, React riesegue automaticamente il componente e aggiorna l'interfaccia.
+
+```jsx
+import { useState } from 'react';
+
+function App() {
+  // useState restituisce un array con due elementi:
+  // [valore corrente, funzione per aggiornare il valore]
+  const [selectedTopic, setSelectedTopic] = useState('components');
+  
+  function handleSelect() {
+    // Chiamare la funzione di aggiornamento
+    setSelectedTopic('jsx');
+    // React rieseguirà automaticamente il componente
+  }
+  
+  return (
+    <div>
+      <p>{selectedTopic}</p>  {/* Ora si aggiorna! */}
+      <button onClick={handleSelect}>Cambia</button>
+    </div>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Regole degli Hooks</summary>
+<div class="px-4 pb-4">
+
+Gli Hooks di React (come `useState`) devono seguire regole specifiche:
+
+**1. Chiamare gli Hooks solo all'interno di:**
+- Funzioni di componenti React
+- Altri Hooks personalizzati
+
+**2. Chiamare gli Hooks sempre al livello superiore:**
+- Non dentro cicli (`for`, `while`)
+- Non dentro condizioni (`if`, `switch`)
+- Non dentro funzioni annidate
+
+```jsx
+// ✅ Corretto
+function App() {
+  const [count, setCount] = useState(0);
+  // ...
+}
+
+// ❌ Errato - dentro una condizione
+function App() {
+  if (someCondition) {
+    const [count, setCount] = useState(0);  // Errore!
+  }
+}
+
+// ❌ Errato - dentro una funzione annidata
+function App() {
+  function handleClick() {
+    const [count, setCount] = useState(0);  // Errore!
+  }
+}
+```
+
+Queste regole garantiscono che React possa tracciare correttamente lo stato tra i render.
+
+</div>
+</details>
+
+### Come Funziona useState
+
+`useState` accetta un argomento (il valore iniziale) e restituisce un array con esattamente due elementi:
+
+1. **Il valore corrente dello stato**: un'istantanea del valore per questo ciclo di render
+2. **La funzione di aggiornamento**: una funzione che aggiorna lo stato e dice a React di rieseguire il componente
+
+```jsx
+// Destrutturazione dell'array restituito
+const [selectedTopic, setSelectedTopic] = useState('components');
+
+// selectedTopic contiene il valore corrente ('components')
+// setSelectedTopic è la funzione per aggiornare il valore
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Aggiornamento asincrono dello stato</summary>
+<div class="px-4 pb-4">
+
+È importante capire che l'aggiornamento dello stato è **asincrono**. Quando si chiama `setSelectedTopic`, il nuovo valore non è immediatamente disponibile:
+
+```jsx
+function handleSelect() {
+  setSelectedTopic('jsx');
+  console.log(selectedTopic);  // Ancora 'components'!
+  // Il nuovo valore sarà disponibile nel prossimo render
+}
+```
+
+React programma l'aggiornamento e riesegue il componente. Solo nel prossimo render il nuovo valore sarà disponibile. Questo è un comportamento intenzionale che permette a React di ottimizzare le performance raggruppando più aggiornamenti.
+
+**Aggiornamento basato sul valore precedente:**
+
+Quando il nuovo stato dipende dal valore precedente, è meglio usare una funzione:
+
+```jsx
+// ✅ Consigliato quando il nuovo valore dipende dal precedente
+setCount(prevCount => prevCount + 1);
+
+// ✅ Anche questo funziona, ma meno sicuro
+setCount(count + 1);
+```
+
+</div>
+</details>
+
+## Rendering Condizionale
+
+Il rendering condizionale permette di mostrare contenuti diversi in base a determinate condizioni. Ci sono diversi modi per implementare questo in React.
+
+### Operatore Ternario
+
+L'operatore ternario è utile quando si vuole scegliere tra due alternative:
+
+```jsx
+function App() {
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  
+  return (
+    <div>
+      {selectedTopic ? (
+        <div>
+          <h3>{examples[selectedTopic].title}</h3>
+          <p>{examples[selectedTopic].description}</p>
+        </div>
+      ) : (
+        <p>Seleziona un argomento</p>
+      )}
+    </div>
+  );
+}
+```
+
+### Operatore AND (&&)
+
+L'operatore `&&` è utile quando si vuole mostrare qualcosa solo se una condizione è vera:
+
+```jsx
+function App() {
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  
+  return (
+    <div>
+      {/* Mostra solo se selectedTopic è truthy */}
+      {selectedTopic && (
+        <div>
+          <h3>{examples[selectedTopic].title}</h3>
+        </div>
+      )}
+      
+      {/* Mostra solo se selectedTopic è falsy */}
+      {!selectedTopic && (
+        <p>Seleziona un argomento</p>
+      )}
+    </div>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Variabile per contenuto condizionale</summary>
+<div class="px-4 pb-4">
+
+Un altro approccio è memorizzare il contenuto JSX in una variabile prima del return:
+
+```jsx
+function App() {
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  
+  // Determinare il contenuto da mostrare
+  let content;
+  
+  if (selectedTopic) {
+    content = (
+      <div>
+        <h3>{examples[selectedTopic].title}</h3>
+        <p>{examples[selectedTopic].description}</p>
+      </div>
+    );
+  } else {
+    content = <p>Seleziona un argomento</p>;
+  }
+  
+  return (
+    <div>
+      {content}
+    </div>
+  );
+}
+```
+
+Questo approccio mantiene il JSX più pulito e può essere più leggibile quando la logica condizionale è complessa.
+
+</div>
+</details>
+
+## Styling Dinamico
+
+Gli stili CSS possono essere applicati dinamicamente in base allo stato. In JSX, l'attributo `class` si chiama `className` (perché `class` è una parola riservata in JavaScript).
+
+### Applicare Classi Dinamicamente
+
+```jsx
+function TabButton({ children, isSelected, onSelect }) {
+  return (
+    <li>
+      <button
+        className={isSelected ? 'active' : ''}
+        onClick={onSelect}
+      >
+        {children}
+      </button>
+    </li>
+  );
+}
+
+// Utilizzo
+function App() {
+  const [selectedTopic, setSelectedTopic] = useState('components');
+  
+  return (
+    <TabButton
+      isSelected={selectedTopic === 'components'}
+      onSelect={() => setSelectedTopic('components')}
+    >
+      Components
+    </TabButton>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché className invece di class?</summary>
+<div class="px-4 pb-4">
+
+In JSX si usa `className` invece di `class` perché:
+
+- `class` è una parola riservata in JavaScript (usata per definire classi ES6)
+- JSX è JavaScript, quindi deve evitare conflitti con parole riservate
+- `className` è la proprietà DOM equivalente all'attributo HTML `class`
+
+```jsx
+// ✅ Corretto in JSX
+<div className="container">
+
+// ❌ Errato - causerebbe un errore
+<div class="container">
+```
+
+La maggior parte degli altri attributi HTML funzionano normalmente in JSX (`id`, `src`, `alt`, ecc.). Solo `class` ha questa eccezione.
+
+</div>
+</details>
+
+## Rendering di Liste Dinamiche
+
+Spesso si ha bisogno di renderizzare una lista di elementi basata su un array di dati. Il metodo `map()` è lo strumento perfetto per questo scopo.
+
+### Usare map() per Liste Dinamiche
+
+```jsx
+function App() {
+  const coreConcepts = [
+    { title: 'Components', description: '...', image: componentsImg },
+    { title: 'JSX', description: '...', image: jsxImg },
+    { title: 'Props', description: '...', image: propsImg },
+    { title: 'State', description: '...', image: stateImg }
+  ];
+  
+  return (
+    <ul>
+      {coreConcepts.map((concept) => (
+        <CoreConcept
+          key={concept.title}
+          title={concept.title}
+          description={concept.description}
+          image={concept.image}
+        />
+      ))}
+    </ul>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">La prop key</summary>
+<div class="px-4 pb-4">
+
+La prop `key` è speciale e obbligatoria quando si renderizzano liste. Deve essere un valore univoco per ogni elemento della lista:
+
+```jsx
+{coreConcepts.map((concept) => (
+  <CoreConcept
+    key={concept.title}  // Deve essere unico
+    title={concept.title}
+  />
+))}
+```
+
+**Perché è importante:**
+- React usa `key` per identificare quali elementi sono cambiati, aggiunti o rimossi
+- Permette a React di aggiornare efficientemente solo gli elementi necessari
+- Senza `key`, React potrebbe aggiornare elementi sbagliati quando la lista cambia
+
+**Buone pratiche per le key:**
+- Usare ID univoci quando disponibili
+- Evitare l'indice dell'array se la lista può essere riordinata
+- La key deve essere stabile (non cambiare tra i render)
+
+```jsx
+// ✅ Buono - ID univoco
+key={user.id}
+
+// ✅ Accettabile - titolo univoco
+key={concept.title}
+
+// ⚠️ Evitare se la lista può essere riordinata
+key={index}
+```
+
+</div>
+</details>
+
+### Spread Operator con Liste
+
+Quando i dati sono già organizzati come oggetti con proprietà che corrispondono alle props, si può combinare `map()` con lo spread operator:
+
+```jsx
+function App() {
+  const coreConcepts = [
+    { title: 'Components', description: '...', image: componentsImg },
+    { title: 'JSX', description: '...', image: jsxImg }
+  ];
+  
+  return (
+    <ul>
+      {coreConcepts.map((concept) => (
+        <CoreConcept
+          key={concept.title}
+          {...concept}  // Spread di tutte le proprietà
+        />
+      ))}
+    </ul>
+  );
+}
+```
+
+## Riepilogo
+
+Questi sono i concetti fondamentali di React che si utilizzano in ogni applicazione:
+
+### Concetti Chiave
+
+- **Componenti**: Funzioni JavaScript che restituiscono JSX, con nomi che iniziano con maiuscola
+- **JSX**: Sintassi estesa di JavaScript per descrivere interfacce utente
+- **Props**: Meccanismo per passare dati dai componenti padre ai figli
+- **State**: Dati gestiti da React che, quando cambiano, causano il re-render del componente
+- **Eventi**: Gestiti in modo dichiarativo con props che iniziano con `on`
+
+### Pattern Importanti
+
+1. **Destrutturazione delle props**: `function Component({ prop1, prop2 })`
+2. **Spread operator per props**: `<Component {...data} />`
+3. **Children per composizione**: `<Component>contenuto</Component>`
+4. **useState per stato**: `const [value, setValue] = useState(initialValue)`
+5. **map() per liste**: `{array.map(item => <Item key={item.id} {...item} />)}`
+
+### Best Practices
+
+- Organizzare i componenti in file separati nella cartella `components`
+- Usare `export default` per i componenti principali
+- Importare immagini invece di usare percorsi stringa
+- Usare `className` invece di `class` in JSX
+- Fornire sempre una `key` univoca quando si renderizzano liste
+- Chiamare gli Hooks solo al livello superiore dei componenti
+- Passare funzioni agli event handlers senza eseguirle (`onClick={handleClick}`, non `onClick={handleClick()}`)
+
+Con questi concetti si può costruire applicazioni React interattive e dinamiche, sia semplici che complesse.
