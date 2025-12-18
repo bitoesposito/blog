@@ -24,12 +24,15 @@ if (post.data.image) {
   const optimizedImage = await getImage({ src: post.data.image, width: 1200, height: 630 })
   ogImage = new URL(optimizedImage.src, Astro.site)
 }
+
+// Normalizza l'URL canonical rimuovendo trailing slash e query params
+const canonicalUrl = new URL(Astro.url.pathname.replace(/\/$/, ''), Astro.site)
 ---
 
 <title>{`${title} | ${SITE.title}`}</title>
 <meta name="title" content={`${title} | ${SITE.title}`} />
 <meta name="description" content={description} />
-<link rel="canonical" href={SITE.href} />
+<link rel="canonical" href={canonicalUrl.href} />
 
 {isSubpost(post.id) && <meta name="robots" content="noindex" />}
 
