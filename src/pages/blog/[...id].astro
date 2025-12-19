@@ -1,5 +1,6 @@
 ---
 import Breadcrumbs from '@/components/Breadcrumbs.astro'
+import BreadcrumbListStructuredData from '@/components/BreadcrumbListStructuredData.astro'
 import Link from '@/components/Link.astro'
 import PostHead from '@/components/PostHead.astro'
 import PostNavigation from '@/components/PostNavigation.astro'
@@ -57,10 +58,23 @@ const combinedReadingTime =
     : null
 
 const tocSections = await getTOCSections(currentPostId)
+
+// Prepara breadcrumbs per structured data
+const breadcrumbs = [
+  { name: 'Home', url: new URL('/', Astro.site).href },
+  { name: 'Blog', url: new URL('/blog', Astro.site).href },
+  ...(isCurrentSubpost && parentPost
+    ? [
+        { name: parentPost.data.title, url: new URL(`/blog/${parentPost.id}`, Astro.site).href },
+        { name: post.data.title, url: new URL(`/blog/${currentPostId}`, Astro.site).href },
+      ]
+    : [{ name: post.data.title, url: new URL(`/blog/${currentPostId}`, Astro.site).href }]),
+]
 ---
 
 <Layout>
-  <PostHead slot="head" post={post} />
+  <PostHead slot="head" post={post} breadcrumbs={breadcrumbs} />
+  <BreadcrumbListStructuredData items={breadcrumbs} />
   {
     (hasChildPosts || isCurrentSubpost) && (
       <SubpostsHeader

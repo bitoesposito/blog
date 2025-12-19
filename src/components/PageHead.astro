@@ -1,16 +1,19 @@
 ---
 import { SITE } from '@/consts'
+import OrganizationStructuredData from '@/components/OrganizationStructuredData.astro'
 
 interface Props {
   title?: string
   description?: string
   noindex?: boolean
+  includeOrganization?: boolean
 }
 
 const {
   title = SITE.title,
   description = SITE.description,
   noindex = false,
+  includeOrganization = false,
 } = Astro.props
 const image = new URL('/static/1200x630.png', Astro.site)
 
@@ -41,3 +44,11 @@ const canonicalUrl = new URL(pathname, Astro.site)
 <meta name="twitter:card" content="summary_large_image" />
 
 <meta name="google-site-verification" content="BcklbM_dwNBjpdj4IJMvS9kgS7TtSwqFuoSdrgVp9SA" />
+
+{includeOrganization && (
+  <OrganizationStructuredData
+    name={SITE.title}
+    url={SITE.href}
+    logo={new URL('/static/logo.png', Astro.site).href}
+  />
+)}

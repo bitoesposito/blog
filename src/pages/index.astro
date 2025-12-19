@@ -16,7 +16,7 @@ const projects = (await getAllProjects()).slice(0, 3)
 ---
 
 <Layout class="max-w-3xl">
-  <PageHead slot="head" title="Home" />
+  <PageHead slot="head" title="Home" includeOrganization={true} />
 
   <section>
     <h1 class="text-3xl font-medium mb-4">{SITE.title}</h1>
