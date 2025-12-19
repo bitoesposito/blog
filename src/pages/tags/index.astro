@@ -21,6 +21,7 @@ const sortedTags = await getSortedTags()
           <Link
             href={`/tags/${tag}`}
             class={badgeVariants({ variant: 'muted' })}
+            aria-label={`Vedi tutti gli articoli con tag ${tag} (${count} articoli)`}
           >
             <Icon name="lucide:hash" class="size-3" aria-hidden="true" />
             {tag}

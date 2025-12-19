@@ -315,9 +315,9 @@ class Stack {
 }
 ```
 
-# Queues
+## Queues
 
-## Cos'è una Queue
+### Cos'è una Queue
 
 Una **queue** (coda) è una struttura dati basata sul principio **FIFO** (First In, First Out): il primo elemento inserito è il primo a essere rimosso.
 
@@ -351,7 +351,7 @@ Una **queue** (coda) è una struttura dati basata sul principio **FIFO** (First 
 - **First**: riferimento al primo elemento della queue (quello che verrà rimosso per primo)
 - **Last**: riferimento all'ultimo elemento della queue (dove vengono aggiunti nuovi elementi)
 
-## Implementazioni Queue
+### Implementazioni Queue
 
 ### Array
 
@@ -395,9 +395,9 @@ Con una linked list modificata, possiamo avere **entrambe le operazioni O(1)**:
 - **Enqueue** avviene dalla **fine** usando `last` (equivalente di `tail`)
 - **Dequeue** avviene dall'**inizio** usando `first` (equivalente di `head`)
 
-## Implementazione Queue
+### Implementazione Queue
 
-### Classe Node per Queue
+#### Classe Node per Queue
 
 Il nodo è identico a quello delle linked lists e degli stack:
 
@@ -460,9 +460,9 @@ const myQueue = new Queue(4);
 }
 ```
 
-## Operazioni Queue
+### Operazioni Queue
 
-### Enqueue - Aggiungere alla fine
+#### Enqueue - Aggiungere alla fine
 
 Aggiunge un nodo alla fine della queue. **Complessità: O(1)**
 
@@ -554,7 +554,7 @@ dequeue() {
 
 **Nota**: Dequeue su una queue è identico a `shift` su una linked list normale (rimuovere dall'inizio).
 
-### IsEmpty - Controllare se vuota
+#### IsEmpty - Controllare se vuota
 
 Verifica se la queue è vuota. **Complessità: O(1)**
 
@@ -593,7 +593,7 @@ peek() {
 </div>
 </details>
 
-## Implementazione completa Queue
+### Implementazione completa Queue
 
 Ecco il codice completo delle classi `Node` e `Queue`:
 
@@ -653,11 +653,11 @@ class Queue {
 }
 ```
 
-# Confronto Stack vs Queue
+## Confronto Stack vs Queue
 
 Ora che abbiamo implementato entrambe le strutture, confrontiamole:
 
-## Tabella comparativa
+### Tabella comparativa
 
 | Caratteristica | Stack | Queue |
 |---------------|-------|-------|

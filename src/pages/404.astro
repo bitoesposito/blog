@@ -21,8 +21,9 @@ import { cn } from '@/lib/utils'
     <Link
       href="/"
       class={cn(buttonVariants({ variant: 'outline' }), 'flex gap-x-1.5 group')}
+      aria-label="Torna alla homepage"
     >
-      <span class="transition-transform group-hover:-translate-x-1">&larr;</span
+      <span class="transition-transform group-hover:-translate-x-1" aria-hidden="true">&larr;</span
       > Vai alla home page
     </Link>
   </section>

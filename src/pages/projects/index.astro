@@ -14,7 +14,7 @@ const projects = await getAllProjects()
   <Breadcrumbs items={[{ label: 'Progetti', icon: 'lucide:briefcase' }]} />
   {
     projects.length > 0 ? (
-      <ul class="flex flex-col">
+      <ul class="flex flex-col" aria-label="Lista dei progetti">
         {projects.map((project, index) => {
           const isFirst = index === 0
           const isLast = index === projects.length - 1

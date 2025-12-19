@@ -32,6 +32,7 @@ const subpostCount = !isEducationSubpost(entry.id) ? await getEducationSubpostCo
   <Link
     href={`/${entry.collection}/${entry.id}`}
     class="flex flex-col gap-4 sm:flex-row"
+    title={`Leggi l'articolo di formazione: ${entry.data.title}`}
   >
     {
       entry.data.image && (

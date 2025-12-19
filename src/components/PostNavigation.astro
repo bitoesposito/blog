@@ -13,6 +13,7 @@ const isSubpost = !!parentPost
     'col-start-2 grid grid-cols-1 gap-4',
     isSubpost ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
   )}
+  aria-label="Navigazione tra i post"
 >
   <Link
     href={olderPost ? `/blog/${olderPost.id}#post-title` : '#'}
@@ -22,10 +23,12 @@ const isSubpost = !!parentPost
       !olderPost && 'pointer-events-none opacity-50 cursor-not-allowed',
     )}
     aria-disabled={!olderPost}
+    title={olderPost ? `Vai al post precedente: ${olderPost.data.title}` : undefined}
   >
     <Icon
       name="lucide:arrow-left"
       class="mr-2 size-4 transition-transform group-hover:-translate-x-1"
+      aria-hidden="true"
     />
     <div class="flex flex-col items-start overflow-hidden text-wrap">
       <span class="text-muted-foreground text-left text-xs">
@@ -49,10 +52,12 @@ const isSubpost = !!parentPost
           'group flex size-full items-center justify-center rounded-lg',
           !parentPost && 'pointer-events-none cursor-not-allowed opacity-50',
         )}
+        title={parentPost ? `Vai al post principale: ${parentPost.data.title}` : undefined}
       >
         <Icon
           name="lucide:corner-left-up"
           class="mr-2 size-4 transition-transform group-hover:-translate-y-1"
+          aria-hidden="true"
         />
         <div class="flex flex-col items-center overflow-hidden text-wrap">
           <span class="text-muted-foreground text-center text-xs">
@@ -74,6 +79,7 @@ const isSubpost = !!parentPost
       !newerPost && 'pointer-events-none opacity-50 cursor-not-allowed',
     )}
     aria-disabled={!newerPost}
+    title={newerPost ? `Vai al post successivo: ${newerPost.data.title}` : undefined}
   >
     <div class="flex flex-col items-end overflow-hidden text-wrap">
       <span class="text-muted-foreground text-right text-xs">
@@ -89,6 +95,7 @@ const isSubpost = !!parentPost
     <Icon
       name="lucide:arrow-right"
       class="ml-2 size-4 transition-transform group-hover:translate-x-1"
+      aria-hidden="true"
     />
   </Link>
 </nav>

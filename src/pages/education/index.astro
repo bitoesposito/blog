@@ -18,9 +18,9 @@ const years = Object.keys(educationByYear).sort((a, b) => parseInt(b) - parseInt
     {
       years.length > 0 ? (
         years.map((year) => (
-          <section class="flex flex-col gap-y-4">
-            <div class="font-medium">{year}</div>
-            <ul class="flex flex-col">
+          <section class="flex flex-col gap-y-4" aria-labelledby={`education-year-${year}`}>
+            <div class="font-medium" id={`education-year-${year}`}>{year}</div>
+            <ul class="flex flex-col" aria-label={`Contenuti di formazione pubblicati nel ${year}`}>
               {educationByYear[year].map((post, index) => {
                 const isFirst = index === 0
                 const isLast = index === educationByYear[year].length - 1

@@ -7,11 +7,12 @@ import { Icon } from 'astro-icon/components'
   id="theme-toggle"
   variant="ghost"
   size="icon"
-  title="Toggle theme"
+  title="Cambia tema"
+  aria-label="Cambia tema tra modalità chiara e scura"
 >
   <Icon name="lucide:sun" class="size-4 dark:hidden" aria-hidden="true" />
   <Icon name="lucide:moon" class="absolute hidden size-4 dark:block" aria-hidden="true" />
-  <span class="sr-only">Toggle theme</span>
+  <span class="sr-only">Cambia tema</span>
 </Button>
 
 <script is:inline data-astro-rerun>

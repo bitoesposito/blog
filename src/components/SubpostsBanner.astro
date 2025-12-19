@@ -73,6 +73,7 @@ const nextSubpost =
               <Link
                 href={`/blog/${nextSubpost.id}`}
                 class={buttonVariants({ variant: 'default', size: 'sm' })}
+                aria-label={`Continua a leggere: ${nextSubpost.data.title}`}
               >
                 <span>Continua a leggere</span>
                 <Icon name="lucide:arrow-right" class="size-4" aria-hidden="true" />
@@ -81,6 +82,7 @@ const nextSubpost =
               <Link
                 href={`/blog/${parentPost.id}`}
                 class={buttonVariants({ variant: 'outline', size: 'sm' })}
+                aria-label={`Torna all'indice: ${parentPost.data.title}`}
               >
                 <Icon name="lucide:corner-left-up" class="size-4" aria-hidden="true" />
                 <span>Torna all'indice</span>
@@ -89,6 +91,7 @@ const nextSubpost =
               <Link
                 href={`/blog/${firstSubpost.id}`}
                 class={buttonVariants({ variant: 'default', size: 'sm' })}
+                aria-label={`Inizia a leggere: ${firstSubpost.data.title}`}
               >
                 <span>Inizia a leggere</span>
                 <Icon name="lucide:arrow-right" class="size-4" aria-hidden="true" />
@@ -99,6 +102,7 @@ const nextSubpost =
               type="button"
               onclick="document.getElementById('mobile-subposts-container')?.querySelector('details')?.setAttribute('open', '')"
               class={buttonVariants({ variant: 'outline', size: 'sm' })}
+              aria-label={`Mostra tutti i ${subposts.length + (activePost ? 1 : 0)} capitoli disponibili`}
             >
               <Icon name="lucide:list" class="size-4" aria-hidden="true" />
               <span>

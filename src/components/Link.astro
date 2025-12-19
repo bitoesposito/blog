@@ -7,11 +7,13 @@ interface Props {
   class?: string
   underline?: boolean
   'aria-label'?: string
+  title?: string
   [key: string]: any
 }
 
-const { href, external, class: className, underline, 'aria-label': ariaLabel, ...rest } = Astro.props
+const { href, external, class: className, underline, 'aria-label': ariaLabel, title, ...rest } = Astro.props
 const finalAriaLabel = external && ariaLabel ? `${ariaLabel} (si apre in una nuova finestra)` : ariaLabel
+const finalTitle = title || (external && !ariaLabel ? 'Link esterno (si apre in una nuova finestra)' : undefined)
 ---
 
 <a
@@ -19,6 +21,7 @@ const finalAriaLabel = external && ariaLabel ? `${ariaLabel} (si apre in una nuo
   target={external ? '_blank' : '_self'}
   rel={external ? 'noopener noreferrer' : undefined}
   aria-label={finalAriaLabel}
+  title={finalTitle}
   class={cn(
     'inline-block transition-colors duration-300 ease-in-out',
     underline &&

@@ -20,6 +20,7 @@ const { project, cardClass = '' } = Astro.props
   <Link
     href={`/projects/${project.id}`}
     class="flex flex-col gap-4 sm:flex-row"
+    title={`Vedi il progetto: ${project.data.name}`}
   >
     {
       project.data.image && (

@@ -30,20 +30,22 @@ const projects = (await getAllProjects()).slice(0, 3)
   </section>
 
 
-  <section class="flex flex-col gap-y-4">
+  <section class="flex flex-col gap-y-4" aria-labelledby="ultimi-post-heading">
     <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-medium">Ultimi post</h2>
+      <h2 id="ultimi-post-heading" class="text-2xl font-medium">Ultimi post</h2>
       <Link
         href="/blog"
         class={buttonVariants({ variant: 'ghost' }) + ' group'}
+        title="Vedi tutti i post del blog"
       >
         Tutti i post<span
           class="ml-1.5 transition-transform group-hover:translate-x-1"
+          aria-hidden="true"
           >&rarr;</span
         >
       </Link>
     </div>
-    <ul class="flex flex-col">
+    <ul class="flex flex-col" aria-label="Lista degli ultimi post del blog">
       {
         blog.map((post, index) => {
           const isFirst = index === 0
@@ -61,20 +63,22 @@ const projects = (await getAllProjects()).slice(0, 3)
 
   {
     projects.length > 0 && (
-      <section class="flex flex-col gap-y-4">
+      <section class="flex flex-col gap-y-4" aria-labelledby="ultimi-progetti-heading">
         <div class="flex items-center justify-between">
-          <h2 class="text-2xl font-medium">Ultimi progetti</h2>
+          <h2 id="ultimi-progetti-heading" class="text-2xl font-medium">Ultimi progetti</h2>
           <Link
             href="/projects"
             class={buttonVariants({ variant: 'ghost' }) + ' group'}
+            title="Vedi tutti i progetti"
           >
             Tutti i progetti<span
               class="ml-1.5 transition-transform group-hover:translate-x-1"
+              aria-hidden="true"
               >&rarr;</span
             >
           </Link>
         </div>
-        <ul class="flex flex-col">
+        <ul class="flex flex-col" aria-label="Lista degli ultimi progetti">
           {
             projects.map((project, index) => {
               const isFirst = index === 0

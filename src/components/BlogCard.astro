@@ -32,6 +32,7 @@ const subpostCount = !isSubpost(entry.id) ? await getSubpostCount(entry.id) : 0
   <Link
     href={`/${entry.collection}/${entry.id}`}
     class="flex flex-col gap-4 sm:flex-row"
+    title={`Leggi l'articolo: ${entry.data.title}`}
   >
     {
       entry.data.image && (

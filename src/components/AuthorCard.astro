@@ -62,6 +62,7 @@ const socialLinks: SocialLink[] = [
               class={buttonVariants({ variant: 'outline' })}
               external
               download={author.data.cv.split('/').pop() || 'curriculum.pdf'}
+              aria-label={`Scarica il curriculum di ${name}`}
             >
               <Icon name="lucide:download" class="size-4" aria-hidden="true" />
               <span>Curriculum</span>

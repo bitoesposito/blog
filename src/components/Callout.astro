@@ -157,9 +157,11 @@ const { title, variant = 'note', defaultOpen = true, ...rest } = Astro.props
   )}
   {...rest}
   open={defaultOpen}
+  aria-label={`${capitalize(variant)}${title ? `: ${title}` : ''}`}
 >
   <summary
     class="flex cursor-pointer items-center font-medium [&::-webkit-details-marker]:hidden"
+    aria-expanded={defaultOpen ? 'true' : 'false'}
   >
     <Icon
       name={calloutConfig[variant].icon}

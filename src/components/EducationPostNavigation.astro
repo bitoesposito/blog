@@ -20,6 +20,7 @@ const isSubpost = !!parentPost
     'col-start-2 grid grid-cols-1 gap-4',
     isSubpost ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
   )}
+  aria-label="Navigazione tra i post di formazione"
 >
   <Link
     href={olderPost ? `/education/${olderPost.id}#post-title` : '#'}
@@ -33,6 +34,7 @@ const isSubpost = !!parentPost
     <Icon
       name="lucide:arrow-left"
       class="mr-2 size-4 transition-transform group-hover:-translate-x-1"
+      aria-hidden="true"
     />
     <div class="flex flex-col items-start overflow-hidden text-wrap">
       <span class="text-muted-foreground text-left text-xs">
@@ -60,6 +62,7 @@ const isSubpost = !!parentPost
         <Icon
           name="lucide:corner-left-up"
           class="mr-2 size-4 transition-transform group-hover:-translate-y-1"
+          aria-hidden="true"
         />
         <div class="flex flex-col items-center overflow-hidden text-wrap">
           <span class="text-muted-foreground text-center text-xs">
@@ -96,6 +99,7 @@ const isSubpost = !!parentPost
     <Icon
       name="lucide:arrow-right"
       class="ml-2 size-4 transition-transform group-hover:translate-x-1"
+      aria-hidden="true"
     />
   </Link>
 </nav>

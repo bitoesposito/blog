@@ -65,6 +65,7 @@ const parentId = isCurrentSubpost ? getEducationParentId(currentPostId) : curren
                           }
                           class="marker:text-foreground/30 list-none underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
                           data-heading-link={heading.slug}
+                          aria-label={`Vai alla sezione: ${heading.text}`}
                         >
                           {heading.text}
                         </a>
@@ -99,6 +100,7 @@ const parentId = isCurrentSubpost ? getEducationParentId(currentPostId) : curren
                               ? 'top'
                               : `${section.subpostId}-top`
                           }
+                          aria-label={section.subpostId === currentPostId ? `Vai all'inizio del post corrente` : `Vai al post: ${section.title}`}
                         >
                           {section.title}
                         </a>
@@ -125,6 +127,7 @@ const parentId = isCurrentSubpost ? getEducationParentId(currentPostId) : curren
                                 ? heading.slug
                                 : `${section.subpostId}-${heading.slug}`
                             }
+                            aria-label={`Vai alla sezione: ${heading.text}${section.subpostId !== currentPostId ? ` nel post ${section.subpostId}` : ''}`}
                           >
                             {heading.text}
                           </a>
