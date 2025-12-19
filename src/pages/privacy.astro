@@ -38,20 +38,24 @@ import { SITE } from '@/consts'
     
     <h3>Dati di navigazione</h3>
     <p>
-      Questo sito utilizza <strong>Umami Analytics</strong>, un servizio di analisi web che rispetta la privacy degli utenti. 
-      Umami raccoglie dati anonimi e aggregati relativi alla navigazione, tra cui:
+      Questo sito utilizza <strong>Google Analytics</strong>, un servizio di analisi web fornito da Google LLC. 
+      Google Analytics raccoglie dati relativi alla navigazione, tra cui:
     </p>
     <ul>
       <li>Pagine visitate</li>
       <li>Durata della visita</li>
       <li>Riferimento (referrer) della visita</li>
       <li>Informazioni tecniche del browser e del dispositivo (user agent)</li>
-      <li>Paese di origine (basato sull'indirizzo IP, senza memorizzare l'IP stesso)</li>
+      <li>Indirizzo IP (anonimizzato)</li>
+      <li>Posizione geografica approssimativa (basata sull'indirizzo IP)</li>
     </ul>
 
     <p>
-      <strong>Importante:</strong> Umami Analytics <strong>non utilizza cookie</strong> e <strong>non raccoglie dati personali identificabili</strong>. 
-      Non è possibile identificare singoli utenti attraverso i dati raccolti.
+      <strong>Importante:</strong> Google Analytics utilizza cookie per raccogliere informazioni statistiche in forma aggregata. 
+      L'indirizzo IP viene anonimizzato prima della memorizzazione. Il caricamento di Google Analytics avviene solo previo 
+      <strong>consenso esplicito</strong> dell'utente tramite il banner di consenso cookie. Per maggiori informazioni sul trattamento 
+      dei dati da parte di Google, consulta la <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy di Google</a> 
+      e le <a href="https://support.google.com/analytics/answer/6004245" target="_blank" rel="noopener noreferrer">Informazioni su Google Analytics</a>.
     </p>
 
     <h3>Dati forniti volontariamente</h3>
@@ -62,8 +66,10 @@ import { SITE } from '@/consts'
 
     <h2>Base Giuridica del Trattamento</h2>
     <p>
-      Il trattamento dei dati di navigazione si basa sul <strong>legittimo interesse</strong> del titolare 
-      (art. 6, comma 1, lett. f del GDPR) per migliorare il sito web e comprendere come viene utilizzato.
+      Il trattamento dei dati di navigazione tramite Google Analytics si basa sul <strong>consenso</strong> dell'interessato 
+      (art. 6, comma 1, lett. a del GDPR). Il consenso viene richiesto tramite un banner di consenso cookie che appare 
+      alla prima visita del sito web. Gli utenti possono accettare o rifiutare i cookie di analisi e modificare le proprie 
+      preferenze in qualsiasi momento.
     </p>
     <p>
       Il trattamento dei dati forniti volontariamente si basa sul <strong>consenso</strong> dell'interessato 
@@ -80,8 +86,8 @@ import { SITE } from '@/consts'
 
     <h2>Conservazione dei Dati</h2>
     <p>
-      I dati di navigazione raccolti tramite Umami Analytics vengono conservati per un periodo massimo di 
-      <strong>24 mesi</strong> in forma anonima e aggregata.
+      I dati di navigazione raccolti tramite Google Analytics vengono conservati secondo le impostazioni configurate 
+      (conservazione standard di 14 mesi o conservazione estesa fino a 50 mesi) in forma anonima e aggregata.
     </p>
     <p>
       I dati forniti volontariamente tramite email vengono conservati per il tempo necessario a rispondere 
@@ -90,8 +96,14 @@ import { SITE } from '@/consts'
 
     <h2>Comunicazione e Diffusione</h2>
     <p>
-      I dati raccolti <strong>non vengono comunicati a terzi</strong> né diffusi pubblicamente. 
-      Umami Analytics è un servizio self-hosted che rispetta la privacy e non condivide i dati con terze parti.
+      I dati raccolti tramite Google Analytics vengono comunicati a Google LLC, che li elabora come responsabile del trattamento 
+      ai sensi dell'art. 28 del GDPR. Google può utilizzare questi dati per migliorare i propri servizi e per finalità di marketing 
+      secondo le proprie policy. I dati <strong>non vengono diffusi pubblicamente</strong> né venduti a terze parti.
+    </p>
+    <p>
+      Google può trasferire i dati al di fuori dell'Unione Europea, ma garantisce adeguate misure di protezione attraverso 
+      le <a href="https://privacy.google.com/businesses/processorterms/" target="_blank" rel="noopener noreferrer">Clausole Contrattuali Standard</a> 
+      approvate dalla Commissione Europea.
     </p>
 
     <h2>Diritti degli Interessati</h2>
@@ -124,8 +136,10 @@ import { SITE } from '@/consts'
 
     <h2>Trasferimento dei Dati</h2>
     <p>
-      I dati raccolti tramite Umami Analytics vengono elaborati e conservati su server situati nell'Unione Europea, 
-      garantendo il rispetto della normativa GDPR.
+      I dati raccolti tramite Google Analytics possono essere trasferiti e conservati su server situati al di fuori dell'Unione Europea. 
+      Google garantisce adeguate misure di protezione dei dati attraverso le 
+      <a href="https://privacy.google.com/businesses/processorterms/" target="_blank" rel="noopener noreferrer">Clausole Contrattuali Standard</a> 
+      approvate dalla Commissione Europea, garantendo il rispetto della normativa GDPR.
     </p>
 
     <h2>Modifiche alla Privacy Policy</h2>
@@ -147,4 +161,5 @@ import { SITE } from '@/consts'
     </ul>
   </article>
 </Layout>
+
 
