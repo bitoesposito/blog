@@ -1,0 +1,149 @@
+---
+import Breadcrumbs from '@/components/Breadcrumbs.astro'
+import PageHead from '@/components/PageHead.astro'
+import Layout from '@/layouts/Layout.astro'
+import { SITE } from '@/consts'
+---
+
+<Layout class="max-w-3xl">
+  <PageHead
+    slot="head"
+    title="Privacy Policy"
+    description="Informativa sulla privacy e trattamento dei dati personali del blog di Vito Esposito"
+  />
+  <Breadcrumbs items={[{ label: 'Privacy Policy', icon: 'lucide:shield-check' }]} />
+
+  <article class="prose prose-neutral dark:prose-invert max-w-none">
+    <h1>Privacy Policy</h1>
+    
+    <p class="text-muted-foreground">
+      <strong>Ultimo aggiornamento:</strong> {new Date().toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' })}
+    </p>
+
+    <p>
+      Questa informativa descrive come vengono trattati i dati personali degli utenti che visitano questo sito web.
+    </p>
+
+    <h2>Titolare del Trattamento</h2>
+    <p>
+      Il titolare del trattamento dei dati è:
+    </p>
+    <ul>
+      <li><strong>Nome:</strong> Vito Esposito</li>
+      <li><strong>Email:</strong> <a href="mailto:info@vitoesposito.it">info@vitoesposito.it</a></li>
+      <li><strong>Sito web:</strong> <a href={SITE.href}>{SITE.href}</a></li>
+    </ul>
+
+    <h2>Tipi di Dati Raccolti</h2>
+    
+    <h3>Dati di navigazione</h3>
+    <p>
+      Questo sito utilizza <strong>Umami Analytics</strong>, un servizio di analisi web che rispetta la privacy degli utenti. 
+      Umami raccoglie dati anonimi e aggregati relativi alla navigazione, tra cui:
+    </p>
+    <ul>
+      <li>Pagine visitate</li>
+      <li>Durata della visita</li>
+      <li>Riferimento (referrer) della visita</li>
+      <li>Informazioni tecniche del browser e del dispositivo (user agent)</li>
+      <li>Paese di origine (basato sull'indirizzo IP, senza memorizzare l'IP stesso)</li>
+    </ul>
+
+    <p>
+      <strong>Importante:</strong> Umami Analytics <strong>non utilizza cookie</strong> e <strong>non raccoglie dati personali identificabili</strong>. 
+      Non è possibile identificare singoli utenti attraverso i dati raccolti.
+    </p>
+
+    <h3>Dati forniti volontariamente</h3>
+    <p>
+      Se contatti il titolare tramite email o altri canali di comunicazione, i dati forniti (nome, email, messaggio) 
+      verranno utilizzati esclusivamente per rispondere alle richieste.
+    </p>
+
+    <h2>Base Giuridica del Trattamento</h2>
+    <p>
+      Il trattamento dei dati di navigazione si basa sul <strong>legittimo interesse</strong> del titolare 
+      (art. 6, comma 1, lett. f del GDPR) per migliorare il sito web e comprendere come viene utilizzato.
+    </p>
+    <p>
+      Il trattamento dei dati forniti volontariamente si basa sul <strong>consenso</strong> dell'interessato 
+      (art. 6, comma 1, lett. a del GDPR).
+    </p>
+
+    <h2>Finalità del Trattamento</h2>
+    <p>I dati raccolti vengono utilizzati per:</p>
+    <ul>
+      <li>Analizzare l'utilizzo del sito web per migliorarne la struttura e i contenuti</li>
+      <li>Comprendere quali contenuti sono più interessanti per i visitatori</li>
+      <li>Rispondere a richieste e comunicazioni degli utenti</li>
+    </ul>
+
+    <h2>Conservazione dei Dati</h2>
+    <p>
+      I dati di navigazione raccolti tramite Umami Analytics vengono conservati per un periodo massimo di 
+      <strong>24 mesi</strong> in forma anonima e aggregata.
+    </p>
+    <p>
+      I dati forniti volontariamente tramite email vengono conservati per il tempo necessario a rispondere 
+      alle richieste e, successivamente, per eventuali obblighi di legge.
+    </p>
+
+    <h2>Comunicazione e Diffusione</h2>
+    <p>
+      I dati raccolti <strong>non vengono comunicati a terzi</strong> né diffusi pubblicamente. 
+      Umami Analytics è un servizio self-hosted che rispetta la privacy e non condivide i dati con terze parti.
+    </p>
+
+    <h2>Diritti degli Interessati</h2>
+    <p>
+      Ai sensi del Regolamento Generale sulla Protezione dei Dati (GDPR), gli utenti hanno diritto a:
+    </p>
+    <ul>
+      <li><strong>Accesso</strong> (art. 15): ottenere conferma dell'esistenza di dati personali e accedervi</li>
+      <li><strong>Rettifica</strong> (art. 16): ottenere la correzione di dati inesatti</li>
+      <li><strong>Cancellazione</strong> (art. 17): ottenere la cancellazione dei dati quando possibile</li>
+      <li><strong>Limitazione</strong> (art. 18): ottenere la limitazione del trattamento in determinate circostanze</li>
+      <li><strong>Portabilità</strong> (art. 20): ricevere i dati in formato strutturato e comunemente utilizzato</li>
+      <li><strong>Opposizione</strong> (art. 21): opporsi al trattamento per motivi legittimi</li>
+      <li><strong>Revoca del consenso</strong>: revocare il consenso in qualsiasi momento</li>
+    </ul>
+    <p>
+      Per esercitare questi diritti, è possibile contattare il titolare all'indirizzo email: 
+      <a href="mailto:info@vitoesposito.it">info@vitoesposito.it</a>
+    </p>
+    <p>
+      Gli interessati hanno inoltre il diritto di proporre reclamo all'Autorità Garante per la Protezione 
+      dei Dati Personali (<a href="https://www.garanteprivacy.it" target="_blank" rel="noopener noreferrer">www.garanteprivacy.it</a>).
+    </p>
+
+    <h2>Sicurezza dei Dati</h2>
+    <p>
+      Il titolare adotta misure tecniche e organizzative appropriate per proteggere i dati personali 
+      da accesso non autorizzato, perdita, distruzione o alterazione.
+    </p>
+
+    <h2>Trasferimento dei Dati</h2>
+    <p>
+      I dati raccolti tramite Umami Analytics vengono elaborati e conservati su server situati nell'Unione Europea, 
+      garantendo il rispetto della normativa GDPR.
+    </p>
+
+    <h2>Modifiche alla Privacy Policy</h2>
+    <p>
+      Il titolare si riserva il diritto di modificare questa informativa in qualsiasi momento. 
+      Le modifiche saranno pubblicate su questa pagina con l'indicazione della data di ultimo aggiornamento.
+    </p>
+    <p>
+      Si consiglia di consultare periodicamente questa pagina per essere informati su eventuali modifiche.
+    </p>
+
+    <h2>Contatti</h2>
+    <p>
+      Per qualsiasi domanda o richiesta relativa al trattamento dei dati personali, è possibile contattare il titolare:
+    </p>
+    <ul>
+      <li><strong>Email:</strong> <a href="mailto:info@vitoesposito.it">info@vitoesposito.it</a></li>
+      <li><strong>Sito web:</strong> <a href={SITE.href}>{SITE.href}</a></li>
+    </ul>
+  </article>
+</Layout>

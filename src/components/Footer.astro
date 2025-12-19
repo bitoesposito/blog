@@ -1,5 +1,6 @@
 ---
 import { SOCIAL_LINKS } from '@/consts'
+import Link from './Link.astro'
 import SocialIcons from './SocialIcons.astro'
 ---
 
@@ -12,6 +13,14 @@ import SocialIcons from './SocialIcons.astro'
     <span class="text-muted-foreground text-sm">
       &copy; {new Date().getFullYear()} Tutti i diritti riservati.
     </span>
+    <span class="text-muted-foreground text-sm">·</span>
+    <Link
+      href="/privacy"
+      class="text-muted-foreground hover:text-foreground text-sm transition-colors"
+      title="Leggi la privacy policy"
+    >
+      Privacy Policy
+    </Link>
   </div>
   <SocialIcons links={SOCIAL_LINKS} />
 </footer>
