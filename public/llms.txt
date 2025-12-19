@@ -1,0 +1,62 @@
+# llms.txt for blog.vitoesposito.it
+
+## About
+Blog personale di Vito Esposito dove scrive e condivide idee e pensieri sullo sviluppo software, design e altro.
+
+## Site Information
+- **URL**: https://blog.vitoesposito.it
+- **Language**: Italian (it-IT)
+- **Author**: vitoesposito
+- **Description**: Blog personale in cui scrivo e condivido le mie idee e pensieri sullo sviluppo software, design e altro.
+
+## Content Structure
+
+### Blog Posts
+- **Path**: `/blog`
+- **Format**: MDX files
+- **Content**: Articoli su sviluppo software, design, riflessioni personali
+- **Pagination**: 5 post per pagina
+- **Feed**: RSS disponibile su `/rss.xml`
+
+### Projects
+- **Path**: `/projects`
+- **Format**: MDX files
+- **Content**: Progetti personali con descrizioni, tecnologie utilizzate, demo e link esterni
+- **Examples**: DuoSync, Virtual Card, Wolfden Manager
+
+### Education
+- **Path**: `/education`
+- **Format**: MDX files
+- **Content**: Appunti di formazione su argomenti tecnici come data structures, algorithms, React
+- **Structure**: Serie di articoli educativi organizzati per argomento
+
+### Tags
+- **Path**: `/tags`
+- **Content**: Articoli organizzati per tag/topic
+
+## Key Pages
+- **Home**: `/` - Pagina principale con post recenti e progetti
+- **Blog**: `/blog` - Lista di tutti gli articoli del blog
+- **Projects**: `/projects` - Portfolio di progetti
+- **Education**: `/education` - Contenuti educativi e appunti di formazione
+
+## Technical Details
+- **Framework**: Astro
+- **Content Format**: MDX
+- **Styling**: Tailwind CSS
+- **Code Highlighting**: Expressive Code
+- **Math Support**: KaTeX
+- **Sitemap**: `/sitemap-index.xml`
+- **RSS Feed**: `/rss.xml`
+- **Robots.txt**: `/robots.txt`
+
+## Content Guidelines
+- Articoli del blog sono principalmente in italiano
+- Contenuti educativi seguono una struttura progressiva con esempi di codice
+- Progetti includono descrizioni tecniche, tecnologie utilizzate e link a demo/repository
+
+## RSS Feed
+Il feed RSS è disponibile su `/rss.xml` e include tutti gli articoli del blog pubblicati.
+
+## Sitemap
+Il sitemap è disponibile su `/sitemap-index.xml` e include tutte le pagine del sito.
