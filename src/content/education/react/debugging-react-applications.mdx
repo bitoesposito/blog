@@ -1,0 +1,524 @@
+---
+title: 'Debugging delle Applicazioni React'
+description: 'Come trovare e risolvere errori nelle applicazioni React: messaggi di errore, strumenti del browser, StrictMode e React DevTools'
+date: 2025-12-22
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 6
+---
+
+## Introduzione
+
+Quando si sviluppa con React, è inevitabile scrivere codice che contiene errori e bug. Questo fa parte del processo di sviluppo e capita a tutti. L'importante è sapere come trovare e risolvere questi problemi in modo efficiente.
+
+In questo articolo si esplorano diverse strategie e strumenti per il debugging delle applicazioni React. Si parte dall'analisi dei messaggi di errore che React mostra, imparando a interpretarli correttamente. Poi si passa agli errori logici che non producono messaggi di errore espliciti, utilizzando gli strumenti di sviluppo del browser e il debugger integrato.
+
+Si approfondisce anche la modalità Strict di React, che può aiutare a individuare problemi prima che diventino critici, e infine si esamina React DevTools, un'estensione del browser che semplifica l'analisi e la comprensione delle applicazioni React.
+
+## Analisi dei Messaggi di Errore
+
+React mostra messaggi di errore quando qualcosa va storto nell'applicazione. A prima vista, questi messaggi possono sembrare intimidatori per la quantità di testo e il colore rosso, ma sono in realtà molto utili e informativi se si sa come leggerli.
+
+Il punto di partenza è sempre il **messaggio principale**, che si trova relativamente presto nel blocco di testo rosso. Questo messaggio descrive il tipo di errore e spesso indica quale proprietà o operazione ha causato il problema.
+
+Dopo il messaggio principale, c'è la **traccia dello stack** (stack trace), che è un elenco delle chiamate di codice che hanno portato all'errore. Questa traccia mostra esattamente quale funzione e quale riga di codice hanno causato il problema, permettendo di identificare rapidamente dove concentrare l'attenzione.
+
+### Esempio Pratico: Errore su Valore Undefined
+
+Un errore comune si verifica quando si cerca di accedere a una proprietà di un valore `undefined`. Ad esempio, se si cerca di leggere `name` da un oggetto che non esiste, React mostrerà un errore simile a:
+
+```
+Cannot read properties of undefined (reading 'name')
+```
+
+Questo messaggio indica chiaramente che:
+- Si sta cercando di accedere a una proprietà chiamata `name`
+- L'oggetto su cui si sta cercando di accedere è `undefined`
+- Il problema si trova nella funzione e nella riga indicate nella stack trace
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Gestione di Array Vuoti</summary>
+<div class="px-4 pb-4">
+
+Un caso comune è quando si cerca di accedere al primo elemento di un array che potrebbe essere vuoto:
+
+```jsx
+function ProductList({ products }) {
+  // Se products è vuoto, products[0] sarà undefined
+  const firstProduct = products[0];
+  
+  // Questo causerà un errore se firstProduct è undefined
+  return (
+    <div>
+      <h2>Primo prodotto: {firstProduct.name}</h2>
+      <p>Prezzo: €{firstProduct.price}</p>
+    </div>
+  );
+}
+```
+
+Per risolvere questo problema, si può aggiungere un controllo di guardia:
+
+```jsx
+function ProductList({ products }) {
+  // Controllo di guardia: se l'array è vuoto, mostra un messaggio
+  if (products.length === 0) {
+    return <p className="text-center">Nessun prodotto disponibile</p>;
+  }
+  
+  // Ora possiamo accedere in sicurezza al primo elemento
+  const firstProduct = products[0];
+  
+  return (
+    <div>
+      <h2>Primo prodotto: {firstProduct.name}</h2>
+      <p>Prezzo: €{firstProduct.price}</p>
+    </div>
+  );
+}
+```
+
+Questo pattern di "guardia" è utile quando si gestiscono dati che potrebbero non essere sempre presenti o validi.
+
+</div>
+</details>
+
+### Come Leggere la Stack Trace
+
+La stack trace mostra il percorso che il codice ha seguito prima di raggiungere l'errore. Ogni riga indica:
+- Il nome della funzione dove si è verificato l'errore
+- Il file dove si trova quella funzione
+- Il numero di riga (e opzionalmente la colonna)
+
+Ad esempio:
+```
+at ProductCard (ProductCard.jsx:12:24)
+```
+
+Questo significa:
+- L'errore si trova nella funzione `ProductCard`
+- Nel file `ProductCard.jsx`
+- Alla riga 12, colonna 24
+
+Seguendo questa traccia, si può andare direttamente al punto esatto del codice dove si è verificato il problema, senza dover cercare manualmente nel codice.
+
+## Debugging di Errori Logici
+
+Non tutti gli errori producono messaggi di errore nella console. A volte si verificano **errori logici** dove il codice viene eseguito senza errori tecnici, ma produce risultati incorretti o inaspettati.
+
+Questi errori possono essere più difficili da individuare perché non c'è un messaggio di errore che indichi dove guardare. In questi casi, è necessario utilizzare il pensiero logico e gli strumenti di sviluppo del browser.
+
+### Strategia di Debugging Logico
+
+Quando si incontra un comportamento inaspettato, il primo passo è pensare logicamente:
+1. Quale parte del codice potrebbe essere responsabile?
+2. Il problema si verifica sempre o solo in certe condizioni?
+3. Cosa è cambiato rispetto a quando funzionava correttamente?
+
+Ad esempio, se un calcolo produce risultati errati solo quando si inseriscono certi valori in un form, il problema probabilmente si trova nella gestione dell'input dell'utente o nella conversione dei tipi di dato.
+
+### Utilizzo del Debugger del Browser
+
+Gli strumenti di sviluppo del browser includono un debugger integrato che permette di esaminare il codice durante l'esecuzione. Questo è particolarmente utile per capire cosa sta succedendo passo dopo passo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Come Usare il Debugger</summary>
+<div class="px-4 pb-4">
+
+**Passo 1: Aprire la scheda Sources**
+
+Nella scheda Sources degli strumenti per sviluppatori (Chrome DevTools, Firefox Developer Tools, ecc.), si trova la struttura del progetto. Sotto `localhost` c'è una cartella `src` che contiene i file del progetto.
+
+**Passo 2: Impostare un Breakpoint**
+
+Cliccando sul numero di una riga nel codice sorgente, si imposta un **breakpoint**. Quando il codice raggiunge quella riga durante l'esecuzione, l'esecuzione si ferma automaticamente.
+
+**Passo 3: Esaminare i Valori**
+
+Con l'esecuzione in pausa, è possibile:
+- Passare il mouse sulle variabili per vedere i loro valori attuali
+- Usare la console per valutare espressioni
+- Controllare lo scope delle variabili nel pannello a destra
+
+**Passo 4: Eseguire il Codice Passo dopo Passo**
+
+I controlli in basso permettono di:
+- **Step into**: Entrare dentro una funzione che sta per essere chiamata
+- **Step over**: Eseguire la riga corrente e passare alla successiva
+- **Step out**: Uscire dalla funzione corrente
+- **Resume**: Continuare l'esecuzione normale
+
+Questo permette di vedere esattamente come vengono eseguite le operazioni e con quali valori si sta lavorando.
+
+</div>
+</details>
+
+### Esempio: Errore di Conversione di Tipo
+
+Un errore logico comune si verifica quando si lavora con input dell'utente che vengono trattati come stringhe invece che come numeri:
+
+```jsx
+function ShoppingCart() {
+  const [cart, setCart] = useState({
+    quantity: 1,
+    price: 29.99,
+    discount: 0
+  });
+
+  function handleQuantityChange(newQuantity) {
+    // Problema: newQuantity è una stringa, non un numero
+    setCart(prevCart => ({
+      ...prevCart,
+      quantity: newQuantity  // newQuantity è una stringa!
+    }));
+  }
+
+  // Calcolo del totale: se quantity è una stringa,
+  // JavaScript fa concatenazione invece di moltiplicazione
+  const total = cart.quantity * cart.price;
+  
+  return (
+    <div>
+      <input 
+        type="number" 
+        value={cart.quantity} 
+        onChange={(e) => handleQuantityChange(e.target.value)} 
+      />
+      <p>Totale: €{total}</p>
+    </div>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione: Conversione Esplicita</summary>
+<div class="px-4 pb-4">
+
+Per risolvere questo problema, è necessario convertire esplicitamente il valore in un numero:
+
+```jsx
+function handleQuantityChange(newQuantity) {
+  setCart(prevCart => ({
+    ...prevCart,
+    // Conversione esplicita a numero usando l'operatore unario +
+    quantity: +newQuantity
+  }));
+}
+```
+
+L'operatore unario `+` converte il valore in un numero. Alternativamente, si può usare `Number(newQuantity)` o `parseInt(newQuantity)` / `parseFloat(newQuantity)` a seconda delle necessità.
+
+**Perché questo è importante?**
+
+In JavaScript, quando si combinano stringhe e numeri in operazioni matematiche, il risultato può essere inaspettato:
+- `"5" * 29.99` produce `149.95` (moltiplicazione funziona)
+- `"5" + 29.99` produce `"529.99"` (concatenazione invece di addizione)
+- `"5" * "2"` produce `10` (conversione automatica)
+- `"5" + "2"` produce `"52"` (concatenazione)
+
+Usando il debugger, si può vedere che `newQuantity` ha le virgolette (indicando una stringa) e quindi identificare il problema.
+
+</div>
+</details>
+
+## React StrictMode
+
+React StrictMode è un componente integrato che aiuta a individuare problemi potenziali nell'applicazione durante lo sviluppo. Non viene renderizzato visivamente nell'interfaccia utente, ma esegue controlli aggiuntivi e avvisi nella console.
+
+### Come Abilitare StrictMode
+
+StrictMode si usa avvolgendo i componenti che si vogliono controllare:
+
+```jsx
+import { StrictMode } from 'react';
+
+function App() {
+  return (
+    <StrictMode>
+      <ProductForm />
+      <ProductList />
+    </StrictMode>
+  );
+}
+```
+
+Tipicamente, si avvolge il componente radice dell'applicazione in `index.jsx`:
+
+```jsx
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+
+const root = createRoot(document.getElementById('root'));
+root.render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+```
+
+### Cosa Fa StrictMode
+
+StrictMode esegue diverse verifiche durante lo sviluppo:
+
+1. **Doppia Esecuzione dei Componenti**: Ogni funzione componente viene eseguita due volte per aiutare a individuare effetti collaterali e problemi di stato
+2. **Rilevamento di API Deprecate**: Avvisa quando si usano API deprecate
+3. **Rilevamento di Effetti Collaterali**: Aiuta a identificare componenti con effetti collaterali non sicuri
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Individuare Mutazioni di Stato</summary>
+<div class="px-4 pb-4">
+
+StrictMode può aiutare a individuare problemi come la mutazione di variabili al di fuori del componente:
+
+```jsx
+// ❌ ERRATO: Array creato fuori dal componente
+const filteredItems = [];
+
+function ProductList({ searchTerm }) {
+  // Questo array viene riutilizzato tra i render
+  // e continua a crescere invece di essere resettato
+  products.forEach(product => {
+    if (product.name.includes(searchTerm)) {
+      filteredItems.push(product);
+    }
+  });
+  
+  return (
+    <ul>
+      {filteredItems.map((item, index) => (
+        <li key={index}>{item.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Con StrictMode abilitato, questo problema diventa immediatamente evidente perché il componente viene eseguito due volte e la lista raddoppia già al primo render.
+
+**Soluzione corretta:**
+
+```jsx
+function ProductList({ searchTerm }) {
+  // ✅ CORRETTO: Array creato dentro il componente
+  // Viene ricreato ad ogni render
+  const filteredItems = [];
+  products.forEach(product => {
+    if (product.name.includes(searchTerm)) {
+      filteredItems.push(product);
+    }
+  });
+  
+  return (
+    <ul>
+      {filteredItems.map((item, index) => (
+        <li key={index}>{item.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Ora l'array viene ricreato ad ogni esecuzione del componente, garantendo che non ci siano accumuli indesiderati.
+
+</div>
+</details>
+
+### Importante: Solo in Sviluppo
+
+StrictMode funziona **solo durante lo sviluppo**. Quando si prepara l'applicazione per la produzione, StrictMode non esegue più i controlli aggiuntivi perché potrebbero influire sulle prestazioni. Tuttavia, è una pratica comune lasciare StrictMode anche in produzione perché non ha effetti visibili e può aiutare a individuare problemi futuri.
+
+## React DevTools
+
+React DevTools è un'estensione del browser che aggiunge strumenti di sviluppo specifici per React. È disponibile per Chrome, Firefox, Edge e altri browser basati su Chromium.
+
+### Installazione
+
+React DevTools può essere installato come estensione del browser:
+1. Cercare "React DevTools" nel negozio delle estensioni del browser
+2. Installare l'estensione ufficiale di React
+3. Dopo l'installazione, aprire gli strumenti per sviluppatori del browser
+
+Una volta installato, nelle DevTools del browser compaiono due nuove schede:
+- **Components**: Per ispezionare l'albero dei componenti
+- **Profiler**: Per analizzare le prestazioni (argomento per un altro articolo)
+
+### Scheda Components
+
+La scheda Components mostra la struttura gerarchica dei componenti dell'applicazione. Ogni componente nell'albero corrisponde a una parte dell'interfaccia utente.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Funzionalità della Scheda Components</summary>
+<div class="px-4 pb-4">
+
+**Visualizzazione dell'Albero dei Componenti**
+
+L'albero mostra la gerarchia dei componenti, ad esempio:
+```
+App
+├── Header
+├── ProductForm
+└── ProductList
+    └── ProductCard (ripetuto)
+```
+
+Passando il mouse su un componente nell'albero, viene evidenziata la parte corrispondente nell'interfaccia utente. Questo aiuta a capire rapidamente quale componente controlla quale parte dell'UI.
+
+**Ispezione delle Props**
+
+Cliccando su un componente, si possono vedere:
+- Le **props** che il componente riceve e i loro valori
+- Lo **stato** del componente (se usa `useState` o altri hook di stato)
+- Gli **hook** utilizzati dal componente
+
+**Modifica Interattiva**
+
+Una funzionalità molto utile è la possibilità di modificare props e stato direttamente dalle DevTools:
+- Modificare i valori delle props per vedere come reagisce il componente
+- Cambiare lo stato per testare diversi scenari
+- Vedere immediatamente le modifiche riflesse nell'interfaccia utente
+
+Questo è particolarmente utile per:
+- Testare rapidamente come il componente si comporta con valori diversi
+- Capire quali props influenzano quale parte dell'UI
+- Debugging di problemi di stato senza dover modificare il codice
+
+**Esempio pratico:**
+
+Selezionando il componente `ShoppingCart` che gestisce lo stato `cart`, si può vedere:
+- Lo stato corrente con tutti i valori (quantity, price, discount)
+- Modificare direttamente `quantity` da 1 a 5
+- Vedere immediatamente il totale aggiornarsi con il nuovo calcolo
+
+Questo permette di testare rapidamente diversi scenari senza dover modificare manualmente gli input nell'interfaccia utente.
+
+</div>
+</details>
+
+### Configurazione
+
+Cliccando sull'icona a forma di ingranaggio nelle React DevTools, si accede alle impostazioni:
+- **Theme**: Modalità chiara o scura
+- **Density**: Densità di visualizzazione (compatta o spaziosa)
+- **Component tree**: Opzioni per l'albero dei componenti (espansione predefinita, ecc.)
+
+Queste impostazioni permettono di personalizzare l'esperienza di sviluppo secondo le proprie preferenze.
+
+## Errori Comuni e Come Evitarli
+
+Durante lo sviluppo con React, ci sono alcuni errori comuni che si possono facilmente evitare conoscendo le convenzioni e le regole di React.
+
+### Componenti HTML vs Componenti Custom
+
+In React, c'è una distinzione importante tra componenti HTML built-in e componenti custom:
+
+- **Componenti HTML built-in** (come `<div>`, `<p>`, `<input>`) devono iniziare con una **lettera minuscola**
+- **Componenti custom** devono iniziare con una **lettera maiuscola**
+
+```jsx
+// ❌ ERRATO: div con maiuscola
+<Div className="container">
+  <p>Contenuto</p>
+</Div>
+
+// ✅ CORRETTO: div con minuscola
+<div className="container">
+  <p>Contenuto</p>
+</div>
+
+// ✅ CORRETTO: componente custom con maiuscola
+function MyComponent() {
+  return <div>Contenuto</div>;
+}
+
+<MyComponent />
+```
+
+Questa distinzione è importante perché React usa la maiuscola/minuscola per distinguere tra elementi HTML e componenti React.
+
+### Event Handlers: onClick vs onclick
+
+Gli event handler in React usano la convenzione `camelCase` con il prefisso `on`:
+
+```jsx
+// ❌ ERRATO: onclick in minuscolo
+<button onclick={handleClick}>Clicca</button>
+
+// ✅ CORRETTO: onClick in camelCase
+<button onClick={handleClick}>Clicca</button>
+```
+
+La differenza tra `onclick` e `onClick` è importante:
+- `onclick` è l'attributo HTML standard, ma non funziona come ci si aspetta in React
+- `onClick` è la prop React che gestisce correttamente gli eventi
+
+Altri esempi di event handler React:
+- `onChange` (non `onchange`)
+- `onSubmit` (non `onsubmit`)
+- `onMouseEnter` (non `onmouseenter`)
+- `onFocus` (non `onfocus`)
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Pattern per Evitare Errori</summary>
+<div class="px-4 pb-4">
+
+**Checklist per il Debugging:**
+
+1. **Verificare i messaggi di errore nella console**
+   - Leggere il messaggio principale
+   - Seguire la stack trace per trovare il file e la riga
+   - Identificare quale proprietà o operazione ha causato l'errore
+
+2. **Per errori logici:**
+   - Pensare logicamente a quale parte del codice potrebbe essere responsabile
+   - Usare il debugger per esaminare i valori durante l'esecuzione
+   - Verificare le conversioni di tipo (stringhe vs numeri)
+
+3. **Usare StrictMode durante lo sviluppo**
+   - Aiuta a individuare problemi prima che diventino critici
+   - Rende evidenti mutazioni di stato e effetti collaterali
+
+4. **Utilizzare React DevTools**
+   - Ispezionare l'albero dei componenti
+   - Verificare props e stato
+   - Testare modifiche interattive
+
+5. **Verificare convenzioni React**
+   - Componenti HTML: minuscola
+   - Componenti custom: maiuscola
+   - Event handler: camelCase con prefisso `on`
+
+</div>
+</details>
+
+## Riepilogo
+
+Il debugging delle applicazioni React richiede una combinazione di strumenti e tecniche:
+
+**Messaggi di Errore:**
+- Leggere il messaggio principale per capire il tipo di errore
+- Seguire la stack trace per trovare il punto esatto del problema
+- Usare controlli di guardia per gestire valori `undefined` o `null`
+
+**Errori Logici:**
+- Pensare logicamente a quale parte del codice potrebbe essere responsabile
+- Usare il debugger del browser per esaminare l'esecuzione passo dopo passo
+- Verificare le conversioni di tipo, specialmente quando si lavora con input dell'utente
+
+**StrictMode:**
+- Avvolgere l'applicazione con `<StrictMode>` durante lo sviluppo
+- Aiuta a individuare problemi di mutazione di stato e effetti collaterali
+- Esegue i componenti due volte per rendere evidenti i problemi
+
+**React DevTools:**
+- Estensione del browser essenziale per lo sviluppo React
+- Permette di ispezionare l'albero dei componenti
+- Consente di modificare props e stato interattivamente per testare scenari
+
+**Errori Comuni:**
+- Componenti HTML devono iniziare con minuscola
+- Componenti custom devono iniziare con maiuscola
+- Event handler usano camelCase (`onClick`, non `onclick`)
+
+Con questi strumenti e tecniche, il processo di debugging diventa più efficiente e sistematico, permettendo di trovare e risolvere problemi più rapidamente.
+
