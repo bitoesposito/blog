@@ -1,0 +1,806 @@
+---
+title: 'Lavorare con Refs e Portals in React'
+description: 'Come utilizzare i refs per accedere direttamente agli elementi DOM e gestire valori non dichiarativi, e come usare i portals per renderizzare componenti in punti diversi del DOM'
+date: 2025-12-23
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 7
+---
+
+## Introduzione
+
+I **refs** e i **portals** sono due funzionalità di React che non sono necessarie in tutte le applicazioni, ma che possono semplificare alcuni scenari specifici e risolvere problemi che altrimenti sarebbero difficili da gestire.
+
+I refs permettono di ottenere un accesso diretto agli elementi del DOM e di gestire valori che non devono causare il re-render del componente quando cambiano. I portals, invece, permettono di separare il punto in cui un elemento viene renderizzato nel DOM dal punto in cui lo si usa nel codice JSX.
+
+Questi concetti sono particolarmente utili quando si lavora con elementi nativi del browser come input file, dialoghi modali, o quando si ha bisogno di gestire timer e valori che non influenzano direttamente l'interfaccia utente.
+
+## Cosa sono i Refs
+
+Un **ref** in React è un valore speciale gestito da React in modo particolare. A differenza dello state, che causa il re-render del componente quando viene aggiornato, i refs permettono di memorizzare valori che persistono tra i render senza causare aggiornamenti dell'interfaccia.
+
+I refs vengono creati utilizzando l'hook `useRef`, che restituisce un oggetto con una proprietà `current` che contiene il valore effettivo del ref.
+
+### Accesso agli Elementi DOM
+
+Il caso d'uso più comune per i refs è ottenere un accesso diretto agli elementi HTML del DOM. Questo è utile quando si ha bisogno di leggere o manipolare direttamente un elemento, ad esempio per leggere il valore di un input senza gestirlo con lo state.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Leggere il valore di un input con refs</summary>
+<div class="px-4 pb-4">
+
+Invece di gestire ogni cambiamento dell'input con `onChange` e `useState`, si può usare un ref per leggere il valore solo quando necessario:
+
+```jsx
+import { useRef, useState } from 'react';
+
+function Player() {
+  // Creazione del ref per l'elemento input
+  const playerNameRef = useRef();
+  const [enteredPlayerName, setEnteredPlayerName] = useState('');
+
+  function handleClick() {
+    // Accesso al valore dell'input tramite ref
+    // current contiene l'elemento HTML effettivo
+    const enteredValue = playerNameRef.current.value;
+    setEnteredPlayerName(enteredValue);
+  }
+
+  return (
+    <section>
+      <h2>Welcome {enteredPlayerName || 'unknown entity'}!</h2>
+      <p>
+        <input 
+          type="text" 
+          ref={playerNameRef}  // Collegamento del ref all'elemento
+        />
+        <button onClick={handleClick}>Set Name</button>
+      </p>
+    </section>
+  );
+}
+```
+
+**Vantaggi di questo approccio:**
+- Non si aggiorna lo state ad ogni keystroke
+- Il componente non viene re-renderizzato mentre si digita
+- Il codice è più semplice quando il valore serve solo al momento del click
+
+**Nota importante:** Il ref viene collegato all'elemento solo dopo il primo render. Nel primo ciclo di rendering, `playerNameRef.current` sarà `undefined`.
+
+</div>
+</details>
+
+### Manipolazione Diretta del DOM
+
+I refs permettono anche di manipolare direttamente gli elementi DOM, ad esempio per resettare un input o chiamare metodi nativi del browser come `click()` su un elemento nascosto.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Reset di un input e trigger di click</summary>
+<div class="px-4 pb-4">
+
+```jsx
+function Player() {
+  const playerNameRef = useRef();
+
+  function handleClick() {
+    const enteredValue = playerNameRef.current.value;
+    setEnteredPlayerName(enteredValue);
+    
+    // Reset dell'input dopo aver letto il valore
+    playerNameRef.current.value = '';
+  }
+
+  return (
+    <input type="text" ref={playerNameRef} />
+  );
+}
+```
+
+**Esempio con file picker nascosto:**
+
+```jsx
+function ImageUploader() {
+  const filePickerRef = useRef();
+
+  function handlePickImage() {
+    // Trigger del click sull'input file nascosto
+    filePickerRef.current.click();
+  }
+
+  return (
+    <>
+      <input
+        type="file"
+        accept="image/*"
+        ref={filePickerRef}
+        style={{ display: 'none' }}
+      />
+      <button onClick={handlePickImage}>Pick Image</button>
+    </>
+  );
+}
+```
+
+**Considerazioni:**
+- Questa è manipolazione imperativa del DOM, che va contro il paradigma dichiarativo di React
+- È accettabile per casi semplici come reset di input o trigger di eventi
+- Non si dovrebbe usare per gestire tutto lo stato dell'applicazione
+
+</div>
+</details>
+
+## Refs vs State: Quando Usare Cosa
+
+La differenza fondamentale tra refs e state è che **lo state causa il re-render del componente quando viene aggiornato, mentre i refs no**.
+
+### Quando Usare lo State
+
+Lo state deve essere usato per valori che:
+- Devono essere riflessi direttamente nell'interfaccia utente
+- Causano cambiamenti visibili quando vengono modificati
+- Richiedono che il componente venga aggiornato
+
+### Quando Usare i Refs
+
+I refs sono ideali per valori che:
+- Non hanno un impatto diretto sull'interfaccia utente
+- Devono persistere tra i render senza causare re-render
+- Sono utilizzati solo "dietro le quinte"
+- Servono per accedere a elementi DOM o chiamare metodi su di essi
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Perché non usare solo refs per tutto</summary>
+<div class="px-4 pb-4">
+
+Se si prova a usare solo un ref per mostrare il valore nell'interfaccia:
+
+```jsx
+function Player() {
+  const playerNameRef = useRef();
+
+  function handleClick() {
+    // Aggiornamento del ref
+    // Ma questo NON causa un re-render!
+  }
+
+  return (
+    <h2>Welcome {playerNameRef.current?.value || 'unknown entity'}!</h2>
+  );
+}
+```
+
+**Problemi:**
+- `playerNameRef.current` è `undefined` nel primo render
+- Anche se si aggiorna il valore, l'interfaccia non si aggiorna automaticamente
+- Serve comunque lo state per aggiornare l'UI
+
+**Soluzione corretta:**
+
+```jsx
+function Player() {
+  const playerNameRef = useRef();
+  const [enteredPlayerName, setEnteredPlayerName] = useState('');
+
+  function handleClick() {
+    // Leggo il valore dal ref
+    const value = playerNameRef.current.value;
+    // Aggiorno lo state per triggerare il re-render
+    setEnteredPlayerName(value);
+  }
+
+  return (
+    <h2>Welcome {enteredPlayerName || 'unknown entity'}!</h2>
+  );
+}
+```
+
+</div>
+</details>
+
+## Gestire Valori Non Dichiarativi con Refs
+
+Un altro caso d'uso importante per i refs è gestire valori che non devono essere dichiarativi, come i timer ID restituiti da `setTimeout` o `setInterval`. Questi valori devono persistere tra i render ma non devono causare aggiornamenti dell'interfaccia.
+
+### Gestione di Timer con Refs
+
+Quando si gestiscono timer in React, è necessario memorizzare l'ID del timer per poterlo cancellare successivamente. Usare una variabile normale non funziona perché viene ricreata ad ogni render.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Problema: Timer con variabile normale</summary>
+<div class="px-4 pb-4">
+
+```jsx
+function TimerChallenge({ targetTime }) {
+  let timer; // ❌ Problema: viene ricreata ad ogni render
+
+  function handleStart() {
+    timer = setTimeout(() => {
+      console.log('Timer expired!');
+    }, targetTime * 1000);
+  }
+
+  function handleStop() {
+    clearTimeout(timer); // ❌ timer potrebbe essere undefined o riferirsi a un timer diverso
+  }
+}
+```
+
+**Perché non funziona:**
+- Quando lo state cambia, il componente viene re-renderizzato
+- La variabile `timer` viene ricreata e perde il riferimento al timer precedente
+- `handleStop` non può più accedere al timer corretto
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione: Timer con ref</summary>
+<div class="px-4 pb-4">
+
+```jsx
+import { useRef, useState } from 'react';
+
+function TimerChallenge({ targetTime }) {
+  // Ref per memorizzare l'ID del timer
+  const timerRef = useRef();
+  const [timerStarted, setTimerStarted] = useState(false);
+
+  function handleStart() {
+    // Memorizzazione dell'ID del timer nel ref
+    timerRef.current = setTimeout(() => {
+      setTimerExpired(true);
+    }, targetTime * 1000);
+    
+    setTimerStarted(true);
+  }
+
+  function handleStop() {
+    // Accesso al timer tramite ref e cancellazione
+    clearTimeout(timerRef.current);
+    setTimerStarted(false);
+  }
+
+  return (
+    <section className="challenge">
+      <h2>{title}</h2>
+      <button onClick={timerStarted ? handleStop : handleStart}>
+        {timerStarted ? 'Stop Challenge' : 'Start Challenge'}
+      </button>
+    </section>
+  );
+}
+```
+
+**Perché funziona:**
+- Il ref persiste tra i render senza causare re-render
+- Ogni istanza del componente ha il proprio ref indipendente
+- Il valore in `timerRef.current` rimane accessibile anche dopo re-render multipli
+
+**Nota:** Lo stesso principio si applica a `setInterval` con `clearInterval`.
+
+</div>
+</details>
+
+### Gestione di Timer con setInterval
+
+Quando si ha bisogno di aggiornare il tempo rimanente continuamente, `setInterval` è più appropriato di `setTimeout`:
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Timer con tempo rimanente</summary>
+<div class="px-4 pb-4">
+
+```jsx
+function TimerChallenge({ targetTime }) {
+  const timerRef = useRef();
+  const [timeRemaining, setTimeRemaining] = useState(targetTime * 1000);
+
+  function handleStart() {
+    // setInterval esegue la funzione ogni 10ms
+    timerRef.current = setInterval(() => {
+      setTimeRemaining((prevTime) => {
+        const newTime = prevTime - 10;
+        
+        // Se il tempo è scaduto, fermiamo l'intervallo
+        if (newTime <= 0) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        
+        return newTime;
+      });
+    }, 10); // Aggiornamento ogni 10 millisecondi
+  }
+
+  function handleStop() {
+    // Cancellazione dell'intervallo
+    clearInterval(timerRef.current);
+  }
+
+  // Cleanup quando il componente viene smontato
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
+  const isActive = timeRemaining > 0 && timeRemaining < targetTime * 1000;
+
+  return (
+    <section>
+      <p>Time remaining: {(timeRemaining / 1000).toFixed(2)}s</p>
+      <button onClick={isActive ? handleStop : handleStart}>
+        {isActive ? 'Stop' : 'Start'}
+      </button>
+    </section>
+  );
+}
+```
+
+**Considerazioni:**
+- `setInterval` restituisce un ID che va memorizzato per poterlo cancellare
+- Si usa `clearInterval` invece di `clearTimeout`
+- È importante fare cleanup quando il componente viene smontato
+- L'intervallo di 10ms è un buon compromesso tra precisione e performance
+
+</div>
+</details>
+
+## Esporre API dei Componenti con Refs
+
+Quando si crea un componente che deve essere controllato dall'esterno, si può esporre un'API utilizzando `forwardRef` e `useImperativeHandle`. Questo permette di chiamare metodi del componente da componenti genitori senza dover conoscere i dettagli interni dell'implementazione.
+
+### forwardRef: Passare Refs ai Componenti Custom
+
+Per default, i componenti custom non possono ricevere il prop `ref`. Per permettere questo, si deve avvolgere il componente con `forwardRef`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Componente Input che accetta ref</summary>
+<div class="px-4 pb-4">
+
+**Senza forwardRef (React 19+):**
+
+```jsx
+function Input({ label, ...props }) {
+  return (
+    <p className="control">
+      <label>{label}</label>
+      <input {...props} />
+    </p>
+  );
+}
+
+// In React 19+, si può accettare ref come prop normale
+function Input({ label, ref, ...props }) {
+  return (
+    <p className="control">
+      <label>{label}</label>
+      <input ref={ref} {...props} />
+    </p>
+  );
+}
+```
+
+**Con forwardRef (necessario per React < 19):**
+
+```jsx
+import { forwardRef } from 'react';
+
+const Input = forwardRef(function Input({ label, ...props }, ref) {
+  return (
+    <p className="control">
+      <label>{label}</label>
+      <input ref={ref} {...props} />
+    </p>
+  );
+});
+
+export default Input;
+```
+
+**Utilizzo:**
+
+```jsx
+function App() {
+  const nameRef = useRef();
+  const emailRef = useRef();
+
+  function handleSave() {
+    const name = nameRef.current.value;
+    const email = emailRef.current.value;
+    console.log({ name, email });
+  }
+
+  return (
+    <>
+      <Input type="text" label="Name" ref={nameRef} />
+      <Input type="email" label="Email" ref={emailRef} />
+      <button onClick={handleSave}>Save</button>
+    </>
+  );
+}
+```
+
+</div>
+</details>
+
+### useImperativeHandle: Esporre Metodi Personalizzati
+
+`useImperativeHandle` permette di definire quali metodi e proprietà del componente devono essere accessibili dall'esterno tramite ref. Questo crea un'API stabile che non dipende dai dettagli interni dell'implementazione.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Modal con API esposta</summary>
+<div class="px-4 pb-4">
+
+```jsx
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+
+const ResultModal = forwardRef(function ResultModal({ targetTime, timeRemaining, onReset }, ref) {
+  // Ref interno per l'elemento dialog
+  const dialogRef = useRef();
+
+  // Esposizione dell'API del componente
+  useImperativeHandle(ref, () => {
+    return {
+      // Metodo che può essere chiamato dall'esterno
+      open() {
+        dialogRef.current.showModal();
+      }
+    };
+  });
+
+  return (
+    <dialog ref={dialogRef} className="result-modal" onClose={onReset}>
+      <h2>
+        {timeRemaining <= 0 ? 'You lost!' : 'Your score'}
+      </h2>
+      <p>
+        The target time was <strong>{targetTime}s</strong>
+      </p>
+      {timeRemaining > 0 && (
+        <p>
+          You stopped the timer with <strong>{(timeRemaining / 1000).toFixed(2)}s</strong> left.
+        </p>
+      )}
+      <form method="dialog">
+        <button>Close</button>
+      </form>
+    </dialog>
+  );
+});
+
+export default ResultModal;
+```
+
+**Utilizzo nel componente genitore:**
+
+```jsx
+function TimerChallenge({ targetTime }) {
+  const dialogRef = useRef();
+
+  function handleStop() {
+    clearInterval(timerRef.current);
+    // Chiamata al metodo esposto dal componente Modal
+    dialogRef.current.open();
+  }
+
+  return (
+    <>
+      <section className="challenge">
+        {/* ... */}
+      </section>
+      <ResultModal 
+        ref={dialogRef}
+        targetTime={targetTime}
+        timeRemaining={timeRemaining}
+        onReset={handleReset}
+      />
+    </>
+  );
+}
+```
+
+**Vantaggi:**
+- Il componente genitore non deve conoscere i dettagli interni (es. che usa un `<dialog>`)
+- Se si cambia l'implementazione interna, l'API rimane stabile
+- Si espone solo ciò che è necessario, mantenendo l'incapsulamento
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Form con metodo clear() esposto</summary>
+<div class="px-4 pb-4">
+
+```jsx
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+
+const Form = forwardRef(function Form(props, ref) {
+  const formRef = useRef();
+
+  useImperativeHandle(ref, () => {
+    return {
+      clear() {
+        // Chiamata al metodo reset() nativo del form
+        formRef.current.reset();
+      }
+    };
+  });
+
+  return (
+    <form ref={formRef}>
+      <p>
+        <label>Name</label>
+        <input type="text" />
+      </p>
+      <p>
+        <label>Email</label>
+        <input type="email" />
+      </p>
+      <button type="submit">Save</button>
+    </form>
+  );
+});
+
+export default Form;
+```
+
+**Utilizzo:**
+
+```jsx
+function App() {
+  const formRef = useRef();
+
+  function handleRestart() {
+    // Reset del form dall'esterno
+    formRef.current.clear();
+  }
+
+  return (
+    <>
+      <button onClick={handleRestart}>Restart</button>
+      <Form ref={formRef} />
+    </>
+  );
+}
+```
+
+</div>
+</details>
+
+## Portals: Renderizzare in Punti Diversi del DOM
+
+I **portals** permettono di renderizzare un componente in un punto diverso del DOM rispetto a dove viene utilizzato nel codice JSX. Questo è particolarmente utile per modali, tooltip, e altri elementi che devono apparire sopra il resto del contenuto.
+
+### Perché Usare i Portals
+
+Quando si crea una modale o un overlay, tecnicamente ha più senso renderizzarla direttamente nel `<body>` o in un contenitore dedicato piuttosto che annidata profondamente nella struttura del componente. Questo perché:
+
+- **Accessibilità**: Gli screen reader possono navigare meglio la struttura
+- **Styling**: Evita problemi di z-index e overflow
+- **Semantica**: La struttura HTML riflette meglio la gerarchia visiva
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Problema senza Portal</summary>
+<div class="px-4 pb-4">
+
+Senza portal, una modale viene renderizzata dove viene utilizzata nel JSX:
+
+```jsx
+function TimerChallenge() {
+  return (
+    <section className="challenge">
+      <h2>Challenge Title</h2>
+      {/* La modale è annidata qui dentro */}
+      <ResultModal />
+    </section>
+  );
+}
+```
+
+**Struttura DOM risultante:**
+
+```html
+<div id="root">
+  <div id="challenges">
+    <section class="challenge">
+      <h2>Challenge Title</h2>
+      <!-- Modale annidata qui -->
+      <dialog class="result-modal">...</dialog>
+    </section>
+  </div>
+</div>
+```
+
+**Problemi:**
+- La modale è annidata profondamente nella struttura
+- Potrebbe essere nascosta da overflow o z-index di elementi genitori
+- La struttura HTML non riflette la gerarchia visiva
+
+</div>
+</details>
+
+### Utilizzo di createPortal
+
+`createPortal` è una funzione di `react-dom` che permette di "teletrasportare" il JSX in un punto diverso del DOM.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Modal con Portal</summary>
+<div class="px-4 pb-4">
+
+**Struttura HTML:**
+
+```html
+<!DOCTYPE html>
+<html>
+  <body>
+    <div id="root"></div>
+    <!-- Contenitore dedicato per le modali -->
+    <div id="modal"></div>
+  </body>
+</html>
+```
+
+**Componente Modal con Portal:**
+
+```jsx
+import { createPortal } from 'react-dom';
+
+function ResultModal({ targetTime, timeRemaining, onReset }) {
+  const dialogRef = useRef();
+
+  return createPortal(
+    <dialog ref={dialogRef} className="result-modal" onClose={onReset}>
+      <h2>
+        {timeRemaining <= 0 ? 'You lost!' : 'Your score'}
+      </h2>
+      <p>
+        The target time was <strong>{targetTime}s</strong>
+      </p>
+      {timeRemaining > 0 && (
+        <p>
+          You stopped the timer with <strong>{(timeRemaining / 1000).toFixed(2)}s</strong> left.
+        </p>
+      )}
+      <form method="dialog">
+        <button>Close</button>
+      </form>
+    </dialog>,
+    // Secondo argomento: dove renderizzare nel DOM
+    document.getElementById('modal')
+  );
+}
+```
+
+**Utilizzo (rimane invariato):**
+
+```jsx
+function TimerChallenge() {
+  return (
+    <section className="challenge">
+      <h2>Challenge Title</h2>
+      {/* Usato qui nel JSX */}
+      <ResultModal />
+    </section>
+  );
+}
+```
+
+**Struttura DOM risultante:**
+
+```html
+<div id="root">
+  <div id="challenges">
+    <section class="challenge">
+      <h2>Challenge Title</h2>
+      <!-- Nessuna modale qui -->
+    </section>
+  </div>
+</div>
+
+<!-- Modale renderizzata qui invece -->
+<div id="modal">
+  <dialog class="result-modal">...</dialog>
+</div>
+```
+
+**Vantaggi:**
+- La modale è renderizzata vicino alla root del DOM
+- Evita problemi di z-index e overflow
+- La struttura HTML riflette meglio la gerarchia visiva
+- Il codice JSX rimane organizzato logicamente
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Toast con Portal nel body</summary>
+<div class="px-4 pb-4">
+
+```jsx
+import { createPortal } from 'react-dom';
+
+function Toast({ message }) {
+  return createPortal(
+    <aside className="toast">
+      <p>{message}</p>
+    </aside>,
+    document.querySelector('body')
+  );
+}
+
+function App() {
+  const [toastVisible, setToastVisible] = useState(false);
+
+  function handleEnrol() {
+    setToastVisible(true);
+    
+    setTimeout(() => {
+      setToastVisible(false);
+    }, 3000);
+  }
+
+  return (
+    <div id="app">
+      {toastVisible && <Toast message="Enrolled successfully!" />}
+      <article>
+        <h2>React Course</h2>
+        <button onClick={handleEnrol}>Enrol</button>
+      </article>
+    </div>
+  );
+}
+```
+
+**Nota:** Anche se il componente `Toast` viene utilizzato dentro `<div id="app">`, viene renderizzato direttamente nel `<body>` grazie al portal.
+
+</div>
+</details>
+
+### Importante: react-dom vs react
+
+`createPortal` viene importato da `react-dom` e non da `react` perché:
+
+- **react**: Contiene funzionalità che funzionano in tutti gli ambienti (web, React Native, etc.)
+- **react-dom**: Contiene funzionalità specifiche per il DOM del browser
+
+I portals sono specifici per il rendering nel DOM del browser, quindi appartengono a `react-dom`.
+
+## Riepilogo
+
+### Refs
+
+- **Cosa sono**: Valori speciali che persistono tra i render senza causare re-render
+- **Casi d'uso principali**:
+  - Accesso diretto agli elementi DOM
+  - Gestione di timer ID e valori non dichiarativi
+  - Esposizione di API dei componenti
+- **Quando usare**: Per valori che non devono influenzare direttamente l'interfaccia utente
+- **Quando non usare**: Per valori che devono essere riflessi nell'UI (usare state invece)
+
+### Portals
+
+- **Cosa sono**: Meccanismo per renderizzare JSX in punti diversi del DOM
+- **Casi d'uso principali**:
+  - Modali e dialoghi
+  - Tooltip e popover
+  - Toast notifications
+- **Vantaggi**: Migliore accessibilità, evita problemi di styling, struttura HTML più semantica
+
+### Pattern Comuni
+
+1. **Ref per input non controllato**: Leggere il valore solo quando necessario invece di gestirlo con state
+2. **Ref per timer**: Memorizzare ID di `setTimeout`/`setInterval` per poterli cancellare
+3. **forwardRef + useImperativeHandle**: Esporre API stabili dai componenti custom
+4. **Portal per overlay**: Renderizzare modali e toast vicino alla root del DOM
+
+### Best Practices
+
+- Usare refs solo quando necessario, non come sostituto dello state
+- Fare sempre cleanup di timer e intervalli quando il componente viene smontato
+- Usare `useImperativeHandle` per creare API stabili e ben documentate
+- Usare portals per elementi che devono apparire sopra il resto del contenuto
+- Mantenere il codice JSX organizzato logicamente anche quando si usano portals
+
