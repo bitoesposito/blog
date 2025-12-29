@@ -26,74 +26,40 @@ import { render } from 'astro:content'
 
 export async function getStaticPaths() {
   const quotes = await getAllQuotesAndSubposts()
-  const paths = quotes.map((quote) => ({
+  return quotes.map((quote) => ({
     params: { id: quote.id },
     props: quote,
   }))
-  
-  // Aggiungi anche path con shareId per i preventivi principali che hanno shareId
-  const shareIdPaths = quotes
-    .filter((quote) => quote.data.shareId && !isQuoteSubpost(quote.id))
-    .map((quote) => ({
-      params: { id: quote.data.shareId! },
-      props: quote,
-    }))
-  
-  return [...paths, ...shareIdPaths]
 }
 
 const quote = Astro.props
 const currentQuoteId = Astro.params.id
+const { Content, headings } = await render(quote)
+const authors = await parseAuthors(quote.data.authors ?? [])
 
-// Se il parametro è uno shareId invece di un ID normale, trova il preventivo
-let actualQuote = quote
-if (!isQuoteSubpost(currentQuoteId) && quote.data.shareId === currentQuoteId) {
-  // Il parametro è uno shareId, usa il quote già nel props
-  actualQuote = quote
-} else if (!isQuoteSubpost(currentQuoteId)) {
-  // Prova a trovare per shareId se non è un subpost
-  const { getQuoteByShareId } = await import('@/lib/data-utils')
-  const quoteByShareId = await getQuoteByShareId(currentQuoteId)
-  if (quoteByShareId) {
-    actualQuote = quoteByShareId
-  }
-}
+const isCurrentSubpost = isQuoteSubpost(currentQuoteId)
+const parentQuote = isCurrentSubpost ? await getQuoteParentPost(currentQuoteId) : null
 
-const { Content, headings } = await render(actualQuote)
-const authors = await parseAuthors(actualQuote.data.authors ?? [])
-
-const actualQuoteId = actualQuote.id
-const isCurrentSubpost = isQuoteSubpost(actualQuoteId)
-const parentQuote = isCurrentSubpost ? await getQuoteParentPost(actualQuoteId) : null
-
-const hasChildPosts = await hasQuoteSubposts(actualQuoteId)
+const hasChildPosts = await hasQuoteSubposts(currentQuoteId)
 const subpostCount = !isCurrentSubpost
-  ? await getQuoteSubpostCount(actualQuoteId)
+  ? await getQuoteSubpostCount(currentQuoteId)
   : 0
-const quoteReadingTime = await getQuoteReadingTime(actualQuoteId)
+const quoteReadingTime = await getQuoteReadingTime(currentQuoteId)
 const combinedReadingTime =
   hasChildPosts && !isCurrentSubpost
-    ? await getQuoteCombinedReadingTime(actualQuoteId)
+    ? await getQuoteCombinedReadingTime(currentQuoteId)
     : null
 
-const tocSections = await getQuoteTOCSections(actualQuoteId)
-
-// Funzione helper per generare URL usando shareId quando disponibile
-function getQuoteUrl(quoteId: string, shareId?: string): string {
-  if (shareId) {
-    return `/quote/${shareId}`
-  }
-  return `/quote/${quoteId}`
-}
+const tocSections = await getQuoteTOCSections(currentQuoteId)
 ---
 
 <Layout>
-  <QuotePostHead slot="head" post={actualQuote} />
+  <QuotePostHead slot="head" post={quote} />
   {
     (hasChildPosts || isCurrentSubpost) && (
       <QuoteSubpostsHeader
         slot="subposts-navigation"
-        parentId={isCurrentSubpost ? getQuoteParentId(actualQuoteId) : actualQuoteId}
+        parentId={isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId}
       />
     )
   }
@@ -102,7 +68,7 @@ function getQuoteUrl(quoteId: string, shareId?: string): string {
       !(
         isCurrentSubpost &&
         headings.length === 1 &&
-        headings[0].text === actualQuote.data.title
+        headings[0].text === quote.data.title
       ) && <TOCHeader slot="table-of-contents" headings={headings} />
   }
 
@@ -115,7 +81,7 @@ function getQuoteUrl(quoteId: string, shareId?: string): string {
           class="mb-2 scroll-mt-31 text-3xl leading-tight font-medium sm:text-4xl"
           id="post-title"
         >
-          {actualQuote.data.title}
+          {quote.data.title}
         </h1>
 
         <div
@@ -176,10 +142,10 @@ function getQuoteUrl(quoteId: string, shareId?: string): string {
           }
 
           {
-            actualQuote.data.client && (
+            quote.data.client && (
               <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
                 <Icon name="lucide:user" class="size-3" />
-                <span>{actualQuote.data.client}</span>
+                <span>{quote.data.client}</span>
               </div>
             )
           }
@@ -192,9 +158,8 @@ function getQuoteUrl(quoteId: string, shareId?: string): string {
       (hasChildPosts || isCurrentSubpost) && (
         <QuoteSubpostsSidebar
           parentId={
-            isCurrentSubpost ? getQuoteParentId(actualQuoteId) : actualQuoteId
+            isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId
           }
-          parentShareId={actualQuote.data.shareId}
           className="w-64"
         />
       )
@@ -206,7 +171,7 @@ function getQuoteUrl(quoteId: string, shareId?: string): string {
 
     {
       tocSections.length > 0 && (
-        <QuoteTOCSidebar sections={tocSections} currentPostId={actualQuoteId} />
+        <QuoteTOCSidebar sections={tocSections} currentPostId={currentQuoteId} />
       )
     }
 
@@ -214,10 +179,9 @@ function getQuoteUrl(quoteId: string, shareId?: string): string {
       (hasChildPosts || isCurrentSubpost) && (
         <QuoteSubpostsBanner
           parentId={
-            isCurrentSubpost ? getQuoteParentId(actualQuoteId) : actualQuoteId
+            isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId
           }
-          currentPostId={actualQuoteId}
-          parentShareId={actualQuote.data.shareId}
+          currentPostId={currentQuoteId}
         />
       )
     }
@@ -272,4 +236,3 @@ function getQuoteUrl(quoteId: string, shareId?: string): string {
     }
   }
 </script>
-

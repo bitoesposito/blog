@@ -77,7 +77,6 @@ const quote = defineCollection({
       draft: z.boolean().optional(),
       client: z.string().optional(), // Nome del cliente
       noindex: z.boolean().optional().default(true), // Non indicizzare nei motori di ricerca
-      shareId: z.string().optional(), // ID personalizzato per condivisione privata
     }),
 })
 

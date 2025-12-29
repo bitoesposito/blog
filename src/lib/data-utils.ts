@@ -303,13 +303,6 @@ export async function getQuoteById(
   return allQuotes.find((quote) => quote.id === quoteId) || null
 }
 
-export async function getQuoteByShareId(
-  shareId: string,
-): Promise<CollectionEntry<'quote'> | null> {
-  const allQuotes = await getAllQuotesAndSubposts()
-  return allQuotes.find((quote) => quote.data.shareId === shareId) || null
-}
-
 export async function getQuoteSubpostCount(parentId: string): Promise<number> {
   const subposts = await getQuoteSubpostsForParent(parentId)
   return subposts.length
@@ -584,7 +577,7 @@ export async function getSortedTags(): Promise<
   { tag: string; count: number }[]
 > {
   const tagCounts = await getAllTags()
-  return [...tagCounts.entries()]
+  return Array.from(tagCounts.entries())
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => {
       const countDiff = b.count - a.count

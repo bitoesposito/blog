@@ -12,25 +12,13 @@ import {
 } from '@/lib/data-utils'
 import { Icon } from 'astro-icon/components'
 
-const { parentId, currentPostId, parentShareId } = Astro.props
+const { parentId, currentPostId } = Astro.props
 const isCurrentSubpost = isQuoteSubpost(currentPostId)
 const rootParentId = isCurrentSubpost ? getQuoteParentId(currentPostId) : parentId
 
 const currentPost = !isCurrentSubpost ? await getQuoteById(currentPostId) : null
 const subposts = await getQuoteSubpostsForParent(rootParentId)
 const parentPost = isCurrentSubpost ? await getQuoteParentPost(currentPostId) : null
-
-// Funzione helper per generare URL usando shareId quando disponibile
-function getQuoteUrl(quoteId: string, shareId?: string): string {
-  if (shareId && isQuoteSubpost(quoteId)) {
-    // Per i subpost, usa shareId + nome subpost
-    const subpostName = quoteId.split('/').slice(1).join('/')
-    return `/quote/${shareId}/${subpostName}`
-  } else if (shareId) {
-    return `/quote/${shareId}`
-  }
-  return `/quote/${quoteId}`
-}
 
 // Mostra il banner solo se ci sono subpost disponibili
 const hasSubposts = subposts.length > 0
@@ -92,7 +80,7 @@ const nextSubpost =
               </Link>
             ) : isCurrentSubpost && !nextSubpost && parentPost ? (
               <Link
-                href={getQuoteUrl(parentPost.id, parentShareId || parentPost.data.shareId)}
+                href={`/quote/${parentPost.id}`}
                 class={buttonVariants({ variant: 'outline', size: 'sm' })}
                 aria-label={`Torna all'indice: ${parentPost.data.title}`}
               >
@@ -101,7 +89,7 @@ const nextSubpost =
               </Link>
             ) : firstSubpost ? (
               <Link
-                href={getQuoteUrl(firstSubpost.id, parentShareId || firstSubpost.data.shareId)}
+                href={`/quote/${firstSubpost.id}`}
                 class={buttonVariants({ variant: 'default', size: 'sm' })}
                 aria-label={`Inizia a leggere: ${firstSubpost.data.title}`}
               >

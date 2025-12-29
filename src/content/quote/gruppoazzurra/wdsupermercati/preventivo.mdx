@@ -1,7 +1,7 @@
 ---
 title: 'Preventivo - WD Supermercati'
 description: 'Preventivo dettagliato per il sito retail complesso con CMS e automazioni WD Supermercati'
-date: 2024-12-01
+date: 2025-12-29
 tags: ['preventivo']
 authors: ['vitoesposito']
 order: 9
@@ -38,7 +38,6 @@ noindex: true
 - Setup ambiente di sviluppo locale
 - Setup database PostgreSQL per Directus
 - Setup storage MinIO per file multimediali
-- Configurazione backup automatici database e storage
 
 **Tempo Stimato**: 12 ore  
 **Costo**: €600
@@ -112,7 +111,6 @@ noindex: true
 - Setup upload multiplo immagini
 - Configurazione ottimizzazione automatica immagini
 - Setup validazione campi e regole business
-- Configurazione template email (se necessario)
 
 **Tempo Stimato**: 20 ore  
 **Costo**: €1.000
@@ -149,7 +147,6 @@ noindex: true
 - Implementazione fetch dati news dal CMS
 - Implementazione filtri dinamici offerte
 - Implementazione ricerca punti vendita
-- Gestione cache e revalidazione dati
 - Ottimizzazione query API
 
 **Tempo Stimato**: 12 ore  
@@ -162,12 +159,8 @@ noindex: true
 **Attività**:
 - Setup provider email marketing (Mailchimp/Sendinblue/SendGrid)
 - Integrazione API provider scelto
-- Implementazione form iscrizione con double opt-in
-- Setup template email offerte settimanali
-- Implementazione automazione invio settimanale
-- Sistema segmentazione utenti
-- Gestione unsubscribe
-- Dashboard statistiche iscrizioni (opzionale)
+- Setup template email base
+- Implementazione automazione
 
 **Tempo Stimato**: 16 ore  
 **Costo**: €800
@@ -177,16 +170,13 @@ noindex: true
 ### 9. Sistema WhatsApp
 
 **Attività**:
-- Setup canale WhatsApp Business
 - Generazione QR code canale
 - Implementazione sezione "Segui il canale" con QR code
 - Istruzioni per seguire canale
-- Link diretto WhatsApp
-- Integrazione con sistema newsletter (opzionale)
 
 **Nota**: Implementazione iniziale con canale WhatsApp semplice (QR code). Integrazione API WhatsApp Business richiederebbe servizi esterni autorizzati da Meta e costi aggiuntivi.
 
-**Tempo Stimato**: 4 ore  
+**Tempo Stimato**: 4 ore
 **Costo**: €200
 
 ---
@@ -194,12 +184,8 @@ noindex: true
 ### 10. Form e Integrazioni Esterne
 
 **Attività**:
-- Integrazione Google Maps API (mappe interattive, marker, autocomplete ricerca)
-- Integrazione Google Analytics 4
-- Integrazione Google Tag Manager
-- Setup tracking eventi (click telefono, click email, iscrizione newsletter, visualizzazione offerte, ricerca punti vendita)
-- Configurazione conversioni e obiettivi
-- Setup reCAPTCHA su form (se necessario)
+- Integrazione Google Maps API (mappe interattive, marker, autocomplete ricerca) o alternativa Open Street Maps
+- Integrazione Google Analytics 4 o alternativa Umamy Analytics
 
 **Tempo Stimato**: 8 ore  
 **Costo**: €400
@@ -213,6 +199,7 @@ noindex: true
 - Ottimizzazione H1-H6 e struttura semantica
 - Generazione sitemap.xml dinamica
 - Generazione robots.txt
+- Generazione llms.txt
 - Ottimizzazione URL pulite
 - Schema markup per offerte e punti vendita
 - Test accessibilità base (WCAG 2.1 AA)
@@ -230,7 +217,7 @@ noindex: true
 **Attività**:
 - Test funzionalità su browser principali (Chrome, Firefox, Safari, Edge)
 - Test responsive su dispositivi vari (mobile, tablet, desktop)
-- Test form iscrizione newsletter e double opt-in
+- Test form iscrizione newsletter
 - Test sistema filtri e ricerca offerte
 - Test mappa punti vendita e marker
 - Test ricerca punti vendita con autocomplete
@@ -238,7 +225,6 @@ noindex: true
 - Test automazione newsletter
 - Test integrazioni (GA, Maps, email provider, WhatsApp)
 - Test performance (Lighthouse)
-- Test carico sistema (se necessario)
 - Fix bug e ottimizzazioni
 
 **Tempo Stimato**: 16 ore  
@@ -253,12 +239,8 @@ noindex: true
 - Configurazione ambiente produzione su VPS
 - Setup database produzione Directus
 - Setup storage produzione MinIO
-- Configurazione backup automatici database e storage
-- Setup CI/CD per deployment automatico
 - Configurazione variabili ambiente produzione
 - Test produzione completo
-- Monitoraggio setup base
-- Configurazione alerting base
 
 **Tempo Stimato**: 10 ore  
 **Costo**: €500
@@ -271,10 +253,8 @@ noindex: true
 - Documentazione tecnica progetto
 - Guida utilizzo CMS Directus (gestione offerte, punti vendita, news)
 - Guida automazione newsletter
-- Video tutorial utilizzo CMS (opzionale)
 - Documentazione deployment
 - README progetto
-- Sessioni formazione cliente (2-3 ore)
 
 **Tempo Stimato**: 8 ore  
 **Costo**: €400

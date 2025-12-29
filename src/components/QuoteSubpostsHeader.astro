@@ -11,7 +11,7 @@ import {
 } from '@/lib/data-utils'
 import { Icon } from 'astro-icon/components'
 
-const { parentId, parentShareId } = Astro.props
+const { parentId } = Astro.props
 const currentPostId = (Astro.params.id as string) || parentId
 const isCurrentSubpost = isQuoteSubpost(currentPostId)
 const rootParentId = isCurrentSubpost ? getQuoteParentId(currentPostId) : parentId
@@ -22,18 +22,6 @@ const parentPost = isCurrentSubpost ? await getQuoteParentPost(currentPostId) : 
 
 const activePost = parentPost || currentPost
 const isActivePost = activePost?.id === currentPostId
-
-// Funzione helper per generare URL usando shareId quando disponibile
-function getQuoteUrl(quoteId: string, shareId?: string): string {
-  if (shareId && isQuoteSubpost(quoteId)) {
-    // Per i subpost, usa shareId + nome subpost
-    const subpostName = quoteId.split('/').slice(1).join('/')
-    return `/quote/${shareId}/${subpostName}`
-  } else if (shareId) {
-    return `/quote/${shareId}`
-  }
-  return `/quote/${quoteId}`
-}
 
 const activePostReadingTime = activePost
   ? await getQuoteReadingTime(activePost.id)
@@ -127,7 +115,7 @@ const currentSubpostDetails = isCurrentSubpost
                     </div>
                   ) : (
                     <a
-                      href={getQuoteUrl(activePost.id, parentShareId || activePost.data.shareId)}
+                      href={`/quote/${activePost.id}`}
                       class="mobile-subposts-link hover:text-foreground text-muted-foreground hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
                       aria-label={`Vai al documento principale: ${activePost.data.title}`}
                     >
@@ -161,9 +149,8 @@ const currentSubpostDetails = isCurrentSubpost
 
               {subpostsWithReadingTime.length > 0 && (
                 <div class="ml-4 space-y-1">
-                  {subpostsWithReadingTime.map((subpost) => {
-                    const subpostShareId = parentShareId || subpost.data.shareId
-                    return currentPostId === subpost.id ? (
+                  {subpostsWithReadingTime.map((subpost) =>
+                    currentPostId === subpost.id ? (
                       <div class="text-foreground bg-muted mobile-subposts-active-item flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium">
                         <Icon
                           name="lucide:file-text"
@@ -179,7 +166,7 @@ const currentSubpostDetails = isCurrentSubpost
                       </div>
                     ) : (
                       <a
-                        href={getQuoteUrl(subpost.id, subpostShareId)}
+                        href={`/quote/${subpost.id}`}
                         class="mobile-subposts-link hover:text-foreground text-muted-foreground hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
                         aria-label={`Vai al documento: ${subpost.data.title}`}
                       >
@@ -195,8 +182,8 @@ const currentSubpostDetails = isCurrentSubpost
                           </span>
                         </div>
                       </a>
-                    )
-                  })}
+                    ),
+                  )}
                 </div>
               )}
             </ul>
