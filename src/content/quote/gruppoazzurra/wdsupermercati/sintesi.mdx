@@ -1,0 +1,214 @@
+---
+title: 'Sintesi Progetto - WD Supermercati'
+description: 'Documento di sintesi completo con pagine da sviluppare, asset necessari e informazioni richieste al cliente'
+date: 2024-12-01
+tags: ['preventivo']
+authors: ['vitoesposito']
+order: 10
+client: 'WD Supermercati'
+noindex: true
+---
+
+# WD Supermercati - Documento di Sintesi
+
+## Panoramica
+Sito retail complesso orientato alle offerte settimanali. Focus su punti vendita, sistema offerte aggiornabile settimanalmente, e automazione invio newsletter/WhatsApp.
+
+**Tecnologia**: Next.js + CMS  
+**Tipo**: Retail/CMS
+
+---
+
+## Pagine da Sviluppare
+
+### Homepage
+- Header con menu (Punti vendita, Offerte, News, Contatti) e CTA "Iscriviti alle offerte"
+- Hero con slider/immagine e CTA "Vedi tutte le offerte"
+- Sezione "Offerte della settimana" (anteprima top 6-8 offerte)
+- Sezione punti vendita (anteprima con link "Vedi tutti")
+- Sezione News/Comunicazioni (ultime 3-4, opzionale)
+- Footer con contatti e link utili
+
+### Sezione "Iscriviti alle Offerte"
+- Form iscrizione newsletter (Email, Consenso privacy, Checkbox marketing opzionale)
+- Double opt-in (conferma email)
+- Pulsante "Segui il canale", QR code, link diretto, istruzioni
+- Spiegazione vantaggi iscrizione
+- Messaggio conferma iscrizione
+
+### Sezione "Contatti"
+- Informazioni contatto (email, telefono, indirizzo sede)
+
+### Pagina "Offerte"
+- Filtri categoria (Tutte, Freschi, Dispensa, Bevande, Casa, Igiene, ecc.)
+- Grid offerte responsive con card (immagine, titolo, categoria, prezzi, badge "TOP", note validità)
+- Badge "Offerta TOP" per evidenziare offerte principali
+- Indicatori validità (data inizio/fine)
+- Paginazione o infinite scroll
+- Note "fino a esaurimento scorte" (se presente)
+
+### Pagina "Dettaglio Offerta / Volantino"
+- Scaricamento volantino PDF o grid completa offerte settimana
+- Condivisione social
+
+### Pagina "Punti Vendita"
+- Mappa Google Maps con marker cliccabili per ogni punto vendita
+- Lista punti vendita con card (nome, indirizzo, orari, telefono, servizi, foto, link dettaglio)
+- Filtro ricerca per località con autocomplete
+- Vista mappa / vista lista (toggle)
+
+### Pagina "Dettaglio Punto Vendita"
+- Informazioni complete punto vendita
+- Google Maps embed con marker
+- Orari dettagliati
+- Servizi disponibili (macelleria, panetteria, ecc.)
+- Gallery foto (opzionale)
+- CTA "Come arrivare" (link Google Maps)
+
+### Pagina "News/Comunicazioni"
+- Lista comunicazioni/news
+- Filtri per categoria (se necessario)
+
+### Pagine Legali
+- Privacy Policy
+- Cookie Policy
+- Termini e Condizioni (se necessario)
+
+---
+
+## Asset Specifici Necessari
+
+### Loghi e Branding
+- [ ] Logo WD Supermercati in alta qualità (PNG/SVG)
+- [ ] Logo versione light (per dark background)
+- [ ] Logo versione dark (per light background)
+- [ ] Favicon (16x16, 32x32, 192x192, 512x512)
+
+### Immagini Punti Vendita
+- [ ] **Foto punti vendita**: Minimo 10 foto per punto vendita
+  - Foto esterni
+  - Foto interni
+  - Foto reparti principali
+  - Formato: webp, dimensioni ottimizzate
+
+### Immagini Generiche
+- [ ] Immagine hero homepage (1920x1080px min)
+- [ ] Immagini per sezione News (se implementata)
+- [ ] Immagini placeholder per offerte (se non disponibili subito)
+
+### Dati Punti Vendita
+Per ogni punto vendita, servono:
+- [ ] **Nome punto vendita**
+- [ ] **Indirizzo completo** (via, civico, CAP, città, provincia)
+- [ ] **Coordinate GPS** (lat/lng) per Google Maps
+- [ ] **Orari**:
+  - Lunedì-Sabato: apertura/chiusura
+  - Domenica: apertura/chiusura (se diverso)
+  - Orari festivi (se disponibili)
+- [ ] **Telefono** (se diverso per punto vendita)
+- [ ] **Servizi disponibili**: Lista (es: macelleria, panetteria, pescheria, gastronomia, ecc.)
+- [ ] **Foto**: Min 10 foto per punto vendita
+
+### Informazioni Contatto
+- [ ] Email principale
+- [ ] Email per newsletter (può essere diversa, es: offerte@wdsupermercati.it)
+- [ ] Telefono principale
+- [ ] Indirizzo sede legale/operativa
+- [ ] Link social media (se presenti)
+
+### Newsletter - Configurazione
+- [ ] **Provider email marketing**: Scelta provider (es: Mailchimp, Sendinblue, SendGrid, ecc.)
+- [ ] **API keys**: Chiavi API provider scelto
+- [ ] **Template email**: Template base per invio offerte settimanali
+- [ ] **Segmentazione**: Nome segmento/list (es: "WD_offerte")
+- [ ] **Frequenza invio**: Conferma invio settimanale automatico
+
+`è da definire innanzitutto quale provider adottare in maniera da poter reperire la documentazione per l'implemnetazione`
+
+### WhatsApp - Configurazione
+  - Link canale WhatsApp
+  - QR code canale (o generazione automatica)
+  - Testo istruzioni per seguire canale
+
+`per questo tipo di progetto è consigliato, almeno inizialmente, procedere con la creazione di un canale whatsapp raggiungibile tramite il QRCODE poiché le api business di whatsapp prevederebbero l'integrazioen di altri servizi esterni autorizzati da Meta che andrebbero studiati, implementati e generalmente sono abbastanza costosi`
+
+### Documenti Legali
+- [ ] Privacy Policy (testo completo o bozza da adattare)
+- [ ] Cookie Policy (testo completo o bozza da adattare)
+- [ ] Termini e Condizioni newsletter (se necessario)
+
+### Brand Guidelines (se disponibili)
+- [ ] Palette colori (codici esatti)
+- [ ] Font primario e secondario
+- [ ] Stile comunicativo/tono di voce
+- [ ] Esempi siti competitor (es: Eurospin, altri supermercati)
+
+### Configurazione CMS
+- [ ] **Template categorie**: Lista standard categorie (es: Freschi, Dispensa, Bevande, Casa, Igiene, Salumi/Formaggi, Pasta/Riso, Detersivi, ecc.)
+- [ ] **Template volantino**: Se si usa approccio PDF volantino, template o esempi
+- [ ] **Template prodotti**: Prodotto demo configurato
+
+`N.B. Ogni sezione dei template è gestita tramite il CMS, l'implementazione si occuperà principalmente di fornire un setup configurabile col quale sarà impostata inizialmente la struttura funzionante ma con i contenuti da popolare`
+
+
+## Informazioni Richieste al Cliente
+
+### Contenuti Testuali
+1. **Testo hero homepage**: Titolo e sottotitolo
+2. **Descrizione azienda**: Testo breve "Chi siamo" (se presente pagina)
+3. **Testo iscrizione offerte**: Vantaggi iscrizione newsletter/WhatsApp
+4. **News/Comunicazioni**: Contenuti per sezione news (se implementata)
+
+### Punti Vendita
+1. **Elenco completo punti vendita** con tutte le informazioni richieste (vedi sezione "Dati Punti Vendita")
+2. **Priorità punti vendita**: Quali evidenziare in homepage
+3. **Servizi standard**: Lista servizi comuni a tutti i punti vendita vs servizi specifici
+
+### Sistema Offerte
+1. **Categorie standard**: Lista definitiva categorie offerte
+
+### Newsletter e Automazione
+1. **Provider email marketing**: Scelta provider (Mailchimp, Sendinblue, SendGrid, o altro)
+
+### WhatsApp
+  - Link canale esistente o creazione nuovo canale
+
+### Informazioni Tecniche
+1. **Google Analytics 4**: Snippet di integrazione analytics (o integrazione con umamy analytics)
+3. **Google Maps API**: Chiave API Google Maps per mappe e marker (o integrazione con openmaps)
+4. **Dominio**: Nome dominio desiderato (preferibilmente seguendo la sezione dedicata del file di [Infrastruttura](../infrastruttura.md#domini-e-email))
+
+### Link e Riferimenti
+1. **Social media**: Link a profili social (Facebook, Instagram, ecc.)
+2. **Siti competitor**: Esempi di riferimento per stile e funzionalità (es: Eurospin)
+
+### Materiali Opzionali
+1. **Video**: Video promozionali o tutorial (se disponibili)
+2. **Certificazioni**: Logo certificazioni o riconoscimenti
+3. **Partnership**: Logo partner o fornitori (se da mostrare)
+
+---
+
+## Note per lo Sviluppo
+
+### CMS e Backend
+- **Directus CMS**: Configurazione per gestione offerte, punti vendita, news
+- **Upload multiplo**: Sistema veloce per caricamento offerte settimanali
+- **Gestione immagini**: Ottimizzazione automatica (webp, resize)
+
+### Sistema Offerte
+- **CRUD offerte**: Creazione, modifica, eliminazione offerte
+- **Bulk upload**: Possibilità upload multiplo offerte
+- **Validità date**: Gestione date inizio/fine validità
+- **Badge "TOP"**: Sistema per evidenziare offerte principali
+- **Filtri categoria**: Filtri dinamici per categoria
+- **Ricerca**: Ricerca prodotti
+
+### SEO e Performance
+- **SEO**: Title/meta per ogni pagina, H1-H2 corretti, URL pulite, sitemap.xml
+- **Performance**: Immagini ottimizzate (webp), lazy load, caching, CDN (se necessario)
+- **Responsive**: Mobile-first, test su dispositivi vari
+
+### Sicurezza
+- **HTTPS**: Certificato SSL
+- **Validazione**: Validazione input form, sanitizzazione dati

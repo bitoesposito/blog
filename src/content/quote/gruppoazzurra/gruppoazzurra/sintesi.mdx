@@ -1,0 +1,127 @@
+---
+title: 'Sintesi Progetto - Gruppo Azzurra'
+description: 'Documento di sintesi completo con pagine da sviluppare, asset necessari e informazioni richieste al cliente'
+date: 2024-12-01
+tags: ['preventivo']
+authors: ['vitoesposito']
+order: 6
+client: 'Gruppo Azzurra'
+noindex: true
+---
+
+# Gruppo Azzurra - Documento di Sintesi
+
+## Panoramica
+Sito istituzionale corporate. Presenta il gruppo e collega alle aziende sottostanti (ICCA e WD Supermercati).
+
+**Tecnologia**: Astro  
+**Tipo**: Corporate/istituzionale
+
+---
+
+## Pagine da Sviluppare
+
+### Homepage
+- Header fisso con logo e menu (Il Gruppo, Le Aziende, Contatti)
+- Hero section full-width con immagine, titolo H1, sottotitolo
+- Sezione "Le Aziende" con 2 card (ICCA e WD) con logo, titolo, descrizione, CTA
+- Footer con contatti, link utili, social
+- Cookie banner globale
+
+### Pagina "Il Gruppo"
+- Sezione chi siamo con immagine e testo
+- Sezione valori con grid card (icona, titolo, descrizione)
+- Sezione numeri chiave (se disponibili)
+
+### Pagina "Le Aziende"
+- Card per ICCA (logo, descrizione breve, link al sito ICCA)
+- Card per WD Supermercati (logo, descrizione breve, link al sito WD)
+- Layout grid responsive
+
+### Pagina "Contatti"
+- Informazioni contatto (email, telefono, sede)
+- Mappa interattiva (Google Maps embed o coordinate)
+- Form contatto base (opzionale)
+
+### Pagine Legali
+- Privacy Policy
+- Cookie Policy
+- Termini e Condizioni (se necessario)
+
+---
+
+## Asset Specifici Necessari
+
+### Loghi e Branding
+- [ ] Logo Gruppo Azzurra in alta qualità (PNG/SVG)
+- [ ] Logo versione light (per dark background)
+- [ ] Logo versione dark (per light background)
+- [ ] Favicon (16x16, 32x32, 192x192, 512x512)
+- [ ] Loghi aziende collegate (ICCA e WD) per sezione "Le Aziende"
+
+### Immagini
+- [ ] Immagine hero homepage (1920x1080px min, formato webp)
+- [ ] Immagine sezione "Chi siamo" (1200x800px min)
+- [ ] Icone per valori (o indicazioni su stile iconografico)
+- [ ] Immagini di background/sfondo (se necessarie)
+
+### Testi e Contenuti
+- [ ] Testo "Chi siamo" per pagina Il Gruppo
+- [ ] Descrizione valori aziendali (min 3-4 valori)
+- [ ] Numeri chiave del gruppo (se disponibili: fatturato, dipendenti, anni di attività, ecc.)
+- [ ] Descrizione breve per ICCA (per card "Le Aziende")
+- [ ] Descrizione breve per WD Supermercati (per card "Le Aziende")
+- [ ] Testo hero homepage (titolo + sottotitolo)
+
+### Informazioni Contatto
+- [ ] Email principale
+- [ ] Telefono principale
+- [ ] Indirizzo sede legale/operativa completa
+- [ ] Coordinate GPS per mappa (lat/lng)
+- [ ] Orari ufficio (se da mostrare)
+- [ ] Link social media (se presenti)
+
+### Documenti Legali
+- [ ] Privacy Policy (testo completo o bozza da adattare)
+- [ ] Cookie Policy (testo completo o bozza da adattare)
+- [ ] Termini e Condizioni (se necessario)
+
+### Brand Guidelines (se disponibili)
+- [ ] Palette colori (codici esatti)
+- [ ] Font primario e secondario
+- [ ] Stile comunicativo/tono di voce
+- [ ] Esempi siti competitor o riferimento
+
+---
+
+## Informazioni Richieste al Cliente
+
+### Contenuti Testuali
+1. **Testo "Chi siamo"**: Storia, mission, vision del gruppo (300-500 parole)
+2. **Valori aziendali**: Elenco 3-4 valori con descrizione breve per ciascuno
+3. **Numeri chiave**: Metriche rilevanti (fatturato, dipendenti, anni attività, progetti completati, ecc.)
+4. **Descrizioni aziende**: Testo breve (100-150 parole) per ICCA e WD Supermercati
+
+### Informazioni Tecniche
+1. **Google Analytics 4**: Snippet di integrazione analytics (o integrazione con umamy analytics)
+3. **Google Maps API**: Chiave API Google Maps per mappe e marker (o integrazione con openmaps)
+4. **Dominio**: Nome dominio desiderato (preferibilmente seguendo la sezione dedicata del file di [Infrastruttura](../infrastruttura.md#domini-e-email))
+
+### Link e Riferimenti
+1. **URL siti collegati**: Link definitivi ai siti ICCA e WD Supermercati
+2. **Social media**: Link a profili social del gruppo (se presenti)
+
+### Materiali Opzionali
+1. **Foto corporate**: Immagini di uffici, team, eventi (se disponibili)
+2. **Video**: Video istituzionale o testimonianze (se disponibili)
+3. **Certificazioni**: Logo certificazioni o riconoscimenti da mostrare
+
+---
+
+## Note per lo Sviluppo
+
+- **Sito statico**: Nessun CMS richiesto. Contenuti gestiti direttamente nel codice (Astro)
+- **SEO**: Title/meta per ogni pagina, H1-H2 corretti, URL pulite, sitemap.xml
+- **Performance**: Immagini ottimizzate (webp), lazy load, caching
+- **Tracking**: Integrazione Google Analytics / Umami Analytics
+- **Sicurezza**: reCAPTCHA su form contatti (se implementato)

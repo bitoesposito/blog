@@ -1,0 +1,187 @@
+---
+title: 'Sintesi Progetto - ICCA'
+description: 'Documento di sintesi completo con pagine da sviluppare, asset necessari e informazioni richieste al cliente'
+date: 2024-12-01
+tags: ['preventivo']
+authors: ['vitoesposito']
+order: 8
+client: 'ICCA'
+noindex: true
+---
+
+# ICCA - Documento di Sintesi
+
+## Panoramica
+Sito vetrina strutturato per azienda edilizia. Focus su portfolio lavori, servizi offerti, contatti e sistema di richiesta preventivi.
+
+**Tecnologia**: Astro  
+**Tipo**: Vetrina/portfolio
+
+---
+
+## Pagine da Sviluppare
+
+### Homepage
+- Header con menu (Chi siamo, Servizi, Lavori, Contatti, Richiedi preventivo)
+- Hero con immagine cantiere, titolo H1, CTA "Richiedi preventivo"
+- Anteprima Chi siamo con link "Scopri di più"
+- Grid servizi (max 6 card: icona, titolo, descrizione, link)
+- Grid lavori recenti (6-8 progetti: immagine, titolo, categoria, località)
+- CTA "Vedi tutti i lavori"
+- Sezione testimonianze/clienti (opzionale)
+
+### Pagina "Chi Siamo"
+- Storia azienda
+- Mission e vision
+- Team (se disponibile)
+- Certificazioni e riconoscimenti
+
+### Pagina "Servizi"
+- Lista servizi offerti con descrizioni dettagliate
+- Grid o lista con card servizi
+- Icone o immagini per ogni servizio
+
+### Pagina "Portfolio / Lavori"
+- Filtri categoria (Tutti, Residenziale, Commerciale, Industriale, Ristrutturazioni, Esterni)
+- Ricerca per località (opzionale)
+- Grid progetti responsive con card (immagine copertina, titolo, categoria, località, data)
+- Paginazione o "Load more"
+- Link a dettaglio lavoro
+
+### Pagina "Dettaglio Lavoro"
+- Gallery immagini (min 6 immagini, lightbox)
+- Informazioni progetto (titolo, categoria, località, data)
+- Descrizione breve + descrizione completa
+- Tag (opzionale)
+- CTA "Richiedi preventivo" (linka a form con precompilato tipo intervento)
+
+### Pagina "Contatti"
+- Informazioni contatto (email, telefono, indirizzo)
+- Mappa interattiva
+- Orari ufficio (se disponibili)
+
+### Pagina "Richiesta Preventivo"
+- Form completo con validazione
+- Campi: Nome, Cognome, Telefono, Email, Comune/Provincia, Tipo intervento (dropdown), Messaggio, Allegato (opzionale: foto/pdf)
+- Consenso privacy obbligatorio
+- reCAPTCHA
+- Messaggio di conferma invio
+- Invio email a indirizzo aziendale + copia al richiedente (opzionale)
+
+### Pagina "Lavora con Noi" (opzionale)
+- Descrizione opportunità lavorative
+- Form candidatura (se necessario)
+
+### Pagine Legali
+- Privacy Policy
+- Cookie Policy
+
+---
+
+## Asset Specifici Necessari
+
+### Loghi e Branding
+- [ ] Logo ICCA in alta qualità (PNG/SVG)
+- [ ] Logo versione light (per dark background)
+- [ ] Logo versione dark (per light background)
+- [ ] Favicon (16x16, 32x32, 192x192, 512x512)
+
+### Immagini Portfolio
+- [ ] **Foto cantieri ICCA**: Immagini di progetti completati
+  - Per ogni progetto servono:
+    - 1 immagine copertina (1200x800px min)
+    - Immagini aggiuntive per gallery (dimensioni variabili, formato webp)
+  - Organizzazione consigliata: cartelle per progetto o naming chiaro (es: `progetto-1-copertina.jpg`, `progetto-1-gallery-1.jpg`)
+
+### Immagini Generiche
+- [ ] Immagine hero homepage (cantiere/edilizia, 1920x1080px min)
+- [ ] Immagini per sezione "Chi siamo" (uffici, team, ecc.)
+- [ ] Icone servizi (o indicazioni su stile iconografico)
+- [ ] Immagini di background/sfondo (se necessarie)
+
+### Testi e Contenuti
+- [ ] Testo "Chi siamo" completo (storia, mission, vision)
+- [ ] Lista servizi offerti con descrizioni dettagliate (min 4-6 servizi)
+- [ ] Testo hero homepage (titolo + sottotitolo)
+- [ ] Testimonianze clienti (opzionale ma consigliato)
+
+### Dati Portfolio Lavori
+Per ogni progetto da inserire nel portfolio, servono:
+- [ ] **Titolo progetto**
+- [ ] **Categoria**: Residenziale / Commerciale / Industriale / Ristrutturazioni / Esterni
+- [ ] **Località**: Comune e provincia
+- [ ] **Data**: Mese/anno di completamento
+- [ ] **Descrizione breve**: 1-2 frasi per card/anteprima
+- [ ] **Descrizione completa**: Testo dettagliato per pagina progetto
+- [ ] **Gallery immagini**: Min 6 immagini per progetto
+- [ ] **Immagine copertina**: 1 immagine principale
+- [ ] **Tag**: Parole chiave opzionali (es: "ristrutturazione", "design", "sostenibilità")
+
+### Informazioni Contatto
+- [ ] Email principale
+- [ ] Email per richieste preventivo (può essere diversa)
+- [ ] Telefono principale
+- [ ] Indirizzo sede legale/operativa completa
+- [ ] Coordinate GPS per mappa (lat/lng)
+- [ ] Orari ufficio
+- [ ] Link social media (se presenti)
+
+### Form Preventivo - Configurazione
+- [ ] **Tipi intervento**: Lista dropdown per campo "Tipo intervento" (es: "Ristrutturazione", "Nuova costruzione", "Rifacimento facciata", ecc.)
+- [ ] **Email destinatario**: Indirizzo email dove inviare le richieste preventivo
+- [ ] **Template email**: Testo base per email di notifica (opzionale, può essere standard)
+
+### Documenti Legali
+- [ ] Privacy Policy (testo completo o bozza da adattare)
+- [ ] Cookie Policy (testo completo o bozza da adattare)
+
+### Brand Guidelines (se disponibili)
+- [ ] Palette colori (codici esatti)
+- [ ] Font primario e secondario
+- [ ] Stile comunicativo/tono di voce
+- [ ] Esempi siti competitor edilizia
+
+---
+
+## Informazioni Richieste al Cliente
+
+### Contenuti Testuali
+1. **Testo "Chi siamo"**: Storia azienda, mission, vision (400-600 parole)
+2. **Servizi**: Elenco completo servizi con descrizione dettagliata per ciascuno (min 4-6 servizi)
+3. **Testo hero**: Titolo e sottotitolo per homepage
+4. **Testimonianze**: Testimonianze clienti con nome e ruolo (opzionale)
+
+### Informazioni Tecniche
+1. **Google Analytics 4**: Snippet di integrazione analytics (o integrazione con umamy analytics)
+3. **Google Maps API**: Chiave API Google Maps per mappe e marker (o integrazione con openmaps)
+4. **Dominio**: Nome dominio desiderato (preferibilmente seguendo la sezione dedicata del file di [Infrastruttura](../infrastruttura.md#domini-e-email))
+
+### Link e Riferimenti
+1. **Social media**: Link a profili social (se presenti)
+2. **Siti competitor**: Esempi di siti edilizia di riferimento per stile
+
+### Materiali Opzionali
+1. **Foto team/uffici**: Immagini per sezione "Chi siamo"
+2. **Certificazioni**: Logo certificazioni o riconoscimenti
+3. **Video**: Video progetti o testimonianze (se disponibili)
+
+---
+
+## Note per lo Sviluppo
+
+- **CMS Portfolio** (opzionale): Sistema admin dedicato solo per gestione portfolio lavori (CRUD completo: crea, modifica, elimina progetti). Resto del sito statico.
+- **Upload immagini**: Sistema upload multiplo per gallery progetti (se CMS implementato)
+- **Filtri**: Filtri per categoria + ricerca località (se implementata)
+- **SEO**: Title/meta per ogni pagina, H1-H2 corretti, URL pulite, sitemap.xml
+- **Performance**: Immagini ottimizzate (webp), lazy load gallery, caching
+- **Tracking**: Integrazione GA4 + GTM con eventi (click telefono, click email, invio form preventivo)
+- **Sicurezza**: reCAPTCHA su form preventivo, validazione file allegati
+- **Email**: Invio email form con template personalizzabile
+
+### Alternativa Senza CMS
+
+È possibile realizzare il sito **anche senza un CMS**: in questo caso i contenuti (progetti, testi, immagini) verrebbero inseriti e organizzati direttamente durante lo sviluppo, senza un gestionale dedicato.  
+Questa soluzione permette di **ridurre i costi di realizzazione** e tempi di consegna, ma una volta terminato il progetto **non sarà possibile modificare o aggiungere contenuti** in autonomia:  
+per qualsiasi aggiornamento futuro (nuovi progetti, aggiornamento testi, cambio foto) sarà necessario richiedere l’intervento tecnico di un sviluppatore.
+
+Questa opzione è consigliabile **solo se si prevedono pochissime variazioni nel tempo** oppure in caso di budget molto limitato. Per aziende che intendono aggiornare regolarmente il portfolio lavori o inserire novità/media, la versione con CMS è altamente raccomandata.

@@ -1,0 +1,82 @@
+---
+title: 'Infrastruttura e Hosting'
+description: 'Documento riassuntivo di gestione infrastrutturale per i tre progetti web del Gruppo Azzurra'
+date: 2024-12-01
+tags: ['preventivo', 'infrastruttura']
+authors: ['vitoesposito']
+order: 3
+client: 'Gruppo Azzurra'
+noindex: true
+---
+
+## Infrastruttura di hosting
+
+Si consiglia l’utilizzo di una VPS cloud Hetzner per ospitare i tre siti web, in alternativa a tre hosting WordPress separati. Il costo annuale di tre piani WordPress gestiti di livello adeguato è paragonabile o superiore a quello di una VPS cloud performante, senza offrire lo stesso controllo, flessibilità e performance native per applicazioni Node.js.
+
+La VPS cloud consente gestione ordinata e sicura dell'infrastruttura, con configurazione avanzata (hardening, reverse proxy), isolamento applicativo dei tre siti e scalabilità futura, ottimizzando costi e manutenzione complessiva.
+
+Per i tre siti si utilizza una **VPS cloud Hetzner** (modello CPX32):
+
+- 4 vCPU x86 (AMD)
+- 8 GB RAM
+- 160 GB NVMe SSD
+- 20 TB traffico incluso
+- Costo mensile: ≈ €12,80 (escl. IVA, cap mensile garantito)
+
+Sufficientemente equipaggiata per il carico previsto di un traffico moderato, 2 siti statici e una applicazione web come nel nostro caso, con l'opzione di poter scalare nel caso di necessità.
+
+### Sicurezza e Protezione del Server VPS
+
+Il server VPS viene configurato su **Ubuntu LTS** (versione stabile a lungo supporto) con protezioni solide, seguendo standard riconosciuti come il **CIS Benchmark Level 1** e le best practice ufficiali di Ubuntu.
+
+**Principali misure incluse:**
+- Accesso remoto solo con chiavi digitali personali (niente password o login diretto come amministratore).
+- Firewall (UFW): aperte solo porte essenziali (SSH limitato, 80/443 per il web; accessi admin solo da IP fidati).
+- Blocco automatico IP sospetti (Fail2Ban) contro attacchi ripetuti.
+- Aggiornamenti sicurezza automatici.
+- **Caddy** come reverse proxy per il traffico web: gestione automatica HTTPS con certificati Let's Encrypt (auto-rinnovo), header di sicurezza base e routing verso i container Docker. Configurato in modalità "Full (strict)" con Cloudflare per massima sicurezza.
+- Rimozione programmi inutili, servizi disattivati, monitoraggio base dei log di sistema.
+- **Cloudflare (piano gratuito)**: Protezione DDoS illimitata, regole base contro attacchi web comuni, caching per velocità globale. Copre tutti i siti senza costi.
+
+Questa configurazione difende bene dalle minacce più comuni (brute-force, DDoS, exploit noti), conforme a standard affidabili.
+
+## Domini e Email
+
+Usiamo **Aruba.it**, provider italiano affidabile con data center in Italia, assistenza 24/7 e configurazione semplice – perfetto per supporto rapido e compliance.
+
+- **Stato domini:**
+  - gruppoazzurra.it e icca.it: Già registrati (si spera dal cliente).
+  - wdsupermercati.it: Disponibile
+
+- **Configurazione DNS:** Tutto su Cloudflare gratuito – colleghiamo domini al server VPS tramite record A/AAAA.
+- **Gestione Email:** Configurazione record email (MX, SPF, DKIM, DMARC) per servizio email esterno (es. Google Workspace, Microsoft 365, o servizio email Aruba). Il server VPS non gestisce direttamente le email per sicurezza e affidabilità.
+
+## Stack Tecnologico e Framework Utilizzati
+
+Per realizzare i tre siti in modo moderno, performante e manutenibile, utilizziamo tecnologie all'avanguardia basate su JavaScript/Node.js, perfettamente compatibili con la VPS Hetzner.
+
+Tutti i progetti sono **dockerizzati** utilizzando Docker e Docker Compose per orchestrare i container, garantendo isolamento, facilità di deployment e gestione uniforme tra ambienti di sviluppo e produzione.
+
+### Siti Gruppo Azzurra e ICCA (vetrina statica/dinamica leggera):
+  **Astro** – Framework ideale per landing page e siti vetrina.  
+  Genera pagine statiche velocissime (HTML puro, zero JavaScript inutile inviato al browser), con caricamenti istantanei e punteggi SEO/Performance eccellenti.  
+  Permette comunque di aggiungere interattività solo dove serve (es. form preventivi, gallery portfolio) senza appesantire il sito.
+
+### Sito WD Supermercati (applicazione più complessa):
+  **Next.js** (App Router) – Il framework React più potente per web app dinamiche.  
+  Permette integrazioni più approfondite, automazioni e offre rendering ibrido (statico + server-side) per velocità massima, SEO ottimo e scalabilità futura.
+
+  Integrata con un sistema CMS headless (es. vedi [Directus.io](https://directus.io/)) per poter permettere poi al cliente la gestione dei media e informazioni in stile WordPress tramite interfaccia web (idealmente raggiungibile tramite sottodominio admin.wdsupermercati.it).
+
+### Database e Storage
+
+**Database PostgreSQL:**
+- Sistema di archiviazione dati per contenuti, utenti e configurazioni del CMS
+- Configurazione ottimizzata per sicurezza e performance
+- Utilizzo risorse: ~300 MB RAM, ~2 GB spazio disco iniziale (crescita ~150 MB/mese)
+
+**Storage MinIO per file multimediali:**
+- Sistema di archiviazione per immagini, documenti e video caricati tramite CMS
+- Utilizzo risorse: ~150 MB RAM, ~15 GB spazio disco iniziale (scalabile in base alle esigenze)
+
+Entrambi i servizi vengono eseguiti come container Docker orchestrati tramite Docker Compose, garantendo isolamento, facilità di gestione e riavvio automatico in caso di problemi.

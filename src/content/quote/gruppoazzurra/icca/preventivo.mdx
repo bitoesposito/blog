@@ -1,0 +1,293 @@
+---
+title: 'Preventivo - ICCA'
+description: 'Preventivo dettagliato per il sito vetrina/portfolio edilizia ICCA'
+date: 2024-12-01
+tags: ['preventivo']
+authors: ['vitoesposito']
+order: 7
+client: 'ICCA'
+noindex: true
+---
+
+# Preventivo - ICCA
+
+**Tipo Progetto**: Sito vetrina/portfolio edilizia  
+**Tecnologia**: Astro (con CMS opzionale per portfolio)  
+**Pagine Principali**: 8-9 pagine (Homepage, Chi Siamo, Servizi, Portfolio, Dettaglio Lavoro, Contatti, Richiesta Preventivo, Pagine Legali)
+
+---
+
+## Tariffa Applicata
+
+**Ruolo**: UX Engineer (Fullstack + Designer)  
+**Tariffa Oraria**: €50/ora  
+**Tariffa Giornaliera**: €350/giorno (7 ore/giorno)
+
+---
+
+## Dettaglio Costi per Sezione
+
+### 1. Infrastruttura e Setup Ambiente
+
+**Attività**:
+- Setup VPS Hetzner (configurazione base Ubuntu LTS)
+- Configurazione Docker e Docker Compose
+- Setup reverse proxy Caddy con SSL automatico
+- Configurazione firewall e sicurezza base (UFW, Fail2Ban)
+- Configurazione DNS Cloudflare
+- Setup ambiente di sviluppo locale
+- Setup database PostgreSQL (se CMS implementato)
+- Setup storage MinIO (se CMS implementato)
+
+**Tempo Stimato**: 10 ore  
+**Costo**: €500
+
+---
+
+### 2. Design - Raccolta e Sistemazione Asset
+
+**Attività**:
+- Analisi e verifica asset ricevuti (loghi, immagini portfolio, testi)
+- Ottimizzazione immagini portfolio per web (formato webp, resize multipli)
+- Organizzazione immagini per progetto (gallerie)
+- Preparazione loghi in varianti (light/dark)
+- Creazione favicon set completo
+- Preparazione font per uso web
+- Organizzazione asset per sviluppo
+- Preparazione icone servizi
+
+**Tempo Stimato**: 10 ore  
+**Costo**: €500
+
+---
+
+### 3. Wireframing
+
+**Attività**:
+- Creazione wireframe low-fidelity per tutte le pagine
+- Definizione struttura layout responsive
+- Wireframe sistema filtri portfolio
+- Wireframe form richiesta preventivo dettagliato
+- Wireframe gallery immagini con lightbox
+- Annotazioni flussi utente principali
+- Wireframe mobile, tablet, desktop
+- Revisione e iterazione wireframe
+
+**Pagine da wireframare**: 8-9 pagine principali  
+**Tempo Stimato**: 14 ore  
+**Costo**: €700
+
+---
+
+### 4. Design System e Prototipazione
+
+**Attività**:
+- Definizione palette colori (primaria, secondaria, neutri)
+- Definizione tipografia (scale, font primario/secondario)
+- Creazione componenti UI base (button, card, form, header, footer)
+- Componenti specifici (card portfolio, filtri, gallery, lightbox)
+- Prototipo interattivo in Figma per tutte le pagine
+- Definizione stati interattivi (hover, focus, active)
+- Design responsive (mobile-first)
+- Export asset ottimizzati
+- Design form preventivo con validazione visiva
+
+**Tempo Stimato**: 20 ore  
+**Costo**: €1.000
+
+---
+
+### 5. Implementazione Frontend
+
+**Attività**:
+- Setup progetto Astro con configurazione base
+- Implementazione layout principale (header, footer)
+- Implementazione homepage (hero, anteprima chi siamo, grid servizi, grid lavori recenti, CTA)
+- Implementazione pagina "Chi Siamo" (storia, mission, vision, team, certificazioni)
+- Implementazione pagina "Servizi" (grid card servizi con icone)
+- Implementazione pagina "Portfolio" (grid progetti, filtri categoria, ricerca località, paginazione)
+- Implementazione pagina "Dettaglio Lavoro" (gallery immagini con lightbox, informazioni progetto, CTA)
+- Implementazione pagina "Contatti" (informazioni, mappa)
+- Implementazione pagina "Richiesta Preventivo" (form completo con validazione)
+- Implementazione pagine legali (Privacy, Cookie Policy)
+- Styling responsive completo
+- Ottimizzazione performance (lazy load immagini, caching, ottimizzazione gallery)
+
+**Tempo Stimato**: 40 ore  
+**Costo**: €2.000
+
+---
+
+### 6. CMS Portfolio (Opzionale)
+
+**Attività**:
+- Setup Directus CMS per gestione portfolio
+- Configurazione collezioni (progetti, categorie, immagini)
+- Setup upload multiplo immagini
+- Interfaccia admin per CRUD progetti
+- Integrazione frontend con API Directus
+- Sistema gestione gallery immagini per progetto
+- Validazione e sanitizzazione dati
+
+**Nota**: Questa sezione è opzionale. Se non implementata, i progetti vengono inseriti direttamente nel codice durante lo sviluppo.
+
+**Tempo Stimato**: 16 ore  
+**Costo**: €800
+
+---
+
+### 7. Form Preventivo e Integrazioni
+
+**Attività**:
+- Implementazione form preventivo completo con validazione
+- Gestione upload file allegati (foto/pdf)
+- Integrazione reCAPTCHA
+- Setup invio email con template personalizzabile
+- Invio email aziendale + copia richiedente (opzionale)
+- Precompilazione form da pagina dettaglio lavoro
+- Gestione consenso privacy
+
+**Tempo Stimato**: 8 ore  
+**Costo**: €400
+
+---
+
+### 8. Integrazioni Esterne
+
+**Attività**:
+- Integrazione Google Maps (embed o API)
+- Integrazione Google Analytics 4
+- Integrazione Google Tag Manager
+- Setup tracking eventi (click telefono, click email, invio form preventivo, visualizzazione progetti)
+- Configurazione conversioni e obiettivi
+
+**Tempo Stimato**: 4 ore  
+**Costo**: €200
+
+---
+
+### 9. SEO e Ottimizzazioni
+
+**Attività**:
+- Configurazione meta tag per tutte le pagine
+- Ottimizzazione H1-H6 e struttura semantica
+- Generazione sitemap.xml dinamica (se CMS)
+- Generazione robots.txt
+- Ottimizzazione URL pulite
+- Schema markup per progetti (se applicabile)
+- Test accessibilità base (WCAG 2.1 AA)
+- Ottimizzazione Core Web Vitals
+- Ottimizzazione immagini per SEO (alt text, naming)
+
+**Tempo Stimato**: 6 ore  
+**Costo**: €300
+
+---
+
+### 10. Testing e QA
+
+**Attività**:
+- Test funzionalità su browser principali (Chrome, Firefox, Safari, Edge)
+- Test responsive su dispositivi vari (mobile, tablet, desktop)
+- Test form preventivo e validazione
+- Test upload file allegati
+- Test filtri e ricerca portfolio
+- Test gallery e lightbox
+- Test integrazioni (GA, Maps, email, reCAPTCHA)
+- Test performance (Lighthouse)
+- Test CMS (se implementato)
+- Fix bug e ottimizzazioni
+
+**Tempo Stimato**: 10 ore  
+**Costo**: €500
+
+---
+
+### 11. Deployment e Configurazione Produzione
+
+**Attività**:
+- Build produzione ottimizzato
+- Configurazione ambiente produzione su VPS
+- Setup database produzione (se CMS)
+- Setup storage produzione (se CMS)
+- Configurazione backup automatici database e storage
+- Setup CI/CD base (se necessario)
+- Test produzione completo
+- Monitoraggio setup base
+
+**Tempo Stimato**: 6 ore  
+**Costo**: €300
+
+---
+
+### 12. Documentazione
+
+**Attività**:
+- Documentazione tecnica progetto
+- Guida utilizzo CMS (se implementato)
+- Guida aggiornamento contenuti (per cliente)
+- Documentazione deployment
+- README progetto
+
+**Tempo Stimato**: 3 ore  
+**Costo**: €150
+
+---
+
+## Riepilogo Totale
+
+### Opzione A: Con CMS Portfolio
+
+| Sezione | Ore | Costo |
+|---------|-----|-------|
+| Infrastruttura e Setup Ambiente | 10 | €500 |
+| Design - Raccolta e Sistemazione Asset | 10 | €500 |
+| Wireframing | 14 | €700 |
+| Design System e Prototipazione | 20 | €1.000 |
+| Implementazione Frontend | 40 | €2.000 |
+| CMS Portfolio | 16 | €800 |
+| Form Preventivo e Integrazioni | 8 | €400 |
+| Integrazioni Esterne | 4 | €200 |
+| SEO e Ottimizzazioni | 6 | €300 |
+| Testing e QA | 10 | €500 |
+| Deployment e Configurazione Produzione | 6 | €300 |
+| Documentazione | 3 | €150 |
+| **TOTALE** | **147 ore** | **€7.350** |
+
+### Opzione B: Senza CMS Portfolio
+
+| Sezione | Ore | Costo |
+|---------|-----|-------|
+| Infrastruttura e Setup Ambiente | 8 | €400 |
+| Design - Raccolta e Sistemazione Asset | 10 | €500 |
+| Wireframing | 14 | €700 |
+| Design System e Prototipazione | 20 | €1.000 |
+| Implementazione Frontend | 40 | €2.000 |
+| Form Preventivo e Integrazioni | 8 | €400 |
+| Integrazioni Esterne | 4 | €200 |
+| SEO e Ottimizzazioni | 6 | €300 |
+| Testing e QA | 10 | €500 |
+| Deployment e Configurazione Produzione | 4 | €200 |
+| Documentazione | 2 | €100 |
+| **TOTALE** | **126 ore** | **€6.300** |
+
+---
+
+## Tempi di Sviluppo
+
+**Opzione A (Con CMS)**: 21-22 giorni lavorativi (considerando 7 ore/giorno)  
+**Opzione B (Senza CMS)**: 18-19 giorni lavorativi (considerando 7 ore/giorno)  
+**Timeline Consigliata**: 4-5 settimane (con buffer per revisioni e imprevisti)
+
+---
+
+## Note
+
+- I costi non includono IVA (se applicabile)
+- I tempi sono stimati considerando che il cliente fornisca tutti gli asset e contenuti richiesti nei tempi previsti
+- Eventuali modifiche sostanziali al design o alle funzionalità dopo l'approvazione dei wireframe potrebbero comportare costi aggiuntivi
+- **Opzione A (Con CMS)**: Permette al cliente di gestire autonomamente il portfolio lavori dopo la consegna. Consigliata per aziende che prevedono aggiornamenti frequenti.
+- **Opzione B (Senza CMS)**: Riduce costi e tempi, ma richiede intervento tecnico per ogni aggiornamento futuro. Consigliata solo se si prevedono pochissime variazioni nel tempo.
+- Costi infrastruttura hosting (VPS Hetzner) non inclusi nel preventivo (vedi documento infrastruttura.md)
+- Il numero di progetti iniziali nel portfolio influisce sui tempi di implementazione (stima basata su 10-15 progetti iniziali)
+

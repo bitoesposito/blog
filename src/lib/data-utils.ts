@@ -249,6 +249,216 @@ export async function getEducationTOCSections(postId: string): Promise<TOCSectio
   return sections
 }
 
+// Quote (Preventivi) functions
+export async function getAllQuotes(): Promise<CollectionEntry<'quote'>[]> {
+  const quotes = await getCollection('quote')
+  return quotes
+    .filter((quote) => !quote.data.draft && !isQuoteSubpost(quote.id))
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+}
+
+export async function getAllQuotesAndSubposts(): Promise<
+  CollectionEntry<'quote'>[]
+> {
+  const quotes = await getCollection('quote')
+  return quotes
+    .filter((quote) => !quote.data.draft)
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+}
+
+export function isQuoteSubpost(quoteId: string | undefined): boolean {
+  if (!quoteId) return false
+  return quoteId.includes('/')
+}
+
+export function getQuoteParentId(subpostId: string): string {
+  return subpostId.split('/')[0]
+}
+
+export async function getQuoteSubpostsForParent(
+  parentId: string,
+): Promise<CollectionEntry<'quote'>[]> {
+  const quotes = await getCollection('quote')
+  return quotes
+    .filter(
+      (quote) =>
+        !quote.data.draft &&
+        isQuoteSubpost(quote.id) &&
+        getQuoteParentId(quote.id) === parentId,
+    )
+    .sort((a, b) => {
+      const dateDiff = a.data.date.valueOf() - b.data.date.valueOf()
+      if (dateDiff !== 0) return dateDiff
+
+      const orderA = a.data.order ?? 0
+      const orderB = b.data.order ?? 0
+      return orderA - orderB
+    })
+}
+
+export async function getQuoteById(
+  quoteId: string,
+): Promise<CollectionEntry<'quote'> | null> {
+  const allQuotes = await getAllQuotesAndSubposts()
+  return allQuotes.find((quote) => quote.id === quoteId) || null
+}
+
+export async function getQuoteByShareId(
+  shareId: string,
+): Promise<CollectionEntry<'quote'> | null> {
+  const allQuotes = await getAllQuotesAndSubposts()
+  return allQuotes.find((quote) => quote.data.shareId === shareId) || null
+}
+
+export async function getQuoteSubpostCount(parentId: string): Promise<number> {
+  const subposts = await getQuoteSubpostsForParent(parentId)
+  return subposts.length
+}
+
+export async function getQuoteCombinedReadingTime(quoteId: string): Promise<string> {
+  const quote = await getQuoteById(quoteId)
+  if (!quote) return readingTime(0)
+
+  let totalWords = calculateWordCountFromHtml(quote.body)
+
+  if (!isQuoteSubpost(quoteId)) {
+    const subposts = await getQuoteSubpostsForParent(quoteId)
+    for (const subpost of subposts) {
+      totalWords += calculateWordCountFromHtml(subpost.body)
+    }
+  }
+
+  return readingTime(totalWords)
+}
+
+export async function getQuoteReadingTime(quoteId: string): Promise<string> {
+  const quote = await getQuoteById(quoteId)
+  if (!quote) return readingTime(0)
+
+  const wordCount = calculateWordCountFromHtml(quote.body)
+  return readingTime(wordCount)
+}
+
+export async function hasQuoteSubposts(quoteId: string): Promise<boolean> {
+  const subposts = await getQuoteSubpostsForParent(quoteId)
+  return subposts.length > 0
+}
+
+export async function getQuoteParentPost(
+  subpostId: string,
+): Promise<CollectionEntry<'quote'> | null> {
+  if (!isQuoteSubpost(subpostId)) {
+    return null
+  }
+
+  const parentId = getQuoteParentId(subpostId)
+  const allQuotes = await getAllQuotes()
+  return allQuotes.find((quote) => quote.id === parentId) || null
+}
+
+export async function getAdjacentQuotes(currentId: string): Promise<{
+  newer: CollectionEntry<'quote'> | null
+  older: CollectionEntry<'quote'> | null
+  parent: CollectionEntry<'quote'> | null
+}> {
+  const allQuotes = await getAllQuotes()
+
+  if (isQuoteSubpost(currentId)) {
+    const parentId = getQuoteParentId(currentId)
+    const parent = allQuotes.find((quote) => quote.id === parentId) || null
+
+    const quotes = await getCollection('quote')
+    const subposts = quotes
+      .filter(
+        (quote) =>
+          isQuoteSubpost(quote.id) &&
+          getQuoteParentId(quote.id) === parentId &&
+          !quote.data.draft,
+      )
+      .sort((a, b) => {
+        const dateDiff = a.data.date.valueOf() - b.data.date.valueOf()
+        if (dateDiff !== 0) return dateDiff
+
+        const orderA = a.data.order ?? 0
+        const orderB = b.data.order ?? 0
+        return orderA - orderB
+      })
+
+    const currentIndex = subposts.findIndex((quote) => quote.id === currentId)
+    if (currentIndex === -1) {
+      return { newer: null, older: null, parent }
+    }
+
+    return {
+      newer:
+        currentIndex < subposts.length - 1 ? subposts[currentIndex + 1] : null,
+      older: currentIndex > 0 ? subposts[currentIndex - 1] : null,
+      parent,
+    }
+  }
+
+  const parentQuotes = allQuotes.filter((quote) => !isQuoteSubpost(quote.id))
+  const currentIndex = parentQuotes.findIndex((quote) => quote.id === currentId)
+
+  if (currentIndex === -1) {
+    return { newer: null, older: null, parent: null }
+  }
+
+  return {
+    newer: currentIndex > 0 ? parentQuotes[currentIndex - 1] : null,
+    older:
+      currentIndex < parentQuotes.length - 1
+        ? parentQuotes[currentIndex + 1]
+        : null,
+    parent: null,
+  }
+}
+
+export async function getQuoteTOCSections(quoteId: string): Promise<TOCSection[]> {
+  const quote = await getQuoteById(quoteId)
+  if (!quote) return []
+
+  const parentId = isQuoteSubpost(quoteId) ? getQuoteParentId(quoteId) : quoteId
+  const parentQuote = isQuoteSubpost(quoteId) ? await getQuoteById(parentId) : quote
+
+  if (!parentQuote) return []
+
+  const sections: TOCSection[] = []
+
+  const { headings: parentHeadings } = await render(parentQuote)
+  if (parentHeadings.length > 0) {
+    sections.push({
+      type: 'parent',
+      title: 'Overview',
+      headings: parentHeadings.map((heading) => ({
+        slug: heading.slug,
+        text: heading.text,
+        depth: heading.depth,
+      })),
+    })
+  }
+
+  const subposts = await getQuoteSubpostsForParent(parentId)
+  for (const subpost of subposts) {
+    const { headings: subpostHeadings } = await render(subpost)
+    if (subpostHeadings.length > 0) {
+      sections.push({
+        type: 'subpost',
+        title: subpost.data.title,
+        headings: subpostHeadings.map((heading, index) => ({
+          slug: heading.slug,
+          text: heading.text,
+          depth: heading.depth,
+          isSubpostTitle: index === 0,
+        })),
+        subpostId: subpost.id,
+      })
+    }
+  }
+
+  return sections
+}
+
 // Recupera i progetti adiacenti per la navigazione
 export async function getAdjacentProjects(
   currentId: string,

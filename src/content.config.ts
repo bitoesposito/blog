@@ -63,4 +63,22 @@ const education = defineCollection({
     }),
 })
 
-export const collections = { blog, authors, projects, education }
+const quote = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/quote' }),
+  schema: ({ image }) =>
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      date: z.coerce.date(),
+      order: z.number().optional(),
+      image: image().optional(),
+      tags: z.array(z.string()).optional(),
+      authors: z.array(z.string()).optional(),
+      draft: z.boolean().optional(),
+      client: z.string().optional(), // Nome del cliente
+      noindex: z.boolean().optional().default(true), // Non indicizzare nei motori di ricerca
+      shareId: z.string().optional(), // ID personalizzato per condivisione privata
+    }),
+})
+
+export const collections = { blog, authors, projects, education, quote }

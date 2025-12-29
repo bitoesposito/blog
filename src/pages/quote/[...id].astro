@@ -1,0 +1,275 @@
+---
+import Link from '@/components/Link.astro'
+import QuotePostHead from '@/components/QuotePostHead.astro'
+import QuoteSubpostsBanner from '@/components/QuoteSubpostsBanner.astro'
+import QuoteSubpostsHeader from '@/components/QuoteSubpostsHeader.astro'
+import QuoteSubpostsSidebar from '@/components/QuoteSubpostsSidebar.astro'
+import QuoteTOCSidebar from '@/components/QuoteTOCSidebar.astro'
+import TOCHeader from '@/components/TOCHeader.astro'
+import { Button } from '@/components/ui/button'
+import Layout from '@/layouts/Layout.astro'
+import {
+  getAllQuotesAndSubposts,
+  getQuoteCombinedReadingTime,
+  getQuoteParentId,
+  getQuoteParentPost,
+  getQuoteReadingTime,
+  getQuoteSubpostCount,
+  getQuoteTOCSections,
+  hasQuoteSubposts,
+  isQuoteSubpost,
+  parseAuthors,
+} from '@/lib/data-utils'
+import { formatDate } from '@/lib/utils'
+import { Icon } from 'astro-icon/components'
+import { render } from 'astro:content'
+
+export async function getStaticPaths() {
+  const quotes = await getAllQuotesAndSubposts()
+  const paths = quotes.map((quote) => ({
+    params: { id: quote.id },
+    props: quote,
+  }))
+  
+  // Aggiungi anche path con shareId per i preventivi principali che hanno shareId
+  const shareIdPaths = quotes
+    .filter((quote) => quote.data.shareId && !isQuoteSubpost(quote.id))
+    .map((quote) => ({
+      params: { id: quote.data.shareId! },
+      props: quote,
+    }))
+  
+  return [...paths, ...shareIdPaths]
+}
+
+const quote = Astro.props
+const currentQuoteId = Astro.params.id
+
+// Se il parametro è uno shareId invece di un ID normale, trova il preventivo
+let actualQuote = quote
+if (!isQuoteSubpost(currentQuoteId) && quote.data.shareId === currentQuoteId) {
+  // Il parametro è uno shareId, usa il quote già nel props
+  actualQuote = quote
+} else if (!isQuoteSubpost(currentQuoteId)) {
+  // Prova a trovare per shareId se non è un subpost
+  const { getQuoteByShareId } = await import('@/lib/data-utils')
+  const quoteByShareId = await getQuoteByShareId(currentQuoteId)
+  if (quoteByShareId) {
+    actualQuote = quoteByShareId
+  }
+}
+
+const { Content, headings } = await render(actualQuote)
+const authors = await parseAuthors(actualQuote.data.authors ?? [])
+
+const actualQuoteId = actualQuote.id
+const isCurrentSubpost = isQuoteSubpost(actualQuoteId)
+const parentQuote = isCurrentSubpost ? await getQuoteParentPost(actualQuoteId) : null
+
+const hasChildPosts = await hasQuoteSubposts(actualQuoteId)
+const subpostCount = !isCurrentSubpost
+  ? await getQuoteSubpostCount(actualQuoteId)
+  : 0
+const quoteReadingTime = await getQuoteReadingTime(actualQuoteId)
+const combinedReadingTime =
+  hasChildPosts && !isCurrentSubpost
+    ? await getQuoteCombinedReadingTime(actualQuoteId)
+    : null
+
+const tocSections = await getQuoteTOCSections(actualQuoteId)
+
+// Funzione helper per generare URL usando shareId quando disponibile
+function getQuoteUrl(quoteId: string, shareId?: string): string {
+  if (shareId) {
+    return `/quote/${shareId}`
+  }
+  return `/quote/${quoteId}`
+}
+---
+
+<Layout>
+  <QuotePostHead slot="head" post={actualQuote} />
+  {
+    (hasChildPosts || isCurrentSubpost) && (
+      <QuoteSubpostsHeader
+        slot="subposts-navigation"
+        parentId={isCurrentSubpost ? getQuoteParentId(actualQuoteId) : actualQuoteId}
+      />
+    )
+  }
+  {
+    headings?.length > 0 &&
+      !(
+        isCurrentSubpost &&
+        headings.length === 1 &&
+        headings[0].text === actualQuote.data.title
+      ) && <TOCHeader slot="table-of-contents" headings={headings} />
+  }
+
+  <section
+    class="grid grid-cols-[minmax(0px,1fr)_min(calc(var(--breakpoint-md)-2rem),100%)_minmax(0px,1fr)] gap-y-6"
+  >
+    <section class="col-start-2 flex flex-col gap-y-6 text-center">
+      <div class="flex flex-col">
+        <h1
+          class="mb-2 scroll-mt-31 text-3xl leading-tight font-medium sm:text-4xl"
+          id="post-title"
+        >
+          {actualQuote.data.title}
+        </h1>
+
+        <div
+          class="text-muted-foreground divide-border mb-4 flex flex-col items-center justify-center divide-y text-xs sm:flex-row sm:flex-wrap sm:divide-x sm:divide-y-0 sm:text-sm"
+        >
+          {
+            authors.length > 0 && (
+              <div class="flex w-full items-center justify-center gap-x-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+                {authors.map((author) => (
+                  <div class="flex items-center gap-x-1.5">
+                    {author.isRegistered ? (
+                      <Link
+                        href={`/authors/${author.id}`}
+                        underline
+                        class="text-foreground"
+                      >
+                        <span>{author.name}</span>
+                      </Link>
+                    ) : (
+                      <span>{author.name}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          <div
+            class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0"
+          >
+            <span>{formatDate(quote.data.date)}</span>
+          </div>
+
+          <div
+            class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0"
+          >
+            <span>
+              {quoteReadingTime}
+              {
+                combinedReadingTime &&
+                  combinedReadingTime !== quoteReadingTime && (
+                    <span class="text-muted-foreground">
+                      {' '}
+                      ({combinedReadingTime} totale)
+                    </span>
+                  )
+              }
+            </span>
+          </div>
+
+          {
+            subpostCount > 0 && (
+              <div class="flex w-full items-center justify-center gap-1 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+                <Icon name="lucide:file-text" class="size-3" />
+                {subpostCount} documento{subpostCount === 1 ? '' : 'i'}
+              </div>
+            )
+          }
+
+          {
+            actualQuote.data.client && (
+              <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+                <Icon name="lucide:user" class="size-3" />
+                <span>{actualQuote.data.client}</span>
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+    </section>
+
+    {
+      (hasChildPosts || isCurrentSubpost) && (
+        <QuoteSubpostsSidebar
+          parentId={
+            isCurrentSubpost ? getQuoteParentId(actualQuoteId) : actualQuoteId
+          }
+          parentShareId={actualQuote.data.shareId}
+          className="w-64"
+        />
+      )
+    }
+
+    <article class="prose col-start-2 max-w-none">
+      <Content />
+    </article>
+
+    {
+      tocSections.length > 0 && (
+        <QuoteTOCSidebar sections={tocSections} currentPostId={actualQuoteId} />
+      )
+    }
+
+    {
+      (hasChildPosts || isCurrentSubpost) && (
+        <QuoteSubpostsBanner
+          parentId={
+            isCurrentSubpost ? getQuoteParentId(actualQuoteId) : actualQuoteId
+          }
+          currentPostId={actualQuoteId}
+          parentShareId={actualQuote.data.shareId}
+        />
+      )
+    }
+  </section>
+
+  <Button
+    variant="outline"
+    size="icon"
+    className="group fixed right-8 bottom-8 z-50 hidden"
+    id="scroll-to-top"
+    title="Torna in cima"
+    aria-label="Torna in cima"
+  >
+    <Icon
+      name="lucide:arrow-up"
+      class="mx-auto size-4 transition-all group-hover:-translate-y-0.5"
+    />
+  </Button>
+
+  <script>
+    document.addEventListener('astro:page-load', () => {
+      const scrollToTopButton = document.getElementById('scroll-to-top')
+      const footer = document.querySelector('footer')
+
+      if (scrollToTopButton && footer) {
+        scrollToTopButton.addEventListener('click', () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        })
+
+        window.addEventListener('scroll', () => {
+          const footerRect = footer.getBoundingClientRect()
+          const isFooterVisible = footerRect.top <= window.innerHeight
+
+          scrollToTopButton.classList.toggle(
+            'hidden',
+            window.scrollY <= 300 || isFooterVisible,
+          )
+        })
+      }
+    })
+  </script>
+</Layout>
+
+<script>
+  if (document.querySelector('.katex')) {
+    if (!document.querySelector('link[href*="katex.min.css"]')) {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href =
+        'https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css'
+      document.head.appendChild(link)
+    }
+  }
+</script>
+
