@@ -24,7 +24,7 @@ const { project, cardClass = '' } = Astro.props
   >
     {
       project.data.image && (
-        <div class="w-full sm:max-w-3xs sm:shrink-0 rounded-lg overflow-hidden">
+        <div class="w-full overflow-hidden rounded-lg sm:max-w-3xs sm:shrink-0">
           <Image
             src={project.data.image}
             alt={project.data.name}
@@ -39,7 +39,7 @@ const { project, cardClass = '' } = Astro.props
       <h3 class="text-lg font-medium">
         {project.data.name}
       </h3>
-      <p class="text-muted-foreground mb-1 text-sm line-clamp-3">
+      <p class="text-muted-foreground mb-1 line-clamp-3 text-sm">
         {project.data.description}
       </p>
       {
@@ -59,7 +59,7 @@ const { project, cardClass = '' } = Astro.props
       }
       {
         project.data.tags && (
-          <div class="flex flex-wrap gap-2 h-6 overflow-hidden">
+          <div class="flex h-6 flex-wrap gap-2 overflow-hidden">
             {project.data.tags.map((tag: string) => (
               <Badge variant="muted">{tag}</Badge>
             ))}
