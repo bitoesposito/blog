@@ -1,0 +1,314 @@
+---
+name: 'Televito'
+description: 'Omaggio digitale al Televideo RAI, costruito in un pomeriggio con React 19 e Vite. Replica la navigazione numerica e il feed RSS ufficiali RAI per notizie in tempo reale.'
+tags: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'RSS']
+image: './assets/image.png'
+link: 'https://vitoesposito.it'
+startDate: '2025-12-25'
+endDate: '2025-12-29'
+---
+
+## L'Ispirazione
+
+Durante il cenone di Natale a casa dei nonni della mia ragazza, i parenti hanno aperto il Televideo sulla TV. Quell'interfaccia così particolare, con i suoi colori saturi, i caratteri pixelati e la navigazione numerica, mi ha colpito immediatamente. Un pezzo di storia della televisione italiana ancora funzionante, un'esperienza utente così diversa da tutto quello che progettiamo oggi.
+
+Tornato a casa, ho deciso di ricrearlo come esperimento web. In un pomeriggio è nato Televito: un omaggio digitale che replica l'estetica e l'interazione del Televideo RAI, alimentato da dati reali grazie ai feed RSS ufficiali della RAI.
+
+## La Soluzione
+
+Televito è un'applicazione React che ricrea fedelmente l'esperienza del Televideo nel browser. Include navigazione numerica autentica digitando numeri da tastiera o cliccando, effetti CRT con scanlines e flickering per simulare un monitor a tubo catodico, dati in tempo reale tramite feed RSS ufficiali RAI, widget meteo con previsioni per Cerignola via Open-Meteo API, e design responsive che adatta i widget allo spazio disponibile.
+
+import { ArrowRightIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import Link from '@/components/Link.astro'
+
+<div class="flex w-full justify-center">
+  <Button variant="outline" size="lg" className="w-full justify-between">
+    <Link href="https://televito.vitoesposito.it" target="_blank">Vai all'applicazione</Link>
+    <ArrowRightIcon className="w-4 h-4" />
+  </Button>
+</div>
+
+## Come Funziona
+
+L'interfaccia replica fedelmente il Televideo RAI originale. In alto c'è l'header con il numero di pagina corrente e l'orologio in tempo reale (verde, come nell'originale). In basso, una barra di navigazione colorata con i pulsanti per le sezioni principali.
+
+La **navigazione numerica** funziona esattamente come nel Televideo reale: si digita un numero a 3 cifre (100, 200, 300...) e si viene portati alla pagina corrispondente. Su desktop basta iniziare a digitare i numeri; su mobile si tocca l'indicatore di pagina per aprire l'input. Il sistema include auto-conferma dopo 2 secondi se non si completa il numero.
+
+Le **sezioni disponibili** seguono la struttura del Televideo originale:
+- **100**: Homepage con widget informativi (meteo, ultime notizie, guida TV)
+- **200**: Notizie principali (feed RSS RAI)
+- **300**: Guida TV
+- **400**: Economia (feed RSS RAI)
+- **500**: Cultura e spettacolo (feed RSS RAI)
+
+Ogni sezione supporta sotto-pagine: digitando 201, 202, ecc. si accede ai singoli articoli della sezione notizie.
+
+## L'Estetica Retro
+
+L'effetto visivo è ottenuto combinando diversi elementi. Lo **sfondo nero** con testo ad alto contrasto replica l'aspetto del Televideo. Le **scanlines** sono create con un pseudo-elemento CSS che sovrappone righe orizzontali semitrasparenti, simulando le linee di scansione di un CRT. Un'**animazione di flickering** sottile fa variare leggermente la luminosità ogni 3 secondi, ricreando l'instabilità tipica dei vecchi monitor.
+
+La tipografia usa **Jersey 10**, un google font pixel-art che evoca i caratteri bitmap del Televideo originale. I colori seguono la palette classica: blu, giallo, verde, rosso, ciano e bianco su sfondo nero, tutti definiti come variabili CSS per consistenza.
+
+## Le Sfide Tecniche
+
+Il **sistema di caching** è stato fondamentale per evitare troppe chiamate API. Ho implementato un servizio che memorizza i dati per 10 minuti, con fallback ai dati scaduti se la chiamata API fallisce. Questo garantisce che l'applicazione rimanga utilizzabile anche offline o con connessione instabile.
+
+La **responsività dei widget** nella homepage ha richiesto un approccio particolare: invece di usare media queries statiche, ho implementato un sistema che misura dinamicamente lo spazio disponibile e mostra/nasconde i widget in base all'altezza effettiva. Questo evita layout rotti su dispositivi con dimensioni non standard o quando la barra degli indirizzi del browser cambia altezza.
+
+La **navigazione numerica** doveva funzionare sia da tastiera che da touch, gestendo casi limite come input parziali, auto-conferma dopo timeout, e prevenzione di caratteri non numerici.
+
+---
+
+## Dettagli Tecnici
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Stack Tecnologico</summary>
+<div class="px-4 pb-4">
+
+| Categoria | Tecnologia | Versione | Scopo |
+|-----------|-----------|----------|-------|
+| **Framework** | React | 19.2.0 | UI library |
+| **Build Tool** | Vite | 7.2.4 | Dev server e bundler |
+| **Linguaggio** | TypeScript | 5.9 | Type safety |
+| **Styling** | Tailwind CSS | 4 | Utility-first CSS |
+| **Font** | Jersey 10 | - | Tipografia pixel-art |
+| **API** | rss2json | - | Conversione RSS to JSON |
+| **API** | Open-Meteo | - | Dati meteo |
+| **API** | RAI RSS | - | Feed notizie ufficiali |
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Funzionalità Principali</summary>
+<div class="px-4 pb-4">
+
+| Funzionalità | Descrizione |
+|--------------|-------------|
+| **Navigazione Numerica** | Sistema di navigazione a 3 cifre (100-999) come nel Televideo originale |
+| **Effetti CRT** | Scanlines, flickering e palette colori autentici |
+| **Feed RSS RAI** | Notizie, economia e cultura dai feed ufficiali RAI |
+| **Widget Meteo** | Temperatura e condizioni meteo per Cerignola via Open-Meteo |
+| **Guida TV** | Programmazione televisiva |
+| **Caching Intelligente** | Cache 10 minuti con fallback su dati scaduti |
+| **Responsive Widgets** | Adattamento dinamico dei widget basato sullo spazio disponibile |
+| **PWA Ready** | Manifest e meta tag per installazione come app |
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Architettura</summary>
+<div class="px-4 pb-4">
+
+### Struttura Progetto
+
+```
+televito/
+├── src/
+│   ├── components/         # Componenti UI
+│   │   ├── layout/         # Header, Navigation, Content
+│   │   ├── utility/        # TitleBox, Loader
+│   │   └── widgets/        # Weather, News, TvGuide, Contact
+│   ├── hooks/              # Custom hooks
+│   │   ├── useNavigation.ts
+│   │   └── usePageSelection.ts
+│   ├── lib/                # Configurazioni
+│   │   └── navigation.config.tsx
+│   ├── pages/              # Pagine per sezione
+│   │   ├── 200/            # Notizie
+│   │   ├── 300/            # Guida TV
+│   │   ├── 400/            # Economia
+│   │   ├── 500/            # Cultura
+│   │   └── index.tsx       # Homepage (100)
+│   ├── services/           # Servizi API
+│   │   ├── cache.service.ts
+│   │   ├── rss.service.ts
+│   │   ├── weather.service.ts
+│   │   └── news.service.ts
+│   ├── types/              # TypeScript types
+│   └── main.css            # Stili globali e effetti CRT
+├── index.html              # Entry point con meta tag e font
+└── vite.config.ts          # Configurazione Vite
+```
+
+### Pattern Principali
+
+- **Service Layer**: Servizi dedicati per ogni fonte dati (RSS, meteo)
+- **Caching Strategy**: Cache in memoria con TTL di 10 minuti e fallback
+- **Component Composition**: Componenti riutilizzabili (TitleBox) per consistenza visiva
+- **Custom Hooks**: Logica di navigazione isolata in hook riutilizzabili
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Sistema di Navigazione</summary>
+<div class="px-4 pb-4">
+
+### Pagine Disponibili
+
+| Pagina | Sezione | Fonte Dati |
+|--------|---------|------------|
+| **100** | Homepage | Widget aggregati |
+| **200** | Notizie | RSS RAI (rss101.xml) |
+| **201-299** | Dettaglio notizia | RSS RAI |
+| **300** | Guida TV | API TivulaGuida |
+| **400** | Economia | RSS RAI (rss130.xml) |
+| **500** | Cultura | RSS RAI (rss160.xml) |
+
+### Logica di Navigazione
+
+```typescript
+// Mapping pagine a componenti
+if (page >= 200 && page < 300) return <NotiziePage page={page} />;
+if (page >= 300 && page < 400) return <GuidaTvPage page={page} />;
+if (page >= 400 && page < 500) return <EconomiaPage page={page} />;
+if (page >= 500 && page < 600) return <CulturaPage page={page} />;
+```
+
+- Digitazione numeri: cattura globale da tastiera
+- Auto-conferma: dopo 2 secondi se input incompleto
+- Validazione: solo numeri, massimo 3 cifre
+- Pagine inesistenti: redirect automatico alla sezione principale
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Effetti CRT</summary>
+<div class="px-4 pb-4">
+
+### Scanlines
+
+```css
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.2) 1px,
+    transparent 1.5px,
+    transparent 2.5px
+  );
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: multiply;
+}
+```
+
+### Flickering
+
+```css
+@keyframes flicker {
+  0%, 95%, 100% { filter: brightness(1); }
+  97%, 98% { filter: brightness(0.97); }
+}
+
+body {
+  animation: flicker 3s infinite;
+}
+```
+
+### Palette Colori
+
+- `--black`: #000000 (sfondo)
+- `--white`: #FFFFFF (testo principale)
+- `--yellow`: #FFFF00 (notizie)
+- `--blue`: #0000FF (homepage)
+- `--red`: #FF0000 (economia)
+- `--green`: #00FF00 (guida TV, orologio)
+- `--cyan`: #00FFFF (cultura, meteo)
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Sistema di Caching</summary>
+<div class="px-4 pb-4">
+
+### CacheService
+
+Il servizio di caching gestisce tutte le chiamate API per evitare richieste duplicate e garantire performance ottimali.
+
+```typescript
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+class CacheService {
+  private static readonly CACHE_DURATION = 10 * 60 * 1000; // 10 minuti
+  private static cache: Map<string, CacheEntry<any>> = new Map();
+
+  static async get<T>(key: string, fetchFunction: () => Promise<T>): Promise<T> {
+    const cached = this.cache.get(key);
+    const now = Date.now();
+
+    // Restituisci cache se valida
+    if (cached && (now - cached.timestamp) < this.CACHE_DURATION) {
+      return cached.data;
+    }
+
+    // Fetch e salva, con fallback su cache scaduta in caso di errore
+    try {
+      const data = await fetchFunction();
+      this.cache.set(key, { data, timestamp: now });
+      return data;
+    } catch (error) {
+      if (cached) return cached.data; // Fallback
+      throw error;
+    }
+  }
+}
+```
+
+**Caratteristiche:**
+- TTL di 10 minuti per ogni entry
+- Fallback su dati scaduti se l'API fallisce
+- Cache key basata su URL/parametri
+- Invalidazione manuale disponibile
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">API e Feed RSS</summary>
+<div class="px-4 pb-4">
+
+### Feed RSS RAI
+
+| Sezione | URL Feed |
+|---------|----------|
+| **Notizie** | `servizitelevideo.rai.it/televideo/pub/rss101.xml` |
+| **Economia** | `servizitelevideo.rai.it/televideo/pub/rss130.xml` |
+| **Cultura** | `servizitelevideo.rai.it/televideo/pub/rss160.xml` |
+
+I feed RSS vengono convertiti in JSON tramite il servizio rss2json per facilitare il parsing nel frontend.
+
+### Open-Meteo API
+
+```typescript
+const API_URL = "https://api.open-meteo.com/v1/forecast";
+// Coordinate di Cerignola, Puglia
+const LATITUDE = 41.2667;
+const LONGITUDE = 15.9000;
+```
+
+**Weather Codes:**
+- 0: Sereno
+- 1-3: Nuvoloso
+- 45-48: Nebbia
+- 51-67: Pioggia
+- 71+: Neve
+
+### Guida TV
+
+Dati programmazione da `services.tivulaguida.it/api/epg/highlights.json`
+
+</div>
+</details>
+
