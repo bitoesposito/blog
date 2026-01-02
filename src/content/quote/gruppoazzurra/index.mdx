@@ -1,6 +1,6 @@
 ---
 title: 'Preventivo Generale'
-description: 'Riepilogo completo dei preventivi per i tre progetti web del Gruppo Azzurra con dettagli costi, tempi e raccomandazioni'
+description: 'Riepilogo preventivo per i progetti web del Gruppo Azzurra'
 date: 2025-12-29
 authors: ['vitoesposito']
 order: 1
@@ -18,132 +18,179 @@ Questo documento riassume i preventivi per i tre progetti web del Gruppo Azzurra
 
 ---
 
-## Tariffa Applicata
+## Costo Totale
 
-**Ruolo**: UX Engineer (Fullstack + Designer)  
-**Tariffa Oraria**: €50/ora  
-**Tariffa Giornaliera**: €350/giorno (7 ore/giorno)
+<h2><strong>€1.500</strong></h2>
 
----
-
-## Riepilogo Costi per Progetto
-
-### 1. Gruppo Azzurra - Sito Istituzionale Corporate
-
-| Dettaglio | Valore |
-|-----------|--------|
-| **Costo Totale** | €4.300 |
-| **Ore Totali** | 86 ore |
-| **Durata Stimata** | 12-14 giorni lavorativi |
-| **Timeline Consigliata** | 3 settimane |
-
-**Tecnologia**: Astro (sito statico)  
-**Pagine Principali**: 5 pagine
+*Il costo indicato è escluso tasse, costi di servizi, domini, licenze, API e altri servizi esterni qualora non specificati.*
 
 ---
 
-### 2. ICCA - Sito Vetrina/Portfolio Edilizia
+## Infrastruttura
 
-#### Opzione A: Con CMS Portfolio
+- [ ] Creazione VPS
+- [ ] Aggiornamento
+- [ ] Hardening base (UFW + disable root login)
+- [ ] Configurazione reverse proxy e HTTPS (Caddy)
+- [ ] Impostazione dominio (redirect alla VPS)
+- [ ] Configurazione ambienti dockerizzati
 
-| Dettaglio | Valore |
-|-----------|--------|
-| **Costo Totale** | €7.350 |
-| **Ore Totali** | 147 ore |
-| **Durata Stimata** | 21-22 giorni lavorativi |
-| **Timeline Consigliata** | 4-5 settimane |
+### Sono incluse:
 
-**Tecnologia**: Astro con Directus CMS  
-**Pagine Principali**: 8-9 pagine
+- [ ] 1 settimana di assistenza sistemistica per eventuali problemi di configurazione collegati ai servizi forniti di base a partire dalla consegna del progetto
+- [ ] Documentazione della configurazione e procedure di base
 
-#### Opzione B: Senza CMS Portfolio
+### Servizi aggiuntivi:
 
-| Dettaglio | Valore |
-|-----------|--------|
-| **Costo Totale** | €6.300 |
-| **Ore Totali** | 126 ore |
-| **Durata Stimata** | 18-19 giorni lavorativi |
-| **Timeline Consigliata** | 4-5 settimane |
-
-**Tecnologia**: Astro (sito statico)  
-**Pagine Principali**: 8-9 pagine
-
-**Nota**: L'opzione con CMS è consigliata se si prevedono aggiornamenti frequenti del portfolio.
+- Configurazione di sistema di backup per i 3 ambienti dockerizzati (```+250€```)
+- Sistema di sicurezza avanzata per protezione al bruteforcing e tecniche comuni di penetrazione e violazione del server (```+250€```)
+- Ulteriori servizi non elencati (```preventivati sulla base delle necessità```)
 
 ---
 
-### 3. WD Supermercati - Sito Retail con CMS e Automazioni
+## Gruppo Azzurra (WordPress)
 
-| Dettaglio | Valore |
-|-----------|--------|
-| **Costo Totale** | €10.800 |
-| **Ore Totali** | 216 ore |
-| **Durata Stimata** | 31-32 giorni lavorativi |
-| **Timeline Consigliata** | 6-7 settimane |
+### Deliverables pianificati
 
-**Tecnologia**: Next.js + Directus CMS  
-**Pagine Principali**: 7-8 pagine
+- [ ] Homepage
+    - [ ] Header
+    - [ ] Hero
+    - [ ] Sezione "Il gruppo"
+    - [ ] Sezione "Le aziende"
+    - [ ] Sezione "Contatti" (con mappa interattiva e form di contatto base)
+    - [ ] Footer
+- [ ] Integrazione pagine legali fornite dal cliente (Privacy policy / Cookie policy / Termini e condizioni)
 
----
+### Sono incluse:
 
-## Riepilogo Totale Complessivo
+- [ ] Ricostruzione asset vettoriali di loghi principali
+- [ ] Integrazione snippet Google analytics / Umamy analytics fornite dal cliente
+- [ ] Documentazione di progetto e procedure
+- [ ] 2 revisioni del layout presentato tramite Figma o strumenti affini
 
-### Scenario 1: Tutti i Progetti (ICCA con CMS)
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Note aggiuntive sul processo di revisione</summary>
+<div class="px-4 pb-4">
 
-| Progetto | Costo | Ore |
-|----------|-------|-----|
-| Gruppo Azzurra | €4.300 | 86 |
-| ICCA (Con CMS) | €7.350 | 147 |
-| WD Supermercati | €10.800 | 216 |
-| **TOTALE** | **€22.450** | **449 ore** |
+Il processo di revisione sarà eseguito tramite Figma, al cui interno è possibile inserire commenti tramite lo strumento apposito indicando il punto specifico con la specifica modifica da apportare con, eventualmente, la possibilità di allegare immagini e informazioni esaustive riguardo la modifica da apportare.
 
-**Durata Complessiva Stimata**: 64-65 giorni lavorativi (circa 9-10 settimane)
+</div>
+</details>
 
-### Scenario 2: Tutti i Progetti (ICCA senza CMS)
+### Servizi aggiuntivi:
 
-| Progetto | Costo | Ore |
-|----------|-------|-----|
-| Gruppo Azzurra | €4.300 | 86 |
-| ICCA (Senza CMS) | €6.300 | 126 |
-| WD Supermercati | €10.800 | 216 |
-| **TOTALE** | **€21.400** | **428 ore** |
-
-**Durata Complessiva Stimata**: 61-62 giorni lavorativi (circa 9 settimane)
-
----
-
-## Note Importanti
-
-### Costi Non Inclusi
-
-- **IVA**: I costi indicati sono esclusi IVA (se applicabile)
-- **Hosting**: Costi infrastruttura hosting VPS Hetzner non inclusi (circa €12,80/mese per VPS condivisa, vedi documento infrastruttura)
-- **Domini**: Costi registrazione/rinovo domini non inclusi
-- **Email Marketing Provider**: Costi mensili provider newsletter (Mailchimp/Sendinblue/SendGrid) non inclusi
-- **Servizi Esterni**: Costi API Google Maps, reCAPTCHA, ecc. (generalmente gratuiti o con piani base gratuiti)
-
-### Condizioni
-
-- I tempi sono stimati considerando che il cliente fornisca tutti gli asset e contenuti richiesti nei tempi previsti
-- Eventuali modifiche sostanziali al design o alle funzionalità dopo l'approvazione dei wireframe potrebbero comportare costi aggiuntivi
-- I preventivi includono un ciclo di revisioni per ogni fase (design, wireframe, prototipo)
-- Revisioni aggiuntive oltre quelle incluse potrebbero comportare costi aggiuntivi
-
-### Raccomandazioni
-
-1. **ICCA - CMS Portfolio**: Consigliata l'opzione con CMS se si prevedono aggiornamenti frequenti del portfolio. L'opzione senza CMS è consigliabile solo se si prevedono pochissime variazioni nel tempo.
-
-2. **Priorità Progetti**: Si consiglia di iniziare con Gruppo Azzurra (più semplice) per stabilire design system e workflow, poi procedere con ICCA e infine WD Supermercati (più complesso).
-
-3. **Infrastruttura Condivisa**: Tutti e tre i progetti possono essere ospitati sulla stessa VPS Hetzner, ottimizzando i costi infrastrutturali.
-
-4. **Design System Condiviso**: È possibile creare un design system base condiviso tra i tre progetti (colori, tipografia, componenti base) per ridurre tempi e costi, mantenendo identità visive distinte per ogni brand.
+- Interventi su immagini fornite dal cliente (```+15€/immagine```)
+- Ogni revisione aggiuntiva eccedente le già incluse nel preventivo (```+250€```)
+- Interventi su testi non eccedenti le 20 parole (```preventivati sulla base delle necessità```)
+- Ottimizzazione prestazioni e configurazione (```preventivati sulla base delle necessità```)
+- Ulteriori servizi non elencati (```preventivati sulla base delle necessità```)
 
 ---
 
-## Prossimi Passi
+## ICCA (WordPress)
 
-1. **Revisione Preventivi**: Analisi dettagliata dei preventivi per ogni progetto
-2. **Definizione Priorità**: Stabilire ordine di sviluppo dei progetti
-3. **Raccolta Asset**: Inizio raccolta asset e contenuti per il primo progetto
-4. **Kick-off Meeting**: Riunione di avvio progetto con definizione timeline dettagliata
+### Deliverables pianificati
+
+- [ ] Homepage
+    - [ ] Header
+    - [ ] Hero
+    - [ ] Sezione "Chi siamo"
+    - [ ] Sezione "Ultimi progetti"
+    - [ ] Sezione "Richiesta preventivo" (con mappa interattiva e form di contatto base)
+    - [ ] Footer
+- [ ] Pagina "Progetti"
+    - [ ] Card per progetto con breve descrizione
+- [ ] Pagina "Dettaglio progetto"
+    - [ ] Immagine di copertina
+    - [ ] Titolo
+    - [ ] Descrizione
+    - [ ] Categoria
+    - [ ] Località
+    - [ ] Data
+    - [ ] Tags
+- [ ] Integrazione pagine legali fornite dal cliente (Privacy policy / Cookie policy / Termini e condizioni)
+
+### Sono incluse:
+
+- [ ] Ricostruzione asset vettoriali di loghi principali
+- [ ] Integrazione snippet Google analytics / Umamy analytics fornite dal cliente
+- [ ] Documentazione di progetto e procedure essenziali *(comprese sul come creare e configurare il progetto nella sezione progetti)*
+- [ ] 2 revisioni del layout presentato tramite Figma o strumenti affini
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Note aggiuntive sul processo di revisione</summary>
+<div class="px-4 pb-4">
+
+Il processo di revisione sarà eseguito tramite Figma, al cui interno è possibile inserire commenti tramite lo strumento apposito indicando il punto specifico con la specifica modifica da apportare con, eventualmente, la possibilità di allegare immagini e informazioni esaustive riguardo la modifica da apportare.
+
+</div>
+</details>
+
+### Servizi aggiuntivi:
+
+- Interventi su immagini fornite dal cliente (```+15€/immagine```)
+- Ogni revisione aggiuntiva eccedente le già incluse nel preventivo (```+250€```)
+- Interventi su testi non eccedenti le 20 parole e non facenti parte del contenuto dei portfolio (```preventivati sulla base delle necessità```)
+- Impaginazione e creazione del singolo progetto di portfolio con interventi gestione degli asset forniti (fotoritocco, ottimizzazione dimensioni ecc...) e ottimizzazione del copy in funzione della SEO (```preventivati sulla base delle necessità```).
+- Ulteriori servizi non elencati (```preventivati sulla base delle necessità```)
+
+---
+
+## WD Supermercati (WordPress)
+
+### Deliverables pianificati
+
+- [ ] Homepage
+    - [ ] Header
+    - [ ] Hero con banner in rotazione e CTA
+    - [ ] Sezione "Offerte in evidenza"
+    - [ ] Sezione "Punti vendita"
+    - [ ] Sezione "News"
+    - [ ] Sezione "Iscrizione Newsletter" (da integrare con provider scelto e fornito dal cliente) + QR Canale whatsapp
+    - [ ] Footer
+- [ ] Pagina "Punti vendita"
+    - [ ] Elenco punti vendita con informazioni
+    - [ ] Sistema di gestione dei punti vendita (modifica, creazione e eliminazione)
+- [ ] Pagina "Offerte"
+    - [ ] Sistema di gestione delle offerte (modifica, creazione e eliminazione)
+        - [ ] Gestione informazioni base (titolo, prezzo, descrizione e immagini)
+        - [ ] Data inizio e fine validità
+        - [ ] Impostazione della categoria
+        - [ ] Impostazione flag "offerta top" o "fino a esaurimento scorte"
+    - [ ] Listaggio delle offerte
+    - [ ] Filtraggio su categorie, tag e titolo
+- [ ] Pagina "Volantini"
+    - [ ] Sistema di gestione dei volantini
+        - [ ] Gestione informazioni base (titolo, descrizione, file PDF di riferimento)
+        - [ ] Data inizio e fine validità
+    - [ ] Elenco file multimediali (PDF) con titolo e descrizione
+- [ ] Integrazione pagine legali fornite dal cliente (Privacy policy / Cookie policy / Termini e condizioni)
+
+### Sono incluse:
+
+- [ ] Ricostruzione asset vettoriali di loghi e icone
+- [ ] Integrazione snippet Google analytics / Umamy analytics fornite dal cliente
+- [ ] Template di base per elemento come:
+    - [ ] Banner nella home
+    - [ ] Offerta in evidenza
+    - [ ] Punto vendita
+    - [ ] News
+- [ ] Documentazione di progetto e procedure *(comprese sul come creare e configurare offerte, volantini e punti vendita)*
+- [ ] 2 revisioni del layout presentato tramite Figma o strumenti affini
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Note aggiuntive sul processo di revisione</summary>
+<div class="px-4 pb-4">
+
+Il processo di revisione sarà eseguito tramite Figma, al cui interno è possibile inserire commenti tramite lo strumento apposito indicando il punto specifico con la specifica modifica da apportare con, eventualmente, la possibilità di allegare immagini e informazioni esaustive riguardo la modifica da apportare.
+
+</div>
+</details>
+
+### Servizi aggiuntivi:
+
+- Interventi su immagini fornite dal cliente (```+15€/immagine```)
+- Ogni revisione aggiuntiva eccedente le già incluse nel preventivo (```+250€```)
+- Interventi su testi non eccedenti le 20 parole e non facenti parte del contenuto delle offerte e punti vendita (```preventivati sulla base delle necessità```)
+- Setup e compilazione delle offerte / categorie / tags / contenuti e ottimizzazione del copy in funzione della SEO (```preventivati sulla base delle necessità```)
+- Ulteriori servizi non elencati (```preventivati sulla base delle necessità```)
