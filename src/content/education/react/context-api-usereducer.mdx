@@ -1,0 +1,923 @@
+---
+title: 'Context API e useReducer: Gestione Avanzata dello State'
+description: 'Come utilizzare la Context API per condividere lo state tra componenti senza prop drilling e come gestire state complesso con useReducer'
+date: 2026-01-04
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 8
+---
+
+## Introduzione
+
+Quando si costruiscono applicazioni React più complesse, gestire lo state diventa sempre più impegnativo. Man mano che il numero di componenti aumenta e le relazioni tra di essi si complicano, si può incorrere in problemi come il **prop drilling**, dove i dati devono essere passati attraverso molti livelli di componenti anche quando la maggior parte di essi non ne ha bisogno direttamente.
+
+Questo articolo esplora due strumenti potenti di React per gestire questi scenari: la **Context API** e l'hook **useReducer**. La Context API permette di condividere dati tra componenti senza dover passare props attraverso ogni livello dell'albero dei componenti. L'hook useReducer, invece, offre un approccio alternativo a `useState` per gestire state più complesso utilizzando il pattern del reducer.
+
+## Il Problema del Prop Drilling
+
+In applicazioni React complesse, si ha spesso bisogno di condividere lo state tra componenti che si trovano in punti diversi dell'albero dei componenti. Un componente potrebbe dover visualizzare dei dati, mentre un altro componente, completamente separato, potrebbe dover aggiornare quegli stessi dati.
+
+La soluzione più immediata è sollevare lo state al componente comune più vicino che ha accesso a tutti i componenti interessati, e poi passare i dati e le funzioni di aggiornamento attraverso le props. Questo approccio funziona, ma può portare a quello che viene chiamato **prop drilling**.
+
+### Cos'è il Prop Drilling
+
+Il prop drilling si verifica quando si devono passare props attraverso molti livelli di componenti, anche se la maggior parte di questi componenti non utilizza direttamente quei dati. Essi li ricevono solo per passarli ai componenti figli.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio di prop drilling</summary>
+<div class="px-4 pb-4">
+
+Immaginiamo un'applicazione e-commerce con questa struttura:
+
+```jsx
+function App() {
+  const [cartItems, setCartItems] = useState([]);
+  
+  return (
+    <>
+      <Header cartItems={cartItems} />
+      <Shop onAddToCart={handleAddToCart} />
+    </>
+  );
+}
+
+function Header({ cartItems }) {
+  // Header non usa cartItems direttamente, ma li passa a CartModal
+  return (
+    <header>
+      <CartModal cartItems={cartItems} />
+    </header>
+  );
+}
+
+function CartModal({ cartItems }) {
+  // CartModal usa finalmente cartItems
+  return <div>{cartItems.length} items</div>;
+}
+
+function Shop({ onAddToCart }) {
+  // Shop non usa onAddToCart direttamente, ma lo passa a Product
+  return (
+    <div>
+      <Product onAddToCart={onAddToCart} />
+    </div>
+  );
+}
+
+function Product({ onAddToCart }) {
+  // Product usa finalmente onAddToCart
+  return <button onClick={() => onAddToCart(id)}>Add to Cart</button>;
+}
+```
+
+In questo esempio, `Header` e `Shop` ricevono props che non utilizzano direttamente, ma che devono solo inoltrare ai loro figli. Questo è prop drilling.
+
+</div>
+</details>
+
+### Perché il Prop Drilling è un Problema
+
+Il prop drilling crea diversi problemi:
+
+1. **Riduce la riusabilità dei componenti**: I componenti intermedi devono sempre essere utilizzati in un contesto dove possono ricevere e passare queste props specifiche.
+
+2. **Aumenta il boilerplate**: Si deve scrivere codice aggiuntivo per accettare, destrutturare e inoltrare props in ogni componente intermedio.
+
+3. **Rende il codice più difficile da mantenere**: Se si modifica la struttura dei dati condivisi, si deve aggiornare molti componenti.
+
+4. **Rende difficile capire il flusso dei dati**: Non è immediatamente chiaro quali componenti utilizzano effettivamente i dati e quali li stanno solo inoltrando.
+
+## Component Composition come Soluzione Parziale
+
+Una prima soluzione al prop drilling è utilizzare la **component composition**, sfruttando la prop speciale `children` per ridurre i livelli di nesting e permettere ai componenti genitori di renderizzare direttamente i componenti che hanno bisogno dei dati.
+
+### Come Funziona la Component Composition
+
+L'idea è trasformare componenti che fungono solo da wrapper in componenti che accettano `children` e li renderizzano direttamente, permettendo al componente genitore di passare direttamente i dati necessari ai componenti che li utilizzano.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Refactoring con component composition</summary>
+<div class="px-4 pb-4">
+
+Invece di passare `onAddToCart` attraverso `Shop`:
+
+```jsx
+// Prima: prop drilling
+function App() {
+  return <Shop onAddToCart={handleAddToCart} />;
+}
+
+function Shop({ onAddToCart }) {
+  return <Product onAddToCart={onAddToCart} />;
+}
+```
+
+Si può refactorizzare `Shop` per accettare `children`:
+
+```jsx
+// Dopo: component composition
+function App() {
+  return (
+    <Shop>
+      <Product onAddToCart={handleAddToCart} />
+    </Shop>
+  );
+}
+
+function Shop({ children }) {
+  return <div className="shop">{children}</div>;
+}
+```
+
+Ora `handleAddToCart` viene passato direttamente a `Product` senza dover passare attraverso `Shop`.
+
+</div>
+</details>
+
+### Limitazioni della Component Composition
+
+Anche se la component composition può aiutare in alcuni casi, ha delle limitazioni:
+
+- **Non scala bene**: Se si applica questo pattern a tutti i livelli, si finisce con un componente `App` molto grande che contiene tutta la logica di rendering.
+
+- **Non risolve tutti i casi**: Quando i componenti che hanno bisogno dei dati sono profondamente annidati o in rami diversi dell'albero, la component composition non è sufficiente.
+
+- **Può rendere il codice meno organizzato**: Spostare troppo codice nel componente genitore può renderlo difficile da leggere e mantenere.
+
+Per questi motivi, per risolvere completamente il problema del prop drilling, si ha bisogno di una soluzione più potente: la **Context API**.
+
+## La Context API di React
+
+La **Context API** è una funzionalità integrata in React progettata specificamente per condividere dati tra componenti senza dover passare props attraverso ogni livello dell'albero dei componenti.
+
+### Cos'è la Context API
+
+L'idea alla base della Context API è creare un valore di contesto che viene "fornito" a un gruppo di componenti. Questo valore può essere facilmente collegato allo state, permettendo a qualsiasi componente che ha accesso al contesto di leggere e aggiornare lo state senza dover ricevere props.
+
+Quando un componente è "avvolto" da un Provider del contesto, può accedere direttamente al valore del contesto utilizzando l'hook `useContext` (o `use` in React 19+), eliminando completamente la necessità di prop drilling.
+
+### Creare un Context
+
+Per creare un context, si utilizza la funzione `createContext` di React:
+
+```jsx
+import { createContext } from 'react';
+
+// Creazione del context con un valore iniziale
+export const CartContext = createContext({
+  items: [],
+  addItemToCart: () => {},
+});
+```
+
+Il valore passato a `createContext` è il valore iniziale (o default) che verrà utilizzato se un componente cerca di accedere al context senza essere avvolto da un Provider. Questo valore è utile anche per migliorare l'autocompletamento nell'IDE.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Dettagli tecnici su createContext</summary>
+<div class="px-4 pb-4">
+
+`createContext` restituisce un oggetto che contiene:
+
+- **Provider**: Un componente React che viene utilizzato per fornire il valore del context ai componenti figli
+- **Consumer**: Un componente alternativo per accedere al context (meno comune, vedremo dopo)
+
+Il valore iniziale passato a `createContext` viene utilizzato solo se un componente cerca di accedere al context senza essere avvolto da un Provider. In pratica, si dovrebbe sempre utilizzare un Provider, ma il valore iniziale aiuta con l'autocompletamento e può servire come fallback.
+
+</div>
+</details>
+
+### Fornire il Context con il Provider
+
+Dopo aver creato il context, si deve fornirlo ai componenti utilizzando il componente `Provider`. Il Provider deve avvolgere tutti i componenti che hanno bisogno di accedere al context.
+
+```jsx
+import { CartContext } from './store/shopping-cart-context';
+
+function App() {
+  return (
+    <CartContext.Provider value={{ items: [] }}>
+      <Header />
+      <Shop />
+    </CartContext.Provider>
+  );
+}
+```
+
+**Nota importante**: In React 19+, si può usare `CartContext` direttamente come componente. In versioni precedenti (React 18 e inferiori), si deve usare `CartContext.Provider`. Per compatibilità con versioni precedenti, si usa `CartContext.Provider`.
+
+Il `value` prop è obbligatorio e contiene il valore effettivo che si vuole condividere attraverso il context. Questo valore può essere qualsiasi cosa: un numero, una stringa, un oggetto, un array, o anche funzioni.
+
+### Collegare il Context allo State
+
+Per rendere il context dinamico, si collega il valore del context allo state del componente:
+
+```jsx
+function App() {
+  const [shoppingCart, setShoppingCart] = useState({
+    items: []
+  });
+
+  return (
+    <CartContext.Provider value={shoppingCart}>
+      <Header />
+      <Shop />
+    </CartContext.Provider>
+  );
+}
+```
+
+Ora, quando lo state `shoppingCart` cambia, tutti i componenti che accedono al context vedranno automaticamente il nuovo valore.
+
+### Consumare il Context con useContext
+
+Per accedere al valore del context in un componente, si utilizza l'hook `useContext`:
+
+```jsx
+import { useContext } from 'react';
+import { CartContext } from './store/shopping-cart-context';
+
+function Cart() {
+  const cartCtx = useContext(CartContext);
+  
+  return (
+    <div>
+      {cartCtx.items.length === 0 ? (
+        <p>No items in cart</p>
+      ) : (
+        <ul>
+          {cartCtx.items.map(item => (
+            <li key={item.id}>{item.name}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+`useContext` riceve il context object come argomento e restituisce il valore corrente del context. Se il componente non è avvolto da un Provider, restituirà il valore iniziale passato a `createContext`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">use vs useContext: Quale usare?</summary>
+<div class="px-4 pb-4">
+
+React 19 introduce un nuovo hook chiamato `use` che può essere utilizzato anche per accedere ai context:
+
+```jsx
+import { use } from 'react';
+
+function Cart() {
+  const cartCtx = use(CartContext);
+  // ... resto del codice
+}
+```
+
+**Differenze principali**:
+
+- **`use`**: Più corto, può essere utilizzato condizionalmente (dentro `if`), disponibile solo in React 19+
+- **`useContext`**: Più verboso, non può essere utilizzato condizionalmente, disponibile da React 16.8+
+
+**Quando usare quale**:
+- Usa `useContext` per compatibilità con versioni precedenti e quando non hai bisogno di accesso condizionale
+- Usa `use` se stai usando React 19+ e hai bisogno di accesso condizionale al context
+
+Per la maggior parte dei casi, `useContext` è la scelta più sicura e compatibile.
+
+</div>
+</details>
+
+### Condividere Funzioni attraverso il Context
+
+Oltre a condividere dati, si possono anche condividere funzioni attraverso il context. Questo permette ai componenti di aggiornare lo state senza dover ricevere funzioni come props:
+
+```jsx
+function App() {
+  const [shoppingCart, setShoppingCart] = useState({
+    items: []
+  });
+
+  function handleAddItemToCart(id) {
+    setShoppingCart(prevCart => {
+      // Logica per aggiungere l'item al carrello
+      const existingItem = prevCart.items.find(item => item.id === id);
+      
+      if (existingItem) {
+        return {
+          items: prevCart.items.map(item =>
+            item.id === id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        };
+      } else {
+        return {
+          items: [...prevCart.items, { id, quantity: 1 }]
+        };
+      }
+    });
+  }
+
+  const contextValue = {
+    items: shoppingCart.items,
+    addItemToCart: handleAddItemToCart
+  };
+
+  return (
+    <CartContext.Provider value={contextValue}>
+      <Header />
+      <Shop />
+    </CartContext.Provider>
+  );
+}
+```
+
+Ora qualsiasi componente può chiamare `addItemToCart` senza dover riceverla come prop:
+
+```jsx
+function Product({ id }) {
+  const cartCtx = useContext(CartContext);
+  
+  return (
+    <button onClick={() => cartCtx.addItemToCart(id)}>
+      Add to Cart
+    </button>
+  );
+}
+```
+
+### Pattern: Context Provider Component
+
+Quando si gestisce context complessi con molto state e logica, è una buona pratica creare un componente Provider separato che gestisce tutto lo state e la logica del context. Questo mantiene il componente `App` pulito e permette di avere più context senza ingombrare un singolo componente.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio completo: CartContextProvider</summary>
+<div class="px-4 pb-4">
+
+```jsx
+// store/shopping-cart-context.jsx
+import { createContext, useState } from 'react';
+
+export const CartContext = createContext({
+  items: [],
+  addItemToCart: () => {},
+  updateItemQuantity: () => {},
+  removeItem: () => {}
+});
+
+export default function CartContextProvider({ children }) {
+  const [shoppingCart, setShoppingCart] = useState({
+    items: []
+  });
+
+  function handleAddItemToCart(id) {
+    setShoppingCart(prevCart => {
+      const existingItem = prevCart.items.find(item => item.id === id);
+      
+      if (existingItem) {
+        return {
+          items: prevCart.items.map(item =>
+            item.id === id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        };
+      } else {
+        return {
+          items: [...prevCart.items, { id, quantity: 1 }]
+        };
+      }
+    });
+  }
+
+  function handleUpdateItemQuantity(id, amount) {
+    setShoppingCart(prevCart => ({
+      items: prevCart.items.map(item =>
+        item.id === id
+          ? { ...item, quantity: item.quantity + amount }
+          : item
+      ).filter(item => item.quantity > 0)
+    }));
+  }
+
+  function handleRemoveItem(id) {
+    setShoppingCart(prevCart => ({
+      items: prevCart.items.filter(item => item.id !== id)
+    }));
+  }
+
+  const contextValue = {
+    items: shoppingCart.items,
+    addItemToCart: handleAddItemToCart,
+    updateItemQuantity: handleUpdateItemQuantity,
+    removeItem: handleRemoveItem
+  };
+
+  return (
+    <CartContext.Provider value={contextValue}>
+      {children}
+    </CartContext.Provider>
+  );
+}
+```
+
+Poi in `App.jsx`:
+
+```jsx
+import CartContextProvider from './store/shopping-cart-context';
+
+function App() {
+  return (
+    <CartContextProvider>
+      <Header />
+      <Shop />
+    </CartContextProvider>
+  );
+}
+```
+
+Questo pattern mantiene tutto lo state e la logica del carrello in un unico posto, rendendo il codice più organizzato e più facile da mantenere.
+
+</div>
+</details>
+
+### Re-render quando il Context Cambia
+
+È importante capire che quando il valore del context cambia, tutti i componenti che utilizzano `useContext` per accedere a quel context verranno ri-renderizzati automaticamente da React. Questo è il comportamento desiderato, perché permette all'interfaccia utente di aggiornarsi quando i dati cambiano.
+
+React ri-esegue la funzione del componente quando:
+- Lo state interno del componente cambia
+- Le props del componente cambiano
+- Il valore del context a cui il componente è connesso cambia
+
+Questo garantisce che l'interfaccia utente sia sempre sincronizzata con i dati.
+
+### Consumer Component (Approccio Alternativo)
+
+Oltre a `useContext`, esiste un approccio alternativo per accedere al context utilizzando il componente `Consumer`. Questo approccio è meno comune e più verboso, ma può essere utile in alcuni casi specifici o quando si lavora con codebase più vecchie.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio con Consumer component</summary>
+<div class="px-4 pb-4">
+
+```jsx
+import { CartContext } from './store/shopping-cart-context';
+
+function Cart() {
+  return (
+    <CartContext.Consumer>
+      {(cartCtx) => (
+        <div>
+          {cartCtx.items.length === 0 ? (
+            <p>No items in cart</p>
+          ) : (
+            <ul>
+              {cartCtx.items.map(item => (
+                <li key={item.id}>{item.name}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </CartContext.Consumer>
+  );
+}
+```
+
+Il `Consumer` richiede una funzione come child (render prop pattern) che riceve il valore del context come parametro. Questo approccio è più verboso e meno leggibile rispetto a `useContext`, quindi si consiglia di usare `useContext` nella maggior parte dei casi.
+
+</div>
+</details>
+
+## useReducer: Gestire State Complesso
+
+Quando si gestisce state complesso con molte proprietà e logica di aggiornamento, `useState` può diventare difficile da gestire. Si finisce spesso a scrivere funzioni di aggiornamento complesse che utilizzano la forma funzionale di `setState` per accedere allo state precedente.
+
+React fornisce l'hook `useReducer` come alternativa a `useState` per gestire state più complesso utilizzando il pattern del **reducer**.
+
+### Cos'è un Reducer
+
+Un **reducer** è una funzione che "riduce" uno o più valori complessi a un valore più semplice. In JavaScript, si è già incontrato questo concetto con il metodo `reduce` degli array:
+
+```jsx
+const numbers = [1, 2, 3, 4, 5];
+const sum = numbers.reduce((acc, num) => acc + num, 0);
+// sum = 15
+```
+
+In questo esempio, `reduce` prende un array di numeri e li riduce a un singolo numero (la somma). La funzione reducer riceve un accumulatore e il valore corrente, e restituisce il nuovo accumulatore.
+
+L'idea dietro `useReducer` è applicare questo stesso concetto alla gestione dello state: si definisce una funzione reducer che prende lo state corrente e un'azione, e restituisce il nuovo state.
+
+### Come Funziona useReducer
+
+`useReducer` è un hook che accetta due argomenti:
+1. Una funzione reducer
+2. Lo state iniziale
+
+E restituisce un array con due elementi:
+1. Lo state corrente
+2. Una funzione `dispatch` per inviare azioni al reducer
+
+```jsx
+import { useReducer } from 'react';
+
+const [state, dispatch] = useReducer(reducer, initialState);
+```
+
+### Creare una Funzione Reducer
+
+La funzione reducer accetta due parametri:
+- **state**: Lo snapshot garantito dello state più recente
+- **action**: L'azione dispatchata che descrive come aggiornare lo state
+
+La funzione reducer deve restituire il nuovo state. Tipicamente, si utilizza uno `switch` o una serie di `if` per gestire diversi tipi di azioni:
+
+```jsx
+function shoppingCartReducer(state, action) {
+  if (action.type === 'ADD_ITEM') {
+    // Logica per aggiungere un item
+    const existingItem = state.items.find(item => item.id === action.payload);
+    
+    if (existingItem) {
+      return {
+        items: state.items.map(item =>
+          item.id === action.payload
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      };
+    } else {
+      return {
+        items: [...state.items, { id: action.payload, quantity: 1 }]
+      };
+    }
+  }
+  
+  if (action.type === 'UPDATE_ITEM') {
+    // Logica per aggiornare la quantità di un item
+    return {
+      items: state.items.map(item =>
+        item.id === action.payload.productId
+          ? { ...item, quantity: item.quantity + action.payload.amount }
+          : item
+      ).filter(item => item.quantity > 0)
+    };
+  }
+  
+  // Restituisce lo state invariato se l'azione non è riconosciuta
+  return state;
+}
+```
+
+**Nota importante**: Il reducer deve essere una funzione pura. Non deve modificare direttamente lo state esistente, ma deve sempre restituire un nuovo oggetto state.
+
+### Dispatchare Azioni
+
+Per aggiornare lo state gestito da `useReducer`, si utilizza la funzione `dispatch` passando un oggetto azione:
+
+```jsx
+function Product({ id }) {
+  const [shoppingCart, dispatch] = useReducer(
+    shoppingCartReducer,
+    { items: [] }
+  );
+  
+  function handleAddToCart() {
+    dispatch({ type: 'ADD_ITEM', payload: id });
+  }
+  
+  return <button onClick={handleAddToCart}>Add to Cart</button>;
+}
+```
+
+L'oggetto azione può avere qualsiasi struttura, ma è comune utilizzare:
+- **type**: Una stringa che identifica il tipo di azione (es. `'ADD_ITEM'`, `'UPDATE_ITEM'`)
+- **payload**: I dati necessari per eseguire l'azione
+
+### Struttura delle Azioni
+
+Non c'è una struttura obbligatoria per le azioni, ma ci sono alcune convenzioni comuni:
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Convenzioni per le azioni</summary>
+<div class="px-4 pb-4">
+
+**Convenzione standard (Flux/Redux)**:
+```jsx
+dispatch({
+  type: 'ADD_ITEM',        // Stringa in maiuscolo con underscore
+  payload: { id, quantity } // Dati necessari per l'azione
+});
+```
+
+**Alternativa con proprietà specifiche**:
+```jsx
+dispatch({
+  type: 'UPDATE_ITEM',
+  productId: id,
+  amount: 1
+});
+```
+
+**Azioni semplici senza payload**:
+```jsx
+dispatch({ type: 'RESET_CART' });
+```
+
+La convenzione più comune è utilizzare `type` per identificare l'azione e `payload` per i dati, ma si può scegliere qualsiasi struttura che funzioni per il proprio caso d'uso.
+
+</div>
+</details>
+
+### useReducer vs useState
+
+Quando usare `useReducer` invece di `useState`?
+
+**Usa `useReducer` quando**:
+- Lo state è un oggetto o array complesso con molte proprietà
+- Le logiche di aggiornamento sono complesse e coinvolgono sempre lo state precedente
+- Si hanno molte funzioni di aggiornamento simili che potrebbero essere unificate
+- Si vuole separare la logica di aggiornamento dello state dal componente
+
+**Usa `useState` quando**:
+- Lo state è semplice (numero, stringa, booleano)
+- Le logiche di aggiornamento sono semplici
+- Non si ha bisogno di separare la logica di aggiornamento
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Confronto pratico: useState vs useReducer</summary>
+<div class="px-4 pb-4">
+
+**Con `useState`**:
+```jsx
+function App() {
+  const [cart, setCart] = useState({ items: [] });
+  
+  function handleAddItem(id) {
+    setCart(prevCart => {
+      const existingItem = prevCart.items.find(item => item.id === id);
+      if (existingItem) {
+        return {
+          items: prevCart.items.map(item =>
+            item.id === id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        };
+      } else {
+        return {
+          items: [...prevCart.items, { id, quantity: 1 }]
+        };
+      }
+    });
+  }
+  
+  function handleUpdateQuantity(id, amount) {
+    setCart(prevCart => ({
+      items: prevCart.items.map(item =>
+        item.id === id
+          ? { ...item, quantity: item.quantity + amount }
+          : item
+      ).filter(item => item.quantity > 0)
+    }));
+  }
+  
+  // ... molte altre funzioni simili
+}
+```
+
+**Con `useReducer`**:
+```jsx
+function cartReducer(state, action) {
+  if (action.type === 'ADD_ITEM') {
+    const existingItem = state.items.find(item => item.id === action.payload);
+    if (existingItem) {
+      return {
+        items: state.items.map(item =>
+          item.id === action.payload
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      };
+    } else {
+      return {
+        items: [...state.items, { id: action.payload, quantity: 1 }]
+      };
+    }
+  }
+  
+  if (action.type === 'UPDATE_QUANTITY') {
+    return {
+      items: state.items.map(item =>
+        item.id === action.payload.productId
+          ? { ...item, quantity: item.quantity + action.payload.amount }
+          : item
+      ).filter(item => item.quantity > 0)
+    };
+  }
+  
+  return state;
+}
+
+function App() {
+  const [cart, dispatch] = useReducer(cartReducer, { items: [] });
+  
+  function handleAddItem(id) {
+    dispatch({ type: 'ADD_ITEM', payload: id });
+  }
+  
+  function handleUpdateQuantity(id, amount) {
+    dispatch({ type: 'UPDATE_QUANTITY', payload: { productId: id, amount } });
+  }
+}
+```
+
+Con `useReducer`, la logica complessa è separata dal componente, rendendo il componente più pulito e la logica più testabile.
+
+</div>
+</details>
+
+### Combinare Context API e useReducer
+
+Context API e `useReducer` funzionano molto bene insieme. Si può utilizzare `useReducer` all'interno di un Context Provider per gestire lo state complesso del context:
+
+```jsx
+// store/shopping-cart-context.jsx
+import { createContext, useReducer } from 'react';
+
+export const CartContext = createContext({
+  items: [],
+  addItemToCart: () => {},
+  updateItemQuantity: () => {}
+});
+
+function cartReducer(state, action) {
+  if (action.type === 'ADD_ITEM') {
+    // ... logica per aggiungere item
+  }
+  
+  if (action.type === 'UPDATE_ITEM') {
+    // ... logica per aggiornare item
+  }
+  
+  return state;
+}
+
+export default function CartContextProvider({ children }) {
+  const [shoppingCart, dispatch] = useReducer(cartReducer, {
+    items: []
+  });
+  
+  function handleAddItemToCart(id) {
+    dispatch({ type: 'ADD_ITEM', payload: id });
+  }
+  
+  function handleUpdateItemQuantity(id, amount) {
+    dispatch({ type: 'UPDATE_ITEM', payload: { productId: id, amount } });
+  }
+  
+  const contextValue = {
+    items: shoppingCart.items,
+    addItemToCart: handleAddItemToCart,
+    updateItemQuantity: handleUpdateItemQuantity
+  };
+  
+  return (
+    <CartContext.Provider value={contextValue}>
+      {children}
+    </CartContext.Provider>
+  );
+}
+```
+
+Questo pattern combina i vantaggi di entrambi:
+- **Context API**: Elimina il prop drilling
+- **useReducer**: Gestisce lo state complesso in modo organizzato
+
+### Posizionamento del Reducer
+
+La funzione reducer dovrebbe essere definita **fuori** dal componente, perché:
+- Non ha bisogno di accesso a props o altri valori del componente
+- Non dovrebbe essere ricreata ad ogni render
+- È più facile da testare quando è una funzione pura isolata
+
+```jsx
+// ✅ Corretto: reducer fuori dal componente
+function cartReducer(state, action) {
+  // ... logica
+}
+
+function CartContextProvider({ children }) {
+  const [state, dispatch] = useReducer(cartReducer, initialState);
+  // ...
+}
+
+// ❌ Evitare: reducer dentro il componente
+function CartContextProvider({ children }) {
+  function cartReducer(state, action) {
+    // ... logica
+  }
+  const [state, dispatch] = useReducer(cartReducer, initialState);
+  // ...
+}
+```
+
+## Best Practices e Considerazioni
+
+### Quando Usare la Context API
+
+La Context API è potente, ma non dovrebbe essere usata per tutto. Ecco quando usarla:
+
+**Usa Context API quando**:
+- Si devono condividere dati tra molti componenti a diversi livelli
+- Si vuole evitare prop drilling
+- I dati sono veramente "globali" per una parte significativa dell'applicazione
+
+**Non usare Context API quando**:
+- I dati sono utilizzati solo da componenti vicini (usa props normali)
+- Si ha bisogno di performance molto elevate (Context può causare re-render non necessari)
+- I dati cambiano molto frequentemente (considera soluzioni di state management più avanzate)
+
+### Performance e Ottimizzazioni
+
+Quando si usa la Context API, è importante essere consapevoli che qualsiasi cambiamento nel valore del context causerà il re-render di tutti i componenti che consumano quel context, anche se utilizzano solo una parte del valore.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Ottimizzazione: Separare Context per dati che cambiano a frequenze diverse</summary>
+<div class="px-4 pb-4">
+
+Se si hanno dati che cambiano a frequenze diverse, si può considerare di separarli in context diversi:
+
+```jsx
+// Context per dati che cambiano spesso
+const CartContext = createContext();
+// Context per dati che cambiano raramente
+const UserContext = createContext();
+
+function App() {
+  return (
+    <UserContext.Provider value={userData}>
+      <CartContext.Provider value={cartData}>
+        <Header />
+        <Shop />
+      </CartContext.Provider>
+    </UserContext.Provider>
+  );
+}
+```
+
+In questo modo, quando cambiano i dati del carrello, solo i componenti che usano `CartContext` vengono ri-renderizzati, non quelli che usano solo `UserContext`.
+
+</div>
+</details>
+
+### Struttura dei File per i Context
+
+Una convenzione comune è organizzare i context in una cartella `store` o `contexts`:
+
+```
+src/
+  store/
+    shopping-cart-context.jsx
+    user-context.jsx
+    theme-context.jsx
+```
+
+Ogni file context contiene:
+- La definizione del context con `createContext`
+- Il componente Provider che gestisce lo state
+- Eventuali reducer se si usa `useReducer`
+
+## Riepilogo
+
+In questo articolo si sono esplorati due strumenti potenti di React per gestire state complesso e condiviso:
+
+### Context API
+
+- **Problema risolto**: Elimina il prop drilling permettendo di condividere dati tra componenti senza passare props attraverso ogni livello
+- **Come funziona**: Si crea un context con `createContext`, si fornisce con un `Provider`, e si accede con `useContext`
+- **Quando usarla**: Quando si devono condividere dati tra molti componenti a diversi livelli dell'albero
+
+### useReducer
+
+- **Problema risolto**: Gestisce state complesso in modo più organizzato rispetto a `useState`
+- **Come funziona**: Si definisce una funzione reducer che prende state e azione, si usa `useReducer` per gestire lo state, e si dispatchano azioni per aggiornarlo
+- **Quando usarlo**: Quando lo state è complesso (oggetti/array con molte proprietà) e le logiche di aggiornamento sono complesse
+
+### Pattern Combinati
+
+La combinazione di Context API e `useReducer` è un pattern molto comune e potente:
+- Il Context elimina il prop drilling
+- `useReducer` organizza la logica di gestione dello state
+- Insieme, permettono di costruire applicazioni React complesse mantenendo il codice organizzato e manutenibile
+
+### Punti Chiave da Ricordare
+
+1. **Context API non è una soluzione universale**: Usala solo quando necessario, non per tutti i dati
+2. **useReducer è opzionale**: Usalo quando lo state diventa complesso, altrimenti `useState` va bene
+3. **I reducer devono essere puri**: Non modificare mai lo state direttamente, sempre restituire un nuovo oggetto
+4. **Le azioni descrivono "cosa"**: Il reducer decide "come" aggiornare lo state
+5. **Context + useReducer è un pattern potente**: Combina entrambi per applicazioni complesse
+
+Con questi strumenti, si ha tutto il necessario per gestire state complesso e condiviso in applicazioni React moderne, mantenendo il codice pulito, organizzato e manutenibile.
+

@@ -52,7 +52,7 @@ const socialLinks: SocialLink[] = [
         </div>
         <p class="text-muted-foreground text-sm">{bio}</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex items-center gap-2 whitespace-nowrap">
         <SocialIcons links={socialLinks} />
         {
           author.data.cv && (
@@ -63,8 +63,9 @@ const socialLinks: SocialLink[] = [
               download={author.data.cv.split('/').pop() || 'curriculum.pdf'}
               aria-label={`Scarica il curriculum di ${name}`}
             >
-              <Icon name="lucide:download" class="size-4" aria-hidden="true" />
-              <span>CV</span>
+              <span class="hidden sm:inline"><Icon name="lucide:download" class="size-4" aria-hidden="true" /></span>
+              <span class="sm:hidden"><Icon name="lucide:file-text" class="size-4" aria-hidden="true" /></span>
+              <span class="hidden sm:inline">Curriculum</span>
             </Link>
           )
         }

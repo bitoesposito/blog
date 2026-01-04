@@ -59,7 +59,7 @@ const { project, cardClass = '' } = Astro.props
       }
       {
         project.data.tags && (
-          <div class="flex h-6 flex-wrap gap-2 overflow-hidden">
+          <div class="flex h-8 flex-wrap gap-2 overflow-hidden">
             {project.data.tags.map((tag: string) => (
               <Badge variant="muted">{tag}</Badge>
             ))}
