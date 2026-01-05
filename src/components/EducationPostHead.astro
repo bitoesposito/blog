@@ -43,7 +43,7 @@ const canonicalUrl = new URL(Astro.url.pathname.replace(/\/$/, ''), Astro.site)
 <meta property="og:type" content="website" />
 <meta property="og:locale" content={SITE.locale} />
 <meta property="og:site_name" content={SITE.title} />
-<meta property="og:url" content={Astro.url} />
+<meta property="og:url" content={canonicalUrl.href} />
 <meta property="og:author" content={author} />
 
 <meta name="twitter:title" content={title} />
