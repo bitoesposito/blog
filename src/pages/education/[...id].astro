@@ -57,10 +57,22 @@ const combinedReadingTime =
     : null
 
 const tocSections = await getEducationTOCSections(currentPostId)
+
+// Prepara breadcrumbs per structured data
+const breadcrumbs = [
+  { name: 'Home', url: new URL('/', Astro.site).href },
+  { name: 'Formazione', url: new URL('/education', Astro.site).href },
+  ...(isCurrentSubpost && parentPost
+    ? [
+        { name: parentPost.data.title, url: new URL(`/education/${parentPost.id}`, Astro.site).href },
+        { name: post.data.title, url: new URL(`/education/${currentPostId}`, Astro.site).href },
+      ]
+    : [{ name: post.data.title, url: new URL(`/education/${currentPostId}`, Astro.site).href }]),
+]
 ---
 
 <Layout>
-  <EducationPostHead slot="head" post={post} />
+  <EducationPostHead slot="head" post={post} breadcrumbs={breadcrumbs} />
   {
     (hasChildPosts || isCurrentSubpost) && (
       <EducationSubpostsHeader

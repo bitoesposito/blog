@@ -51,10 +51,22 @@ const combinedReadingTime =
     : null
 
 const tocSections = await getQuoteTOCSections(currentQuoteId)
+
+// Prepara breadcrumbs per structured data
+const breadcrumbs = [
+  { name: 'Home', url: new URL('/', Astro.site).href },
+  { name: 'Preventivi', url: new URL('/quote', Astro.site).href },
+  ...(isCurrentSubpost && parentQuote
+    ? [
+        { name: parentQuote.data.title, url: new URL(`/quote/${parentQuote.id}`, Astro.site).href },
+        { name: quote.data.title, url: new URL(`/quote/${currentQuoteId}`, Astro.site).href },
+      ]
+    : [{ name: quote.data.title, url: new URL(`/quote/${currentQuoteId}`, Astro.site).href }]),
+]
 ---
 
 <Layout>
-  <QuotePostHead slot="head" post={quote} />
+  <QuotePostHead slot="head" post={quote} breadcrumbs={breadcrumbs} />
   {
     (hasChildPosts || isCurrentSubpost) && (
       <QuoteSubpostsHeader
