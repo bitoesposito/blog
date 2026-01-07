@@ -37,7 +37,6 @@ if (post.data.image) {
 
 // Normalizza l'URL canonical rimuovendo trailing slash e query params
 const canonicalUrl = getCanonicalUrl(Astro.url, Astro.site)
-const postUrl = canonicalUrl.href
 const publishedTime = post.data.date.toISOString()
 const modifiedTime = post.data.date.toISOString() // Usa date come modified se non c'è un campo separato
 ---
@@ -56,7 +55,7 @@ const modifiedTime = post.data.date.toISOString() // Usa date come modified se n
 <meta property="og:type" content="article" />
 <meta property="og:locale" content={SITE.locale} />
 <meta property="og:site_name" content={SITE.title} />
-<meta property="og:url" content={postUrl} />
+<meta property="og:url" content={canonicalUrl.href} />
 <meta property="article:published_time" content={publishedTime} />
 <meta property="article:modified_time" content={modifiedTime} />
 {post.data.tags && post.data.tags.length > 0 && (
@@ -74,7 +73,7 @@ const modifiedTime = post.data.date.toISOString() // Usa date come modified se n
 
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
-<meta property="twitter:image" content={ogImage.toString()} />
+<meta name="twitter:image" content={ogImage.toString()} />
 <meta name="twitter:image:alt" content={title} />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:creator" content={author} />

@@ -41,14 +41,7 @@ const canonicalUrl = getCanonicalUrl(Astro.url, Astro.site)
 
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
-<meta property="twitter:image" content={ogImage.toString()} />
+<meta name="twitter:image" content={ogImage.toString()} />
 <meta name="twitter:image:alt" content={title} />
 <meta name="twitter:card" content="summary_large_image" />
-
-{
-  project?.data.tags &&
-    project.data.tags.map((tag: string) => {
-      return <meta property="article:tag" content={tag} />
-    })
-}
 
