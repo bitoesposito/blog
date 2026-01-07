@@ -1,6 +1,7 @@
 ---
 import { SITE } from '@/consts'
 import { isQuoteSubpost } from '@/lib/data-utils'
+import { getCanonicalUrl } from '@/lib/utils'
 import type { CollectionEntry } from 'astro:content'
 import { getImage } from 'astro:assets'
 
@@ -26,10 +27,10 @@ if (post.data.image) {
 }
 
 // Normalizza l'URL canonical rimuovendo trailing slash e query params
-const canonicalUrl = new URL(Astro.url.pathname.replace(/\/$/, ''), Astro.site)
+const canonicalUrl = getCanonicalUrl(Astro.url, Astro.site)
 
-// I preventivi non devono essere indicizzati nei motori di ricerca
-const noindex = post.data.noindex ?? true
+// I preventivi possono essere indicizzati se esplicitamente richiesto
+const noindex = post.data.noindex ?? false
 ---
 
 <title>{`${title} | ${SITE.title}`}</title>
@@ -37,8 +38,8 @@ const noindex = post.data.noindex ?? true
 <meta name="description" content={description} />
 <link rel="canonical" href={canonicalUrl.href} />
 
-{noindex && <meta name="robots" content="noindex, nofollow" />}
-{isQuoteSubpost(post.id) && <meta name="robots" content="noindex, nofollow" />}
+{noindex && <meta name="robots" content="noindex" />}
+{isQuoteSubpost(post.id) && <meta name="robots" content="noindex" />}
 
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />

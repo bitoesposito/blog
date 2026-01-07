@@ -1,5 +1,6 @@
 ---
 import { SITE } from '@/consts'
+import { getCanonicalUrl } from '@/lib/utils'
 import type { CollectionEntry } from 'astro:content'
 import { getImage } from 'astro:assets'
 
@@ -21,7 +22,7 @@ if (project.data.image) {
 }
 
 // Normalizza l'URL canonical rimuovendo trailing slash e query params
-const canonicalUrl = new URL(Astro.url.pathname.replace(/\/$/, ''), Astro.site)
+const canonicalUrl = getCanonicalUrl(Astro.url, Astro.site)
 ---
 
 <title>{`${title} | ${SITE.title}`}</title>

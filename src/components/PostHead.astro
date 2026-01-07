@@ -1,6 +1,7 @@
 ---
 import { SITE } from '@/consts'
 import { isSubpost, parseAuthors } from '@/lib/data-utils'
+import { getCanonicalUrl } from '@/lib/utils'
 import type { CollectionEntry } from 'astro:content'
 import { getImage } from 'astro:assets'
 import ArticleStructuredData from '@/components/StructuredData.astro'
@@ -35,7 +36,7 @@ if (post.data.image) {
 }
 
 // Normalizza l'URL canonical rimuovendo trailing slash e query params
-const canonicalUrl = new URL(Astro.url.pathname.replace(/\/$/, ''), Astro.site)
+const canonicalUrl = getCanonicalUrl(Astro.url, Astro.site)
 const postUrl = canonicalUrl.href
 const publishedTime = post.data.date.toISOString()
 const modifiedTime = post.data.date.toISOString() // Usa date come modified se non c'è un campo separato

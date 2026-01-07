@@ -76,7 +76,7 @@ const quote = defineCollection({
       authors: z.array(z.string()).optional(),
       draft: z.boolean().optional(),
       client: z.string().optional(), // Nome del cliente
-      noindex: z.boolean().optional().default(true), // Non indicizzare nei motori di ricerca
+      noindex: z.boolean().optional().default(false), // Indicizza nei motori di ricerca di default
     }),
 })
 

@@ -35,3 +35,23 @@ export function getHeadingMargin(depth: number): string {
   }
   return margins[depth] || ''
 }
+
+/**
+ * Normalizza un URL per l'uso come canonical URL.
+ * - Mantiene il trailing slash per la homepage (/)
+ * - Rimuove il trailing slash dalle altre pagine
+ * - Rimuove i query params
+ *
+ * @param url - L'URL da normalizzare (es. Astro.url)
+ * @param site - L'URL base del sito (es. Astro.site)
+ * @returns Un URL normalizzato senza query params
+ */
+export function getCanonicalUrl(url: URL, site: URL | string | undefined): URL {
+  // Normalizza il pathname: mantieni trailing slash solo per la homepage
+  const pathname = url.pathname === '/' ? '/' : url.pathname.replace(/\/$/, '')
+  
+  // Crea un nuovo URL con pathname normalizzato e senza query params
+  const canonicalUrl = new URL(pathname, site)
+  
+  return canonicalUrl
+}
