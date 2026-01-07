@@ -1,5 +1,5 @@
 ---
-title: 'Context API e useReducer: Gestione Avanzata dello State'
+title: 'Context API e useReducer'
 description: 'Come utilizzare la Context API per condividere lo state tra componenti senza prop drilling e come gestire state complesso con useReducer'
 date: 2026-01-04
 tags: ['formazione']
@@ -9,9 +9,7 @@ order: 8
 
 ## Introduzione
 
-Quando si costruiscono applicazioni React più complesse, gestire lo state diventa sempre più impegnativo. Man mano che il numero di componenti aumenta e le relazioni tra di essi si complicano, si può incorrere in problemi come il **prop drilling**, dove i dati devono essere passati attraverso molti livelli di componenti anche quando la maggior parte di essi non ne ha bisogno direttamente.
-
-Questo articolo esplora due strumenti potenti di React per gestire questi scenari: la **Context API** e l'hook **useReducer**. La Context API permette di condividere dati tra componenti senza dover passare props attraverso ogni livello dell'albero dei componenti. L'hook useReducer, invece, offre un approccio alternativo a `useState` per gestire state più complesso utilizzando il pattern del reducer.
+Quando si costruiscono applicazioni React complesse, condividere lo state tra componenti può richiedere passare props attraverso molti livelli (prop drilling). Questo articolo esplora la **Context API** per condividere dati senza prop drilling e l'hook **useReducer** per gestire state complesso utilizzando il pattern del reducer.
 
 ## Il Problema del Prop Drilling
 
@@ -75,17 +73,7 @@ In questo esempio, `Header` e `Shop` ricevono props che non utilizzano direttame
 </div>
 </details>
 
-### Perché il Prop Drilling è un Problema
-
-Il prop drilling crea diversi problemi:
-
-1. **Riduce la riusabilità dei componenti**: I componenti intermedi devono sempre essere utilizzati in un contesto dove possono ricevere e passare queste props specifiche.
-
-2. **Aumenta il boilerplate**: Si deve scrivere codice aggiuntivo per accettare, destrutturare e inoltrare props in ogni componente intermedio.
-
-3. **Rende il codice più difficile da mantenere**: Se si modifica la struttura dei dati condivisi, si deve aggiornare molti componenti.
-
-4. **Rende difficile capire il flusso dei dati**: Non è immediatamente chiaro quali componenti utilizzano effettivamente i dati e quali li stanno solo inoltrando.
+Il prop drilling aumenta il boilerplate e rende difficile capire quali componenti utilizzano effettivamente i dati e quali li stanno solo inoltrando.
 
 ## Component Composition come Soluzione Parziale
 
@@ -134,17 +122,7 @@ Ora `handleAddToCart` viene passato direttamente a `Product` senza dover passare
 </div>
 </details>
 
-### Limitazioni della Component Composition
-
-Anche se la component composition può aiutare in alcuni casi, ha delle limitazioni:
-
-- **Non scala bene**: Se si applica questo pattern a tutti i livelli, si finisce con un componente `App` molto grande che contiene tutta la logica di rendering.
-
-- **Non risolve tutti i casi**: Quando i componenti che hanno bisogno dei dati sono profondamente annidati o in rami diversi dell'albero, la component composition non è sufficiente.
-
-- **Può rendere il codice meno organizzato**: Spostare troppo codice nel componente genitore può renderlo difficile da leggere e mantenere.
-
-Per questi motivi, per risolvere completamente il problema del prop drilling, si ha bisogno di una soluzione più potente: la **Context API**.
+La component composition aiuta ma non scala bene quando i componenti sono profondamente annidati o in rami diversi dell'albero. Per questi casi serve la **Context API**.
 
 ## La Context API di React
 
@@ -629,20 +607,7 @@ La convenzione più comune è utilizzare `type` per identificare l'azione e `pay
 </div>
 </details>
 
-### useReducer vs useState
-
-Quando usare `useReducer` invece di `useState`?
-
-**Usa `useReducer` quando**:
-- Lo state è un oggetto o array complesso con molte proprietà
-- Le logiche di aggiornamento sono complesse e coinvolgono sempre lo state precedente
-- Si hanno molte funzioni di aggiornamento simili che potrebbero essere unificate
-- Si vuole separare la logica di aggiornamento dello state dal componente
-
-**Usa `useState` quando**:
-- Lo state è semplice (numero, stringa, booleano)
-- Le logiche di aggiornamento sono semplici
-- Non si ha bisogno di separare la logica di aggiornamento
+`useReducer` è utile quando lo state è complesso (oggetti/array con molte proprietà) e le logiche di aggiornamento sono complesse. Per state semplice (numeri, stringhe, booleani), `useState` è più appropriato.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
 <summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Confronto pratico: useState vs useReducer</summary>
@@ -822,25 +787,9 @@ function CartContextProvider({ children }) {
 }
 ```
 
-## Best Practices e Considerazioni
+## Considerazioni sulle Performance
 
-### Quando Usare la Context API
-
-La Context API è potente, ma non dovrebbe essere usata per tutto. Ecco quando usarla:
-
-**Usa Context API quando**:
-- Si devono condividere dati tra molti componenti a diversi livelli
-- Si vuole evitare prop drilling
-- I dati sono veramente "globali" per una parte significativa dell'applicazione
-
-**Non usare Context API quando**:
-- I dati sono utilizzati solo da componenti vicini (usa props normali)
-- Si ha bisogno di performance molto elevate (Context può causare re-render non necessari)
-- I dati cambiano molto frequentemente (considera soluzioni di state management più avanzate)
-
-### Performance e Ottimizzazioni
-
-Quando si usa la Context API, è importante essere consapevoli che qualsiasi cambiamento nel valore del context causerà il re-render di tutti i componenti che consumano quel context, anche se utilizzano solo una parte del valore.
+Quando si usa la Context API, qualsiasi cambiamento nel valore del context causa il re-render di tutti i componenti che consumano quel context, anche se utilizzano solo una parte del valore.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
 <summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Ottimizzazione: Separare Context per dati che cambiano a frequenze diverse</summary>
@@ -871,53 +820,14 @@ In questo modo, quando cambiano i dati del carrello, solo i componenti che usano
 </div>
 </details>
 
-### Struttura dei File per i Context
-
-Una convenzione comune è organizzare i context in una cartella `store` o `contexts`:
-
-```
-src/
-  store/
-    shopping-cart-context.jsx
-    user-context.jsx
-    theme-context.jsx
-```
-
-Ogni file context contiene:
-- La definizione del context con `createContext`
-- Il componente Provider che gestisce lo state
-- Eventuali reducer se si usa `useReducer`
+Una convenzione comune è organizzare i context in una cartella `store` o `contexts`, con ogni file che contiene la definizione del context, il componente Provider e eventuali reducer.
 
 ## Riepilogo
 
-In questo articolo si sono esplorati due strumenti potenti di React per gestire state complesso e condiviso:
+La **Context API** elimina il prop drilling: si crea un context con `createContext`, si fornisce con un `Provider`, e si accede con `useContext`. Quando il valore del context cambia, tutti i componenti che lo consumano vengono ri-renderizzati.
 
-### Context API
+**useReducer** gestisce state complesso: si definisce una funzione reducer che prende state e azione, si usa `useReducer` per gestire lo state, e si dispatchano azioni per aggiornarlo. Il reducer deve essere una funzione pura che restituisce sempre un nuovo oggetto state.
 
-- **Problema risolto**: Elimina il prop drilling permettendo di condividere dati tra componenti senza passare props attraverso ogni livello
-- **Come funziona**: Si crea un context con `createContext`, si fornisce con un `Provider`, e si accede con `useContext`
-- **Quando usarla**: Quando si devono condividere dati tra molti componenti a diversi livelli dell'albero
+La combinazione di Context API e `useReducer` è un pattern comune: il Context elimina il prop drilling mentre `useReducer` organizza la logica di gestione dello state complesso.
 
-### useReducer
-
-- **Problema risolto**: Gestisce state complesso in modo più organizzato rispetto a `useState`
-- **Come funziona**: Si definisce una funzione reducer che prende state e azione, si usa `useReducer` per gestire lo state, e si dispatchano azioni per aggiornarlo
-- **Quando usarlo**: Quando lo state è complesso (oggetti/array con molte proprietà) e le logiche di aggiornamento sono complesse
-
-### Pattern Combinati
-
-La combinazione di Context API e `useReducer` è un pattern molto comune e potente:
-- Il Context elimina il prop drilling
-- `useReducer` organizza la logica di gestione dello state
-- Insieme, permettono di costruire applicazioni React complesse mantenendo il codice organizzato e manutenibile
-
-### Punti Chiave da Ricordare
-
-1. **Context API non è una soluzione universale**: Usala solo quando necessario, non per tutti i dati
-2. **useReducer è opzionale**: Usalo quando lo state diventa complesso, altrimenti `useState` va bene
-3. **I reducer devono essere puri**: Non modificare mai lo state direttamente, sempre restituire un nuovo oggetto
-4. **Le azioni descrivono "cosa"**: Il reducer decide "come" aggiornare lo state
-5. **Context + useReducer è un pattern potente**: Combina entrambi per applicazioni complesse
-
-Con questi strumenti, si ha tutto il necessario per gestire state complesso e condiviso in applicazioni React moderne, mantenendo il codice pulito, organizzato e manutenibile.
 

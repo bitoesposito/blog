@@ -1,0 +1,665 @@
+---
+title: 'Funzionamento Interno di React e Ottimizzazione delle Performance'
+description: 'Come React aggiorna il DOM, esegue i componenti, gestisce lo state e come ottimizzare le applicazioni React per migliori performance'
+date: 2026-01-07
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 9
+---
+
+## Introduzione
+
+Comprendere come React funziona dietro le quinte è fondamentale per scrivere codice corretto e ottimizzato. Questo articolo esplora i meccanismi interni di React: come vengono eseguite le funzioni dei componenti, come React aggiorna il DOM utilizzando il Virtual DOM, come viene gestito lo scheduling e il batching degli aggiornamenti dello state, e come funzionano strumenti come `memo`, `useMemo` e `useCallback`.
+
+## Come React Esegue i Componenti
+
+Quando si sviluppa con React, è importante capire esattamente quando e come le funzioni dei componenti vengono eseguite. Questa comprensione è la base per ottimizzare le applicazioni e scrivere codice efficiente.
+
+### L'Albero dei Componenti
+
+React costruisce un **albero dei componenti** durante il rendering. Questo albero inizia dal componente radice (tipicamente `App`) e si espande verso il basso man mano che vengono incontrati altri componenti nel JSX.
+
+Quando React esegue un componente, lo fa dall'alto verso il basso, eseguendo tutto il codice nella funzione del componente:
+
+1. **Registrazione dello state**: Gli hook `useState` vengono eseguiti e lo state viene registrato
+2. **Creazione di funzioni**: Le funzioni definite nel componente vengono create (ma non ancora eseguite)
+3. **Esecuzione del JSX**: Il codice JSX viene valutato e quando React incontra un componente personalizzato, esegue anche quella funzione del componente
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Esecuzione sequenziale dei componenti</summary>
+<div class="px-4 pb-4">
+
+```jsx
+function App() {
+  console.log('App eseguito');
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div>
+      <Header />
+      <Counter count={count} />
+    </div>
+  );
+}
+
+function Header() {
+  console.log('Header eseguito');
+  return <h1>My App</h1>;
+}
+
+function Counter({ count }) {
+  console.log('Counter eseguito');
+  return <p>{count}</p>;
+}
+```
+
+Quando l'app viene caricata, l'ordine di esecuzione sarà:
+1. `App` viene eseguito
+2. Quando React incontra `<Header />`, esegue `Header`
+3. Quando React incontra `<Counter />`, esegue `Counter`
+
+L'output nella console sarà:
+```
+App eseguito
+Header eseguito
+Counter eseguito
+```
+
+Questo mostra come React costruisce l'albero dei componenti eseguendo le funzioni in modo sequenziale dall'alto verso il basso.
+
+</div>
+</details>
+
+### Re-esecuzione dei Componenti
+
+Quando lo state di un componente cambia, React **ri-esegue** la funzione del componente. È importante capire che:
+
+- **Le ri-esecuzioni non propagano verso l'alto**: Se un componente figlio viene ri-eseguito, il componente genitore non viene ri-eseguito automaticamente
+- **Le ri-esecuzioni propagano verso il basso**: Quando un componente viene ri-eseguito, tutti i suoi componenti figli vengono ri-eseguiti a loro volta
+
+Questo comportamento è fondamentale da capire perché significa che cambiare lo state in un componente può causare la ri-esecuzione di molti componenti figli, anche se non hanno bisogno di aggiornarsi.
+
+### Strumenti per Analizzare le Esecuzioni
+
+React Developer Tools offre strumenti per analizzare le esecuzioni: il **Profiler** registra sessioni di interazione, il **Flame Graph** mostra l'ordine di esecuzione e le relazioni tra componenti, e il **Ranked Chart** mostra solo i componenti ri-renderizzati.
+
+## Prevenire Esecuzioni Non Necessarie con memo
+
+Quando un componente genitore viene ri-eseguito, tutti i suoi figli vengono ri-eseguiti automaticamente, anche se le loro props non sono cambiate. Questo può essere inefficiente se i componenti figli contengono calcoli costosi o molti componenti annidati.
+
+React fornisce la funzione `memo` per prevenire queste esecuzioni non necessarie.
+
+### Come Funziona memo
+
+`memo` è una funzione di React che avvolge un componente e gli dice di non ri-eseguirsi se le props non sono cambiate:
+
+```jsx
+import { memo } from 'react';
+
+const Counter = memo(function Counter({ initialCount }) {
+  const [count, setCount] = useState(initialCount);
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(c => c + 1)}>Increment</button>
+    </div>
+  );
+});
+```
+
+Quando il componente genitore viene ri-eseguito, `memo` confronta le vecchie props con le nuove props. Se sono identiche (stesso riferimento in memoria per oggetti/array), il componente non viene ri-eseguito.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio completo: Uso di memo per prevenire ri-render</summary>
+<div class="px-4 pb-4">
+
+```jsx
+function App() {
+  const [enteredNumber, setEnteredNumber] = useState('');
+  const [chosenCount, setChosenCount] = useState(0);
+  
+  return (
+    <div>
+      <input 
+        value={enteredNumber}
+        onChange={(e) => setEnteredNumber(e.target.value)}
+      />
+      <Counter initialCount={chosenCount} />
+    </div>
+  );
+}
+
+// Senza memo, Counter viene ri-eseguito ad ogni keystroke
+// Con memo, Counter viene ri-eseguito solo se initialCount cambia
+const Counter = memo(function Counter({ initialCount }) {
+  const [count, setCount] = useState(initialCount);
+  return <p>{count}</p>;
+});
+```
+
+In questo esempio, senza `memo`, ogni volta che si digita nell'input, `Counter` viene ri-eseguito anche se `initialCount` non è cambiato. Con `memo`, `Counter` viene ri-eseguito solo quando `initialCount` cambia effettivamente.
+
+</div>
+</details>
+
+`memo` confronta le props usando l'uguaglianza referenziale: per oggetti e array, devono essere lo stesso riferimento in memoria. Se le props sono primitive (stringhe, numeri, booleani), vengono confrontate per valore.
+
+## Component Composition come Alternativa
+
+Invece di usare `memo`, si può isolare lo state che cambia spesso in un componente separato. Questo evita completamente la ri-esecuzione del componente genitore:
+
+```jsx
+// Prima: tutto nello stesso componente
+function App() {
+  const [enteredNumber, setEnteredNumber] = useState('');
+  const [chosenCount, setChosenCount] = useState(0);
+  
+  return (
+    <div>
+      <input 
+        value={enteredNumber}
+        onChange={(e) => setEnteredNumber(e.target.value)}
+      />
+      <Counter initialCount={chosenCount} />
+    </div>
+  );
+}
+
+// Dopo: state isolato in un componente separato
+function ConfigureCounter({ onSet }) {
+  const [enteredNumber, setEnteredNumber] = useState('');
+  
+  function handleSetClick() {
+    onSet(parseInt(enteredNumber));
+  }
+  
+  return (
+    <section>
+      <input 
+        value={enteredNumber}
+        onChange={(e) => setEnteredNumber(e.target.value)}
+      />
+      <button onClick={handleSetClick}>Set</button>
+    </section>
+  );
+}
+
+function App() {
+  const [chosenCount, setChosenCount] = useState(0);
+  
+  return (
+    <div>
+      <ConfigureCounter onSet={setChosenCount} />
+      <Counter initialCount={chosenCount} />
+    </div>
+  );
+}
+```
+
+Quando si digita nell'input, solo `ConfigureCounter` viene ri-eseguito perché il suo state cambia. `App` e `Counter` non vengono ri-eseguiti perché non hanno state che cambia.
+
+## useCallback per Funzioni come Props
+
+Quando si passa una funzione come prop a un componente avvolto con `memo`, si può incontrare un problema: anche se la funzione fa la stessa cosa, viene ricreata ad ogni render, quindi `memo` pensa che la prop sia cambiata.
+
+### Il Problema
+
+```jsx
+const Counter = memo(function Counter({ initialCount, onIncrement }) {
+  // ...
+});
+
+function App() {
+  const [count, setCount] = useState(0);
+  
+  // Questa funzione viene ricreata ad ogni render!
+  function handleIncrement() {
+    setCount(c => c + 1);
+  }
+  
+  return <Counter initialCount={count} onIncrement={handleIncrement} />;
+}
+```
+
+Anche se `Counter` è avvolto con `memo`, viene comunque ri-eseguito perché `handleIncrement` è una nuova funzione ad ogni render.
+
+### La Soluzione: useCallback
+
+`useCallback` memorizza una funzione e la ricrea solo se le sue dipendenze cambiano:
+
+```jsx
+import { useCallback } from 'react';
+
+function App() {
+  const [count, setCount] = useState(0);
+  
+  // Questa funzione viene ricreata solo se le dipendenze cambiano
+  const handleIncrement = useCallback(() => {
+    setCount(c => c + 1);
+  }, []); // Array vuoto = funzione mai ricreata
+  
+  return <Counter initialCount={count} onIncrement={handleIncrement} />;
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">useCallback con dipendenze</summary>
+<div class="px-4 pb-4">
+
+Se la funzione usa valori dallo scope del componente, devono essere aggiunti alle dipendenze:
+
+```jsx
+function App() {
+  const [count, setCount] = useState(0);
+  const [multiplier, setMultiplier] = useState(2);
+  
+  // multiplier viene usato nella funzione, quindi va nelle dipendenze
+  const handleIncrement = useCallback(() => {
+    setCount(c => c + (1 * multiplier));
+  }, [multiplier]); // Se multiplier cambia, la funzione viene ricreata
+  
+  return <Counter onIncrement={handleIncrement} />;
+}
+```
+
+**Nota importante**: Le funzioni di aggiornamento dello state (come `setCount`) sono garantite da React di non cambiare mai, quindi non devono essere aggiunte alle dipendenze.
+
+</div>
+</details>
+
+`useCallback` memorizza la funzione e la ricrea solo quando le dipendenze cambiano. Se le dipendenze sono vuote (`[]`), la funzione viene creata una sola volta e mai ricreata. Se le dipendenze cambiano, viene creata una nuova funzione con i nuovi valori.
+
+## useMemo per Calcoli Costosi
+
+Oltre a prevenire la ri-esecuzione dei componenti, si può anche prevenire l'esecuzione di calcoli costosi all'interno dei componenti utilizzando `useMemo`.
+
+### Il Problema dei Calcoli Ripetuti
+
+```jsx
+function Counter({ initialCount }) {
+  const [count, setCount] = useState(initialCount);
+  
+  // Questa funzione viene eseguita ad ogni render!
+  function isPrime(n) {
+    if (n < 2) return false;
+    for (let i = 2; i < n; i++) {
+      if (n % i === 0) return false;
+    }
+    return true;
+  }
+  
+  const isInitialCountPrime = isPrime(initialCount);
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      {isInitialCountPrime && <p>Initial count is prime!</p>}
+    </div>
+  );
+}
+```
+
+Ogni volta che `count` cambia, `isPrime` viene eseguita di nuovo anche se `initialCount` non è cambiato. Per numeri grandi, questo può essere costoso.
+
+### La Soluzione: useMemo
+
+`useMemo` memorizza il risultato di un calcolo e lo ricalcola solo se le dipendenze cambiano:
+
+```jsx
+import { useMemo } from 'react';
+
+function Counter({ initialCount }) {
+  const [count, setCount] = useState(initialCount);
+  
+  function isPrime(n) {
+    if (n < 2) return false;
+    for (let i = 2; i < n; i++) {
+      if (n % i === 0) return false;
+    }
+    return true;
+  }
+  
+  // isPrime viene eseguita solo se initialCount cambia
+  const isInitialCountPrime = useMemo(() => {
+    return isPrime(initialCount);
+  }, [initialCount]);
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      {isInitialCountPrime && <p>Initial count is prime!</p>}
+    </div>
+  );
+}
+```
+
+Ora `isPrime` viene eseguita solo quando `initialCount` cambia, non ad ogni cambio di `count`.
+
+`useMemo` memorizza il risultato del calcolo e lo ricalcola solo quando le dipendenze cambiano. Il calcolo viene eseguito durante il render, ma il risultato viene memorizzato e riutilizzato se le dipendenze non cambiano.
+
+## Il Virtual DOM e l'Aggiornamento del DOM Reale
+
+Una comprensione fondamentale di come React aggiorna il DOM è essenziale per scrivere codice efficiente. React non aggiorna il DOM direttamente ogni volta che un componente viene ri-eseguito.
+
+### Come Funziona il Virtual DOM
+
+React utilizza un meccanismo chiamato **Virtual DOM** per determinare quali parti del DOM reale devono essere aggiornate:
+
+1. **Primo render**: React crea un "snapshot" virtuale del DOM che dovrebbe essere renderizzato
+2. **Confronto**: Quando qualcosa cambia, React crea un nuovo snapshot virtuale e lo confronta con quello precedente
+3. **Aggiornamento minimale**: React aggiorna solo gli elementi del DOM reale che sono effettivamente cambiati
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Aggiornamento minimale del DOM</summary>
+<div class="px-4 pb-4">
+
+```jsx
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div>
+      <h1>Counter</h1>
+      <p>Count: <span>{count}</span></p>
+      <button onClick={() => setCount(c => c + 1)}>Increment</button>
+    </div>
+  );
+}
+```
+
+Quando si clicca il pulsante:
+- La funzione `Counter` viene ri-eseguita
+- React crea un nuovo snapshot virtuale
+- React confronta il nuovo snapshot con quello precedente
+- React trova che solo il contenuto di `<span>` è cambiato
+- React aggiorna **solo** quel `<span>` nel DOM reale
+
+Tutti gli altri elementi (`<div>`, `<h1>`, `<p>`, `<button>`) non vengono toccati, anche se la funzione del componente è stata ri-eseguita.
+
+</div>
+</details>
+
+Il Virtual DOM è importante perché lavorare con il DOM reale è costoso, mentre confrontare oggetti JavaScript in memoria è molto più veloce. React aggiorna il DOM reale solo quando elementi vengono aggiunti/rimossi, il contenuto testuale cambia, o gli attributi cambiano. Se un componente viene ri-eseguito ma produce lo stesso JSX, React non tocca il DOM reale.
+
+## State Scoped ai Componenti e per Posizione
+
+Lo state in React è **scoped** al componente: ogni istanza di un componente ha il proprio state indipendente. Questo è ciò che rende i componenti riutilizzabili.
+
+### State Indipendente per Ogni Istanza
+
+```jsx
+function Counter({ initialCount }) {
+  const [count, setCount] = useState(initialCount);
+  return <p>{count}</p>;
+}
+
+function App() {
+  return (
+    <div>
+      <Counter initialCount={0} />
+      <Counter initialCount={10} />
+    </div>
+  );
+}
+```
+
+Ogni `<Counter />` ha il proprio state `count` indipendente. Cambiare il count del primo non influisce sul secondo.
+
+### State Tracciato per Posizione
+
+Tuttavia, lo state è anche **tracciato per posizione**, non solo per tipo di componente. Questo può causare problemi quando si hanno liste dinamiche di componenti dello stesso tipo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Problema: State che "salta" tra componenti</summary>
+<div class="px-4 pb-4">
+
+```jsx
+function HistoryItem({ change }) {
+  const [isSelected, setIsSelected] = useState(false);
+  
+  return (
+    <li 
+      onClick={() => setIsSelected(!isSelected)}
+      style={{ backgroundColor: isSelected ? 'yellow' : 'white' }}
+    >
+      {change > 0 ? '+' : ''}{change}
+    </li>
+  );
+}
+
+function CounterHistory({ history }) {
+  return (
+    <ul>
+      {history.map((change, index) => (
+        <HistoryItem key={index} change={change} />
+      ))}
+    </ul>
+  );
+}
+```
+
+Se si seleziona il secondo elemento e poi si aggiunge un nuovo elemento all'inizio della lista:
+- Il nuovo elemento viene inserito all'inizio
+- Tutti gli elementi esistenti si spostano di una posizione
+- Lo state `isSelected` rimane nella stessa posizione, non con l'elemento originale
+- Risultato: l'elemento sbagliato appare selezionato!
+
+Questo succede perché React traccia lo state per posizione, non per contenuto.
+
+</div>
+</details>
+
+## Keys: Identificare Componenti Unici
+
+Le **keys** sono il meccanismo di React per identificare univocamente gli elementi in una lista. Risolvono il problema dello state che "salta" e permettono a React di aggiornare il DOM in modo più efficiente.
+
+### Perché le Keys sono Importanti
+
+Le keys permettono a React di:
+1. **Tracciare lo state correttamente**: Lo state rimane associato al componente corretto anche quando la lista cambia
+2. **Aggiornare il DOM efficientemente**: React può riutilizzare elementi esistenti invece di ricrearli
+
+### Usare Keys Corrette
+
+**❌ Non usare l'indice come key** (se la lista può cambiare):
+
+```jsx
+// Problema: se la lista cambia, le keys non corrispondono più ai contenuti
+{items.map((item, index) => (
+  <Item key={index} data={item} />
+))}
+```
+
+**✅ Usare un ID univoco**:
+
+```jsx
+// Soluzione: ogni item ha un ID univoco che non cambia
+{items.map((item) => (
+  <Item key={item.id} data={item} />
+))}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Keys con ID univoci</summary>
+<div class="px-4 pb-4">
+
+```jsx
+// Struttura dati con ID univoci
+const changes = [
+  { id: 1, value: 1 },
+  { id: 2, value: -1 },
+  { id: 3, value: 1 }
+];
+
+function CounterHistory({ changes }) {
+  return (
+    <ul>
+      {changes.map((change) => (
+        <HistoryItem 
+          key={change.id}  // ID univoco, non l'indice!
+          change={change.value} 
+        />
+      ))}
+    </ul>
+  );
+}
+```
+
+Ora, anche se si aggiunge un nuovo elemento all'inizio:
+- Ogni elemento mantiene la sua key (`change.id`)
+- Lo state rimane associato all'elemento corretto
+- React può riutilizzare gli elementi esistenti nel DOM
+
+</div>
+</details>
+
+### Keys per Resettare Componenti
+
+Le keys possono essere usate anche per **forzare React a ricreare un componente** quando un valore cambia. Questo è utile quando si vuole resettare lo state di un componente quando una prop cambia.
+
+```jsx
+function App() {
+  const [chosenCount, setChosenCount] = useState(0);
+  
+  return (
+    <div>
+      <input 
+        onChange={(e) => setChosenCount(parseInt(e.target.value))} 
+      />
+      {/* Quando chosenCount cambia, Counter viene completamente ricreato */}
+      <Counter key={chosenCount} initialCount={chosenCount} />
+    </div>
+  );
+}
+```
+
+Quando `chosenCount` cambia, React distrugge il vecchio componente `Counter` e ne crea uno nuovo con lo state resettato. Questo è più efficiente di usare `useEffect` perché evita una ri-esecuzione extra del componente.
+
+## State Scheduling e Batching
+
+React non aggiorna lo state istantaneamente quando si chiama una funzione di aggiornamento. Invece, **schedula** l'aggiornamento per essere eseguito in seguito. Questo comportamento ha implicazioni importanti.
+
+### State Updates sono Asincroni
+
+```jsx
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  function handleClick() {
+    setCount(count + 1);
+    console.log(count); // Stampa ancora 0, non 1!
+  }
+  
+  return <button onClick={handleClick}>Count: {count}</button>;
+}
+```
+
+Dopo aver chiamato `setCount`, `count` non è ancora aggiornato. L'aggiornamento è schedulato e verrà applicato nel prossimo render.
+
+### Usare la Forma Funzionale per State Updates
+
+Quando un aggiornamento dello state dipende dal valore precedente, si deve usare la **forma funzionale**:
+
+```jsx
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  function handleClick() {
+    // ❌ Problema: usa il valore vecchio di count
+    setCount(count + 1);
+    setCount(count + 1); // Non funziona come previsto!
+    
+    // ✅ Soluzione: usa la forma funzionale
+    setCount(c => c + 1);
+    setCount(c => c + 1); // Ora funziona correttamente!
+  }
+  
+  return <button onClick={handleClick}>Count: {count}</button>;
+}
+```
+
+La forma funzionale garantisce che si riceva sempre l'ultimo valore dello state disponibile, anche se ci sono più aggiornamenti schedulati.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Aggiornamenti multipli con forma funzionale</summary>
+<div class="px-4 pb-4">
+
+```jsx
+function App() {
+  const [count, setCount] = useState(0);
+  const [multiplier, setMultiplier] = useState(2);
+  
+  function handleComplexUpdate(newValue) {
+    // Prima aggiorna count
+    setCount(newValue);
+    
+    // Poi aggiorna count basandosi sul nuovo valore
+    // Deve usare la forma funzionale per ottenere il valore aggiornato
+    setCount(c => c * multiplier);
+  }
+  
+  // Con la forma funzionale, entrambi gli aggiornamenti vengono applicati correttamente
+  // Prima: count = newValue
+  // Poi: count = newValue * multiplier
+}
+```
+
+Senza la forma funzionale, il secondo `setCount` userebbe il valore vecchio di `count`, non quello appena aggiornato.
+
+</div>
+</details>
+
+### State Batching
+
+React **raggruppa (batches)** automaticamente più aggiornamenti dello state che avvengono nella stessa funzione, eseguendo solo un singolo re-render:
+
+```jsx
+function App() {
+  const [count, setCount] = useState(0);
+  const [name, setName] = useState('');
+  
+  function handleClick() {
+    setCount(c => c + 1);
+    setName('New Name');
+    // Entrambi gli aggiornamenti vengono raggruppati
+    // Il componente viene ri-eseguito solo una volta, non due!
+  }
+  
+  return <button onClick={handleClick}>Click me</button>;
+}
+```
+
+Questo è importante perché significa che chiamare multiple funzioni di aggiornamento dello state nella stessa funzione non causa multiple ri-esecuzioni del componente.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Batching in event handlers vs useEffect</summary>
+<div class="px-4 pb-4">
+
+Il batching funziona automaticamente per:
+- Event handlers sincroni (come `onClick`, `onChange`)
+- Aggiornamenti nello stesso ciclo di eventi
+
+Potrebbe non funzionare per:
+- Aggiornamenti in `setTimeout` o `Promise.then` (in React 17 e precedenti)
+- Aggiornamenti in event handlers asincroni
+
+In React 18+, il batching funziona automaticamente in tutti questi casi grazie all'Automatic Batching.
+
+</div>
+</details>
+
+## Million.js: Ottimizzazione Esterna
+
+Million.js è una libreria che sostituisce il meccanismo di diffing del Virtual DOM di React con un algoritmo più efficiente. Funziona intercettando il processo di rendering e utilizzando un algoritmo più veloce per determinare quali parti del DOM devono essere aggiornate. L'integrazione avviene a livello di build tool (Vite, Webpack, ecc.) e non richiede modifiche al codice React.
+
+## Riepilogo
+
+React costruisce un albero di componenti eseguendo le funzioni dall'alto verso il basso. Quando lo state cambia, il componente viene ri-eseguito insieme a tutti i suoi figli (le ri-esecuzioni propagano verso il basso, non verso l'alto).
+
+React usa il Virtual DOM per confrontare snapshot virtuali e aggiornare solo gli elementi del DOM reale che sono effettivamente cambiati. Anche se un componente viene ri-eseguito, se produce lo stesso JSX, React non tocca il DOM reale.
+
+`memo` previene la ri-esecuzione confrontando le props, `useCallback` memorizza funzioni, e `useMemo` memorizza risultati di calcoli. Le **keys** identificano univocamente gli elementi nelle liste e permettono a React di tracciare correttamente lo state e aggiornare il DOM in modo efficiente.
+
+Gli aggiornamenti dello state sono asincroni e schedulati. React raggruppa automaticamente multiple aggiornamenti nella stessa funzione. Quando un aggiornamento dipende dal valore precedente, si deve usare la forma funzionale per garantire di ricevere sempre l'ultimo valore disponibile.
+

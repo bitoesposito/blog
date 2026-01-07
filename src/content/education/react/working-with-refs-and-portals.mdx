@@ -9,11 +9,7 @@ order: 7
 
 ## Introduzione
 
-I **refs** e i **portals** sono due funzionalità di React che non sono necessarie in tutte le applicazioni, ma che possono semplificare alcuni scenari specifici e risolvere problemi che altrimenti sarebbero difficili da gestire.
-
-I refs permettono di ottenere un accesso diretto agli elementi del DOM e di gestire valori che non devono causare il re-render del componente quando cambiano. I portals, invece, permettono di separare il punto in cui un elemento viene renderizzato nel DOM dal punto in cui lo si usa nel codice JSX.
-
-Questi concetti sono particolarmente utili quando si lavora con elementi nativi del browser come input file, dialoghi modali, o quando si ha bisogno di gestire timer e valori che non influenzano direttamente l'interfaccia utente.
+I **refs** permettono di ottenere accesso diretto agli elementi DOM e di gestire valori che persistono tra i render senza causare re-render. I **portals** permettono di renderizzare JSX in punti diversi del DOM rispetto a dove viene utilizzato nel codice.
 
 ## Cosa sono i Refs
 
@@ -61,12 +57,7 @@ function Player() {
 }
 ```
 
-**Vantaggi di questo approccio:**
-- Non si aggiorna lo state ad ogni keystroke
-- Il componente non viene re-renderizzato mentre si digita
-- Il codice è più semplice quando il valore serve solo al momento del click
-
-**Nota importante:** Il ref viene collegato all'elemento solo dopo il primo render. Nel primo ciclo di rendering, `playerNameRef.current` sarà `undefined`.
+Il ref viene collegato all'elemento solo dopo il primo render. Nel primo ciclo di rendering, `playerNameRef.current` sarà `undefined`.
 
 </div>
 </details>
@@ -122,32 +113,14 @@ function ImageUploader() {
 }
 ```
 
-**Considerazioni:**
-- Questa è manipolazione imperativa del DOM, che va contro il paradigma dichiarativo di React
-- È accettabile per casi semplici come reset di input o trigger di eventi
-- Non si dovrebbe usare per gestire tutto lo stato dell'applicazione
+Questa è manipolazione imperativa del DOM, accettabile per casi semplici come reset di input o trigger di eventi.
 
 </div>
 </details>
 
-## Refs vs State: Quando Usare Cosa
+## Refs vs State
 
-La differenza fondamentale tra refs e state è che **lo state causa il re-render del componente quando viene aggiornato, mentre i refs no**.
-
-### Quando Usare lo State
-
-Lo state deve essere usato per valori che:
-- Devono essere riflessi direttamente nell'interfaccia utente
-- Causano cambiamenti visibili quando vengono modificati
-- Richiedono che il componente venga aggiornato
-
-### Quando Usare i Refs
-
-I refs sono ideali per valori che:
-- Non hanno un impatto diretto sull'interfaccia utente
-- Devono persistere tra i render senza causare re-render
-- Sono utilizzati solo "dietro le quinte"
-- Servono per accedere a elementi DOM o chiamare metodi su di essi
+La differenza fondamentale è che **lo state causa il re-render quando viene aggiornato, mentre i refs no**. Lo state deve essere usato per valori che devono essere riflessi nell'interfaccia. I refs sono per valori che non influenzano direttamente l'UI o per accedere a elementi DOM.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
 <summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Perché non usare solo refs per tutto</summary>
@@ -170,12 +143,7 @@ function Player() {
 }
 ```
 
-**Problemi:**
-- `playerNameRef.current` è `undefined` nel primo render
-- Anche se si aggiorna il valore, l'interfaccia non si aggiorna automaticamente
-- Serve comunque lo state per aggiornare l'UI
-
-**Soluzione corretta:**
+Se si usa solo un ref, `playerNameRef.current` è `undefined` nel primo render e l'interfaccia non si aggiorna quando il valore cambia. Serve lo state per aggiornare l'UI:
 
 ```jsx
 function Player() {
@@ -226,10 +194,7 @@ function TimerChallenge({ targetTime }) {
 }
 ```
 
-**Perché non funziona:**
-- Quando lo state cambia, il componente viene re-renderizzato
-- La variabile `timer` viene ricreata e perde il riferimento al timer precedente
-- `handleStop` non può più accedere al timer corretto
+Quando lo state cambia, il componente viene re-renderizzato e la variabile `timer` viene ricreata, perdendo il riferimento al timer precedente.
 
 </div>
 </details>
@@ -272,12 +237,7 @@ function TimerChallenge({ targetTime }) {
 }
 ```
 
-**Perché funziona:**
-- Il ref persiste tra i render senza causare re-render
-- Ogni istanza del componente ha il proprio ref indipendente
-- Il valore in `timerRef.current` rimane accessibile anche dopo re-render multipli
-
-**Nota:** Lo stesso principio si applica a `setInterval` con `clearInterval`.
+Il ref persiste tra i render senza causare re-render, quindi il valore in `timerRef.current` rimane accessibile anche dopo re-render multipli. Lo stesso principio si applica a `setInterval` con `clearInterval`.
 
 </div>
 </details>
@@ -339,11 +299,7 @@ function TimerChallenge({ targetTime }) {
 }
 ```
 
-**Considerazioni:**
-- `setInterval` restituisce un ID che va memorizzato per poterlo cancellare
-- Si usa `clearInterval` invece di `clearTimeout`
-- È importante fare cleanup quando il componente viene smontato
-- L'intervallo di 10ms è un buon compromesso tra precisione e performance
+`setInterval` restituisce un ID che va memorizzato per poterlo cancellare con `clearInterval`. È importante fare cleanup quando il componente viene smontato.
 
 </div>
 </details>
@@ -502,10 +458,7 @@ function TimerChallenge({ targetTime }) {
 }
 ```
 
-**Vantaggi:**
-- Il componente genitore non deve conoscere i dettagli interni (es. che usa un `<dialog>`)
-- Se si cambia l'implementazione interna, l'API rimane stabile
-- Si espone solo ciò che è necessario, mantenendo l'incapsulamento
+Il componente genitore non deve conoscere i dettagli interni. Se si cambia l'implementazione, l'API rimane stabile.
 
 </div>
 </details>
@@ -576,11 +529,7 @@ I **portals** permettono di renderizzare un componente in un punto diverso del D
 
 ### Perché Usare i Portals
 
-Quando si crea una modale o un overlay, tecnicamente ha più senso renderizzarla direttamente nel `<body>` o in un contenitore dedicato piuttosto che annidata profondamente nella struttura del componente. Questo perché:
-
-- **Accessibilità**: Gli screen reader possono navigare meglio la struttura
-- **Styling**: Evita problemi di z-index e overflow
-- **Semantica**: La struttura HTML riflette meglio la gerarchia visiva
+I portals permettono di renderizzare modali e overlay direttamente nel `<body>` o in un contenitore dedicato, evitando problemi di z-index e overflow e migliorando l'accessibilità.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
 <summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Problema senza Portal</summary>
@@ -614,10 +563,7 @@ function TimerChallenge() {
 </div>
 ```
 
-**Problemi:**
-- La modale è annidata profondamente nella struttura
-- Potrebbe essere nascosta da overflow o z-index di elementi genitori
-- La struttura HTML non riflette la gerarchia visiva
+La modale è annidata profondamente e potrebbe essere nascosta da overflow o z-index di elementi genitori.
 
 </div>
 </details>
@@ -706,11 +652,7 @@ function TimerChallenge() {
 </div>
 ```
 
-**Vantaggi:**
-- La modale è renderizzata vicino alla root del DOM
-- Evita problemi di z-index e overflow
-- La struttura HTML riflette meglio la gerarchia visiva
-- Il codice JSX rimane organizzato logicamente
+La modale è renderizzata vicino alla root del DOM, evitando problemi di z-index e overflow, mentre il codice JSX rimane organizzato logicamente.
 
 </div>
 </details>
@@ -754,7 +696,7 @@ function App() {
 }
 ```
 
-**Nota:** Anche se il componente `Toast` viene utilizzato dentro `<div id="app">`, viene renderizzato direttamente nel `<body>` grazie al portal.
+Anche se il componente `Toast` viene utilizzato dentro `<div id="app">`, viene renderizzato direttamente nel `<body>` grazie al portal.
 
 </div>
 </details>
@@ -770,37 +712,9 @@ I portals sono specifici per il rendering nel DOM del browser, quindi appartengo
 
 ## Riepilogo
 
-### Refs
+I **refs** sono valori che persistono tra i render senza causare re-render. Si usano per accedere direttamente agli elementi DOM, gestire timer ID (`setTimeout`/`setInterval`), ed esporre API dei componenti con `forwardRef` e `useImperativeHandle`.
 
-- **Cosa sono**: Valori speciali che persistono tra i render senza causare re-render
-- **Casi d'uso principali**:
-  - Accesso diretto agli elementi DOM
-  - Gestione di timer ID e valori non dichiarativi
-  - Esposizione di API dei componenti
-- **Quando usare**: Per valori che non devono influenzare direttamente l'interfaccia utente
-- **Quando non usare**: Per valori che devono essere riflessi nell'UI (usare state invece)
+I **portals** permettono di renderizzare JSX in punti diversi del DOM usando `createPortal` da `react-dom`. Sono utili per modali, tooltip e toast che devono apparire sopra il resto del contenuto, evitando problemi di z-index e overflow.
 
-### Portals
-
-- **Cosa sono**: Meccanismo per renderizzare JSX in punti diversi del DOM
-- **Casi d'uso principali**:
-  - Modali e dialoghi
-  - Tooltip e popover
-  - Toast notifications
-- **Vantaggi**: Migliore accessibilità, evita problemi di styling, struttura HTML più semantica
-
-### Pattern Comuni
-
-1. **Ref per input non controllato**: Leggere il valore solo quando necessario invece di gestirlo con state
-2. **Ref per timer**: Memorizzare ID di `setTimeout`/`setInterval` per poterli cancellare
-3. **forwardRef + useImperativeHandle**: Esporre API stabili dai componenti custom
-4. **Portal per overlay**: Renderizzare modali e toast vicino alla root del DOM
-
-### Best Practices
-
-- Usare refs solo quando necessario, non come sostituto dello state
-- Fare sempre cleanup di timer e intervalli quando il componente viene smontato
-- Usare `useImperativeHandle` per creare API stabili e ben documentate
-- Usare portals per elementi che devono apparire sopra il resto del contenuto
-- Mantenere il codice JSX organizzato logicamente anche quando si usano portals
+Il ref viene collegato all'elemento dopo il primo render. Per timer e intervalli, è importante fare cleanup quando il componente viene smontato.
 

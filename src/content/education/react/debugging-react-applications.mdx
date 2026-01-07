@@ -9,19 +9,11 @@ order: 6
 
 ## Introduzione
 
-Quando si sviluppa con React, è inevitabile scrivere codice che contiene errori e bug. Questo fa parte del processo di sviluppo e capita a tutti. L'importante è sapere come trovare e risolvere questi problemi in modo efficiente.
-
-In questo articolo si esplorano diverse strategie e strumenti per il debugging delle applicazioni React. Si parte dall'analisi dei messaggi di errore che React mostra, imparando a interpretarli correttamente. Poi si passa agli errori logici che non producono messaggi di errore espliciti, utilizzando gli strumenti di sviluppo del browser e il debugger integrato.
-
-Si approfondisce anche la modalità Strict di React, che può aiutare a individuare problemi prima che diventino critici, e infine si esamina React DevTools, un'estensione del browser che semplifica l'analisi e la comprensione delle applicazioni React.
+Questo articolo esplora strumenti e tecniche per il debugging delle applicazioni React: interpretazione dei messaggi di errore, debugging di errori logici con il debugger del browser, React StrictMode per individuare problemi durante lo sviluppo, e React DevTools per ispezionare componenti e stato.
 
 ## Analisi dei Messaggi di Errore
 
-React mostra messaggi di errore quando qualcosa va storto nell'applicazione. A prima vista, questi messaggi possono sembrare intimidatori per la quantità di testo e il colore rosso, ma sono in realtà molto utili e informativi se si sa come leggerli.
-
-Il punto di partenza è sempre il **messaggio principale**, che si trova relativamente presto nel blocco di testo rosso. Questo messaggio descrive il tipo di errore e spesso indica quale proprietà o operazione ha causato il problema.
-
-Dopo il messaggio principale, c'è la **traccia dello stack** (stack trace), che è un elenco delle chiamate di codice che hanno portato all'errore. Questa traccia mostra esattamente quale funzione e quale riga di codice hanno causato il problema, permettendo di identificare rapidamente dove concentrare l'attenzione.
+React mostra messaggi di errore quando qualcosa va storto. Il **messaggio principale** descrive il tipo di errore e quale proprietà o operazione ha causato il problema. La **stack trace** mostra l'elenco delle chiamate di codice che hanno portato all'errore, indicando funzione, file e riga di codice dove si è verificato il problema.
 
 ### Esempio Pratico: Errore su Valore Undefined
 
@@ -31,10 +23,7 @@ Un errore comune si verifica quando si cerca di accedere a una proprietà di un 
 Cannot read properties of undefined (reading 'name')
 ```
 
-Questo messaggio indica chiaramente che:
-- Si sta cercando di accedere a una proprietà chiamata `name`
-- L'oggetto su cui si sta cercando di accedere è `undefined`
-- Il problema si trova nella funzione e nella riga indicate nella stack trace
+Il messaggio indica che si sta cercando di accedere alla proprietà `name` di un oggetto `undefined`, nella funzione e riga indicate nella stack trace.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
 <summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Gestione di Array Vuoti</summary>
@@ -78,80 +67,23 @@ function ProductList({ products }) {
 }
 ```
 
-Questo pattern di "guardia" è utile quando si gestiscono dati che potrebbero non essere sempre presenti o validi.
+Questo pattern di "guardia" gestisce dati che potrebbero non essere sempre presenti.
 
 </div>
 </details>
 
 ### Come Leggere la Stack Trace
 
-La stack trace mostra il percorso che il codice ha seguito prima di raggiungere l'errore. Ogni riga indica:
-- Il nome della funzione dove si è verificato l'errore
-- Il file dove si trova quella funzione
-- Il numero di riga (e opzionalmente la colonna)
-
-Ad esempio:
-```
-at ProductCard (ProductCard.jsx:12:24)
-```
-
-Questo significa:
-- L'errore si trova nella funzione `ProductCard`
-- Nel file `ProductCard.jsx`
-- Alla riga 12, colonna 24
-
-Seguendo questa traccia, si può andare direttamente al punto esatto del codice dove si è verificato il problema, senza dover cercare manualmente nel codice.
+La stack trace mostra il percorso che il codice ha seguito prima di raggiungere l'errore. Ogni riga indica funzione, file e riga (e opzionalmente colonna). Ad esempio `at ProductCard (ProductCard.jsx:12:24)` indica che l'errore si trova nella funzione `ProductCard`, nel file `ProductCard.jsx`, alla riga 12, colonna 24.
 
 ## Debugging di Errori Logici
 
-Non tutti gli errori producono messaggi di errore nella console. A volte si verificano **errori logici** dove il codice viene eseguito senza errori tecnici, ma produce risultati incorretti o inaspettati.
-
-Questi errori possono essere più difficili da individuare perché non c'è un messaggio di errore che indichi dove guardare. In questi casi, è necessario utilizzare il pensiero logico e gli strumenti di sviluppo del browser.
-
-### Strategia di Debugging Logico
-
-Quando si incontra un comportamento inaspettato, il primo passo è pensare logicamente:
-1. Quale parte del codice potrebbe essere responsabile?
-2. Il problema si verifica sempre o solo in certe condizioni?
-3. Cosa è cambiato rispetto a quando funzionava correttamente?
-
-Ad esempio, se un calcolo produce risultati errati solo quando si inseriscono certi valori in un form, il problema probabilmente si trova nella gestione dell'input dell'utente o nella conversione dei tipi di dato.
+Gli **errori logici** sono errori dove il codice viene eseguito senza errori tecnici ma produce risultati incorretti. Non producono messaggi di errore nella console, quindi richiedono il debugger del browser per essere individuati.
 
 ### Utilizzo del Debugger del Browser
 
-Gli strumenti di sviluppo del browser includono un debugger integrato che permette di esaminare il codice durante l'esecuzione. Questo è particolarmente utile per capire cosa sta succedendo passo dopo passo.
+Il debugger integrato negli strumenti di sviluppo permette di esaminare il codice durante l'esecuzione. Nella scheda Sources si trova la struttura del progetto. Cliccando sul numero di una riga si imposta un **breakpoint**: quando il codice raggiunge quella riga, l'esecuzione si ferma. Con l'esecuzione in pausa si possono vedere i valori delle variabili, usare la console per valutare espressioni, e controllare lo scope. I controlli permettono di eseguire il codice passo dopo passo (step into, step over, step out, resume).
 
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Come Usare il Debugger</summary>
-<div class="px-4 pb-4">
-
-**Passo 1: Aprire la scheda Sources**
-
-Nella scheda Sources degli strumenti per sviluppatori (Chrome DevTools, Firefox Developer Tools, ecc.), si trova la struttura del progetto. Sotto `localhost` c'è una cartella `src` che contiene i file del progetto.
-
-**Passo 2: Impostare un Breakpoint**
-
-Cliccando sul numero di una riga nel codice sorgente, si imposta un **breakpoint**. Quando il codice raggiunge quella riga durante l'esecuzione, l'esecuzione si ferma automaticamente.
-
-**Passo 3: Esaminare i Valori**
-
-Con l'esecuzione in pausa, è possibile:
-- Passare il mouse sulle variabili per vedere i loro valori attuali
-- Usare la console per valutare espressioni
-- Controllare lo scope delle variabili nel pannello a destra
-
-**Passo 4: Eseguire il Codice Passo dopo Passo**
-
-I controlli in basso permettono di:
-- **Step into**: Entrare dentro una funzione che sta per essere chiamata
-- **Step over**: Eseguire la riga corrente e passare alla successiva
-- **Step out**: Uscire dalla funzione corrente
-- **Resume**: Continuare l'esecuzione normale
-
-Questo permette di vedere esattamente come vengono eseguite le operazioni e con quali valori si sta lavorando.
-
-</div>
-</details>
 
 ### Esempio: Errore di Conversione di Tipo
 
@@ -208,15 +140,7 @@ function handleQuantityChange(newQuantity) {
 
 L'operatore unario `+` converte il valore in un numero. Alternativamente, si può usare `Number(newQuantity)` o `parseInt(newQuantity)` / `parseFloat(newQuantity)` a seconda delle necessità.
 
-**Perché questo è importante?**
-
-In JavaScript, quando si combinano stringhe e numeri in operazioni matematiche, il risultato può essere inaspettato:
-- `"5" * 29.99` produce `149.95` (moltiplicazione funziona)
-- `"5" + 29.99` produce `"529.99"` (concatenazione invece di addizione)
-- `"5" * "2"` produce `10` (conversione automatica)
-- `"5" + "2"` produce `"52"` (concatenazione)
-
-Usando il debugger, si può vedere che `newQuantity` ha le virgolette (indicando una stringa) e quindi identificare il problema.
+In JavaScript, quando si combinano stringhe e numeri, il risultato può essere inaspettato: `"5" * 29.99` produce `149.95`, ma `"5" + 29.99` produce `"529.99"` (concatenazione invece di addizione). Il debugger mostra che `newQuantity` ha le virgolette, indicando una stringa.
 
 </div>
 </details>
@@ -259,11 +183,7 @@ root.render(
 
 ### Cosa Fa StrictMode
 
-StrictMode esegue diverse verifiche durante lo sviluppo:
-
-1. **Doppia Esecuzione dei Componenti**: Ogni funzione componente viene eseguita due volte per aiutare a individuare effetti collaterali e problemi di stato
-2. **Rilevamento di API Deprecate**: Avvisa quando si usano API deprecate
-3. **Rilevamento di Effetti Collaterali**: Aiuta a identificare componenti con effetti collaterali non sicuri
+StrictMode esegue verifiche durante lo sviluppo: ogni funzione componente viene eseguita due volte per individuare effetti collaterali e problemi di stato, avvisa quando si usano API deprecate, e aiuta a identificare componenti con effetti collaterali non sicuri.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
 <summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Individuare Mutazioni di Stato</summary>
@@ -294,7 +214,7 @@ function ProductList({ searchTerm }) {
 }
 ```
 
-Con StrictMode abilitato, questo problema diventa immediatamente evidente perché il componente viene eseguito due volte e la lista raddoppia già al primo render.
+Con StrictMode, questo problema diventa evidente perché il componente viene eseguito due volte e la lista raddoppia già al primo render.
 
 **Soluzione corretta:**
 
@@ -319,14 +239,12 @@ function ProductList({ searchTerm }) {
 }
 ```
 
-Ora l'array viene ricreato ad ogni esecuzione del componente, garantendo che non ci siano accumuli indesiderati.
+L'array viene ricreato ad ogni esecuzione del componente, evitando accumuli indesiderati.
 
 </div>
 </details>
 
-### Importante: Solo in Sviluppo
-
-StrictMode funziona **solo durante lo sviluppo**. Quando si prepara l'applicazione per la produzione, StrictMode non esegue più i controlli aggiuntivi perché potrebbero influire sulle prestazioni. Tuttavia, è una pratica comune lasciare StrictMode anche in produzione perché non ha effetti visibili e può aiutare a individuare problemi futuri.
+StrictMode funziona solo durante lo sviluppo. In produzione non esegue i controlli aggiuntivi, ma è comune lasciarlo perché non ha effetti visibili.
 
 ## React DevTools
 
@@ -334,75 +252,14 @@ React DevTools è un'estensione del browser che aggiunge strumenti di sviluppo s
 
 ### Installazione
 
-React DevTools può essere installato come estensione del browser:
-1. Cercare "React DevTools" nel negozio delle estensioni del browser
-2. Installare l'estensione ufficiale di React
-3. Dopo l'installazione, aprire gli strumenti per sviluppatori del browser
-
-Una volta installato, nelle DevTools del browser compaiono due nuove schede:
-- **Components**: Per ispezionare l'albero dei componenti
-- **Profiler**: Per analizzare le prestazioni (argomento per un altro articolo)
+React DevTools si installa come estensione del browser. Dopo l'installazione, nelle DevTools compaiono due schede: **Components** per ispezionare l'albero dei componenti e **Profiler** per analizzare le prestazioni.
 
 ### Scheda Components
 
-La scheda Components mostra la struttura gerarchica dei componenti dell'applicazione. Ogni componente nell'albero corrisponde a una parte dell'interfaccia utente.
+La scheda Components mostra la struttura gerarchica dei componenti. Passando il mouse su un componente nell'albero, viene evidenziata la parte corrispondente nell'interfaccia. Cliccando su un componente si possono vedere props, stato e hook utilizzati. Si possono modificare props e stato direttamente dalle DevTools per vedere immediatamente le modifiche riflesse nell'interfaccia.
 
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Funzionalità della Scheda Components</summary>
-<div class="px-4 pb-4">
 
-**Visualizzazione dell'Albero dei Componenti**
-
-L'albero mostra la gerarchia dei componenti, ad esempio:
-```
-App
-├── Header
-├── ProductForm
-└── ProductList
-    └── ProductCard (ripetuto)
-```
-
-Passando il mouse su un componente nell'albero, viene evidenziata la parte corrispondente nell'interfaccia utente. Questo aiuta a capire rapidamente quale componente controlla quale parte dell'UI.
-
-**Ispezione delle Props**
-
-Cliccando su un componente, si possono vedere:
-- Le **props** che il componente riceve e i loro valori
-- Lo **stato** del componente (se usa `useState` o altri hook di stato)
-- Gli **hook** utilizzati dal componente
-
-**Modifica Interattiva**
-
-Una funzionalità molto utile è la possibilità di modificare props e stato direttamente dalle DevTools:
-- Modificare i valori delle props per vedere come reagisce il componente
-- Cambiare lo stato per testare diversi scenari
-- Vedere immediatamente le modifiche riflesse nell'interfaccia utente
-
-Questo è particolarmente utile per:
-- Testare rapidamente come il componente si comporta con valori diversi
-- Capire quali props influenzano quale parte dell'UI
-- Debugging di problemi di stato senza dover modificare il codice
-
-**Esempio pratico:**
-
-Selezionando il componente `ShoppingCart` che gestisce lo stato `cart`, si può vedere:
-- Lo stato corrente con tutti i valori (quantity, price, discount)
-- Modificare direttamente `quantity` da 1 a 5
-- Vedere immediatamente il totale aggiornarsi con il nuovo calcolo
-
-Questo permette di testare rapidamente diversi scenari senza dover modificare manualmente gli input nell'interfaccia utente.
-
-</div>
-</details>
-
-### Configurazione
-
-Cliccando sull'icona a forma di ingranaggio nelle React DevTools, si accede alle impostazioni:
-- **Theme**: Modalità chiara o scura
-- **Density**: Densità di visualizzazione (compatta o spaziosa)
-- **Component tree**: Opzioni per l'albero dei componenti (espansione predefinita, ecc.)
-
-Queste impostazioni permettono di personalizzare l'esperienza di sviluppo secondo le proprie preferenze.
+Cliccando sull'icona a forma di ingranaggio si accede alle impostazioni per personalizzare theme, density e opzioni dell'albero dei componenti.
 
 ## Errori Comuni e Come Evitarli
 
@@ -410,115 +267,22 @@ Durante lo sviluppo con React, ci sono alcuni errori comuni che si possono facil
 
 ### Componenti HTML vs Componenti Custom
 
-In React, c'è una distinzione importante tra componenti HTML built-in e componenti custom:
-
-- **Componenti HTML built-in** (come `<div>`, `<p>`, `<input>`) devono iniziare con una **lettera minuscola**
-- **Componenti custom** devono iniziare con una **lettera maiuscola**
-
-```jsx
-// ❌ ERRATO: div con maiuscola
-<Div className="container">
-  <p>Contenuto</p>
-</Div>
-
-// ✅ CORRETTO: div con minuscola
-<div className="container">
-  <p>Contenuto</p>
-</div>
-
-// ✅ CORRETTO: componente custom con maiuscola
-function MyComponent() {
-  return <div>Contenuto</div>;
-}
-
-<MyComponent />
-```
-
-Questa distinzione è importante perché React usa la maiuscola/minuscola per distinguere tra elementi HTML e componenti React.
+I componenti HTML built-in (come `<div>`, `<p>`, `<input>`) devono iniziare con una lettera minuscola. I componenti custom devono iniziare con una lettera maiuscola. React usa la maiuscola/minuscola per distinguere tra elementi HTML e componenti React.
 
 ### Event Handlers: onClick vs onclick
 
-Gli event handler in React usano la convenzione `camelCase` con il prefisso `on`:
+Gli event handler in React usano `camelCase` con il prefisso `on`: `onClick`, `onChange`, `onSubmit`, `onMouseEnter`, `onFocus`. `onclick` è l'attributo HTML standard ma non funziona correttamente in React.
 
-```jsx
-// ❌ ERRATO: onclick in minuscolo
-<button onclick={handleClick}>Clicca</button>
-
-// ✅ CORRETTO: onClick in camelCase
-<button onClick={handleClick}>Clicca</button>
-```
-
-La differenza tra `onclick` e `onClick` è importante:
-- `onclick` è l'attributo HTML standard, ma non funziona come ci si aspetta in React
-- `onClick` è la prop React che gestisce correttamente gli eventi
-
-Altri esempi di event handler React:
-- `onChange` (non `onchange`)
-- `onSubmit` (non `onsubmit`)
-- `onMouseEnter` (non `onmouseenter`)
-- `onFocus` (non `onfocus`)
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Pattern per Evitare Errori</summary>
-<div class="px-4 pb-4">
-
-**Checklist per il Debugging:**
-
-1. **Verificare i messaggi di errore nella console**
-   - Leggere il messaggio principale
-   - Seguire la stack trace per trovare il file e la riga
-   - Identificare quale proprietà o operazione ha causato l'errore
-
-2. **Per errori logici:**
-   - Pensare logicamente a quale parte del codice potrebbe essere responsabile
-   - Usare il debugger per esaminare i valori durante l'esecuzione
-   - Verificare le conversioni di tipo (stringhe vs numeri)
-
-3. **Usare StrictMode durante lo sviluppo**
-   - Aiuta a individuare problemi prima che diventino critici
-   - Rende evidenti mutazioni di stato e effetti collaterali
-
-4. **Utilizzare React DevTools**
-   - Ispezionare l'albero dei componenti
-   - Verificare props e stato
-   - Testare modifiche interattive
-
-5. **Verificare convenzioni React**
-   - Componenti HTML: minuscola
-   - Componenti custom: maiuscola
-   - Event handler: camelCase con prefisso `on`
-
-</div>
-</details>
 
 ## Riepilogo
 
-Il debugging delle applicazioni React richiede una combinazione di strumenti e tecniche:
+I **messaggi di errore** di React mostrano un messaggio principale e una stack trace che indica funzione, file e riga. Per gestire valori `undefined` o `null` si usano controlli di guardia.
 
-**Messaggi di Errore:**
-- Leggere il messaggio principale per capire il tipo di errore
-- Seguire la stack trace per trovare il punto esatto del problema
-- Usare controlli di guardia per gestire valori `undefined` o `null`
+Gli **errori logici** non producono messaggi di errore: si usa il debugger del browser per esaminare l'esecuzione passo dopo passo e verificare le conversioni di tipo.
 
-**Errori Logici:**
-- Pensare logicamente a quale parte del codice potrebbe essere responsabile
-- Usare il debugger del browser per esaminare l'esecuzione passo dopo passo
-- Verificare le conversioni di tipo, specialmente quando si lavora con input dell'utente
+**StrictMode** avvolge l'applicazione con `<StrictMode>` durante lo sviluppo, esegue i componenti due volte per individuare problemi di mutazione di stato e effetti collaterali.
 
-**StrictMode:**
-- Avvolgere l'applicazione con `<StrictMode>` durante lo sviluppo
-- Aiuta a individuare problemi di mutazione di stato e effetti collaterali
-- Esegue i componenti due volte per rendere evidenti i problemi
+**React DevTools** è un'estensione del browser che permette di ispezionare l'albero dei componenti e modificare props e stato interattivamente.
 
-**React DevTools:**
-- Estensione del browser essenziale per lo sviluppo React
-- Permette di ispezionare l'albero dei componenti
-- Consente di modificare props e stato interattivamente per testare scenari
-
-**Errori Comuni:**
-- Componenti HTML devono iniziare con minuscola
-- Componenti custom devono iniziare con maiuscola
-- Event handler usano camelCase (`onClick`, non `onclick`)
-
-Con questi strumenti e tecniche, il processo di debugging diventa più efficiente e sistematico, permettendo di trovare e risolvere problemi più rapidamente.
+**Convenzioni React**: componenti HTML con minuscola, componenti custom con maiuscola, event handler in camelCase (`onClick`, non `onclick`).
 
