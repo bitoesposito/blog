@@ -3,7 +3,7 @@ import EducationCard from '@/components/EducationCard.astro'
 import Breadcrumbs from '@/components/Breadcrumbs.astro'
 import PageHead from '@/components/PageHead.astro'
 import Layout from '@/layouts/Layout.astro'
-import { getAllEducation, groupEducationByYear } from '@/lib/data-utils'
+import { getAllEducation, groupEducationByYear } from '@/lib/collections'
 
 const allEducation = await getAllEducation()
 const educationByYear = groupEducationByYear(allEducation)
