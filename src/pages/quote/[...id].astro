@@ -1,13 +1,5 @@
 ---
-import Link from '@/components/Link.astro'
-import PostHead from '@/components/PostHead.astro'
-import SubpostsBanner from '@/components/SubpostsBanner.astro'
-import SubpostsHeader from '@/components/SubpostsHeader.astro'
-import SubpostsSidebar from '@/components/SubpostsSidebar.astro'
-import TOCSidebar from '@/components/TOCSidebar.astro'
-import TOCHeader from '@/components/TOCHeader.astro'
-import { Button } from '@/components/ui/button'
-import Layout from '@/layouts/Layout.astro'
+import PostPageContent from '@/components/PostPageContent.astro'
 import {
   getAllQuotesAndSubposts,
   getQuoteCombinedReadingTime,
@@ -20,8 +12,6 @@ import {
   isQuoteSubpost,
   parseAuthors,
 } from '@/lib/collections'
-import { formatDate } from '@/lib/utils'
-import { Icon } from 'astro-icon/components'
 import { render } from 'astro:content'
 
 export async function getStaticPaths() {
@@ -51,206 +41,23 @@ const combinedReadingTime =
     : null
 
 const tocSections = await getQuoteTOCSections(currentQuoteId)
-
-// Prepara breadcrumbs per structured data
-const breadcrumbs = [
-  { name: 'Home', url: new URL('/', Astro.site).href },
-  { name: 'Preventivi', url: new URL('/quote', Astro.site).href },
-  ...(isCurrentSubpost && parentQuote
-    ? [
-        { name: parentQuote.data.title, url: new URL(`/quote/${parentQuote.id}`, Astro.site).href },
-        { name: quote.data.title, url: new URL(`/quote/${currentQuoteId}`, Astro.site).href },
-      ]
-    : [{ name: quote.data.title, url: new URL(`/quote/${currentQuoteId}`, Astro.site).href }]),
-]
 ---
 
-<Layout>
-  <PostHead slot="head" post={quote} collection="quote" breadcrumbs={breadcrumbs} />
-  {
-    (hasChildPosts || isCurrentSubpost) && (
-      <SubpostsHeader
-        slot="subposts-navigation"
-        parentId={isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId}
-        basePath="/quote"
-        collection="quote"
-      />
-    )
-  }
-  {
-    headings?.length > 0 &&
-      !(
-        isCurrentSubpost &&
-        headings.length === 1 &&
-        headings[0].text === quote.data.title
-      ) && <TOCHeader slot="table-of-contents" headings={headings} />
-  }
-
-  <section
-    class="grid grid-cols-[minmax(0px,1fr)_min(calc(var(--breakpoint-md)-2rem),100%)_minmax(0px,1fr)] gap-y-6"
-  >
-    <section class="col-start-2 flex flex-col gap-y-6 text-center">
-      <div class="flex flex-col">
-        <h1
-          class="mb-2 scroll-mt-31 text-3xl leading-tight font-medium sm:text-4xl"
-          id="post-title"
-        >
-          {quote.data.title}
-        </h1>
-
-        <div
-          class="text-muted-foreground divide-border mb-4 flex flex-col items-center justify-center divide-y text-xs sm:flex-row sm:flex-wrap sm:divide-x sm:divide-y-0 sm:text-sm"
-        >
-          {
-            authors.length > 0 && (
-              <div class="flex w-full items-center justify-center gap-x-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
-                {authors.map((author) => (
-                  <div class="flex items-center gap-x-1.5">
-                    {author.isRegistered ? (
-                      <Link
-                        href={`/authors/${author.id}`}
-                        underline
-                        class="text-foreground"
-                      >
-                        <span>{author.name}</span>
-                      </Link>
-                    ) : (
-                      <span>{author.name}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )
-          }
-
-          <div
-            class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0"
-          >
-            <span>{formatDate(quote.data.date)}</span>
-          </div>
-
-          <div
-            class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0"
-          >
-            <span>
-              {quoteReadingTime}
-              {
-                combinedReadingTime &&
-                  combinedReadingTime !== quoteReadingTime && (
-                    <span class="text-muted-foreground">
-                      {' '}
-                      ({combinedReadingTime} totale)
-                    </span>
-                  )
-              }
-            </span>
-          </div>
-
-          {
-            subpostCount > 0 && (
-              <div class="flex w-full items-center justify-center gap-1 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
-                <Icon name="lucide:file-text" class="size-3" />
-                {subpostCount} documento{subpostCount === 1 ? '' : 'i'}
-              </div>
-            )
-          }
-
-          {
-            quote.data.client && (
-              <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
-                <Icon name="lucide:user" class="size-3" />
-                <span>{quote.data.client}</span>
-              </div>
-            )
-          }
-        </div>
-      </div>
-
-    </section>
-
-    {
-      (hasChildPosts || isCurrentSubpost) && (
-        <SubpostsSidebar
-          parentId={
-            isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId
-          }
-          basePath="/quote"
-          collection="quote"
-          className="w-64"
-        />
-      )
-    }
-
-    <article class="prose col-start-2 max-w-none">
-      <Content />
-    </article>
-
-    {
-      tocSections.length > 0 && (
-        <TOCSidebar sections={tocSections} currentPostId={currentQuoteId} basePath="/quote" collection="quote" />
-      )
-    }
-
-    {
-      (hasChildPosts || isCurrentSubpost) && (
-        <SubpostsBanner
-          parentId={
-            isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId
-          }
-          currentPostId={currentQuoteId}
-          basePath="/quote"
-          collection="quote"
-        />
-      )
-    }
-  </section>
-
-  <Button
-    variant="outline"
-    size="icon"
-    className="group fixed right-8 bottom-8 z-50 hidden"
-    id="scroll-to-top"
-    title="Torna in cima"
-    aria-label="Torna in cima"
-  >
-    <Icon
-      name="lucide:arrow-up"
-      class="mx-auto size-4 transition-all group-hover:-translate-y-0.5"
-    />
-  </Button>
-
-  <script>
-    document.addEventListener('astro:page-load', () => {
-      const scrollToTopButton = document.getElementById('scroll-to-top')
-      const footer = document.querySelector('footer')
-
-      if (scrollToTopButton && footer) {
-        scrollToTopButton.addEventListener('click', () => {
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-        })
-
-        window.addEventListener('scroll', () => {
-          const footerRect = footer.getBoundingClientRect()
-          const isFooterVisible = footerRect.top <= window.innerHeight
-
-          scrollToTopButton.classList.toggle(
-            'hidden',
-            window.scrollY <= 300 || isFooterVisible,
-          )
-        })
-      }
-    })
-  </script>
-</Layout>
-
-<script>
-  if (document.querySelector('.katex')) {
-    if (!document.querySelector('link[href*="katex.min.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href =
-        'https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css'
-      document.head.appendChild(link)
-    }
-  }
-</script>
+<PostPageContent
+  post={quote}
+  collection="quote"
+  basePath="/quote"
+  currentPostId={currentQuoteId}
+  Content={Content}
+  headings={headings}
+  authors={authors}
+  isCurrentSubpost={isCurrentSubpost}
+  parentPost={parentQuote}
+  hasChildPosts={hasChildPosts}
+  subpostCount={subpostCount}
+  postReadingTime={quoteReadingTime}
+  combinedReadingTime={combinedReadingTime}
+  tocSections={tocSections}
+  navigation={undefined}
+  getParentId={getQuoteParentId}
+/>
