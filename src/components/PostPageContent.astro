@@ -1,0 +1,379 @@
+---
+import Breadcrumbs from '@/components/Breadcrumbs.astro'
+import BreadcrumbListStructuredData from '@/components/BreadcrumbListStructuredData.astro'
+import Link from '@/components/Link.astro'
+import PostHead from '@/components/PostHead.astro'
+import PostNavigation from '@/components/PostNavigation.astro'
+import SubpostsBanner from '@/components/SubpostsBanner.astro'
+import SubpostsHeader from '@/components/SubpostsHeader.astro'
+import SubpostsSidebar from '@/components/SubpostsSidebar.astro'
+import TOCHeader from '@/components/TOCHeader.astro'
+import TOCSidebar from '@/components/TOCSidebar.astro'
+import { badgeVariants } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import Layout from '@/layouts/Layout.astro'
+import type { PostCollection, GetCollectionEntry } from '@/lib/collections'
+import { formatDate } from '@/lib/utils'
+import { Icon } from 'astro-icon/components'
+import { Image } from 'astro:assets'
+import type { CollectionEntry } from 'astro:content'
+import { Fragment } from 'astro/jsx-runtime'
+
+interface Props {
+  post: CollectionEntry<'blog' | 'education' | 'quote'>
+  collection: PostCollection
+  basePath: string
+  currentPostId: string
+  Content: any
+  headings: any[]
+  authors: Array<{ id: string; name: string; avatar: string; isRegistered: boolean }>
+  isCurrentSubpost: boolean
+  parentPost: CollectionEntry<'blog' | 'education' | 'quote'> | null
+  hasChildPosts: boolean
+  subpostCount: number
+  postReadingTime: string
+  combinedReadingTime: string | null
+  tocSections: any[]
+  navigation?: {
+    newer: CollectionEntry<'blog' | 'education' | 'quote'> | null
+    older: CollectionEntry<'blog' | 'education' | 'quote'> | null
+    parent: CollectionEntry<'blog' | 'education' | 'quote'> | null
+  }
+  getParentId: (id: string) => string
+}
+
+const {
+  post,
+  collection,
+  basePath,
+  currentPostId,
+  Content,
+  headings,
+  authors,
+  isCurrentSubpost,
+  parentPost,
+  hasChildPosts,
+  subpostCount,
+  postReadingTime,
+  combinedReadingTime,
+  tocSections,
+  navigation,
+  getParentId,
+} = Astro.props
+
+// Configurazione per collection
+const config = {
+  blog: {
+    breadcrumbLabel: 'Blog',
+    breadcrumbIcon: 'lucide:library-big' as const,
+    showPostNavigation: true,
+    showImage: false, // commentato nel codice originale
+    showBreadcrumbListStructuredData: true,
+    showBreadcrumbsComponent: true,
+    subpostLabel: 'post',
+  },
+  education: {
+    breadcrumbLabel: 'Formazione',
+    breadcrumbIcon: 'lucide:graduation-cap' as const,
+    showPostNavigation: true,
+    showImage: true,
+    showBreadcrumbListStructuredData: false,
+    showBreadcrumbsComponent: true,
+    subpostLabel: 'post',
+  },
+  quote: {
+    breadcrumbLabel: 'Preventivi',
+    breadcrumbIcon: null,
+    showPostNavigation: false,
+    showImage: false,
+    showBreadcrumbListStructuredData: false,
+    showBreadcrumbsComponent: false,
+    subpostLabel: 'documento',
+  },
+}
+
+const cfg = config[collection]
+
+// Variabili booleane per condizioni complesse
+const showEducationCertificate = collection === 'education' && (post as CollectionEntry<'education'>).data.certificate
+const showQuoteClient = collection === 'quote' && (post as CollectionEntry<'quote'>).data.client
+const showTOC = headings?.length > 0 && !(isCurrentSubpost && headings.length === 1 && headings[0].text === post.data.title)
+
+// Prepara breadcrumbs per structured data
+const breadcrumbs = [
+  { name: 'Home', url: new URL('/', Astro.site).href },
+  { name: cfg.breadcrumbLabel, url: new URL(basePath, Astro.site).href },
+  ...(isCurrentSubpost && parentPost
+    ? [
+        { name: parentPost.data.title, url: new URL(`${basePath}/${parentPost.id}`, Astro.site).href },
+        { name: post.data.title, url: new URL(`${basePath}/${currentPostId}`, Astro.site).href },
+      ]
+    : [{ name: post.data.title, url: new URL(`${basePath}/${currentPostId}`, Astro.site).href }]),
+]
+
+// Breadcrumbs per componente (se necessario)
+const breadcrumbItems = cfg.showBreadcrumbsComponent
+  ? [
+      { href: basePath, label: cfg.breadcrumbLabel, icon: cfg.breadcrumbIcon },
+      ...(isCurrentSubpost && parentPost
+        ? [
+            {
+              href: `${basePath}/${parentPost.id}`,
+              label: parentPost.data.title,
+              icon: 'lucide:book-open' as const,
+            },
+            {
+              href: `${basePath}/${currentPostId}`,
+              label: post.data.title,
+              icon: 'lucide:file-text' as const,
+            },
+          ]
+        : [
+            {
+              href: `${basePath}/${currentPostId}`,
+              label: post.data.title,
+              icon: 'lucide:book-open-text' as const,
+            },
+          ]),
+    ]
+  : []
+---
+
+<Layout>
+  <PostHead slot="head" post={post} collection={collection} breadcrumbs={breadcrumbs} />
+  {cfg.showBreadcrumbListStructuredData ? (
+    <BreadcrumbListStructuredData items={breadcrumbs} />
+  ) : null}
+  {(hasChildPosts || isCurrentSubpost) ? (
+    <SubpostsHeader
+      slot="subposts-navigation"
+      parentId={isCurrentSubpost ? getParentId(currentPostId) : currentPostId}
+      basePath={basePath}
+      collection={collection}
+    />
+  ) : null}
+  {showTOC ? (
+    <TOCHeader slot="table-of-contents" headings={headings} />
+  ) : null}
+
+  <section
+    class="grid grid-cols-[minmax(0px,1fr)_min(calc(var(--breakpoint-md)-2rem),100%)_minmax(0px,1fr)] gap-y-6"
+  >
+    {cfg.showBreadcrumbsComponent ? (
+      <div class="col-start-2 py-3 xl:py-0">
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
+    ) : null}
+
+    {(cfg.showImage && post.data.image) ? (
+      <Image
+        src={post.data.image}
+        alt={post.data.title}
+        width={1200}
+        height={630}
+        class="col-span-full mx-auto w-full max-w-3xl object-cover rounded-lg"
+      />
+    ) : null}
+
+    <section class="col-start-2 flex flex-col gap-y-6 text-center">
+      <div class="flex flex-col">
+        <h1
+          class="mb-2 scroll-mt-31 text-3xl leading-tight font-medium sm:text-4xl"
+          id="post-title"
+        >
+          {post.data.title}
+        </h1>
+
+        <div
+          class="text-muted-foreground divide-border mb-4 flex flex-col items-center justify-center divide-y text-xs sm:flex-row sm:flex-wrap sm:divide-x sm:divide-y-0 sm:text-sm"
+        >
+          {authors.length > 0 ? (
+            <div class="flex w-full items-center justify-center gap-x-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+              {authors.map((author) => (
+                <div class="flex items-center gap-x-1.5">
+                  {author.isRegistered ? (
+                    <Link
+                      href={`/authors/${author.id}`}
+                      underline
+                      class="text-foreground"
+                      title={collection === 'blog' ? `Vedi tutti gli articoli di ${author.name}` : undefined}
+                    >
+                      <span>{author.name}</span>
+                    </Link>
+                  ) : (
+                    <span>{author.name}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div
+            class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0"
+          >
+            <span>{formatDate(post.data.date)}</span>
+          </div>
+
+          <div
+            class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0"
+          >
+            <span>
+              {postReadingTime}
+              {(combinedReadingTime && combinedReadingTime !== postReadingTime) ? (
+                <span class="text-muted-foreground">
+                  {' '}
+                  ({combinedReadingTime} totale)
+                </span>
+              ) : null}
+            </span>
+          </div>
+
+          {subpostCount > 0 ? (
+            <div class="flex w-full items-center justify-center gap-1 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+              <Icon name="lucide:file-text" class="size-3" />
+              {subpostCount} {cfg.subpostLabel}{subpostCount === 1 ? '' : collection === 'quote' ? 'i' : ''}
+            </div>
+          ) : null}
+
+          {showEducationCertificate ? (
+            <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+              <a
+                href={(post as CollectionEntry<'education'>).data.certificate}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Certificato (si apre in una nuova finestra)"
+                class="text-foreground hover:text-foreground/80 transition-colors flex items-center gap-1.5"
+              >
+                <Icon name="lucide:award" class="size-3" aria-hidden="true" />
+                <span class="sr-only"> (si apre in una nuova finestra)</span>
+                <span>Certificato</span>
+                <Icon name="lucide:external-link" class="size-3" aria-hidden="true" />
+              </a>
+            </div>
+          ) : null}
+
+          {showQuoteClient ? (
+            <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+              <Icon name="lucide:user" class="size-3" />
+              <span>{(post as CollectionEntry<'quote'>).data.client}</span>
+            </div>
+          ) : null}
+        </div>
+        <div class="flex flex-wrap justify-center gap-2">
+          {(post.data.tags && post.data.tags.length > 0)
+            ? post.data.tags.map((tag) => (
+                <a
+                  href={`/tags/${tag}`}
+                  class={badgeVariants({ variant: 'muted' })}
+                  title={collection === 'blog' ? `Vedi tutti gli articoli con tag ${tag}` : undefined}
+                >
+                  <Icon name="lucide:hash" class="size-3" />
+                  {tag}
+                </a>
+              ))
+            : null}
+        </div>
+      </div>
+
+      {(cfg.showPostNavigation && navigation && postReadingTime && parseInt(postReadingTime) >= 3) ? (
+        <PostNavigation
+          newerPost={navigation.newer}
+          olderPost={navigation.older}
+          parentPost={isCurrentSubpost ? navigation.parent : undefined}
+          basePath={basePath}
+          collection={collection}
+        />
+      ) : null}
+    </section>
+
+    {tocSections.length > 0 ? (
+      <TOCSidebar sections={tocSections} currentPostId={currentPostId} basePath={basePath} collection={collection} />
+    ) : null}
+
+    <article class="prose col-start-2 max-w-none">
+      <Content />
+    </article>
+
+    {(hasChildPosts || isCurrentSubpost) ? (
+      <SubpostsBanner
+        parentId={
+          isCurrentSubpost ? getParentId(currentPostId) : currentPostId
+        }
+        currentPostId={currentPostId}
+        basePath={basePath}
+        collection={collection}
+      />
+    ) : null}
+
+    {(hasChildPosts || isCurrentSubpost) ? (
+      <SubpostsSidebar
+        parentId={
+          isCurrentSubpost ? getParentId(currentPostId) : currentPostId
+        }
+        basePath={basePath}
+        collection={collection}
+        className="w-64"
+      />
+    ) : null}
+
+    {(cfg.showPostNavigation && navigation) ? (
+      <PostNavigation
+        newerPost={navigation.newer}
+        olderPost={navigation.older}
+        parentPost={isCurrentSubpost ? navigation.parent : undefined}
+        basePath={basePath}
+        collection={collection}
+      />
+    ) : null}
+  </section>
+
+  <Button
+    variant="outline"
+    size="icon"
+    className="group fixed right-8 bottom-8 z-50 hidden"
+    id="scroll-to-top"
+    title="Torna in cima"
+    aria-label="Torna in cima"
+  >
+    <Icon
+      name="lucide:arrow-up"
+      class="mx-auto size-4 transition-all group-hover:-translate-y-0.5"
+    />
+  </Button>
+
+  <script>
+    document.addEventListener('astro:page-load', () => {
+      const scrollToTopButton = document.getElementById('scroll-to-top')
+      const footer = document.querySelector('footer')
+
+      if (scrollToTopButton && footer) {
+        scrollToTopButton.addEventListener('click', () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        })
+
+        window.addEventListener('scroll', () => {
+          const footerRect = footer.getBoundingClientRect()
+          const isFooterVisible = footerRect.top <= window.innerHeight
+
+          scrollToTopButton.classList.toggle(
+            'hidden',
+            window.scrollY <= 300 || isFooterVisible,
+          )
+        })
+      }
+    })
+  </script>
+</Layout>
+
+<script>
+  if (document.querySelector('.katex')) {
+    if (!document.querySelector('link[href*="katex.min.css"]')) {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href =
+        'https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css'
+      document.head.appendChild(link)
+    }
+  }
+</script>
+

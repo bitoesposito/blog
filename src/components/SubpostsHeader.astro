@@ -1,51 +1,133 @@
 ---
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  getCombinedReadingTime,
-  getParentId,
-  getParentPost,
-  getPostById,
-  getPostReadingTime,
-  getSubpostsForParent,
-  isSubpost,
-} from '@/lib/data-utils'
+import type { PostCollection } from '@/lib/collections'
 import { Icon } from 'astro-icon/components'
 
-const { parentId } = Astro.props
-const currentPostId = Astro.params.id as string
-const isCurrentSubpost = isSubpost(currentPostId)
-const rootParentId = isCurrentSubpost ? getParentId(currentPostId) : parentId
+interface Props {
+  parentId: string
+  basePath: string
+  collection: PostCollection
+}
 
-const currentPost = !isCurrentSubpost ? await getPostById(currentPostId) : null
-const subposts = await getSubpostsForParent(rootParentId)
-const parentPost = isCurrentSubpost ? await getParentPost(currentPostId) : null
+const { parentId, basePath, collection } = Astro.props
+const currentPostId = Astro.params.id as string
+
+// Importa le funzioni corrette in base alla collection
+let isSubpostFn: (id: string) => boolean
+let getParentIdFn: (id: string) => string
+let getByIdFn: (id: string) => Promise<any>
+let getSubpostsForParentFn: (id: string) => Promise<any[]>
+let getParentPostFn: (id: string) => Promise<any>
+let getReadingTimeFn: (id: string) => Promise<string>
+let getCombinedReadingTimeFn: (id: string) => Promise<string>
+
+if (collection === 'blog') {
+  const {
+    isSubpost,
+    getParentId,
+    getPostById,
+    getSubpostsForParent,
+    getParentPost,
+    getPostReadingTime,
+    getCombinedReadingTime,
+  } = await import('@/lib/collections')
+  isSubpostFn = isSubpost
+  getParentIdFn = getParentId
+  getByIdFn = getPostById
+  getSubpostsForParentFn = getSubpostsForParent
+  getParentPostFn = getParentPost
+  getReadingTimeFn = getPostReadingTime
+  getCombinedReadingTimeFn = getCombinedReadingTime
+} else if (collection === 'education') {
+  const {
+    isEducationSubpost,
+    getEducationParentId,
+    getEducationById,
+    getEducationSubpostsForParent,
+    getEducationParentPost,
+    getEducationReadingTime,
+    getEducationCombinedReadingTime,
+  } = await import('@/lib/collections')
+  isSubpostFn = isEducationSubpost
+  getParentIdFn = getEducationParentId
+  getByIdFn = getEducationById
+  getSubpostsForParentFn = getEducationSubpostsForParent
+  getParentPostFn = getEducationParentPost
+  getReadingTimeFn = getEducationReadingTime
+  getCombinedReadingTimeFn = getEducationCombinedReadingTime
+} else {
+  const {
+    isQuoteSubpost,
+    getQuoteParentId,
+    getQuoteById,
+    getQuoteSubpostsForParent,
+    getQuoteParentPost,
+    getQuoteReadingTime,
+    getQuoteCombinedReadingTime,
+  } = await import('@/lib/collections')
+  isSubpostFn = isQuoteSubpost
+  getParentIdFn = getQuoteParentId
+  getByIdFn = getQuoteById
+  getSubpostsForParentFn = getQuoteSubpostsForParent
+  getParentPostFn = getQuoteParentPost
+  getReadingTimeFn = getQuoteReadingTime
+  getCombinedReadingTimeFn = getQuoteCombinedReadingTime
+}
+
+const isCurrentSubpost = isSubpostFn(currentPostId || parentId)
+const rootParentId = isCurrentSubpost ? getParentIdFn(currentPostId || parentId) : parentId
+
+const currentPost = !isCurrentSubpost ? await getByIdFn(currentPostId || parentId) : null
+const subposts = await getSubpostsForParentFn(rootParentId)
+const parentPost = isCurrentSubpost ? await getParentPostFn(currentPostId || parentId) : null
 
 const activePost = parentPost || currentPost
-const isActivePost = activePost?.id === currentPostId
+const isActivePost = activePost?.id === (currentPostId || parentId)
 
 const activePostReadingTime = activePost
-  ? await getPostReadingTime(activePost.id)
+  ? await getReadingTimeFn(activePost.id)
   : null
 const activePostCombinedReadingTime =
   activePost && subposts.length > 0
-    ? await getCombinedReadingTime(activePost.id)
+    ? await getCombinedReadingTimeFn(activePost.id)
     : null
 const subpostsWithReadingTime = await Promise.all(
   subposts.map(async (subpost) => ({
     ...subpost,
-    readingTime: await getPostReadingTime(subpost.id),
+    readingTime: await getReadingTimeFn(subpost.id),
   })),
 )
 
 const currentSubpostDetails = isCurrentSubpost
-  ? subpostsWithReadingTime.find((subpost) => subpost.id === currentPostId)
+  ? subpostsWithReadingTime.find((subpost) => subpost.id === (currentPostId || parentId))
   : null
+
+// Configurazione per collection
+const config = {
+  blog: {
+    ariaLabel: "Navigazione tra i capitoli dell'articolo",
+    parentAriaLabel: (title: string) => `Vai al post principale: ${title}`,
+    subpostAriaLabel: (title: string) => `Vai al capitolo: ${title}`,
+  },
+  education: {
+    ariaLabel: "Navigazione tra i capitoli dell'articolo di formazione",
+    parentAriaLabel: (title: string) => `Vai al post principale: ${title}`,
+    subpostAriaLabel: (title: string) => `Vai al capitolo: ${title}`,
+  },
+  quote: {
+    ariaLabel: 'Navigazione tra i documenti del preventivo',
+    parentAriaLabel: (title: string) => `Vai al documento principale: ${title}`,
+    subpostAriaLabel: (title: string) => `Vai al documento: ${title}`,
+  },
+}
+
+const cfg = config[collection]
 ---
 
 {
   activePost && subposts.length > 0 && (
     <div id="mobile-subposts-container" class="w-full xl:hidden">
-      <details class="group" aria-label="Navigazione tra i capitoli dell'articolo">
+      <details class="group" aria-label={cfg.ariaLabel}>
         <summary class="flex w-full cursor-pointer items-center justify-between" aria-expanded="false">
           <div class="mx-auto flex w-full max-w-3xl items-center px-4 py-3">
             <div class="relative mr-2 size-4">
@@ -115,9 +197,9 @@ const currentSubpostDetails = isCurrentSubpost
                     </div>
                   ) : (
                     <a
-                      href={`/blog/${activePost.id}`}
+                      href={`${basePath}/${activePost.id}`}
                       class="mobile-subposts-link hover:text-foreground text-muted-foreground hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
-                      aria-label={`Vai al post principale: ${activePost.data.title}`}
+                      aria-label={cfg.parentAriaLabel(activePost.data.title)}
                     >
                       <Icon
                         name="lucide:book-open"
@@ -150,7 +232,7 @@ const currentSubpostDetails = isCurrentSubpost
               {subpostsWithReadingTime.length > 0 && (
                 <div class="ml-4 space-y-1">
                   {subpostsWithReadingTime.map((subpost) =>
-                    currentPostId === subpost.id ? (
+                    (currentPostId || parentId) === subpost.id ? (
                       <div class="text-foreground bg-muted mobile-subposts-active-item flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium">
                         <Icon
                           name="lucide:file-text"
@@ -166,9 +248,9 @@ const currentSubpostDetails = isCurrentSubpost
                       </div>
                     ) : (
                       <a
-                        href={`/blog/${subpost.id}`}
+                        href={`${basePath}/${subpost.id}`}
                         class="mobile-subposts-link hover:text-foreground text-muted-foreground hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
-                        aria-label={`Vai al capitolo: ${subpost.data.title}`}
+                        aria-label={cfg.subpostAriaLabel(subpost.data.title)}
                       >
                         <Icon
                           name="lucide:file"

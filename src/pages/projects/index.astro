@@ -3,7 +3,7 @@ import ProjectCard from '@/components/ProjectCard.astro'
 import Breadcrumbs from '@/components/Breadcrumbs.astro'
 import PageHead from '@/components/PageHead.astro'
 import Layout from '@/layouts/Layout.astro'
-import { getAllProjects } from '@/lib/data-utils'
+import { getAllProjects } from '@/lib/collections'
 
 // Recupera tutti i progetti dalla collection e li ordina per data di inizio
 const projects = await getAllProjects()

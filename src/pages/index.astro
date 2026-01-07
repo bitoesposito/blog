@@ -6,7 +6,7 @@ import PageHead from '@/components/PageHead.astro'
 import { buttonVariants } from '@/components/ui/button'
 import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
-import { getAuthorById, getRecentPosts, getAllProjects } from '@/lib/data-utils'
+import { getAuthorById, getRecentPosts, getAllProjects } from '@/lib/collections'
 import AuthorCard from '@/components/AuthorCard.astro'
 
 const blog = await getRecentPosts(SITE.featuredPostCount)

@@ -3,22 +3,72 @@
 // Utile soprattutto su mobile dove i subpost sono nascosti nel dropdown
 import Link from '@/components/Link.astro'
 import { buttonVariants } from '@/components/ui/button'
-import {
-  getParentId,
-  getParentPost,
-  getPostById,
-  getSubpostsForParent,
-  isSubpost,
-} from '@/lib/data-utils'
+import type { PostCollection } from '@/lib/collections'
 import { Icon } from 'astro-icon/components'
 
-const { parentId, currentPostId } = Astro.props
-const isCurrentSubpost = isSubpost(currentPostId)
-const rootParentId = isCurrentSubpost ? getParentId(currentPostId) : parentId
+interface Props {
+  parentId: string
+  currentPostId: string
+  basePath: string
+  collection: PostCollection
+}
 
-const currentPost = !isCurrentSubpost ? await getPostById(currentPostId) : null
-const subposts = await getSubpostsForParent(rootParentId)
-const parentPost = isCurrentSubpost ? await getParentPost(currentPostId) : null
+const { parentId, currentPostId, basePath, collection } = Astro.props
+
+// Importa le funzioni corrette in base alla collection
+let isSubpostFn: (id: string) => boolean
+let getParentIdFn: (id: string) => string
+let getByIdFn: (id: string) => Promise<any>
+let getSubpostsForParentFn: (id: string) => Promise<any[]>
+let getParentPostFn: (id: string) => Promise<any>
+
+if (collection === 'blog') {
+  const {
+    isSubpost,
+    getParentId,
+    getPostById,
+    getSubpostsForParent,
+    getParentPost,
+  } = await import('@/lib/collections')
+  isSubpostFn = isSubpost
+  getParentIdFn = getParentId
+  getByIdFn = getPostById
+  getSubpostsForParentFn = getSubpostsForParent
+  getParentPostFn = getParentPost
+} else if (collection === 'education') {
+  const {
+    isEducationSubpost,
+    getEducationParentId,
+    getEducationById,
+    getEducationSubpostsForParent,
+    getEducationParentPost,
+  } = await import('@/lib/collections')
+  isSubpostFn = isEducationSubpost
+  getParentIdFn = getEducationParentId
+  getByIdFn = getEducationById
+  getSubpostsForParentFn = getEducationSubpostsForParent
+  getParentPostFn = getEducationParentPost
+} else {
+  const {
+    isQuoteSubpost,
+    getQuoteParentId,
+    getQuoteById,
+    getQuoteSubpostsForParent,
+    getQuoteParentPost,
+  } = await import('@/lib/collections')
+  isSubpostFn = isQuoteSubpost
+  getParentIdFn = getQuoteParentId
+  getByIdFn = getQuoteById
+  getSubpostsForParentFn = getQuoteSubpostsForParent
+  getParentPostFn = getQuoteParentPost
+}
+
+const isCurrentSubpost = isSubpostFn(currentPostId)
+const rootParentId = isCurrentSubpost ? getParentIdFn(currentPostId) : parentId
+
+const currentPost = !isCurrentSubpost ? await getByIdFn(currentPostId) : null
+const subposts = await getSubpostsForParentFn(rootParentId)
+const parentPost = isCurrentSubpost ? await getParentPostFn(currentPostId) : null
 
 // Mostra il banner solo se ci sono subpost disponibili
 const hasSubposts = subposts.length > 0
@@ -34,6 +84,54 @@ const nextSubpost =
   currentSubpostIndex >= 0 && currentSubpostIndex < subposts.length - 1
     ? subposts[currentSubpostIndex + 1]
     : null
+
+// Configurazione per collection
+const config = {
+  blog: {
+    icon: 'lucide:book-open-text',
+    titleSubpost: 'Continua la lettura',
+    titleParent: 'Questo articolo fa parte di una serie',
+    descriptionSubpostNext: (title: string) => `Leggi il prossimo capitolo: "${title}"`,
+    descriptionSubpostComplete: (count: number) => `Hai completato tutti i ${count} capitoli di questa serie.`,
+    descriptionParent: (count: number) => `Questo articolo contiene ${count} capitolo${count === 1 ? '' : 'i'} aggiuntivi.`,
+    itemName: 'capitoli',
+    buttonContinue: 'Continua a leggere',
+    buttonStart: 'Inizia a leggere',
+    buttonIndex: 'Torna all\'indice',
+    buttonAll: (count: number) => `Vedi tutti (${count})`,
+    ariaLabelAll: (count: number) => `Mostra tutti i ${count} capitoli disponibili`,
+  },
+  education: {
+    icon: 'lucide:book-open-text',
+    titleSubpost: 'Continua la lettura',
+    titleParent: 'Questo articolo fa parte di una serie',
+    descriptionSubpostNext: (title: string) => `Leggi il prossimo capitolo: "${title}"`,
+    descriptionSubpostComplete: (count: number) => `Hai completato tutti i ${count} capitoli di questa serie.`,
+    descriptionParent: (count: number) => `Questo articolo contiene ${count} capitolo${count === 1 ? '' : 'i'} aggiuntivi.`,
+    itemName: 'capitoli',
+    buttonContinue: 'Continua a leggere',
+    buttonStart: 'Inizia a leggere',
+    buttonIndex: 'Torna all\'indice',
+    buttonAll: (count: number) => `Vedi tutti (${count})`,
+    ariaLabelAll: (count: number) => `Mostra tutti i ${count} capitoli disponibili`,
+  },
+  quote: {
+    icon: 'lucide:file-text',
+    titleSubpost: 'Continua la lettura',
+    titleParent: 'Questo preventivo contiene più documenti',
+    descriptionSubpostNext: (title: string) => `Leggi il prossimo documento: "${title}"`,
+    descriptionSubpostComplete: (count: number) => `Hai completato tutti i ${count} documenti di questo preventivo.`,
+    descriptionParent: (count: number) => `Questo preventivo contiene ${count} documento${count === 1 ? '' : 'i'} aggiuntivi.`,
+    itemName: 'documenti',
+    buttonContinue: 'Continua a leggere',
+    buttonStart: 'Inizia a leggere',
+    buttonIndex: 'Torna all\'indice',
+    buttonAll: (count: number) => `Vedi tutti (${count})`,
+    ariaLabelAll: (count: number) => `Mostra tutti i ${count} documenti disponibili`,
+  },
+}
+
+const cfg = config[collection]
 ---
 
 {
@@ -46,24 +144,22 @@ const nextSubpost =
         <div class="flex flex-col gap-3">
           <div class="flex items-start gap-3">
             <Icon
-              name="lucide:book-open-text"
+              name={cfg.icon}
               class="mt-0.5 size-5 flex-shrink-0 text-primary"
               aria-hidden="true"
             />
             <div class="flex-1">
               <h3 class="text-foreground mb-1 text-sm font-semibold">
                 {isCurrentSubpost
-                  ? 'Continua la lettura'
-                  : 'Questo articolo fa parte di una serie'}
+                  ? cfg.titleSubpost
+                  : cfg.titleParent}
               </h3>
               <p class="text-muted-foreground text-xs leading-relaxed">
                 {isCurrentSubpost
                   ? nextSubpost
-                    ? `Leggi il prossimo capitolo: "${nextSubpost.data.title}"`
-                    : `Hai completato tutti i ${subposts.length + 1} capitoli di questa serie.`
-                  : `Questo articolo contiene ${subposts.length} capitolo${
-                      subposts.length === 1 ? '' : 'i'
-                    } aggiuntivi.`}
+                    ? cfg.descriptionSubpostNext(nextSubpost.data.title)
+                    : cfg.descriptionSubpostComplete(subposts.length + 1)
+                  : cfg.descriptionParent(subposts.length)}
               </p>
             </div>
           </div>
@@ -71,29 +167,29 @@ const nextSubpost =
           <div class="flex flex-col gap-2 sm:flex-row">
             {isCurrentSubpost && nextSubpost ? (
               <Link
-                href={`/blog/${nextSubpost.id}`}
+                href={`${basePath}/${nextSubpost.id}`}
                 class={buttonVariants({ variant: 'default', size: 'sm' })}
-                aria-label={`Continua a leggere: ${nextSubpost.data.title}`}
+                aria-label={`${cfg.buttonContinue}: ${nextSubpost.data.title}`}
               >
-                <span>Continua a leggere</span>
+                <span>{cfg.buttonContinue}</span>
                 <Icon name="lucide:arrow-right" class="size-4" aria-hidden="true" />
               </Link>
             ) : isCurrentSubpost && !nextSubpost && parentPost ? (
               <Link
-                href={`/blog/${parentPost.id}`}
+                href={`${basePath}/${parentPost.id}`}
                 class={buttonVariants({ variant: 'outline', size: 'sm' })}
-                aria-label={`Torna all'indice: ${parentPost.data.title}`}
+                aria-label={`${cfg.buttonIndex}: ${parentPost.data.title}`}
               >
                 <Icon name="lucide:corner-left-up" class="size-4" aria-hidden="true" />
-                <span>Torna all'indice</span>
+                <span>{cfg.buttonIndex}</span>
               </Link>
             ) : firstSubpost ? (
               <Link
-                href={`/blog/${firstSubpost.id}`}
+                href={`${basePath}/${firstSubpost.id}`}
                 class={buttonVariants({ variant: 'default', size: 'sm' })}
-                aria-label={`Inizia a leggere: ${firstSubpost.data.title}`}
+                aria-label={`${cfg.buttonStart}: ${firstSubpost.data.title}`}
               >
-                <span>Inizia a leggere</span>
+                <span>{cfg.buttonStart}</span>
                 <Icon name="lucide:arrow-right" class="size-4" aria-hidden="true" />
               </Link>
             ) : null}
@@ -102,11 +198,11 @@ const nextSubpost =
               type="button"
               onclick="document.getElementById('mobile-subposts-container')?.querySelector('details')?.setAttribute('open', '')"
               class={buttonVariants({ variant: 'outline', size: 'sm' })}
-              aria-label={`Mostra tutti i ${subposts.length + (activePost ? 1 : 0)} capitoli disponibili`}
+              aria-label={cfg.ariaLabelAll(subposts.length + (activePost ? 1 : 0))}
             >
               <Icon name="lucide:list" class="size-4" aria-hidden="true" />
               <span>
-                Vedi tutti ({subposts.length + (activePost ? 1 : 0)})
+                {cfg.buttonAll(subposts.length + (activePost ? 1 : 0))}
               </span>
             </button>
           </div>
@@ -115,4 +211,3 @@ const nextSubpost =
     </div>
   )
 }
-

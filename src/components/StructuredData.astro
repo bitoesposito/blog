@@ -3,19 +3,23 @@ import { SITE } from '@/consts'
 import type { CollectionEntry } from 'astro:content'
 import { getImage } from 'astro:assets'
 
+type PostCollection = 'blog' | 'education' | 'quote'
+
 interface Props {
-  post: CollectionEntry<'blog'>
+  post: CollectionEntry<'blog'> | CollectionEntry<'education'> | CollectionEntry<'quote'>
+  collection: PostCollection
   authors?: Array<{ name: string; url?: string }>
   breadcrumbs?: Array<{ name: string; url: string }>
 }
 
 const {
   post,
+  collection,
   authors = [],
   breadcrumbs = [],
 } = Astro.props
 
-const postUrl = new URL(`/blog/${post.id}`, SITE.href).href
+const postUrl = new URL(`/${collection}/${post.id}`, SITE.href).href
 
 let imageUrl = new URL('/static/1200x630.png', SITE.href).href
 if (post.data.image) {
