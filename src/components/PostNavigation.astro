@@ -3,9 +3,58 @@ import Link from '@/components/Link.astro'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Icon } from 'astro-icon/components'
+import type { CollectionEntry } from 'astro:content'
+import type { PostCollection } from '@/lib/collections'
 
-const { newerPost, olderPost, parentPost } = Astro.props
+interface Props {
+  newerPost: CollectionEntry<'blog' | 'education' | 'quote'> | null
+  olderPost: CollectionEntry<'blog' | 'education' | 'quote'> | null
+  parentPost?: CollectionEntry<'blog' | 'education' | 'quote'> | null
+  basePath: string
+  collection: PostCollection
+}
+
+const { newerPost, olderPost, parentPost, basePath, collection } = Astro.props
 const isSubpost = !!parentPost
+
+// Testi personalizzati per collection
+const labels = {
+  blog: {
+    ariaLabel: 'Navigazione tra i post',
+    olderLabel: 'Post precedente',
+    newerLabel: 'Post successivo',
+    parentLabel: 'Post principale',
+    olderEmpty: 'Sei al post più vecchio!',
+    newerEmpty: 'Sei al post più recente!',
+    olderSubpostEmpty: 'Nessun post precedente',
+    newerSubpostEmpty: 'Nessun post successivo',
+    parentEmpty: 'Nessun post principale',
+  },
+  education: {
+    ariaLabel: 'Navigazione tra i post di formazione',
+    olderLabel: 'Post precedente',
+    newerLabel: 'Post successivo',
+    parentLabel: 'Post principale',
+    olderEmpty: 'Sei al post più vecchio!',
+    newerEmpty: 'Sei al post più recente!',
+    olderSubpostEmpty: 'Nessun post precedente',
+    newerSubpostEmpty: 'Nessun post successivo',
+    parentEmpty: 'Nessun post principale',
+  },
+  quote: {
+    ariaLabel: 'Navigazione tra i preventivi',
+    olderLabel: isSubpost ? 'Documento precedente' : 'Preventivo precedente',
+    newerLabel: isSubpost ? 'Documento successivo' : 'Preventivo successivo',
+    parentLabel: 'Preventivo principale',
+    olderEmpty: 'Sei al preventivo più vecchio!',
+    newerEmpty: 'Sei al preventivo più recente!',
+    olderSubpostEmpty: 'Nessun documento precedente',
+    newerSubpostEmpty: 'Nessun documento successivo',
+    parentEmpty: 'Nessun preventivo principale',
+  },
+}
+
+const text = labels[collection]
 ---
 
 <nav
@@ -13,10 +62,10 @@ const isSubpost = !!parentPost
     'col-start-2 grid grid-cols-1 gap-4',
     isSubpost ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
   )}
-  aria-label="Navigazione tra i post"
+  aria-label={text.ariaLabel}
 >
   <Link
-    href={olderPost ? `/blog/${olderPost.id}#post-title` : '#'}
+    href={olderPost ? `${basePath}/${olderPost.id}#post-title` : '#'}
     class={cn(
       buttonVariants({ variant: 'outline' }),
       'rounded-lg group flex items-center justify-start size-full',
@@ -32,12 +81,12 @@ const isSubpost = !!parentPost
     />
     <div class="flex flex-col items-start overflow-hidden text-wrap">
       <span class="text-muted-foreground text-left text-xs">
-        {isSubpost ? 'Post precedente' : 'Post precedente'}
+        {text.olderLabel}
       </span>
       <span class="w-full text-left text-sm text-balance text-ellipsis">
         {
           olderPost?.data.title ||
-            (isSubpost ? 'Nessun post precedente' : "Sei al post più vecchio!")
+            (isSubpost ? text.olderSubpostEmpty : text.olderEmpty)
         }
       </span>
     </div>
@@ -46,7 +95,7 @@ const isSubpost = !!parentPost
   {
     isSubpost && (
       <Link
-        href={parentPost ? `/blog/${parentPost.id}#post-title` : '#'}
+        href={parentPost ? `${basePath}/${parentPost.id}#post-title` : '#'}
         class={cn(
           buttonVariants({ variant: 'outline' }),
           'group flex size-full items-center justify-center rounded-lg',
@@ -61,10 +110,10 @@ const isSubpost = !!parentPost
         />
         <div class="flex flex-col items-center overflow-hidden text-wrap">
           <span class="text-muted-foreground text-center text-xs">
-            Post principale
+            {text.parentLabel}
           </span>
           <span class="w-full text-center text-sm text-balance text-ellipsis">
-            {parentPost?.data.title || 'Nessun post principale'}
+            {parentPost?.data.title || text.parentEmpty}
           </span>
         </div>
       </Link>
@@ -72,7 +121,7 @@ const isSubpost = !!parentPost
   }
 
   <Link
-    href={newerPost ? `/blog/${newerPost.id}#post-title` : '#'}
+    href={newerPost ? `${basePath}/${newerPost.id}#post-title` : '#'}
     class={cn(
       buttonVariants({ variant: 'outline' }),
       'rounded-lg group flex items-center justify-end size-full',
@@ -83,12 +132,12 @@ const isSubpost = !!parentPost
   >
     <div class="flex flex-col items-end overflow-hidden text-wrap">
       <span class="text-muted-foreground text-right text-xs">
-        {isSubpost ? 'Post successivo' : 'Post successivo'}
+        {text.newerLabel}
       </span>
       <span class="w-full text-right text-sm text-balance text-ellipsis">
         {
           newerPost?.data.title ||
-            (isSubpost ? 'Nessun post successivo' : "Sei al post più recente!")
+            (isSubpost ? text.newerSubpostEmpty : text.newerEmpty)
         }
       </span>
     </div>

@@ -1,12 +1,12 @@
 ---
 import Breadcrumbs from '@/components/Breadcrumbs.astro'
 import Link from '@/components/Link.astro'
-import EducationPostHead from '@/components/EducationPostHead.astro'
-import EducationPostNavigation from '@/components/EducationPostNavigation.astro'
-import EducationSubpostsBanner from '@/components/EducationSubpostsBanner.astro'
-import EducationSubpostsHeader from '@/components/EducationSubpostsHeader.astro'
-import EducationSubpostsSidebar from '@/components/EducationSubpostsSidebar.astro'
-import EducationTOCSidebar from '@/components/EducationTOCSidebar.astro'
+import PostHead from '@/components/PostHead.astro'
+import PostNavigation from '@/components/PostNavigation.astro'
+import SubpostsBanner from '@/components/SubpostsBanner.astro'
+import SubpostsHeader from '@/components/SubpostsHeader.astro'
+import SubpostsSidebar from '@/components/SubpostsSidebar.astro'
+import TOCSidebar from '@/components/TOCSidebar.astro'
 import TOCHeader from '@/components/TOCHeader.astro'
 import { Image } from 'astro:assets'
 import { badgeVariants } from '@/components/ui/badge'
@@ -72,12 +72,14 @@ const breadcrumbs = [
 ---
 
 <Layout>
-  <EducationPostHead slot="head" post={post} breadcrumbs={breadcrumbs} />
+  <PostHead slot="head" post={post} collection="education" breadcrumbs={breadcrumbs} />
   {
     (hasChildPosts || isCurrentSubpost) && (
-      <EducationSubpostsHeader
+      <SubpostsHeader
         slot="subposts-navigation"
         parentId={isCurrentSubpost ? getEducationParentId(currentPostId) : currentPostId}
+        basePath="/education"
+        collection="education"
       />
     )
   }
@@ -237,10 +239,12 @@ const breadcrumbs = [
 
       {
         postReadingTime && parseInt(postReadingTime) >= 3 && (
-          <EducationPostNavigation
+          <PostNavigation
             newerPost={navigation.newer}
             olderPost={navigation.older}
             parentPost={isCurrentSubpost ? navigation.parent : undefined}
+            basePath="/education"
+            collection="education"
           />
         )
       }
@@ -248,7 +252,7 @@ const breadcrumbs = [
 
     {
       tocSections.length > 0 && (
-        <EducationTOCSidebar sections={tocSections} currentPostId={currentPostId} />
+        <TOCSidebar sections={tocSections} currentPostId={currentPostId} basePath="/education" collection="education" />
       )
     }
 
@@ -258,30 +262,36 @@ const breadcrumbs = [
 
     {
       (hasChildPosts || isCurrentSubpost) && (
-        <EducationSubpostsBanner
+        <SubpostsBanner
           parentId={
             isCurrentSubpost ? getEducationParentId(currentPostId) : currentPostId
           }
           currentPostId={currentPostId}
+          basePath="/education"
+          collection="education"
         />
       )
     }
 
     {
       (hasChildPosts || isCurrentSubpost) && (
-        <EducationSubpostsSidebar
+        <SubpostsSidebar
           parentId={
             isCurrentSubpost ? getEducationParentId(currentPostId) : currentPostId
           }
+          basePath="/education"
+          collection="education"
           className="w-64"
         />
       )
     }
 
-    <EducationPostNavigation
+    <PostNavigation
       newerPost={navigation.newer}
       olderPost={navigation.older}
       parentPost={isCurrentSubpost ? navigation.parent : undefined}
+      basePath="/education"
+      collection="education"
     />
   </section>
 

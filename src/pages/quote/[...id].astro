@@ -1,10 +1,10 @@
 ---
 import Link from '@/components/Link.astro'
-import QuotePostHead from '@/components/QuotePostHead.astro'
-import QuoteSubpostsBanner from '@/components/QuoteSubpostsBanner.astro'
-import QuoteSubpostsHeader from '@/components/QuoteSubpostsHeader.astro'
-import QuoteSubpostsSidebar from '@/components/QuoteSubpostsSidebar.astro'
-import QuoteTOCSidebar from '@/components/QuoteTOCSidebar.astro'
+import PostHead from '@/components/PostHead.astro'
+import SubpostsBanner from '@/components/SubpostsBanner.astro'
+import SubpostsHeader from '@/components/SubpostsHeader.astro'
+import SubpostsSidebar from '@/components/SubpostsSidebar.astro'
+import TOCSidebar from '@/components/TOCSidebar.astro'
 import TOCHeader from '@/components/TOCHeader.astro'
 import { Button } from '@/components/ui/button'
 import Layout from '@/layouts/Layout.astro'
@@ -66,12 +66,14 @@ const breadcrumbs = [
 ---
 
 <Layout>
-  <QuotePostHead slot="head" post={quote} breadcrumbs={breadcrumbs} />
+  <PostHead slot="head" post={quote} collection="quote" breadcrumbs={breadcrumbs} />
   {
     (hasChildPosts || isCurrentSubpost) && (
-      <QuoteSubpostsHeader
+      <SubpostsHeader
         slot="subposts-navigation"
         parentId={isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId}
+        basePath="/quote"
+        collection="quote"
       />
     )
   }
@@ -168,10 +170,12 @@ const breadcrumbs = [
 
     {
       (hasChildPosts || isCurrentSubpost) && (
-        <QuoteSubpostsSidebar
+        <SubpostsSidebar
           parentId={
             isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId
           }
+          basePath="/quote"
+          collection="quote"
           className="w-64"
         />
       )
@@ -183,17 +187,19 @@ const breadcrumbs = [
 
     {
       tocSections.length > 0 && (
-        <QuoteTOCSidebar sections={tocSections} currentPostId={currentQuoteId} />
+        <TOCSidebar sections={tocSections} currentPostId={currentQuoteId} basePath="/quote" collection="quote" />
       )
     }
 
     {
       (hasChildPosts || isCurrentSubpost) && (
-        <QuoteSubpostsBanner
+        <SubpostsBanner
           parentId={
             isCurrentSubpost ? getQuoteParentId(currentQuoteId) : currentQuoteId
           }
           currentPostId={currentQuoteId}
+          basePath="/quote"
+          collection="quote"
         />
       )
     }

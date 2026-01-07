@@ -73,13 +73,15 @@ const breadcrumbs = [
 ---
 
 <Layout>
-  <PostHead slot="head" post={post} breadcrumbs={breadcrumbs} />
+  <PostHead slot="head" post={post} collection="blog" breadcrumbs={breadcrumbs} />
   <BreadcrumbListStructuredData items={breadcrumbs} />
   {
     (hasChildPosts || isCurrentSubpost) && (
       <SubpostsHeader
         slot="subposts-navigation"
         parentId={isCurrentSubpost ? getParentId(currentPostId) : currentPostId}
+        basePath="/blog"
+        collection="blog"
       />
     )
   }
@@ -233,6 +235,8 @@ const breadcrumbs = [
             newerPost={navigation.newer}
             olderPost={navigation.older}
             parentPost={isCurrentSubpost ? navigation.parent : undefined}
+            basePath="/blog"
+            collection="blog"
           />
         )
       }
@@ -240,7 +244,7 @@ const breadcrumbs = [
 
     {
       tocSections.length > 0 && (
-        <TOCSidebar sections={tocSections} currentPostId={currentPostId} />
+        <TOCSidebar sections={tocSections} currentPostId={currentPostId} basePath="/blog" collection="blog" />
       )
     }
 
@@ -255,6 +259,8 @@ const breadcrumbs = [
             isCurrentSubpost ? getParentId(currentPostId) : currentPostId
           }
           currentPostId={currentPostId}
+          basePath="/blog"
+          collection="blog"
         />
       )
     }
@@ -265,6 +271,8 @@ const breadcrumbs = [
           parentId={
             isCurrentSubpost ? getParentId(currentPostId) : currentPostId
           }
+          basePath="/blog"
+          collection="blog"
           className="w-64"
         />
       )
@@ -274,6 +282,8 @@ const breadcrumbs = [
       newerPost={navigation.newer}
       olderPost={navigation.older}
       parentPost={isCurrentSubpost ? navigation.parent : undefined}
+      basePath="/blog"
+      collection="blog"
     />
   </section>
 
