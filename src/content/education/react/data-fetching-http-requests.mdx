@@ -1,0 +1,307 @@
+---
+title: 'Data Fetching e HTTP Requests'
+description: 'Come recuperare e inviare dati da applicazioni React a server backend tramite richieste HTTP utilizzando la Fetch API'
+date: 2026-01-08
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 10
+---
+
+## Introduzione
+
+Le applicazioni React spesso devono comunicare con server backend per recuperare o inviare dati. Questo articolo spiega come utilizzare la **Fetch API** per inviare richieste HTTP, gestire stati di caricamento ed errori, e implementare pattern comuni come l'optimistic updating.
+
+## Architettura Frontend-Backend
+
+Le applicazioni React sono **client-side**: il codice viene eseguito nel browser degli utenti. Per questo motivo, non si può accedere direttamente a database o file system, né esporre credenziali nel codice frontend.
+
+La soluzione è comunicare con un **backend server** separato tramite **richieste HTTP**. Il backend gestisce l'accesso ai database e controlla quali operazioni sono permesse esponendo **endpoint** specifici.
+
+```jsx
+// Il frontend React invia richieste HTTP al backend
+// Il backend gestisce database e logica di business
+Frontend (React) → HTTP Request → Backend → Database
+```
+
+## Fetch API: Funzionamento Base
+
+La **Fetch API** è una funzione built-in del browser (non di React) che permette di inviare richieste HTTP. Restituisce una **Promise** che si risolve con un oggetto `Response`.
+
+### Richiesta GET
+
+Per recuperare dati, si invia una richiesta GET:
+
+```jsx
+// fetch restituisce una Promise
+fetch('http://localhost:3000/places')
+  .then(response => {
+    // response è un oggetto Response
+    return response.json(); // json() restituisce un'altra Promise
+  })
+  .then(data => {
+    // data contiene i dati parsati in formato JSON
+    console.log(data);
+  });
+```
+
+Il metodo `json()` estrae i dati dal formato JSON (JavaScript Object Notation), il formato standard per lo scambio di dati con backend.
+
+### Utilizzo con async/await
+
+Con `async/await` la sintassi diventa più leggibile:
+
+```jsx
+async function fetchPlaces() {
+  const response = await fetch('http://localhost:3000/places');
+  const data = await response.json();
+  return data;
+}
+```
+
+## Fetching Dati in React
+
+Quando si recuperano dati da un backend, il processo richiede tempo. Il componente deve quindi gestire tre stati: **dati**, **caricamento** ed **errori**.
+
+### Pattern Base con useEffect
+
+Non si può chiamare `fetch` direttamente nel corpo del componente perché creerebbe un loop infinito (ogni aggiornamento di state causerebbe una nuova richiesta). Si usa `useEffect`:
+
+```jsx
+import { useState, useEffect } from 'react';
+
+function AvailablePlaces() {
+  const [places, setPlaces] = useState([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Funzione async helper per usare await
+    async function fetchPlaces() {
+      setIsFetching(true);
+      
+      try {
+        const response = await fetch('http://localhost:3000/places');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch places');
+        }
+        
+        const data = await response.json();
+        setPlaces(data.places);
+      } catch (err) {
+        setError({
+          message: err.message || 'Could not fetch places'
+        });
+      } finally {
+        setIsFetching(false);
+      }
+    }
+
+    fetchPlaces();
+  }, []); // Array vuoto = esegue solo al mount
+
+  if (error) {
+    return <Error title="An error occurred!" message={error.message} />;
+  }
+
+  return (
+    <Places 
+      items={places} 
+      isLoading={isFetching}
+      loadingText="Fetching places..."
+    />
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché non si può usare async direttamente su useEffect</summary>
+<div class="px-4 pb-4">
+
+React non permette di decorare la funzione passata a `useEffect` con `async`. La soluzione è creare una funzione helper `async` all'interno dell'effect e chiamarla immediatamente:
+
+```jsx
+useEffect(() => {
+  async function fetchData() {
+    // async/await qui funziona
+    const data = await fetch('...');
+  }
+  
+  fetchData(); // Chiamata immediata
+}, []);
+```
+
+</div>
+</details>
+
+### Gestione Errori
+
+Gli errori possono verificarsi per due motivi:
+
+1. **Errore di rete**: la richiesta non viene inviata (es. connessione persa)
+2. **Errore del server**: la richiesta arriva ma il server risponde con un errore (status 400/500)
+
+Si controlla `response.ok` per verificare se la risposta è di successo:
+
+```jsx
+const response = await fetch('http://localhost:3000/places');
+
+if (!response.ok) {
+  throw new Error('Failed to fetch places');
+}
+```
+
+## Invio di Dati: POST e PUT
+
+Per inviare dati al backend, si usa `fetch` con un oggetto di configurazione che specifica il metodo HTTP e il body della richiesta.
+
+### Richiesta PUT
+
+```jsx
+async function updateUserPlaces(places) {
+  const response = await fetch('http://localhost:3000/user-places', {
+    method: 'PUT', // Metodo HTTP
+    headers: {
+      'Content-Type': 'application/json' // Indica formato JSON
+    },
+    body: JSON.stringify({ places }) // Dati convertiti in JSON
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update user data');
+  }
+
+  return await response.json();
+}
+```
+
+Il `body` deve essere una stringa JSON (ottenuta con `JSON.stringify`), non un oggetto JavaScript diretto.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Metodi HTTP comuni</summary>
+<div class="px-4 pb-4">
+
+- **GET**: Recupera dati (default di fetch)
+- **POST**: Crea nuove risorse
+- **PUT**: Aggiorna risorse esistenti (sostituisce completamente)
+- **PATCH**: Aggiorna parzialmente una risorsa
+- **DELETE**: Elimina una risorsa
+
+</div>
+</details>
+
+## Optimistic Updating
+
+L'**optimistic updating** aggiorna l'UI immediatamente, prima che la richiesta HTTP sia completata, per una migliore esperienza utente. Se la richiesta fallisce, si fa rollback della modifica.
+
+```jsx
+async function handleSelectPlace(place) {
+  // 1. Aggiorna lo state immediatamente (optimistic)
+  const updatedPlaces = [place, ...userPlaces];
+  setUserPlaces(updatedPlaces);
+
+  try {
+    // 2. Invia la richiesta in background
+    await updateUserPlaces(updatedPlaces);
+  } catch (error) {
+    // 3. Se fallisce, rollback allo state precedente
+    setUserPlaces(userPlaces); // State precedente
+    setErrorUpdatingPlaces({
+      message: error.message || 'Failed to update places'
+    });
+  }
+}
+```
+
+Questo pattern è utile per operazioni di aggiornamento dove l'utente si aspetta feedback immediato. Per operazioni di fetch, invece, si deve attendere i dati prima di mostrarli.
+
+## Organizzazione del Codice: Utility Functions
+
+È buona pratica estrarre la logica di fetching in funzioni utility separate:
+
+```jsx
+// http.js
+export async function fetchAvailablePlaces() {
+  const response = await fetch('http://localhost:3000/places');
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch places');
+  }
+  
+  const data = await response.json();
+  return data.places;
+}
+
+export async function updateUserPlaces(places) {
+  const response = await fetch('http://localhost:3000/user-places', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ places })
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update user data');
+  }
+
+  return await response.json();
+}
+```
+
+Questo permette di riutilizzare la logica di fetching in più componenti e facilita la manutenzione.
+
+## Fetching Dati all'Avvio
+
+Per recuperare dati quando l'app si carica, si usa `useEffect` con array di dipendenze vuoto:
+
+```jsx
+function App() {
+  const [userPlaces, setUserPlaces] = useState([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchUserPlaces() {
+      setIsFetching(true);
+      
+      try {
+        const places = await fetchUserPlaces(); // Funzione utility
+        setUserPlaces(places);
+      } catch (err) {
+        setError({
+          message: err.message || 'Failed to fetch user places'
+        });
+      } finally {
+        setIsFetching(false);
+      }
+    }
+
+    fetchUserPlaces();
+  }, []); // Esegue solo al mount
+
+  if (error) {
+    return <Error title="An error occurred!" message={error.message} />;
+  }
+
+  return (
+    <Places 
+      items={userPlaces}
+      isLoading={isFetching}
+      loadingText="Fetching your places..."
+    />
+  );
+}
+```
+
+## Riepilogo
+
+- **Fetch API**: Funzione built-in del browser per inviare richieste HTTP
+- **Promise-based**: `fetch` restituisce una Promise che si risolve con un `Response`
+- **JSON**: Formato standard per scambio dati; si usa `response.json()` per parsare
+- **useEffect**: Necessario per evitare loop infiniti quando si fetcha dati
+- **Tre stati**: Dati, caricamento (`isFetching`) ed errori devono essere gestiti insieme
+- **Metodi HTTP**: GET per recuperare, PUT/POST per inviare dati
+- **Optimistic updating**: Aggiorna l'UI immediatamente, rollback se fallisce
+- **Error handling**: Controllare `response.ok` e usare try/catch per gestire errori
+
