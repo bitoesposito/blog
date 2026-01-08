@@ -1,0 +1,480 @@
+---
+title: 'Form e Input Utente'
+description: 'Come gestire form, estrarre valori inseriti dall\'utente e validare l\'input in applicazioni React'
+date: 2026-01-08
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 12
+---
+
+## Introduzione
+
+I form sono collezioni di campi input utilizzati per raccogliere dati dall'utente. In React, gestire form richiede: estrarre i valori inseriti, gestire la submission e validare l'input. Questo articolo spiega i meccanismi per implementare queste funzionalità.
+
+## Gestione della Submission
+
+Per default, i button all'interno di un `<form>` hanno `type="submit"`, che causa il reload della pagina inviando una richiesta HTTP al server. In applicazioni React single-page, questo comportamento va prevenuto.
+
+### Prevenire il Default Behavior
+
+Si può ascoltare l'evento `onSubmit` del form e chiamare `event.preventDefault()`:
+
+```jsx
+function LoginForm() {
+  function handleSubmit(event) {
+    event.preventDefault(); // Previene il reload della pagina
+    
+    // Logica di gestione submission
+    console.log('Form submitted');
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" name="email" />
+      <input type="password" name="password" />
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Tipi di button in form</summary>
+<div class="px-4 pb-4">
+
+- **`type="submit"`** (default): Submitta il form e causa reload
+- **`type="button"`**: Non submitta il form, agisce come button normale
+- **`type="reset"`**: Resetta tutti i campi del form ai valori iniziali
+
+</div>
+</details>
+
+## Estrazione dei Valori
+
+Ci sono tre approcci principali per estrarre i valori inseriti dall'utente: **useState**, **refs**, e **FormData**.
+
+### Approccio con useState
+
+Si gestisce ogni input con state separato o un oggetto combinato:
+
+```jsx
+import { useState } from 'react';
+
+function LoginForm() {
+  const [enteredValues, setEnteredValues] = useState({
+    email: '',
+    password: ''
+  });
+
+  function handleInputChange(identifier, value) {
+    setEnteredValues(prevValues => ({
+      ...prevValues,
+      [identifier]: value // Sintassi per proprietà dinamica
+    }));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    console.log(enteredValues);
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="email"
+        value={enteredValues.email}
+        onChange={(e) => handleInputChange('email', e.target.value)}
+      />
+      <input
+        type="password"
+        value={enteredValues.password}
+        onChange={(e) => handleInputChange('password', e.target.value)}
+      />
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+```
+
+La sintassi `[identifier]` permette di accedere dinamicamente a una proprietà dell'oggetto usando una variabile come nome della proprietà.
+
+### Approccio con Refs
+
+I refs permettono di accedere direttamente agli elementi DOM senza gestire state:
+
+```jsx
+import { useRef } from 'react';
+
+function LoginForm() {
+  const emailRef = useRef();
+  const passwordRef = useRef();
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    
+    const email = emailRef.current.value;
+    const password = passwordRef.current.value;
+    
+    console.log({ email, password });
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" ref={emailRef} />
+      <input type="password" ref={passwordRef} />
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+```
+
+I refs richiedono meno codice ma rendono più difficile il reset programmatico dei valori.
+
+### Approccio con FormData
+
+`FormData` è un'API built-in del browser che estrae automaticamente tutti i valori da un form:
+
+```jsx
+function SignupForm() {
+  function handleSubmit(event) {
+    event.preventDefault();
+    
+    // Crea un oggetto FormData dal form
+    const formData = new FormData(event.target);
+    
+    // Converte FormData in oggetto JavaScript
+    const data = Object.fromEntries(formData.entries());
+    
+    console.log(data); // { email: '...', password: '...', ... }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" name="email" />
+      <input type="password" name="password" />
+      <button type="submit">Sign up</button>
+    </form>
+  );
+}
+```
+
+**Importante**: Tutti gli input devono avere l'attributo `name` per essere estratti da FormData.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Gestire input multipli con lo stesso name</summary>
+<div class="px-4 pb-4">
+
+Per checkbox o select multipli con lo stesso `name`, usare `getAll()` invece di `get()`:
+
+```jsx
+const formData = new FormData(event.target);
+const data = Object.fromEntries(formData.entries());
+
+// Per checkbox multipli
+const selectedValues = formData.getAll('acquisition');
+data.acquisition = selectedValues; // Array di valori selezionati
+```
+
+</div>
+</details>
+
+## Validazione dell'Input
+
+La validazione può essere eseguita in diversi momenti: **on keystroke**, **on blur**, o **on submit**.
+
+### Validazione on Keystroke
+
+Si valida ad ogni modifica del valore, mostrando errori in tempo reale:
+
+```jsx
+function LoginForm() {
+  const [enteredValues, setEnteredValues] = useState({
+    email: '',
+    password: ''
+  });
+  const [didEdit, setDidEdit] = useState({
+    email: false,
+    password: false
+  });
+
+  const emailIsInvalid = didEdit.email && !enteredValues.email.includes('@');
+
+  function handleInputChange(identifier, value) {
+    setEnteredValues(prev => ({ ...prev, [identifier]: value }));
+    setDidEdit(prev => ({ ...prev, [identifier]: false })); // Reset on typing
+  }
+
+  function handleInputBlur(identifier) {
+    setDidEdit(prev => ({ ...prev, [identifier]: true }));
+  }
+
+  return (
+    <form>
+      <input
+        type="email"
+        value={enteredValues.email}
+        onChange={(e) => handleInputChange('email', e.target.value)}
+        onBlur={() => handleInputBlur('email')}
+      />
+      {emailIsInvalid && (
+        <p className="error">Please enter a valid email address</p>
+      )}
+    </form>
+  );
+}
+```
+
+Il pattern `didEdit` evita di mostrare errori prima che l'utente abbia iniziato a digitare.
+
+### Validazione on Submit
+
+Si valida solo quando il form viene submittato:
+
+```jsx
+function LoginForm() {
+  const emailRef = useRef();
+  const [emailIsInvalid, setEmailIsInvalid] = useState(false);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    
+    const email = emailRef.current.value;
+    const isValid = email.includes('@');
+    
+    if (!isValid) {
+      setEmailIsInvalid(true);
+      return; // Blocca l'esecuzione se invalido
+    }
+    
+    setEmailIsInvalid(false);
+    // Procedi con submission
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" ref={emailRef} />
+      {emailIsInvalid && (
+        <p className="error">Please enter a valid email address</p>
+      )}
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+```
+
+### Validazione Built-in del Browser
+
+Il browser fornisce attributi HTML per validazione automatica:
+
+```jsx
+<form onSubmit={handleSubmit}>
+  <input 
+    type="email" 
+    name="email" 
+    required 
+    minLength={6}
+  />
+  <input 
+    type="password" 
+    name="password" 
+    required 
+    minLength={6}
+  />
+  <button type="submit">Sign up</button>
+</form>
+```
+
+Attributi comuni:
+- **`required`**: Campo obbligatorio
+- **`minLength`** / **`maxLength`**: Lunghezza minima/massima
+- **`type="email"`**: Valida formato email
+- **`pattern`**: Regex per validazione custom
+
+Il browser mostra automaticamente messaggi di errore se la validazione fallisce.
+
+### Combinare Validazione Browser e Custom
+
+Si può combinare validazione built-in con logica custom:
+
+```jsx
+function SignupForm() {
+  const [passwordsNotEqual, setPasswordsNotEqual] = useState(false);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Validazione custom
+    if (data.password !== data['confirm-password']) {
+      setPasswordsNotEqual(true);
+      return;
+    }
+    
+    setPasswordsNotEqual(false);
+    // Procedi con submission
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="password" name="password" required minLength={6} />
+      <input type="password" name="confirm-password" required />
+      {passwordsNotEqual && (
+        <p className="error">Passwords must match</p>
+      )}
+      <button type="submit">Sign up</button>
+    </form>
+  );
+}
+```
+
+## Reset del Form
+
+Per resettare un form programmaticamente:
+
+```jsx
+function handleSubmit(event) {
+  event.preventDefault();
+  
+  // Con FormData/refs: usa il metodo reset del form
+  event.target.reset();
+  
+  // Con useState: resetta lo state ai valori iniziali
+  setEnteredValues({ email: '', password: '' });
+}
+```
+
+## Componenti Input Riutilizzabili
+
+Per evitare duplicazione di codice, si può creare un componente Input riutilizzabile:
+
+```jsx
+function Input({ label, id, error, ...props }) {
+  return (
+    <div className="control">
+      <label htmlFor={id}>{label}</label>
+      <input id={id} {...props} />
+      {error && <p className="control-error">{error}</p>}
+    </div>
+  );
+}
+
+// Utilizzo
+<Input
+  label="Email"
+  id="email"
+  type="email"
+  name="email"
+  value={enteredValues.email}
+  onChange={(e) => handleInputChange('email', e.target.value)}
+  onBlur={() => handleInputBlur('email')}
+  error={emailIsInvalid ? 'Please enter a valid email' : null}
+/>
+```
+
+Il spread operator `{...props}` permette di passare tutte le props rimanenti direttamente all'elemento input.
+
+## Custom Hook per Input
+
+Un custom hook può incapsulare la logica di gestione input e validazione:
+
+```jsx
+// hooks/useInput.js
+import { useState } from 'react';
+
+export function useInput(defaultValue, validateFn) {
+  const [enteredValue, setEnteredValue] = useState(defaultValue);
+  const [didEdit, setDidEdit] = useState(false);
+
+  const valueIsValid = validateFn(enteredValue);
+  const hasError = didEdit && !valueIsValid;
+
+  function handleInputChange(event) {
+    setEnteredValue(event.target.value);
+    setDidEdit(false); // Reset on typing
+  }
+
+  function handleInputBlur() {
+    setDidEdit(true);
+  }
+
+  return {
+    value: enteredValue,
+    handleInputChange,
+    handleInputBlur,
+    hasError
+  };
+}
+```
+
+Utilizzo del hook:
+
+```jsx
+import { useInput } from './hooks/useInput';
+import { isEmail, isNotEmpty, hasMinLength } from './util/validation';
+
+function LoginForm() {
+  const {
+    value: emailValue,
+    handleInputChange: handleEmailChange,
+    handleInputBlur: handleEmailBlur,
+    hasError: emailHasError
+  } = useInput('', (value) => isEmail(value) && isNotEmpty(value));
+
+  const {
+    value: passwordValue,
+    handleInputChange: handlePasswordChange,
+    handleInputBlur: handlePasswordBlur,
+    hasError: passwordHasError
+  } = useInput('', (value) => hasMinLength(value, 6));
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    
+    if (emailHasError || passwordHasError) {
+      return;
+    }
+    
+    console.log({ email: emailValue, password: passwordValue });
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Input
+        label="Email"
+        id="email"
+        type="email"
+        value={emailValue}
+        onChange={handleEmailChange}
+        onBlur={handleEmailBlur}
+        error={emailHasError ? 'Please enter a valid email' : null}
+      />
+      <Input
+        label="Password"
+        id="password"
+        type="password"
+        value={passwordValue}
+        onChange={handlePasswordChange}
+        onBlur={handlePasswordBlur}
+        error={passwordHasError ? 'Password must be at least 6 characters' : null}
+      />
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+```
+
+Il hook accetta una funzione di validazione come secondo parametro, rendendolo riutilizzabile per diversi tipi di input.
+
+## Riepilogo
+
+- **Submission**: Usare `onSubmit` sul form e `event.preventDefault()` per prevenire il reload
+- **Estrazione valori**: Tre approcci: useState (two-way binding), refs (accesso diretto), FormData (estrazione automatica)
+- **FormData**: Richiede attributo `name` su tutti gli input; `Object.fromEntries(formData.entries())` converte in oggetto
+- **Validazione**: On keystroke (feedback immediato), on blur (dopo interazione), on submit (solo al submit), o browser built-in (attributi HTML)
+- **Pattern didEdit**: Evita di mostrare errori prima che l'utente interagisca con l'input
+- **Componenti riutilizzabili**: Estrarre JSX ripetuto in componenti custom con props configurabili
+- **Custom hooks**: Incapsulare logica di state e validazione per riutilizzabilità
+- **Validazione browser**: Attributi `required`, `minLength`, `type` forniscono validazione automatica
+
