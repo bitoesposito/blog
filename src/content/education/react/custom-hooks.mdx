@@ -1,0 +1,231 @@
+---
+title: 'Custom Hooks'
+description: 'Come creare hook personalizzati per riutilizzare logica tra componenti React, incapsulando state e side effects'
+date: 2026-01-08
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 11
+---
+
+## Introduzione
+
+I **custom hooks** permettono di estrarre e riutilizzare logica che usa hooks built-in (come `useState` e `useEffect`) tra più componenti. Sono funzioni che iniziano con "use" e possono contenere altri hooks, permettendo di incapsulare pattern comuni come data fetching, gestione di form, o logica di business complessa.
+
+## Regole degli Hooks e Custom Hooks
+
+Le regole degli hooks si applicano anche ai custom hooks:
+
+1. **Hooks solo in componenti o altri hooks**: Gli hooks possono essere usati solo all'interno di funzioni componenti o di altri custom hooks
+2. **Nessun nesting condizionale**: Gli hooks non possono essere dentro `if`, loop, o funzioni annidate
+
+La prima regola è importante perché permette di usare hooks built-in all'interno di custom hooks, creando funzioni riutilizzabili che incapsulano logica complessa.
+
+## Perché Creare Custom Hooks
+
+Quando più componenti condividono la stessa logica (ad esempio, data fetching con gestione di loading ed errori), invece di duplicare codice si può estrarre quella logica in un custom hook. Questo permette di:
+
+- **Riutilizzare logica**: Una volta scritto, il hook può essere usato in più componenti
+- **Mantenere componenti snelli**: La logica complessa viene spostata fuori dal componente
+- **Testare separatamente**: La logica può essere testata indipendentemente dai componenti
+
+## Creare un Custom Hook
+
+Un custom hook è semplicemente una funzione che inizia con "use". Questa convenzione è importante perché React (e gli strumenti di sviluppo) riconoscono queste funzioni come hooks e applicano le regole degli hooks.
+
+```jsx
+// hooks/useFetch.js
+import { useState, useEffect } from 'react';
+
+export function useFetch(fetchFn, initialValue) {
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState(null);
+  const [fetchedData, setFetchedData] = useState(initialValue);
+
+  useEffect(() => {
+    async function fetchData() {
+      setIsFetching(true);
+      
+      try {
+        const data = await fetchFn();
+        setFetchedData(data);
+      } catch (err) {
+        setError({
+          message: err.message || 'Failed to fetch data'
+        });
+      } finally {
+        setIsFetching(false);
+      }
+    }
+
+    fetchData();
+  }, [fetchFn]); // fetchFn come dipendenza
+
+  return {
+    isFetching,
+    error,
+    data: fetchedData,
+    setData: setFetchedData
+  };
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché il nome deve iniziare con "use"</summary>
+<div class="px-4 pb-4">
+
+React e gli strumenti di sviluppo (come ESLint) riconoscono funzioni che iniziano con "use" come hooks e applicano automaticamente le regole degli hooks. Se si prova a usare un hook built-in dentro una funzione normale (non un componente o hook), si ottiene un errore:
+
+```jsx
+// ❌ Errore: hooks possono essere usati solo in componenti o custom hooks
+function normalFunction() {
+  const [state, setState] = useState(); // Errore!
+}
+
+// ✅ Funziona: useFetch è riconosciuto come hook
+function useFetch() {
+  const [state, setState] = useState(); // OK!
+}
+```
+
+</div>
+</details>
+
+## Utilizzare un Custom Hook
+
+Un custom hook viene chiamato come una normale funzione all'interno di un componente. Lo state gestito dal hook appartiene al componente che lo usa, quindi quando lo state cambia, il componente si ri-renderizza.
+
+```jsx
+import { useFetch } from './hooks/useFetch';
+import { fetchUserPlaces } from './http';
+
+function App() {
+  const { 
+    isFetching, 
+    error, 
+    data: userPlaces, 
+    setData: setUserPlaces 
+  } = useFetch(fetchUserPlaces, []);
+
+  if (error) {
+    return <Error title="An error occurred!" message={error.message} />;
+  }
+
+  return (
+    <Places 
+      items={userPlaces}
+      isLoading={isFetching}
+      loadingText="Fetching your places..."
+    />
+  );
+}
+```
+
+Il hook riceve una funzione `fetchFn` che viene eseguita internamente. Questo rende il hook generico e riutilizzabile per diversi tipi di data fetching.
+
+## State Indipendente tra Componenti
+
+Ogni volta che un componente usa un custom hook, viene creata una **copia indipendente** dello state. Modificare lo state in un componente non influisce sugli altri componenti che usano lo stesso hook.
+
+```jsx
+function ComponentA() {
+  const { data, setData } = useFetch(fetchA, []);
+  // State indipendente per ComponentA
+}
+
+function ComponentB() {
+  const { data, setData } = useFetch(fetchB, []);
+  // State completamente separato per ComponentB
+}
+```
+
+Questo comportamento è identico a `useState`: ogni componente ottiene la propria istanza di state.
+
+## Esporre State e Funzioni
+
+Un custom hook può restituire qualsiasi valore: state, funzioni di aggiornamento, o funzioni custom. Si può restituire un array o un oggetto:
+
+```jsx
+// Restituire un oggetto (più leggibile)
+return {
+  isFetching,
+  error,
+  data: fetchedData,
+  setData: setFetchedData
+};
+
+// Oppure un array (come useState)
+return [fetchedData, isFetching, error];
+```
+
+Le funzioni di aggiornamento dello state possono essere esposte direttamente o wrappate in funzioni custom che aggiungono validazione o logica aggiuntiva.
+
+## Estendere Custom Hooks per Casi Complessi
+
+Quando la logica di fetching richiede trasformazioni aggiuntive (ad esempio, sorting), si può creare una funzione wrapper che estende la funzione di fetch originale:
+
+```jsx
+// Funzione wrapper che aggiunge sorting
+async function fetchSortedPlaces() {
+  // 1. Fetch dei dati originali
+  const places = await fetchAvailablePlaces();
+  
+  // 2. Ottenere posizione utente (operazione asincrona)
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition((position) => {
+      // 3. Sortare per distanza
+      const sortedPlaces = sortPlacesByDistance(
+        places,
+        position.coords.latitude,
+        position.coords.longitude
+      );
+      
+      resolve(sortedPlaces);
+    });
+  });
+}
+
+// Usare la funzione wrapper con useFetch
+function AvailablePlaces() {
+  const { isFetching, error, data: availablePlaces } = 
+    useFetch(fetchSortedPlaces, []);
+  
+  // Il hook gestisce loading ed errori automaticamente
+  // mentre fetchSortedPlaces gestisce la logica di sorting
+}
+```
+
+Questo pattern mantiene il hook generico mentre la logica specifica rimane nella funzione di fetch.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Promisifying API non-Promise</summary>
+<div class="px-4 pb-4">
+
+Quando si ha un'API che usa callback invece di Promise (come `getCurrentPosition`), si può wrapparla in una Promise usando il costruttore `Promise`:
+
+```jsx
+function getCurrentPositionAsync() {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve(position), // Success callback
+      (error) => reject(error)         // Error callback
+    );
+  });
+}
+
+// Ora può essere usata con async/await
+const position = await getCurrentPositionAsync();
+```
+
+</div>
+</details>
+
+## Riepilogo
+
+- **Custom hooks**: Funzioni che iniziano con "use" e possono contenere altri hooks
+- **Convenzione "use"**: Necessaria per far riconoscere la funzione come hook da React
+- **Riutilizzabilità**: Estraggono logica comune per evitare duplicazione
+- **State indipendente**: Ogni componente ottiene la propria istanza di state quando usa lo stesso hook
+- **Restituzione valori**: Si può restituire un oggetto o array con state, funzioni e valori derivati
+- **Estensibilità**: Funzioni wrapper possono aggiungere logica complessa mantenendo il hook generico
+- **Regole degli hooks**: Si applicano anche ai custom hooks (no nesting condizionale, solo in componenti o altri hooks)
+
