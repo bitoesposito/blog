@@ -1,0 +1,379 @@
+---
+title: 'Form Actions'
+description: "Come utilizzare le Form Actions di React 19 per gestire submission di form, validazione e aggiornamenti ottimistici dell'interfaccia"
+date: 2026-01-09
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 13
+---
+
+## Introduzione
+
+Le Form Actions sono una feature di React 19+ che permette di gestire la submission dei form passando funzioni direttamente alla prop `action` del form. React gestisce automaticamente la raccolta dei dati, la prevenzione del default behavior e l'esecuzione dell'azione. Questo articolo spiega come funzionano le Form Actions e gli hook correlati.
+
+## Form Actions Base
+
+Invece di usare `onSubmit` con `event.preventDefault()`, si può passare una funzione alla prop `action` del form:
+
+```jsx
+function SignupForm() {
+  function signupAction(formData) {
+    // React passa automaticamente un oggetto FormData
+    const email = formData.get('email');
+    const password = formData.get('password');
+    
+    console.log({ email, password });
+  }
+
+  return (
+    <form action={signupAction}>
+      <input type="email" name="email" />
+      <input type="password" name="password" />
+      <button type="submit">Sign up</button>
+    </form>
+  );
+}
+```
+
+React chiama automaticamente `preventDefault()` e passa un oggetto `FormData` contenente tutti i valori degli input con attributo `name`. Il form viene automaticamente resettato dopo la submission.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">FormData e attributo name</summary>
+<div class="px-4 pb-4">
+
+Tutti gli input devono avere l'attributo `name` per essere inclusi nel FormData:
+
+```jsx
+<input type="email" name="email" /> {/* ✅ Incluso */}
+<input type="text" /> {/* ❌ Non incluso - manca name */}
+```
+
+Per input multipli con lo stesso `name` (es. checkbox), usare `getAll()`:
+
+```jsx
+const selectedChannels = formData.getAll('acquisition');
+// Restituisce un array di valori
+```
+
+</div>
+</details>
+
+## useActionState Hook
+
+`useActionState` gestisce lo state restituito da una form action e permette di mantenere i valori inseriti e mostrare errori:
+
+```jsx
+import { useActionState } from 'react';
+
+function SignupForm() {
+  function signupAction(prevState, formData) {
+    const email = formData.get('email');
+    const password = formData.get('password');
+    const errors = [];
+
+    // Validazione
+    if (!email.includes('@')) {
+      errors.push('Invalid email address');
+    }
+    if (password.length < 6) {
+      errors.push('Password must be at least 6 characters');
+    }
+
+    if (errors.length > 0) {
+      return {
+        errors,
+        enteredValues: { email, password }
+      };
+    }
+
+    return { errors: null };
+  }
+
+  const [formState, formAction] = useActionState(signupAction, { errors: null });
+
+  return (
+    <form action={formAction}>
+      <input 
+        type="email" 
+        name="email" 
+        defaultValue={formState.enteredValues?.email || ''} 
+      />
+      {formState.errors && (
+        <ul>
+          {formState.errors.map(error => (
+            <li key={error}>{error}</li>
+          ))}
+        </ul>
+      )}
+      <button type="submit">Sign up</button>
+    </form>
+  );
+}
+```
+
+Quando si usa `useActionState`, la form action riceve due parametri:
+1. **`prevState`**: Lo state precedente (o initial state se è la prima esecuzione)
+2. **`formData`**: I dati del form
+
+Il valore restituito dalla form action diventa il nuovo `formState`.
+
+### Mantenere Valori Inseriti
+
+Per evitare che i valori vengano persi dopo un submit invalido, restituire i valori nello state e usarli come `defaultValue`:
+
+```jsx
+function signupAction(prevState, formData) {
+  const email = formData.get('email');
+  const errors = [];
+
+  if (!email.includes('@')) {
+    errors.push('Invalid email');
+    return {
+      errors,
+      enteredValues: { email } // Mantiene il valore inserito
+    };
+  }
+
+  return { errors: null }; // Form valido: reset automatico
+}
+
+// Nel form
+<input 
+  type="email" 
+  name="email" 
+  defaultValue={formState.enteredValues?.email || ''} 
+/>
+```
+
+Il `defaultValue` viene usato quando React resetta il form dopo la submission.
+
+## Form Actions Asincrone
+
+Le form actions possono essere funzioni `async` per inviare richieste HTTP:
+
+```jsx
+async function shareOpinionAction(prevState, formData) {
+  const title = formData.get('title');
+  const body = formData.get('body');
+  const errors = [];
+
+  // Validazione
+  if (title.trim().length < 5) {
+    errors.push('Title must be at least 5 characters');
+  }
+
+  if (errors.length > 0) {
+    return { errors, enteredValues: { title, body } };
+  }
+
+  // Invio richiesta al backend
+  await fetch('http://localhost:3000/opinions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, body })
+  });
+
+  return { errors: null }; // Successo: form viene resettato
+}
+```
+
+React attende che la Promise si risolva prima di considerare la submission completata.
+
+## useFormStatus Hook
+
+`useFormStatus` fornisce informazioni sullo stato di submission del form. Deve essere usato in un componente annidato dentro il form:
+
+```jsx
+import { useFormStatus } from 'react-dom';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button type="submit" disabled={pending}>
+      {pending ? 'Submitting...' : 'Submit'}
+    </button>
+  );
+}
+
+function NewOpinionForm() {
+  return (
+    <form action={shareOpinionAction}>
+      <input name="title" />
+      <SubmitButton />
+    </form>
+  );
+}
+```
+
+L'oggetto restituito da `useFormStatus` contiene:
+- **`pending`**: `true` se il form è in submission, `false` altrimenti
+- **`data`**: I dati FormData inviati
+- Altri metadati sulla submission
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché useFormStatus deve essere in un componente separato</summary>
+<div class="px-4 pb-4">
+
+`useFormStatus` deve essere chiamato in un componente diverso da quello che contiene il form perché React traccia lo stato del form attraverso il componente tree. Il hook legge lo stato dal form parent più vicino.
+
+</div>
+</details>
+
+## Multiple Form Actions
+
+Si possono definire azioni diverse per button diversi nello stesso form usando la prop `formAction` sui button:
+
+```jsx
+function Opinion({ id }) {
+  function upvoteAction() {
+    // Logica per upvote
+  }
+
+  function downvoteAction() {
+    // Logica per downvote
+  }
+
+  return (
+    <form>
+      <button type="submit" formAction={upvoteAction}>
+        Upvote
+      </button>
+      <button type="submit" formAction={downvoteAction}>
+        Downvote
+      </button>
+    </form>
+  );
+}
+```
+
+Ogni button può avere la sua form action, permettendo comportamenti diversi nello stesso form.
+
+### Gestire Pending State per Multiple Actions
+
+Quando si hanno multiple actions, si può usare `useActionState` per ciascuna:
+
+```jsx
+function Opinion({ id }) {
+  const [upvoteState, upvoteAction, upvotePending] = useActionState(
+    upvoteAction,
+    null
+  );
+  const [downvoteState, downvoteAction, downvotePending] = useActionState(
+    downvoteAction,
+    null
+  );
+
+  return (
+    <form>
+      <button 
+        type="submit" 
+        formAction={upvoteAction}
+        disabled={upvotePending || downvotePending}
+      >
+        Upvote
+      </button>
+      <button 
+        type="submit" 
+        formAction={downvoteAction}
+        disabled={upvotePending || downvotePending}
+      >
+        Downvote
+      </button>
+    </form>
+  );
+}
+```
+
+Il terzo elemento restituito da `useActionState` è `pending`, che indica se quella specifica action è in esecuzione.
+
+## useOptimistic Hook
+
+`useOptimistic` permette di aggiornare l'UI immediatamente (ottimisticamente) prima che la richiesta al backend sia completata:
+
+```jsx
+import { useOptimistic } from 'react';
+
+function Opinion({ id, votes }) {
+  const [optimisticVotes, setOptimisticVotes] = useOptimistic(
+    votes, // Valore iniziale
+    (prevVotes, mode) => {
+      // Funzione che calcola il nuovo valore ottimistico
+      return mode === 'up' ? prevVotes + 1 : prevVotes - 1;
+    }
+  );
+
+  async function upvoteAction() {
+    setOptimisticVotes('up'); // Aggiorna immediatamente l'UI
+    await fetch(`/opinions/${id}/upvote`, { method: 'POST' });
+    // Dopo il completamento, React ripristina il valore reale
+  }
+
+  return (
+    <form>
+      <span>{optimisticVotes}</span>
+      <button type="submit" formAction={upvoteAction}>Upvote</button>
+    </form>
+  );
+}
+```
+
+Il meccanismo funziona così:
+1. `setOptimisticVotes` viene chiamato nella form action
+2. L'UI si aggiorna immediatamente con il valore ottimistico
+3. La richiesta HTTP viene inviata
+4. Quando la form action completa, React ripristina il valore reale (o mantiene quello ottimistico se corrisponde)
+
+Se la richiesta fallisce, React ripristina automaticamente il valore precedente.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Parametri della funzione di aggiornamento</summary>
+<div class="px-4 pb-4">
+
+La funzione passata a `useOptimistic` riceve sempre come primo parametro lo state precedente (gestito da React). Gli argomenti aggiuntivi passati a `setOptimisticVotes` diventano parametri successivi:
+
+```jsx
+const [state, setState] = useOptimistic(
+  initialValue,
+  (prevState, arg1, arg2) => {
+    // prevState: gestito da React
+    // arg1, arg2: passati da setState(arg1, arg2)
+    return newValue;
+  }
+);
+```
+
+</div>
+</details>
+
+## Form Actions Fuori dai Componenti
+
+Le form actions possono essere definite fuori dai componenti se non usano props o state:
+
+```jsx
+// Fuori dal componente
+function signupAction(prevState, formData) {
+  const email = formData.get('email');
+  // Logica di validazione...
+  return { errors: null };
+}
+
+function SignupForm() {
+  const [formState, formAction] = useActionState(signupAction, { errors: null });
+  
+  return <form action={formAction}>...</form>;
+}
+```
+
+Questo evita di ricreare la funzione ad ogni render del componente.
+
+## Riepilogo
+
+- **Form Actions**: Funzioni passate alla prop `action` del form; React gestisce automaticamente `preventDefault()` e passa `FormData`
+- **useActionState**: Hook per gestire lo state restituito dalla form action; la action riceve `(prevState, formData)`
+- **Form Actions Async**: Possono essere `async`; React attende il completamento della Promise
+- **useFormStatus**: Hook per ottenere lo stato di submission (`pending`); deve essere usato in un componente annidato
+- **Multiple Actions**: Usare `formAction` sui button per azioni diverse nello stesso form
+- **useOptimistic**: Hook per aggiornamenti ottimistici dell'UI; il valore temporaneo viene ripristinato quando l'action completa
+- **Mantenere valori**: Restituire `enteredValues` nello state e usarli come `defaultValue` per evitare perdita di dati
+- **Validazione**: Eseguire validazione nella form action e restituire errori nello state per mostrarli nell'UI
