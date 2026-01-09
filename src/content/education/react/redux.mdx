@@ -1,0 +1,544 @@
+---
+title: 'Redux: Gestione dello State'
+description: 'Come funziona Redux per gestire state condiviso tra componenti e applicazioni, e come utilizzarlo con Redux Toolkit'
+date: 2025-12-09
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 14
+---
+
+## Introduzione
+
+Redux è un sistema di gestione dello state per dati cross-component o app-wide. Funziona come alternativa a React Context, offrendo un approccio strutturato per gestire state condiviso attraverso un unico store centrale. Questo articolo esplora come funziona Redux, il suo flusso di dati e come utilizzarlo con Redux Toolkit per semplificare la configurazione.
+
+## Tipi di State
+
+Lo state in React può essere classificato in tre categorie principali: **local state**, **cross-component state** e **app-wide state**.
+
+Il **local state** è gestito all'interno di un singolo componente con `useState` o `useReducer`. Esempi includono input utente o toggle di visibilità che interessano solo quel componente.
+
+Lo **state cross-component** interessa più componenti. Ad esempio, uno stato che controlla la visibilità di un modal può essere gestito passando props attraverso la gerarchia dei componenti (prop drilling) o usando Context/Redux.
+
+Lo **app-wide state** interessa l'intera applicazione. L'autenticazione utente è un esempio tipico: quando l'utente si autentica, molti componenti devono reagire a questo cambiamento.
+
+## Come Funziona Redux
+
+Redux si basa su tre concetti fondamentali: **store centrale**, **reducer** e **actions**.
+
+### Store Centrale
+
+Redux utilizza un **unico store centrale** per tutta l'applicazione. Questo store contiene tutto lo state cross-component e app-wide. Non si creano mai più store: c'è esattamente un store per applicazione.
+
+### Reducer
+
+Il **reducer** è una funzione pura responsabile di aggiornare lo state. Riceve due parametri:
+- Lo state corrente
+- L'action dispatchata
+
+Il reducer deve sempre restituire un nuovo oggetto state, mai mutare lo state esistente. È una funzione pura: stessi input producono sempre lo stesso output, senza side effects.
+
+### Actions
+
+Le **actions** sono oggetti JavaScript semplici che descrivono quale operazione deve essere eseguita. Hanno sempre una proprietà `type` che identifica l'azione. I componenti dispatchano actions, che vengono inoltrate al reducer, che esegue l'operazione e produce un nuovo state.
+
+### Flusso di Dati
+
+Il flusso in Redux segue questo pattern:
+
+1. I componenti si **sottoscrivono** allo store per ricevere aggiornamenti quando lo state cambia
+2. I componenti **dispatchano actions** per modificare lo state
+3. Le actions vengono inoltrate al **reducer**
+4. Il reducer produce un **nuovo state** basato sull'action
+5. Lo store viene aggiornato con il nuovo state
+6. I componenti sottoscritti vengono **notificati** e si ri-renderizzano
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio base di Redux (senza React)</summary>
+<div class="px-4 pb-4">
+
+```javascript
+// Import di Redux
+const redux = require('redux');
+
+// Reducer function
+const counterReducer = (state = { counter: 0 }, action) => {
+  if (action.type === 'increment') {
+    return {
+      counter: state.counter + 1
+    };
+  }
+  
+  if (action.type === 'decrement') {
+    return {
+      counter: state.counter - 1
+    };
+  }
+  
+  return state;
+};
+
+// Creazione dello store
+const store = redux.createStore(counterReducer);
+
+// Subscriber function
+const counterSubscriber = () => {
+  const latestState = store.getState();
+  console.log(latestState);
+};
+
+// Sottoscrizione ai cambiamenti
+store.subscribe(counterSubscriber);
+
+// Dispatch di actions
+store.dispatch({ type: 'increment' });
+store.dispatch({ type: 'decrement' });
+```
+
+In questo esempio:
+- `counterReducer` gestisce lo state del counter
+- `createStore` crea lo store passando il reducer
+- `subscribe` registra una funzione che viene eseguita ad ogni cambio di state
+- `dispatch` invia actions al reducer
+
+</div>
+</details>
+
+## Redux in React
+
+Per utilizzare Redux in React, si installano due package: `redux` e `react-redux`. Il secondo semplifica l'integrazione tra Redux e React.
+
+### Provider
+
+Il componente `Provider` di `react-redux` avvolge l'applicazione e fornisce lo store a tutti i componenti figli:
+
+```jsx
+import { Provider } from 'react-redux';
+import store from './store/index';
+
+function App() {
+  return (
+    <Provider store={store}>
+      <Counter />
+    </Provider>
+  );
+}
+```
+
+Solo i componenti dentro `Provider` (e i loro discendenti) possono accedere allo store.
+
+### useSelector
+
+L'hook `useSelector` permette ai componenti di leggere dati dallo store. Accetta una funzione che riceve lo state e restituisce la porzione di state desiderata:
+
+```jsx
+import { useSelector } from 'react-redux';
+
+function Counter() {
+  const counter = useSelector((state) => state.counter);
+  
+  return <div>{counter}</div>;
+}
+```
+
+`useSelector` configura automaticamente una sottoscrizione: quando lo state cambia, il componente si ri-renderizza. La sottoscrizione viene rimossa automaticamente quando il componente viene smontato.
+
+### useDispatch
+
+L'hook `useDispatch` restituisce la funzione `dispatch` per inviare actions allo store:
+
+```jsx
+import { useDispatch } from 'react-redux';
+
+function Counter() {
+  const dispatch = useDispatch();
+  
+  const incrementHandler = () => {
+    dispatch({ type: 'increment' });
+  };
+  
+  return <button onClick={incrementHandler}>Increment</button>;
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio completo: Counter con Redux</summary>
+<div class="px-4 pb-4">
+
+```jsx
+// store/index.js
+import { createStore } from 'redux';
+
+const initialState = { counter: 0 };
+
+const counterReducer = (state = initialState, action) => {
+  if (action.type === 'increment') {
+    return { counter: state.counter + 1 };
+  }
+  if (action.type === 'decrement') {
+    return { counter: state.counter - 1 };
+  }
+  return state;
+};
+
+const store = createStore(counterReducer);
+
+export default store;
+```
+
+```jsx
+// Counter.js
+import { useSelector, useDispatch } from 'react-redux';
+
+function Counter() {
+  const counter = useSelector((state) => state.counter);
+  const dispatch = useDispatch();
+  
+  const incrementHandler = () => {
+    dispatch({ type: 'increment' });
+  };
+  
+  const decrementHandler = () => {
+    dispatch({ type: 'decrement' });
+  };
+  
+  return (
+    <div>
+      <div>{counter}</div>
+      <button onClick={incrementHandler}>Increment</button>
+      <button onClick={decrementHandler}>Decrement</button>
+    </div>
+  );
+}
+```
+
+</div>
+</details>
+
+## Actions con Payload
+
+Le actions possono trasportare dati aggiuntivi oltre al `type`. Questi dati vengono chiamati **payload**:
+
+```jsx
+// Dispatch di action con payload
+dispatch({ 
+  type: 'increase', 
+  amount: 5 
+});
+
+// Nel reducer
+const counterReducer = (state = initialState, action) => {
+  if (action.type === 'increase') {
+    return {
+      counter: state.counter + action.amount
+    };
+  }
+  // ...
+};
+```
+
+Il nome della proprietà del payload è arbitrario (`amount`, `value`, `data`, ecc.), ma deve corrispondere tra il dispatch e l'accesso nel reducer.
+
+## State Immutabile
+
+Il reducer **non deve mai mutare** lo state esistente. Deve sempre restituire un **nuovo oggetto**:
+
+```jsx
+// ❌ SBAGLIATO: muta lo state esistente
+const counterReducer = (state = initialState, action) => {
+  if (action.type === 'increment') {
+    state.counter++; // Mutazione!
+    return state;
+  }
+  return state;
+};
+
+// ✅ CORRETTO: restituisce un nuovo oggetto
+const counterReducer = (state = initialState, action) => {
+  if (action.type === 'increment') {
+    return {
+      counter: state.counter + 1
+    };
+  }
+  return state;
+};
+```
+
+Quando si aggiorna una parte dello state, è necessario copiare tutte le altre proprietà:
+
+```jsx
+const initialState = { 
+  counter: 0, 
+  showCounter: true 
+};
+
+const counterReducer = (state = initialState, action) => {
+  if (action.type === 'increment') {
+    return {
+      counter: state.counter + 1,
+      showCounter: state.showCounter // Copia le altre proprietà!
+    };
+  }
+  if (action.type === 'toggle') {
+    return {
+      counter: state.counter, // Copia le altre proprietà!
+      showCounter: !state.showCounter
+    };
+  }
+  return state;
+};
+```
+
+Redux **sostituisce** lo state, non lo merge. Se si omette una proprietà, quella proprietà viene persa.
+
+## Redux Toolkit
+
+Redux Toolkit semplifica la configurazione e l'utilizzo di Redux, riducendo il boilerplate e prevenendo errori comuni.
+
+### createSlice
+
+`createSlice` combina la definizione del reducer, delle actions e degli action creators in un'unico oggetto:
+
+```jsx
+import { createSlice } from '@reduxjs/toolkit';
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { counter: 0, showCounter: true },
+  reducers: {
+    increment(state) {
+      state.counter++;
+    },
+    decrement(state) {
+      state.counter--;
+    },
+    increase(state, action) {
+      state.counter = state.counter + action.payload;
+    },
+    toggleCounter(state) {
+      state.showCounter = !state.showCounter;
+    }
+  }
+});
+```
+
+Con Redux Toolkit, è **permesso** "mutare" lo state nei reducer perché internamente viene usato **Immer**, che traduce il codice in operazioni immutabili. Il codice risulta più semplice da scrivere e leggere.
+
+### Action Creators Automatici
+
+`createSlice` genera automaticamente gli **action creators**:
+
+```jsx
+// Le actions sono disponibili su counterSlice.actions
+export const counterActions = counterSlice.actions;
+
+// Utilizzo nei componenti
+import { counterActions } from './store/index';
+
+function Counter() {
+  const dispatch = useDispatch();
+  
+  const incrementHandler = () => {
+    dispatch(counterActions.increment());
+  };
+  
+  const increaseHandler = () => {
+    dispatch(counterActions.increase(5)); // 5 viene messo in action.payload
+  };
+}
+```
+
+Gli action creators generati automaticamente evitano errori di typo negli identificatori delle actions.
+
+### configureStore
+
+`configureStore` semplifica la creazione dello store e la combinazione di più reducer:
+
+```jsx
+import { configureStore } from '@reduxjs/toolkit';
+import counterSlice from './counter-slice';
+import authSlice from './auth-slice';
+
+const store = configureStore({
+  reducer: {
+    counter: counterSlice.reducer,
+    auth: authSlice.reducer
+  }
+});
+```
+
+Quando si usano più slice, lo state viene organizzato per chiave:
+
+```jsx
+// Accesso allo state
+const counter = useSelector((state) => state.counter.counter);
+const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio completo con Redux Toolkit</summary>
+<div class="px-4 pb-4">
+
+```jsx
+// store/counter-slice.js
+import { createSlice } from '@reduxjs/toolkit';
+
+const initialCounterState = { counter: 0, showCounter: true };
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: initialCounterState,
+  reducers: {
+    increment(state) {
+      state.counter++;
+    },
+    decrement(state) {
+      state.counter--;
+    },
+    increase(state, action) {
+      state.counter = state.counter + action.payload;
+    },
+    toggleCounter(state) {
+      state.showCounter = !state.showCounter;
+    }
+  }
+});
+
+export const counterActions = counterSlice.actions;
+export default counterSlice;
+```
+
+```jsx
+// store/auth-slice.js
+import { createSlice } from '@reduxjs/toolkit';
+
+const initialAuthState = { isAuthenticated: false };
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState: initialAuthState,
+  reducers: {
+    login(state) {
+      state.isAuthenticated = true;
+    },
+    logout(state) {
+      state.isAuthenticated = false;
+    }
+  }
+});
+
+export const authActions = authSlice.actions;
+export default authSlice;
+```
+
+```jsx
+// store/index.js
+import { configureStore } from '@reduxjs/toolkit';
+import counterSlice from './counter-slice';
+import authSlice from './auth-slice';
+
+const store = configureStore({
+  reducer: {
+    counter: counterSlice.reducer,
+    auth: authSlice.reducer
+  }
+});
+
+export default store;
+```
+
+```jsx
+// Counter.js
+import { useSelector, useDispatch } from 'react-redux';
+import { counterActions } from './store/counter-slice';
+
+function Counter() {
+  const counter = useSelector((state) => state.counter.counter);
+  const showCounter = useSelector((state) => state.counter.showCounter);
+  const dispatch = useDispatch();
+  
+  const incrementHandler = () => {
+    dispatch(counterActions.increment());
+  };
+  
+  const increaseHandler = () => {
+    dispatch(counterActions.increase(5));
+  };
+  
+  return (
+    <div>
+      {showCounter && <div>{counter}</div>}
+      <button onClick={incrementHandler}>Increment</button>
+      <button onClick={increaseHandler}>Increase by 5</button>
+    </div>
+  );
+}
+```
+
+</div>
+</details>
+
+## Class-Based Components
+
+Per i class-based components, `react-redux` fornisce la funzione `connect` invece degli hooks:
+
+```jsx
+import { connect } from 'react-redux';
+import { counterActions } from './store/counter-slice';
+
+class Counter extends Component {
+  incrementHandler() {
+    this.props.increment();
+  }
+  
+  render() {
+    return (
+      <div>
+        <div>{this.props.counter}</div>
+        <button onClick={this.incrementHandler.bind(this)}>Increment</button>
+      </div>
+    );
+  }
+}
+
+// Mappa lo state Redux alle props
+const mapStateToProps = (state) => {
+  return {
+    counter: state.counter.counter
+  };
+};
+
+// Mappa le funzioni dispatch alle props
+const mapDispatchToProps = (dispatch) => {
+  return {
+    increment: () => dispatch(counterActions.increment())
+  };
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(Counter);
+```
+
+`connect` è un higher-order component che avvolge il componente e fornisce le props mappate dallo store.
+
+## Organizzazione del Codice
+
+In applicazioni più grandi, è utile organizzare i slice in file separati:
+
+```
+store/
+  ├── index.js          # Configurazione dello store
+  ├── counter-slice.js  # Slice per il counter
+  └── auth-slice.js     # Slice per l'autenticazione
+```
+
+Ogni slice esporta le proprie actions e il reducer. Lo store principale importa e combina tutti i reducer.
+
+## Riepilogo
+
+Redux gestisce state cross-component attraverso un **store centrale unico**. I componenti **dispatchano actions** che vengono processate da **reducer** che producono nuovo state. I componenti si **sottoscrivono** allo store per ricevere aggiornamenti.
+
+**Redux Toolkit** semplifica l'uso di Redux con `createSlice` (combina reducer e action creators), `configureStore` (crea lo store combinando più reducer) e supporto per "mutazioni" sicure grazie a Immer.
+
+Gli hook `useSelector` e `useDispatch` permettono ai componenti funzionali di accedere allo store. Per i class-based components si usa `connect`.
+
+Il reducer deve sempre restituire un nuovo oggetto state, mai mutare lo state esistente. Con Redux Toolkit, le "mutazioni" sono permesse perché vengono tradotte automaticamente in operazioni immutabili.
+
