@@ -1,0 +1,704 @@
+---
+title: 'React Router: Routing Client-Side'
+description: 'Come funziona il routing client-side in React con React Router, inclusi loaders, actions e gestione dei dati'
+date: 2026-01-17
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 16
+---
+
+## Introduzione
+
+React Router permette di aggiungere routing client-side alle applicazioni React, mantenendo il comportamento di single-page application ma supportando URL diversi per sezioni diverse. Questo articolo esplora come funziona React Router, come configurare le route, gestire la navigazione e utilizzare loaders e actions per il data fetching e la submission.
+
+## Routing Client-Side
+
+Il routing client-side permette di cambiare il contenuto visualizzato in base all'URL senza ricaricare la pagina. React Router monitora l'URL corrente e renderizza il componente appropriato quando l'URL cambia.
+
+A differenza del routing tradizionale (multi-page), dove ogni path richiede una nuova richiesta HTTP, il routing client-side gestisce tutto nel browser: un'unica pagina HTML viene caricata inizialmente, poi JavaScript gestisce i cambiamenti di URL e il rendering dei componenti.
+
+## Configurazione Base
+
+Per utilizzare React Router, si installa il package `react-router-dom` e si configura il router nell'applicazione.
+
+### Creazione del Router
+
+Il router si crea con `createBrowserRouter`, passando un array di oggetti di configurazione delle route:
+
+```jsx
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import HomePage from './pages/Home';
+import ProductsPage from './pages/Products';
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <HomePage />
+  },
+  {
+    path: '/products',
+    element: <ProductsPage />
+  }
+]);
+
+function App() {
+  return <RouterProvider router={router} />;
+}
+```
+
+Ogni oggetto route ha:
+- **path**: il percorso URL per cui la route è attiva
+- **element**: il componente JSX da renderizzare quando la route è attiva
+
+### RouterProvider
+
+`RouterProvider` avvolge l'applicazione e fornisce il router a tutti i componenti figli. Solo i componenti dentro `RouterProvider` possono utilizzare le funzionalità di React Router.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Definizione route con JSX</summary>
+<div class="px-4 pb-4">
+
+Alternativamente, si possono definire le route usando JSX:
+
+```jsx
+import { createRoutesFromElements, Route } from 'react-router-dom';
+
+const routeDefinitions = createRoutesFromElements(
+  <Route path="/" element={<HomePage />} />
+  <Route path="/products" element={<ProductsPage />} />
+);
+
+const router = createBrowserRouter(routeDefinitions);
+```
+
+Entrambi gli approcci sono validi; la scelta è una questione di preferenza.
+
+</div>
+</details>
+
+## Navigazione
+
+Per navigare tra le route, si usa il componente `Link` invece degli anchor HTML standard. `Link` previene il comportamento di default del browser (richiesta HTTP) e gestisce la navigazione lato client.
+
+### Link Component
+
+```jsx
+import { Link } from 'react-router-dom';
+
+function Navigation() {
+  return (
+    <nav>
+      <Link to="/">Home</Link>
+      <Link to="/products">Products</Link>
+    </nav>
+  );
+}
+```
+
+`Link` renderizza un anchor HTML ma intercetta i click, previene la richiesta HTTP e aggiorna l'URL e il contenuto via JavaScript.
+
+### NavLink per Link Attivi
+
+`NavLink` estende `Link` permettendo di evidenziare il link attivo:
+
+```jsx
+import { NavLink } from 'react-router-dom';
+
+function Navigation() {
+  return (
+    <nav>
+      <NavLink 
+        to="/" 
+        className={({ isActive }) => isActive ? 'active' : undefined}
+        end
+      >
+        Home
+      </NavLink>
+      <NavLink 
+        to="/products"
+        className={({ isActive }) => isActive ? 'active' : undefined}
+      >
+        Products
+      </NavLink>
+    </nav>
+  );
+}
+```
+
+La prop `className` accetta una funzione che riceve un oggetto con `isActive`. La prop `end` fa sì che il link sia attivo solo se l'URL termina esattamente con quel path.
+
+### Navigazione Programmatica
+
+Per navigare programmaticamente (da codice, non da click), si usa l'hook `useNavigate`:
+
+```jsx
+import { useNavigate } from 'react-router-dom';
+
+function MyComponent() {
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    navigate('/products');
+  };
+  
+  return <button onClick={handleClick}>Go to Products</button>;
+}
+```
+
+## Layout Routes
+
+Le layout routes permettono di avvolgere più route con un componente comune (es. navigazione, footer):
+
+```jsx
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <RootLayout />,
+    children: [
+      {
+        index: true,
+        element: <HomePage />
+      },
+      {
+        path: 'products',
+        element: <ProductsPage />
+      }
+    ]
+  }
+]);
+```
+
+Il componente layout deve renderizzare `<Outlet />` per indicare dove renderizzare le route figlie:
+
+```jsx
+import { Outlet } from 'react-router-dom';
+
+function RootLayout() {
+  return (
+    <>
+      <MainNavigation />
+      <main>
+        <Outlet />
+      </main>
+    </>
+  );
+}
+```
+
+Le route con `index: true` sono route di default che si attivano quando il path del parent è attivo.
+
+## Route Dinamiche
+
+Le route dinamiche permettono di catturare valori dall'URL usando parametri:
+
+```jsx
+const router = createBrowserRouter([
+  {
+    path: '/products',
+    element: <ProductsPage />
+  },
+  {
+    path: '/products/:productId',
+    element: <ProductDetailPage />
+  }
+]);
+```
+
+Il `:` indica un segmento dinamico. Per accedere al valore nel componente:
+
+```jsx
+import { useParams } from 'react-router-dom';
+
+function ProductDetailPage() {
+  const params = useParams();
+  const productId = params.productId;
+  
+  return <div>Product ID: {productId}</div>;
+}
+```
+
+`useParams` restituisce un oggetto con tutti i parametri dinamici della route corrente.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Link con parametri dinamici</summary>
+<div class="px-4 pb-4">
+
+Per creare link a route dinamiche:
+
+```jsx
+function ProductsList({ products }) {
+  return (
+    <ul>
+      {products.map(product => (
+        <li key={product.id}>
+          <Link to={`/products/${product.id}`}>
+            {product.title}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+</div>
+</details>
+
+## Path Relativi e Assoluti
+
+I path possono essere **assoluti** (iniziano con `/`) o **relativi** (non iniziano con `/`).
+
+I path assoluti sono sempre risolti dalla root del dominio. I path relativi sono risolti rispetto alla route parent o al path corrente, a seconda del contesto.
+
+```jsx
+// Path assoluto: sempre /products
+<Link to="/products">Products</Link>
+
+// Path relativo: aggiunto al path corrente
+<Link to="products">Products</Link>
+```
+
+La prop `relative` su `Link` controlla se il path è relativo alla route definition (`route`) o al path corrente nell'URL (`path`).
+
+## Gestione Errori
+
+Per gestire errori (route non trovate o errori nei loaders), si aggiunge `errorElement` alla route:
+
+```jsx
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <RootLayout />,
+    errorElement: <ErrorPage />,
+    children: [
+      // ... altre route
+    ]
+  }
+]);
+```
+
+Gli errori "bubbling up": se una route figlia genera un errore e non ha `errorElement`, l'errore risale alla route parent più vicina che ha `errorElement`.
+
+Per accedere ai dettagli dell'errore:
+
+```jsx
+import { useRouteError } from 'react-router-dom';
+
+function ErrorPage() {
+  const error = useRouteError();
+  
+  return (
+    <div>
+      <h1>An error occurred!</h1>
+      <p>{error.message}</p>
+    </div>
+  );
+}
+```
+
+## Loaders: Data Fetching
+
+I **loaders** sono funzioni eseguite da React Router prima di renderizzare una route. Permettono di fetchare dati prima che il componente venga montato.
+
+### Definizione di un Loader
+
+```jsx
+// pages/Events.js
+export async function loader() {
+  const response = await fetch('http://localhost:8080/events');
+  
+  if (!response.ok) {
+    throw new Response(
+      JSON.stringify({ message: 'Could not fetch events.' }),
+      { status: 500 }
+    );
+  }
+  
+  const resData = await response.json();
+  return resData.events;
+}
+```
+
+Il loader viene registrato nella route:
+
+```jsx
+import { eventsLoader } from './pages/Events';
+
+const router = createBrowserRouter([
+  {
+    path: '/events',
+    element: <EventsPage />,
+    loader: eventsLoader
+  }
+]);
+```
+
+### Accesso ai Dati del Loader
+
+Per accedere ai dati restituiti dal loader:
+
+```jsx
+import { useLoaderData } from 'react-router-dom';
+
+function EventsPage() {
+  const events = useLoaderData();
+  
+  return (
+    <ul>
+      {events.map(event => (
+        <li key={event.id}>{event.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`useLoaderData` può essere usato nel componente della route o in qualsiasi componente figlio, ma non in route parent.
+
+### Parametri nei Loaders
+
+I loaders ricevono un oggetto con `request` e `params`:
+
+```jsx
+export async function loader({ params }) {
+  const response = await fetch(
+    `http://localhost:8080/events/${params.eventId}`
+  );
+  return response;
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Loaders condivisi</summary>
+<div class="px-4 pb-4">
+
+Per condividere un loader tra più route, si usa una route parent senza elemento:
+
+```jsx
+const router = createBrowserRouter([
+  {
+    path: '/events/:eventId',
+    loader: eventLoader,
+    children: [
+      {
+        index: true,
+        element: <EventDetailPage />
+      },
+      {
+        path: 'edit',
+        element: <EditEventPage />
+      }
+    ]
+  }
+]);
+```
+
+Per accedere ai dati da una route parent, si usa `useRouteLoaderData` con un `id`:
+
+```jsx
+// Route con id
+{
+  id: 'event-detail',
+  path: '/events/:eventId',
+  loader: eventLoader
+}
+
+// Nel componente
+import { useRouteLoaderData } from 'react-router-dom';
+
+function EditEventPage() {
+  const event = useRouteLoaderData('event-detail');
+  // ...
+}
+```
+
+</div>
+</details>
+
+## Actions: Form Submission
+
+Le **actions** sono funzioni eseguite quando si invia un form. Permettono di gestire la submission senza gestire manualmente lo state di loading/error.
+
+### Definizione di un'Action
+
+```jsx
+// pages/NewEvent.js
+export async function action({ request }) {
+  const data = await request.formData();
+  const eventData = {
+    title: data.get('title'),
+    image: data.get('image'),
+    date: data.get('date'),
+    description: data.get('description')
+  };
+  
+  const response = await fetch('http://localhost:8080/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(eventData)
+  });
+  
+  if (!response.ok) {
+    throw new Response(
+      JSON.stringify({ message: 'Could not save event.' }),
+      { status: 500 }
+    );
+  }
+  
+  return redirect('/events');
+}
+```
+
+L'action viene registrata nella route:
+
+```jsx
+import { newEventAction } from './pages/NewEvent';
+
+const router = createBrowserRouter([
+  {
+    path: '/events/new',
+    element: <NewEventPage />,
+    action: newEventAction
+  }
+]);
+```
+
+### Utilizzo del Form Component
+
+Per triggerare l'action, si usa il componente `Form` di React Router:
+
+```jsx
+import { Form } from 'react-router-dom';
+
+function NewEventPage() {
+  return (
+    <Form method="post">
+      <input type="text" name="title" required />
+      <input type="url" name="image" required />
+      <input type="date" name="date" required />
+      <textarea name="description" required />
+      <button>Save</button>
+    </Form>
+  );
+}
+```
+
+`Form` previene il submit di default del browser e invia i dati all'action della route corrente. Gli input devono avere l'attributo `name` per essere estratti con `formData.get()`.
+
+### Redirect dopo Submission
+
+Per reindirizzare dopo una submission riuscita:
+
+```jsx
+import { redirect } from 'react-router-dom';
+
+export async function action({ request }) {
+  // ... logica di submission
+  return redirect('/events');
+}
+```
+
+### Submission Programmatica
+
+Per triggerare un'action programmaticamente (non da form):
+
+```jsx
+import { useSubmit } from 'react-router-dom';
+
+function DeleteButton({ eventId }) {
+  const submit = useSubmit();
+  
+  const handleDelete = () => {
+    if (confirm('Are you sure?')) {
+      submit(null, { method: 'delete' });
+    }
+  };
+  
+  return <button onClick={handleDelete}>Delete</button>;
+}
+```
+
+Il primo argomento di `submit` sono i dati (o `null`), il secondo sono le opzioni (method, action, ecc.).
+
+### Validazione e Error Handling
+
+Per gestire errori di validazione senza mostrare la pagina di errore:
+
+```jsx
+export async function action({ request }) {
+  const data = await request.formData();
+  const response = await fetch('http://localhost:8080/events', {
+    method: 'POST',
+    body: JSON.stringify(Object.fromEntries(data))
+  });
+  
+  if (response.status === 422) {
+    // Ritorna la response invece di throw
+    return response;
+  }
+  
+  if (!response.ok) {
+    throw new Response(
+      JSON.stringify({ message: 'Could not save event.' }),
+      { status: 500 }
+    );
+  }
+  
+  return redirect('/events');
+}
+```
+
+Nel componente, si accede ai dati dell'action con `useActionData`:
+
+```jsx
+import { useActionData } from 'react-router-dom';
+
+function EventForm() {
+  const data = useActionData();
+  
+  return (
+    <Form method="post">
+      {data && data.errors && (
+        <ul>
+          {Object.values(data.errors).map(err => (
+            <li key={err}>{err}</li>
+          ))}
+        </ul>
+      )}
+      {/* ... campi form */}
+    </Form>
+  );
+}
+```
+
+## useFetcher: Azioni Senza Navigazione
+
+`useFetcher` permette di triggerare loaders o actions senza navigare a una nuova route:
+
+```jsx
+import { useFetcher } from 'react-router-dom';
+
+function NewsletterSignup() {
+  const fetcher = useFetcher();
+  
+  return (
+    <fetcher.Form action="/newsletter" method="post">
+      <input type="email" name="email" />
+      <button disabled={fetcher.state === 'submitting'}>
+        {fetcher.state === 'submitting' ? 'Submitting...' : 'Sign Up'}
+      </button>
+    </fetcher.Form>
+  );
+}
+```
+
+`fetcher.Form` non causa una navigazione. `fetcher.state` può essere `idle`, `loading` o `submitting`. `fetcher.data` contiene i dati restituiti dall'action o loader.
+
+## Defer: Data Loading Differita
+
+`defer` permette di renderizzare una pagina prima che tutti i dati siano caricati, mostrando alcuni contenuti immediatamente e altri quando i dati arrivano.
+
+```jsx
+import { defer } from 'react-router-dom';
+
+async function loadEvents() {
+  const response = await fetch('http://localhost:8080/events');
+  const resData = await response.json();
+  return resData.events;
+}
+
+export async function loader() {
+  return defer({
+    events: loadEvents()
+  });
+}
+```
+
+Nel componente, si usa `Await` per gestire i dati differiti:
+
+```jsx
+import { useLoaderData, Await } from 'react-router-dom';
+import { Suspense } from 'react';
+
+function EventsPage() {
+  const { events } = useLoaderData();
+  
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <Await resolve={events}>
+        {(loadedEvents) => (
+          <ul>
+            {loadedEvents.map(event => (
+              <li key={event.id}>{event.title}</li>
+            ))}
+          </ul>
+        )}
+      </Await>
+    </Suspense>
+  );
+}
+```
+
+`Await` riceve una promise e renderizza il contenuto quando la promise si risolve. `Suspense` mostra il fallback mentre si attende.
+
+### Controllo Granulare
+
+Si può decidere quali dati attendere prima della navigazione e quali differire:
+
+```jsx
+export async function loader({ params }) {
+  return defer({
+    event: await loadEvent(params.eventId), // Atteso prima della navigazione
+    events: loadEvents() // Differito, caricato dopo
+  });
+}
+```
+
+## Stati di Navigazione
+
+Per mostrare feedback durante le transizioni, si usa `useNavigation`:
+
+```jsx
+import { useNavigation } from 'react-router-dom';
+
+function RootLayout() {
+  const navigation = useNavigation();
+  
+  return (
+    <>
+      {navigation.state === 'loading' && <p>Loading...</p>}
+      <Outlet />
+    </>
+  );
+}
+```
+
+`navigation.state` può essere `idle`, `loading` o `submitting`. Per gli stati di submission di un form specifico, si usa `useNavigation` nel componente del form:
+
+```jsx
+function EventForm() {
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === 'submitting';
+  
+  return (
+    <Form method="post">
+      <button disabled={isSubmitting}>
+        {isSubmitting ? 'Submitting...' : 'Save'}
+      </button>
+    </Form>
+  );
+}
+```
+
+## Riepilogo
+
+React Router gestisce il routing client-side monitorando l'URL e renderizzando i componenti appropriati. Le route si definiscono con `createBrowserRouter` e si attivano con `RouterProvider`.
+
+`Link` e `NavLink` gestiscono la navigazione senza ricaricare la pagina. Le route dinamiche catturano valori dall'URL con `:paramName` e si accedono con `useParams`.
+
+I **loaders** fetchano dati prima del rendering della route. I dati sono accessibili con `useLoaderData`. Le **actions** gestiscono la submission dei form, estraendo i dati con `request.formData()`.
+
+`useFetcher` permette di triggerare loaders/actions senza navigare. `defer` permette di renderizzare contenuti parziali mentre alcuni dati sono ancora in caricamento.
+
+Gli errori si gestiscono con `errorElement` e `useRouteError`. Gli stati di navigazione si monitorano con `useNavigation` per mostrare feedback all'utente.
+
