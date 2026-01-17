@@ -1,0 +1,318 @@
+---
+title: 'Redux Avanzato: Async Code e Side Effects'
+description: "Come gestire codice asincrono e side effects in Redux usando componenti o action creators (thunks), e come utilizzare Redux DevTools"
+date: 2026-01-14
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 15
+---
+
+## Introduzione
+
+I reducer in Redux devono essere funzioni pure, sincrone e senza side effects. Quando serve eseguire codice asincrono (es. richieste HTTP) o side effects, esistono due approcci: eseguirli nei componenti con `useEffect` o in action creators personalizzati (thunks). Questo articolo spiega come funzionano entrambi gli approcci.
+
+## Il Problema: Reducer Puri
+
+I reducer devono essere funzioni pure che prendono input (state e action) e producono output (nuovo state) senza side effects:
+
+```jsx
+// ❌ SBAGLIATO: side effect nel reducer
+function cartReducer(state, action) {
+  if (action.type === 'ADD_ITEM') {
+    // ❌ Non fare mai questo!
+    fetch('/api/cart', { method: 'POST', body: JSON.stringify(state) });
+    return { ...state, items: [...state.items, action.payload] };
+  }
+  return state;
+}
+```
+
+I reducer non possono:
+- Eseguire codice asincrono
+- Fare chiamate HTTP
+- Accedere a localStorage
+- Eseguire qualsiasi side effect
+
+## Due Approcci per Side Effects
+
+### Approccio 1: Side Effects nei Componenti
+
+Si può eseguire codice asincrono nei componenti usando `useEffect` e poi dispatchare azioni quando il side effect è completato:
+
+```jsx
+import { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { sendCartData } from './store/cart-actions';
+
+function App() {
+  const cart = useSelector(state => state.cart);
+  const dispatch = useDispatch();
+  const isInitial = useRef(true);
+
+  useEffect(() => {
+    // Evita di inviare al primo render
+    if (isInitial.current) {
+      isInitial.current = false;
+      return;
+    }
+
+    // Side effect: invio HTTP request
+    dispatch(sendCartData(cart));
+  }, [cart, dispatch]);
+
+  return <Layout />;
+}
+```
+
+Il componente seleziona lo state da Redux e quando cambia esegue il side effect. La logica di trasformazione dei dati rimane nel reducer.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Gestione notifiche con Redux</summary>
+<div class="px-4 pb-4">
+
+Le notifiche possono essere gestite nello state Redux invece che nello state locale del componente:
+
+```jsx
+// UI slice
+const uiSlice = createSlice({
+  name: 'ui',
+  initialState: { notification: null },
+  reducers: {
+    showNotification(state, action) {
+      state.notification = {
+        status: action.payload.status, // 'pending', 'success', 'error'
+        title: action.payload.title,
+        message: action.payload.message
+      };
+    }
+  }
+});
+
+// Nel componente
+useEffect(() => {
+  dispatch(uiActions.showNotification({ 
+    status: 'pending', 
+    title: 'Sending...', 
+    message: 'Sending cart data' 
+  }));
+  
+  sendCartData(cart)
+    .then(() => {
+      dispatch(uiActions.showNotification({ 
+        status: 'success', 
+        title: 'Success', 
+        message: 'Cart data sent successfully' 
+      }));
+    })
+    .catch(() => {
+      dispatch(uiActions.showNotification({ 
+        status: 'error', 
+        title: 'Error', 
+        message: 'Sending cart data failed' 
+      }));
+    });
+}, [cart, dispatch]);
+```
+
+</div>
+</details>
+
+### Approccio 2: Action Creators (Thunks)
+
+Un thunk è una funzione che ritorna un'altra funzione invece di un action object. Redux Toolkit supporta nativamente i thunk:
+
+```jsx
+// cart-actions.js
+import { uiActions } from './ui-slice';
+
+export function sendCartData(cart) {
+  // Ritorna una funzione invece di un action object
+  return async (dispatch) => {
+    // Dispatch di azioni multiple
+    dispatch(uiActions.showNotification({
+      status: 'pending',
+      title: 'Sending...',
+      message: 'Sending cart data'
+    }));
+
+    try {
+      const response = await fetch('https://firebase-url/cart.json', {
+        method: 'PUT',
+        body: JSON.stringify(cart)
+      });
+
+      if (!response.ok) {
+        throw new Error('Sending cart data failed');
+      }
+
+      dispatch(uiActions.showNotification({
+        status: 'success',
+        title: 'Success',
+        message: 'Cart data sent successfully'
+      }));
+    } catch (error) {
+      dispatch(uiActions.showNotification({
+        status: 'error',
+        title: 'Error',
+        message: 'Sending cart data failed'
+      }));
+    }
+  };
+}
+```
+
+Quando si dispatcha un thunk, Redux esegue la funzione ritornata passando `dispatch` come argomento. Questo permette di eseguire side effects prima di dispatchare azioni multiple.
+
+<details class="my-4 rounded-lg border border-border bg-muted/50">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Come funzionano i thunk</summary>
+<div class="px-4 pb-4">
+
+Quando si dispatcha un thunk:
+
+```jsx
+// Nel componente
+dispatch(sendCartData(cart));
+
+// Redux Toolkit riconosce che sendCartData(cart) ritorna una funzione
+// invece di un action object, quindi:
+// 1. Esegue la funzione ritornata
+// 2. Passa dispatch come primo argomento
+// 3. La funzione può dispatchare altre azioni
+// 4. La funzione può eseguire codice asincrono
+```
+
+Redux Toolkit supporta nativamente questo pattern senza configurazione aggiuntiva.
+
+</div>
+</details>
+
+## Fetching Data
+
+Per caricare dati all'avvio dell'applicazione, si può creare un thunk che fetcha i dati e poi dispatcha un'azione per aggiornare lo state:
+
+```jsx
+// cart-actions.js
+import { cartActions } from './cart-slice';
+
+export function fetchCartData() {
+  return async (dispatch) => {
+    try {
+      const response = await fetch('https://firebase-url/cart.json');
+      
+      if (!response.ok) {
+        throw new Error('Could not fetch cart data');
+      }
+
+      const cartData = await response.json();
+      
+      // Assicurarsi che items sia sempre un array
+      dispatch(cartActions.replaceCart({
+        items: cartData.items || [],
+        totalQuantity: cartData.totalQuantity || 0
+      }));
+    } catch (error) {
+      dispatch(uiActions.showNotification({
+        status: 'error',
+        title: 'Error',
+        message: 'Fetching cart data failed'
+      }));
+    }
+  };
+}
+```
+
+Nel componente, si dispatcha il thunk all'avvio:
+
+```jsx
+useEffect(() => {
+  dispatch(fetchCartData());
+}, [dispatch]);
+```
+
+### Evitare Loop di Sincronizzazione
+
+Quando si fetcha il cart e lo si sostituisce nello state, si può innescare un loop se c'è un `useEffect` che invia il cart quando cambia. Soluzione: aggiungere un flag `changed` nello state:
+
+```jsx
+// cart-slice.js
+const cartSlice = createSlice({
+  name: 'cart',
+  initialState: {
+    items: [],
+    totalQuantity: 0,
+    changed: false // Flag per tracciare modifiche locali
+  },
+  reducers: {
+    addItemToCart(state, action) {
+      // ... logica per aggiungere item
+      state.changed = true; // Solo modifiche locali
+    },
+    replaceCart(state, action) {
+      // Sostituzione da backend: non è una modifica locale
+      state.items = action.payload.items;
+      state.totalQuantity = action.payload.totalQuantity;
+      // changed rimane false
+    }
+  }
+});
+
+// Nel componente
+useEffect(() => {
+  if (isInitial.current) {
+    isInitial.current = false;
+    return;
+  }
+
+  // Invia solo se modificato localmente
+  if (cart.changed) {
+    dispatch(sendCartData(cart));
+  }
+}, [cart, dispatch]);
+```
+
+## Redux DevTools
+
+Redux DevTools è un'estensione del browser che permette di ispezionare lo state Redux, le azioni dispatchate e fare time-travel debugging.
+
+### Installazione
+
+Installare l'estensione Redux DevTools dal Chrome Web Store (o equivalente per altri browser). Con Redux Toolkit funziona out-of-the-box senza configurazione aggiuntiva.
+
+### Funzionalità
+
+1. **Action Log**: Visualizza tutte le azioni dispatchate in ordine cronologico
+2. **State Inspection**: Mostra lo state corrente dopo ogni azione
+3. **Action Details**: Mostra payload e metadati di ogni azione
+4. **Diff View**: Mostra come lo state è cambiato dopo ogni azione
+5. **Time Travel**: Salta a uno state precedente cliccando su un'azione e "Jump"
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio di utilizzo DevTools</summary>
+<div class="px-4 pb-4">
+
+Quando si dispatcha un'azione:
+
+```jsx
+dispatch(cartActions.addItemToCart({ id: 'p1', title: 'Book', price: 10 }));
+```
+
+In DevTools si vede:
+- **Action**: `cart/addItemToCart`
+- **Payload**: `{ id: 'p1', title: 'Book', price: 10 }`
+- **State Before**: State precedente
+- **State After**: State aggiornato
+- **Diff**: Mostra che `totalQuantity` è passato da 5 a 6, `items[0].quantity` da 2 a 3, ecc.
+
+Cliccando su "Jump" si può tornare allo state precedente per debug.
+
+</div>
+</details>
+
+## Riepilogo
+
+- **Reducer puri**: I reducer devono essere funzioni pure, sincrone e senza side effects
+- **Side effects nei componenti**: Usare `useEffect` per eseguire side effects quando lo state Redux cambia; dispatchare azioni dopo il completamento
+- **Thunks (Action Creators)**: Funzioni che ritornano funzioni; Redux Toolkit le esegue automaticamente passando `dispatch`; permettono di eseguire side effects e dispatchare azioni multiple
+- **Fetching data**: Creare thunks che fetchano dati e dispatchano azioni per aggiornare lo state
+- **Evitare loop**: Usare flag come `changed` per distinguere modifiche locali da sostituzioni da backend
+- **Redux DevTools**: Estensione browser per ispezionare state, azioni e fare time-travel debugging; funziona out-of-the-box con Redux Toolkit
