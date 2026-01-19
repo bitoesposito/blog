@@ -1,0 +1,465 @@
+---
+title: 'TanStack Query: Data Fetching e State Management'
+description: 'Come utilizzare TanStack Query per gestire richieste HTTP, caching, sincronizzazione dei dati e mutazioni in applicazioni React'
+date: 2026-01-19
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 19
+---
+
+## Introduzione
+
+TanStack Query (precedentemente React Query) è una libreria che semplifica l'invio di richieste HTTP e la sincronizzazione tra frontend e backend. Gestisce automaticamente caching, refetching, gestione degli stati di loading ed errori, riducendo il boilerplate necessario quando si usa `useEffect` e `fetch`. Questo articolo esplora come funziona TanStack Query, come configurare query e mutazioni, e come gestire cache e aggiornamenti ottimistici.
+
+## Perché TanStack Query
+
+Con `useEffect` e `fetch`, si gestisce manualmente loading state, error state e data state. TanStack Query automatizza queste operazioni e aggiunge funzionalità avanzate come caching automatico, refetching intelligente e sincronizzazione dei dati.
+
+### Vantaggi
+
+TanStack Query offre:
+- **Caching automatico**: i dati vengono memorizzati e riutilizzati
+- **Refetching intelligente**: aggiornamento automatico quando si torna alla pagina o si riacquista il focus
+- **Gestione stati**: loading, error e data gestiti automaticamente
+- **Invalidazione query**: possibilità di forzare il refetch quando i dati cambiano
+- **Optimistic updates**: aggiornamento immediato dell'UI prima della risposta del server
+
+## Setup Base
+
+Per utilizzare TanStack Query, si installa il package e si configura il `QueryClientProvider`:
+
+```bash
+npm install @tanstack/react-query
+```
+
+```jsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/* Componenti dell'app */}
+    </QueryClientProvider>
+  );
+}
+```
+
+`QueryClient` è l'oggetto di configurazione che gestisce cache e query. `QueryClientProvider` avvolge l'applicazione e fornisce il client a tutti i componenti.
+
+## useQuery: Data Fetching
+
+`useQuery` è l'hook principale per fetchare dati. Accetta un oggetto di configurazione con `queryFn` e `queryKey`.
+
+### Configurazione Base
+
+```jsx
+import { useQuery } from '@tanstack/react-query';
+
+function EventsList() {
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ['events'],
+    queryFn: fetchEvents
+  });
+  
+  if (isPending) return <p>Loading...</p>;
+  if (isError) return <p>Error: {error.message}</p>;
+  
+  return (
+    <ul>
+      {data.map(event => (
+        <li key={event.id}>{event.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`queryFn` è la funzione che esegue la richiesta HTTP. Deve restituire una Promise. `queryKey` è un array che identifica univocamente la query e viene usato per il caching.
+
+### Query Function
+
+La `queryFn` riceve automaticamente un oggetto con `signal` (per abort) e informazioni sulla query:
+
+```jsx
+async function fetchEvents({ signal }) {
+  const response = await fetch('http://localhost:8080/events', {
+    signal // Permette di abortire la richiesta
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch events');
+  }
+  
+  return response.json();
+}
+```
+
+### Query Key Dinamiche
+
+Le query key possono includere valori dinamici:
+
+```jsx
+function EventDetails({ eventId }) {
+  const { data } = useQuery({
+    queryKey: ['events', eventId],
+    queryFn: ({ signal }) => fetchEvent({ signal, id: eventId })
+  });
+}
+```
+
+Query con key diverse vengono trattate come query separate e hanno cache separate.
+
+### Parametri Dinamici nella Query Function
+
+Per passare parametri dinamici alla query function, si può wrappare la funzione:
+
+```jsx
+function SearchEvents({ searchTerm }) {
+  const { data } = useQuery({
+    queryKey: ['events', { search: searchTerm }],
+    queryFn: ({ signal }) => fetchEvents({ 
+      signal, 
+      searchTerm 
+    })
+  });
+}
+```
+
+Alternativamente, si può estrarre i parametri dalla query key usando il secondo elemento dell'array:
+
+```jsx
+const { data } = useQuery({
+  queryKey: ['events', { search: searchTerm }],
+  queryFn: ({ signal, queryKey }) => {
+    const { search } = queryKey[1];
+    return fetchEvents({ signal, searchTerm: search });
+  }
+});
+```
+
+### Abilitare/Disabilitare Query
+
+Per disabilitare una query fino a quando non si verifica una condizione:
+
+```jsx
+const { data } = useQuery({
+  queryKey: ['events', searchTerm],
+  queryFn: () => fetchEvents({ searchTerm }),
+  enabled: searchTerm !== undefined
+});
+```
+
+Se `enabled` è `false`, la query non viene eseguita. `isPending` sarà `true` se la query è disabilitata, mentre `isLoading` sarà `false`.
+
+## Caching e Stale Time
+
+TanStack Query memorizza automaticamente i dati in cache. Quando una query viene rieseguita con la stessa key, i dati vengono mostrati immediatamente dalla cache mentre viene inviata una richiesta in background per aggiornare i dati.
+
+### staleTime
+
+`staleTime` controlla dopo quanto tempo i dati vengono considerati "stale" e viene inviata una richiesta di aggiornamento:
+
+```jsx
+const { data } = useQuery({
+  queryKey: ['events'],
+  queryFn: fetchEvents,
+  staleTime: 5000 // 5 secondi
+});
+```
+
+Con `staleTime: 5000`, se la query viene rieseguita entro 5 secondi, non viene inviata una nuova richiesta. Il default è `0`, quindi i dati vengono sempre considerati stale.
+
+### gcTime (Garbage Collection Time)
+
+`gcTime` controlla per quanto tempo i dati vengono mantenuti in cache quando non sono più utilizzati:
+
+```jsx
+const { data } = useQuery({
+  queryKey: ['events'],
+  queryFn: fetchEvents,
+  gcTime: 30000 // 30 secondi
+});
+```
+
+Il default è 5 minuti. Dopo questo tempo, i dati vengono rimossi dalla cache.
+
+## useMutation: Mutazioni
+
+`useMutation` gestisce richieste che modificano dati (POST, PUT, DELETE). A differenza di `useQuery`, le mutazioni non vengono eseguite automaticamente.
+
+### Configurazione Base
+
+```jsx
+import { useMutation } from '@tanstack/react-query';
+
+function NewEvent() {
+  const { mutate, isPending, isError, error } = useMutation({
+    mutationFn: createEvent
+  });
+  
+  const handleSubmit = (formData) => {
+    mutate({ event: formData });
+  };
+  
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      handleSubmit(new FormData(e.target));
+    }}>
+      {/* campi form */}
+      <button disabled={isPending}>
+        {isPending ? 'Creating...' : 'Create'}
+      </button>
+    </form>
+  );
+}
+```
+
+`mutate` è la funzione che triggera la mutazione. Viene chiamata manualmente, non automaticamente quando il componente viene renderizzato.
+
+### Callback delle Mutazioni
+
+Le mutazioni supportano callback per gestire successo ed errori:
+
+```jsx
+const { mutate } = useMutation({
+  mutationFn: createEvent,
+  onSuccess: () => {
+    // Eseguito quando la mutazione ha successo
+    navigate('/events');
+  },
+  onError: (error) => {
+    // Eseguito quando la mutazione fallisce
+    console.error('Failed to create event:', error);
+  }
+});
+```
+
+## Invalidazione Query
+
+Dopo una mutazione, spesso si vuole invalidare le query correlate per forzare il refetch:
+
+```jsx
+import { useQueryClient } from '@tanstack/react-query';
+
+function NewEvent() {
+  const queryClient = useQueryClient();
+  
+  const { mutate } = useMutation({
+    mutationFn: createEvent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['events']
+      });
+      navigate('/events');
+    }
+  });
+}
+```
+
+`invalidateQueries` marca le query come stale e forza il refetch se i componenti che le usano sono montati. Per evitare il refetch immediato:
+
+```jsx
+queryClient.invalidateQueries({
+  queryKey: ['events'],
+  refetchType: 'none' // Invalida ma non refetcha immediatamente
+});
+```
+
+## Optimistic Updates
+
+Gli optimistic updates aggiornano l'UI immediatamente, prima della risposta del server, e fanno rollback se la mutazione fallisce.
+
+### Implementazione
+
+```jsx
+const { mutate } = useMutation({
+  mutationFn: updateEvent,
+  onMutate: async (newEventData) => {
+    // Cancella query in corso per evitare conflitti
+    await queryClient.cancelQueries({
+      queryKey: ['events', eventId]
+    });
+    
+    // Salva i dati precedenti per il rollback
+    const previousEvent = queryClient.getQueryData([
+      'events', 
+      eventId
+    ]);
+    
+    // Aggiorna ottimisticamente i dati
+    queryClient.setQueryData(
+      ['events', eventId],
+      newEventData.event
+    );
+    
+    // Ritorna il contesto per il rollback
+    return { previousEvent };
+  },
+  onError: (error, newEventData, context) => {
+    // Rollback in caso di errore
+    queryClient.setQueryData(
+      ['events', eventId],
+      context.previousEvent
+    );
+  },
+  onSettled: () => {
+    // Eseguito sempre, successo o errore
+    queryClient.invalidateQueries({
+      queryKey: ['events', eventId]
+    });
+  }
+});
+```
+
+`onMutate` viene eseguito prima della mutazione. `onError` riceve il contesto da `onMutate` per fare rollback. `onSettled` viene sempre eseguito e può essere usato per invalidare le query.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Flusso degli optimistic updates</summary>
+<div class="px-4 pb-4">
+
+1. L'utente triggera la mutazione
+2. `onMutate` viene eseguito: si salvano i dati precedenti e si aggiorna la cache
+3. L'UI si aggiorna immediatamente con i nuovi dati
+4. La richiesta HTTP viene inviata
+5. Se ha successo: `onSuccess` viene eseguito (opzionale)
+6. Se fallisce: `onError` viene eseguito e si fa rollback ai dati precedenti
+7. `onSettled` viene sempre eseguito per sincronizzare con il backend
+
+</div>
+</details>
+
+## Integrazione con React Router
+
+TanStack Query può essere combinato con React Router usando `fetchQuery` nei loader:
+
+```jsx
+import { queryClient } from './util/http';
+
+export async function loader({ params }) {
+  await queryClient.fetchQuery({
+    queryKey: ['events', params.eventId],
+    queryFn: ({ signal }) => fetchEvent({ 
+      signal, 
+      id: params.eventId 
+    })
+  });
+  
+  return null; // React Router gestirà la navigazione
+}
+```
+
+Nel componente, si continua a usare `useQuery` per beneficiare di refetching automatico e altre funzionalità. I dati vengono presi dalla cache se disponibili.
+
+Per le mutazioni con React Router, si può usare un'action:
+
+```jsx
+export async function action({ request, params }) {
+  const formData = await request.formData();
+  const updatedData = Object.fromEntries(formData);
+  
+  await updateEvent({
+    id: params.eventId,
+    event: updatedData
+  });
+  
+  await queryClient.invalidateQueries({
+    queryKey: ['events']
+  });
+  
+  return redirect(`/events/${params.eventId}`);
+}
+```
+
+Nel componente, si usa `useSubmit` di React Router per triggerare l'action:
+
+```jsx
+import { useSubmit, useNavigation } from 'react-router-dom';
+
+function EditEvent() {
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  
+  const handleSubmit = (formData) => {
+    submit(formData, { method: 'PUT' });
+  };
+  
+  const isSubmitting = navigation.state === 'submitting';
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* campi form */}
+      <button disabled={isSubmitting}>
+        {isSubmitting ? 'Updating...' : 'Update'}
+      </button>
+    </form>
+  );
+}
+```
+
+### Evitare Richieste Ridondanti
+
+Quando si usa React Router con TanStack Query, si può aumentare `staleTime` per evitare refetch immediati:
+
+```jsx
+const { data } = useQuery({
+  queryKey: ['events', eventId],
+  queryFn: ({ signal }) => fetchEvent({ signal, id: eventId }),
+  staleTime: 10000 // 10 secondi
+});
+```
+
+## Hook Utili
+
+### useIsFetching
+
+`useIsFetching` indica se TanStack Query sta fetchando dati da qualche parte nell'applicazione:
+
+```jsx
+import { useIsFetching } from '@tanstack/react-query';
+
+function Header() {
+  const isFetching = useIsFetching();
+  
+  return (
+    <header>
+      {isFetching > 0 && <progress />}
+    </header>
+  );
+}
+```
+
+Restituisce un numero: `0` se non ci sono fetch in corso, un numero maggiore se ci sono fetch attivi.
+
+### useQueryClient
+
+`useQueryClient` restituisce l'istanza del `QueryClient` per interagire direttamente con la cache:
+
+```jsx
+import { useQueryClient } from '@tanstack/react-query';
+
+function MyComponent() {
+  const queryClient = useQueryClient();
+  
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({
+      queryKey: ['events']
+    });
+  };
+  
+  // ...
+}
+```
+
+## Riepilogo
+
+TanStack Query semplifica il data fetching e la gestione dello stato per le richieste HTTP. `useQuery` gestisce il fetching automatico con caching e refetching intelligente. `useMutation` gestisce le mutazioni con callback per successo ed errori.
+
+Le **query key** identificano univocamente le query e vengono usate per il caching. `staleTime` controlla quando i dati vengono considerati obsoleti. `gcTime` controlla per quanto tempo i dati vengono mantenuti in cache.
+
+L'**invalidazione delle query** forza il refetch quando i dati cambiano. Gli **optimistic updates** aggiornano l'UI immediatamente e fanno rollback se la mutazione fallisce.
+
+TanStack Query può essere integrato con React Router usando `fetchQuery` nei loader e actions per le mutazioni. `useIsFetching` permette di mostrare indicatori globali di loading.
+

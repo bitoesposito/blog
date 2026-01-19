@@ -1,0 +1,451 @@
+---
+title: 'Autenticazione in React'
+description: 'Come implementare autenticazione token-based in applicazioni React, gestire token, proteggere route e gestire la persistenza dell\'autenticazione'
+date: 2026-01-19
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 17
+---
+
+## Introduzione
+
+L'autenticazione permette di proteggere risorse e route, garantendo che solo utenti autorizzati possano accedervi. In applicazioni React, l'autenticazione token-based è un approccio comune: il backend genera un token dopo la validazione delle credenziali, e il frontend lo memorizza e lo invia con le richieste successive. Questo articolo esplora come funziona l'autenticazione token-based, come implementarla in React e come gestire la persistenza e la scadenza dei token.
+
+## Come Funziona l'Autenticazione Token-Based
+
+L'autenticazione token-based funziona in tre fasi: invio delle credenziali, ricezione del token e utilizzo del token per richieste successive.
+
+### Flusso di Autenticazione
+
+1. **Invio credenziali**: il client invia email e password al backend
+2. **Validazione**: il backend valida le credenziali
+3. **Generazione token**: se valide, il backend genera un token (es. JWT) firmato con una chiave privata
+4. **Storage token**: il client memorizza il token (tipicamente in localStorage)
+5. **Utilizzo token**: il client invia il token con le richieste successive tramite header `Authorization`
+
+Il token è una stringa che contiene informazioni firmate dal backend. Solo il backend può validare il token perché conosce la chiave privata usata per crearlo.
+
+### Token vs Server-Side Sessions
+
+Le **server-side sessions** memorizzano l'identificatore della sessione sul server e lo mappano al client. Richiedono un accoppiamento stretto tra frontend e backend.
+
+I **token** sono autosufficienti: il backend li crea ma non li memorizza. La validità viene verificata controllando la firma. Questo approccio è ideale per applicazioni con frontend e backend disaccoppiati.
+
+## Implementazione Base
+
+### Creazione Utente e Login
+
+Per gestire signup e login, si crea un'action che invia le credenziali al backend:
+
+```jsx
+// pages/Authentication.js
+import { redirect } from 'react-router-dom';
+
+export async function action({ request }) {
+  const searchParams = new URL(request.url).searchParams;
+  const mode = searchParams.get('mode') || 'login';
+  
+  const data = await request.formData();
+  const authData = {
+    email: data.get('email'),
+    password: data.get('password')
+  };
+  
+  const response = await fetch(`http://localhost:8080/${mode}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(authData)
+  });
+  
+  if (response.status === 422 || response.status === 401) {
+    return response; // Ritorna errori di validazione
+  }
+  
+  if (!response.ok) {
+    throw new Response(
+      JSON.stringify({ message: 'Could not authenticate user.' }),
+      { status: 500 }
+    );
+  }
+  
+  const resData = await response.json();
+  const token = resData.token;
+  
+  // Memorizza il token
+  localStorage.setItem('token', token);
+  
+  // Memorizza la scadenza (1 ora)
+  const expiration = new Date();
+  expiration.setHours(expiration.getHours() + 1);
+  localStorage.setItem('expiration', expiration.toISOString());
+  
+  return redirect('/');
+}
+```
+
+L'action viene registrata nella route:
+
+```jsx
+import { authAction } from './pages/Authentication';
+
+const router = createBrowserRouter([
+  {
+    path: '/auth',
+    element: <AuthenticationPage />,
+    action: authAction
+  }
+]);
+```
+
+### Query Parameters per Switch Modalità
+
+Per switchare tra login e signup nella stessa route, si usano query parameters:
+
+```jsx
+import { useSearchParams, Link } from 'react-router-dom';
+
+function AuthForm() {
+  const [searchParams] = useSearchParams();
+  const isLogin = searchParams.get('mode') === 'login';
+  
+  return (
+    <>
+      <h1>{isLogin ? 'Log in' : 'Create new user'}</h1>
+      <Form method="post">
+        <input type="email" name="email" required />
+        <input type="password" name="password" required />
+        <button>Save</button>
+      </Form>
+      <Link to={`?mode=${isLogin ? 'signup' : 'login'}`}>
+        {isLogin ? 'Create new user' : 'Log in'}
+      </Link>
+    </>
+  );
+}
+```
+
+`useSearchParams` restituisce un array: il primo elemento è un oggetto per leggere i parametri, il secondo una funzione per aggiornarli.
+
+### Gestione Errori
+
+Per mostrare errori di validazione nel form:
+
+```jsx
+import { useActionData, useNavigation } from 'react-router-dom';
+
+function AuthForm() {
+  const data = useActionData();
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === 'submitting';
+  
+  return (
+    <>
+      {data && data.errors && (
+        <ul>
+          {Object.values(data.errors).map(err => (
+            <li key={err}>{err}</li>
+          ))}
+        </ul>
+      )}
+      {data && data.message && <p>{data.message}</p>}
+      <Form method="post">
+        {/* ... campi form */}
+        <button disabled={isSubmitting}>
+          {isSubmitting ? 'Submitting...' : 'Save'}
+        </button>
+      </Form>
+    </>
+  );
+}
+```
+
+## Utilizzo del Token
+
+### Estrazione e Utilizzo
+
+Per utilizzare il token nelle richieste, si crea una funzione helper:
+
+```jsx
+// util/auth.js
+export function getAuthToken() {
+  const token = localStorage.getItem('token');
+  
+  if (!token) {
+    return null;
+  }
+  
+  const tokenDuration = getTokenDuration();
+  
+  if (tokenDuration < 0) {
+    return 'EXPIRED';
+  }
+  
+  return token;
+}
+
+function getTokenDuration() {
+  const storedExpirationDate = localStorage.getItem('expiration');
+  
+  if (!storedExpirationDate) {
+    return 0;
+  }
+  
+  const expiration = new Date(storedExpirationDate);
+  const now = new Date();
+  const duration = expiration.getTime() - now.getTime();
+  
+  return duration;
+}
+```
+
+### Attaccare Token alle Richieste
+
+Per attaccare il token alle richieste protette:
+
+```jsx
+import { getAuthToken } from '../util/auth';
+
+export async function action({ request, params }) {
+  const token = getAuthToken();
+  
+  const response = await fetch(`http://localhost:8080/events/${params.eventId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Response(
+      JSON.stringify({ message: 'Could not delete event.' }),
+      { status: 500 }
+    );
+  }
+  
+  return redirect('/events');
+}
+```
+
+Il formato `Bearer <token>` è uno standard comune per l'header `Authorization`.
+
+## Protezione Route
+
+Per proteggere route che richiedono autenticazione, si crea un loader che verifica il token:
+
+```jsx
+// util/auth.js
+import { redirect } from 'react-router-dom';
+
+export function checkAuthLoader() {
+  const token = getAuthToken();
+  
+  if (!token || token === 'EXPIRED') {
+    return redirect('/auth');
+  }
+  
+  return null;
+}
+```
+
+Il loader viene aggiunto alle route protette:
+
+```jsx
+import { checkAuthLoader } from './util/auth';
+
+const router = createBrowserRouter([
+  {
+    path: '/events/new',
+    element: <NewEventPage />,
+    loader: checkAuthLoader,
+    action: newEventAction
+  },
+  {
+    path: '/events/:eventId/edit',
+    element: <EditEventPage />,
+    loader: checkAuthLoader,
+    action: editEventAction
+  }
+]);
+```
+
+Se l'utente non è autenticato, viene reindirizzato alla pagina di login.
+
+## Aggiornamento UI Basato su Auth Status
+
+Per aggiornare l'UI in base allo stato di autenticazione, si usa un loader sulla root route:
+
+```jsx
+// util/auth.js
+export function tokenLoader() {
+  return getAuthToken();
+}
+```
+
+Il loader viene registrato sulla root route:
+
+```jsx
+import { tokenLoader } from './util/auth';
+
+const router = createBrowserRouter([
+  {
+    id: 'root',
+    path: '/',
+    loader: tokenLoader,
+    element: <RootLayout />,
+    children: [
+      // ... altre route
+    ]
+  }
+]);
+```
+
+Nei componenti, si accede al token con `useRouteLoaderData`:
+
+```jsx
+import { useRouteLoaderData } from 'react-router-dom';
+
+function MainNavigation() {
+  const token = useRouteLoaderData('root');
+  
+  return (
+    <nav>
+      {!token && (
+        <NavLink to="/auth">Authentication</NavLink>
+      )}
+      {token && (
+        <Form action="/logout" method="post">
+          <button>Logout</button>
+        </Form>
+      )}
+    </nav>
+  );
+}
+```
+
+Il loader viene rieseguito automaticamente quando si naviga o si inviano form, garantendo che l'UI rifletta sempre lo stato corrente.
+
+## Logout
+
+Per implementare il logout, si crea un'action che rimuove il token:
+
+```jsx
+// pages/Logout.js
+import { redirect } from 'react-router-dom';
+
+export function action() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('expiration');
+  return redirect('/');
+}
+```
+
+L'action viene registrata in una route senza elemento:
+
+```jsx
+import { logoutAction } from './pages/Logout';
+
+const router = createBrowserRouter([
+  {
+    path: '/logout',
+    action: logoutAction
+  }
+]);
+```
+
+Nel componente di navigazione, si usa un form per triggerare il logout:
+
+```jsx
+import { Form } from 'react-router-dom';
+
+function MainNavigation() {
+  return (
+    <nav>
+      <Form action="/logout" method="post">
+        <button>Logout</button>
+      </Form>
+    </nav>
+  );
+}
+```
+
+## Auto-Logout dopo Scadenza
+
+Per implementare l'auto-logout quando il token scade, si usa `useEffect` nel root layout:
+
+```jsx
+import { useEffect } from 'react';
+import { useLoaderData, useSubmit } from 'react-router-dom';
+import { getTokenDuration } from '../util/auth';
+
+function RootLayout() {
+  const token = useLoaderData();
+  const submit = useSubmit();
+  
+  useEffect(() => {
+    if (!token || token === 'EXPIRED') {
+      return;
+    }
+    
+    const tokenDuration = getTokenDuration();
+    
+    setTimeout(() => {
+      submit(null, { action: '/logout', method: 'post' });
+    }, tokenDuration);
+  }, [token, submit]);
+  
+  return <Outlet />;
+}
+```
+
+Il timer viene impostato sulla durata rimanente del token, non su un valore fisso. Quando il timer scade, viene triggerato il logout.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Gestione scadenza token</summary>
+<div class="px-4 pb-4">
+
+Quando si memorizza il token, si memorizza anche la data di scadenza:
+
+```jsx
+// Nel loader/action di autenticazione
+const expiration = new Date();
+expiration.setHours(expiration.getHours() + 1);
+localStorage.setItem('expiration', expiration.toISOString());
+```
+
+Quando si verifica il token, si controlla anche la scadenza:
+
+```jsx
+function getTokenDuration() {
+  const storedExpirationDate = localStorage.getItem('expiration');
+  
+  if (!storedExpirationDate) {
+    return 0;
+  }
+  
+  const expiration = new Date(storedExpirationDate);
+  const now = new Date();
+  const duration = expiration.getTime() - now.getTime();
+  
+  return duration; // Positivo se valido, negativo se scaduto
+}
+```
+
+Se il token è scaduto, `getAuthToken` ritorna `'EXPIRED'`, che viene trattato come "non autenticato".
+
+</div>
+</details>
+
+## Riepilogo
+
+L'autenticazione token-based funziona inviando credenziali al backend, ricevendo un token firmato, memorizzandolo lato client e inviandolo con le richieste successive tramite l'header `Authorization`.
+
+Il token viene memorizzato in `localStorage` insieme alla data di scadenza. Le funzioni helper (`getAuthToken`, `getTokenDuration`) gestiscono l'estrazione e la validazione del token.
+
+Le route protette utilizzano un loader (`checkAuthLoader`) che verifica il token e reindirizza alla login se mancante o scaduto. L'UI si aggiorna automaticamente usando un loader sulla root route che espone il token a tutti i componenti.
+
+Il logout rimuove il token da `localStorage` e triggera un redirect. L'auto-logout viene implementato con `useEffect` che imposta un timer basato sulla durata rimanente del token.
+
+I query parameters permettono di switchare tra modalità (login/signup) nella stessa route. Gli errori di autenticazione vengono gestiti ritornando la response invece di fare throw, permettendo di mostrare messaggi di errore nel form.
+
