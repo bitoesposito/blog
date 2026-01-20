@@ -46,12 +46,6 @@ import Favicons from './Favicons.astro'
   <ClientRouter />
 
   <slot />
-  <!-- Google tag (gtag.js) -->
-  <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9LVN5PPG2F"></script>
-  <script is:inline>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-9LVN5PPG2F');
-  </script>
+  <!-- Umami Analytics -->
+  <script defer src="https://analytics.vitoesposito.it/script.js" data-website-id="e4152f36-dcdb-4122-8988-802cf8060d8f"></script>
 </head>
