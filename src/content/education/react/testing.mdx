@@ -1,0 +1,299 @@
+---
+title: 'Testing di Applicazioni React'
+description: 'Come scrivere test automatizzati per applicazioni React usando Jest e React Testing Library, testare componenti, interazioni utente e richieste HTTP asincrone'
+date: 2026-01-21
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 22
+---
+
+## Introduzione
+
+Il testing automatizzato consiste nello scrivere codice che verifica automaticamente il funzionamento del codice dell'applicazione. A differenza del testing manuale, i test automatizzati possono essere eseguiti ogni volta che si modifica il codice, permettendo di verificare che tutte le funzionalità continuino a funzionare correttamente. Questo articolo esplora come testare applicazioni React usando Jest e React Testing Library.
+
+## Perché il Testing Automatizzato
+
+Il testing manuale è importante ma limitato: è difficile testare tutte le combinazioni e gli scenari possibili, e quando si aggiunge una nuova funzionalità non si testano sempre tutte le altre parti dell'applicazione. I test automatizzati permettono di testare tutto il codice ogni volta che si apportano modifiche, riducendo il rischio che bug passino inosservati.
+
+## Tipi di Test
+
+Esistono tre categorie principali di test automatizzati:
+
+### Unit Test
+
+I **unit test** verificano le unità più piccole dell'applicazione: funzioni individuali o componenti React isolati dagli altri. I progetti tipicamente contengono molti unit test perché si vuole testare ogni unità che compone l'applicazione.
+
+### Integration Test
+
+Gli **integration test** verificano la combinazione di più componenti che lavorano insieme. I progetti contengono meno integration test rispetto agli unit test, ma sono comunque molto importanti. In React, la distinzione tra unit test e integration test è spesso sfumata perché spesso si testa un componente che usa altri componenti.
+
+### End-to-End Test
+
+Gli **end-to-end test** verificano interi flussi dell'applicazione, riproducendo ciò che un utente reale farebbe. Sono importanti ma meno numerosi perché gli unit test e gli integration test sono più veloci da eseguire e più facili da mantenere.
+
+## Setup: Jest e React Testing Library
+
+Per testare applicazioni React servono due strumenti principali:
+
+- **Jest**: esegue i test e verifica i risultati (assertions)
+- **React Testing Library**: simula il rendering dei componenti React in un ambiente di test
+
+Entrambi sono già installati e configurati nei progetti creati con Create React App. I file di test seguono la convenzione `*.test.js` o `*.test.jsx`.
+
+## Scrivere il Primo Test
+
+Un test è definito con la funzione `test()` che riceve due argomenti: una descrizione del test e una funzione che contiene il codice del test.
+
+### Pattern AAA: Arrange, Act, Assert
+
+Quando si scrive un test, si segue tipicamente il pattern delle tre A:
+
+1. **Arrange**: preparare il test, ad esempio renderizzare il componente
+2. **Act**: eseguire l'azione da testare, ad esempio simulare un click
+3. **Assert**: verificare che il risultato corrisponda alle aspettative
+
+```jsx
+// Greeting.test.js
+import { render, screen } from '@testing-library/react'
+import Greeting from './Greeting'
+
+test('renders Hello World as a text', () => {
+	// Arrange: renderizzare il componente
+	render(<Greeting />)
+	
+	// Act: nessuna azione necessaria in questo caso
+	
+	// Assert: verificare che il testo sia presente
+	const helloWorldElement = screen.getByText('Hello World!')
+	expect(helloWorldElement).toBeInTheDocument()
+})
+```
+
+### Query Methods: getBy, queryBy, findBy
+
+React Testing Library fornisce diversi metodi per trovare elementi:
+
+- **getBy**: lancia un errore se l'elemento non viene trovato
+- **queryBy**: restituisce `null` se l'elemento non viene trovato (utile per verificare assenze)
+- **findBy**: restituisce una Promise e attende che l'elemento appaia (utile per codice asincrono)
+
+```jsx
+// getBy lancia errore se non trova l'elemento
+const element = screen.getByText('Hello World!')
+
+// queryBy restituisce null se non trova l'elemento
+const missingElement = screen.queryByText('Not found')
+expect(missingElement).toBeNull()
+
+// findBy attende che l'elemento appaia (async)
+const asyncElement = await screen.findByText('Loaded content')
+```
+
+### Selezionare Elementi
+
+Gli elementi possono essere selezionati in vari modi:
+
+```jsx
+// Per testo (case-insensitive con regex)
+screen.getByText(/hello world/i)
+
+// Per ruolo (accessibilità)
+screen.getByRole('button')
+screen.getAllByRole('listitem') // per più elementi
+
+// Per testo esatto o parziale
+screen.getByText('Hello World!', { exact: false })
+```
+
+## Test con Interazioni Utente
+
+Per testare interazioni come click o input, si usa `userEvent` da `@testing-library/user-event`:
+
+```jsx
+// Greeting.test.js
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import Greeting from './Greeting'
+
+describe('Greeting component', () => {
+	test('renders "good to see you" if button was NOT clicked', () => {
+		// Arrange
+		render(<Greeting />)
+		
+		// Act: nessuna azione
+		
+		// Assert
+		const outputElement = screen.getByText('good to see you', { exact: false })
+		expect(outputElement).toBeInTheDocument()
+	})
+	
+	test('renders "Changed" if button was clicked', async () => {
+		// Arrange
+		render(<Greeting />)
+		
+		// Act: simulare click sul bottone
+		const buttonElement = screen.getByRole('button')
+		await userEvent.click(buttonElement)
+		
+		// Assert
+		const outputElement = screen.getByText('Changed')
+		expect(outputElement).toBeInTheDocument()
+	})
+	
+	test('does not render "good to see you" if button was clicked', async () => {
+		// Arrange
+		render(<Greeting />)
+		
+		// Act
+		const buttonElement = screen.getByRole('button')
+		await userEvent.click(buttonElement)
+		
+		// Assert: verificare che l'elemento NON sia presente
+		const outputElement = screen.queryByText('good to see you', { exact: false })
+		expect(outputElement).toBeNull()
+	})
+})
+```
+
+## Organizzare i Test con Describe
+
+Per organizzare test correlati, si usa `describe()` per creare suite di test:
+
+```jsx
+describe('Greeting component', () => {
+	test('renders Hello World as a text', () => {
+		// ...
+	})
+	
+	test('renders "good to see you" if button was NOT clicked', () => {
+		// ...
+	})
+	
+	// Altri test correlati...
+})
+```
+
+## Test con Componenti Multipli
+
+Quando un componente usa altri componenti, `render()` renderizza l'intero albero di componenti. Questo permette di testare componenti che dipendono da altri senza doverli testare separatamente:
+
+```jsx
+// Greeting.jsx usa Output component
+import Output from './Output'
+
+function Greeting() {
+	return (
+		<div>
+			<h2>Hello World!</h2>
+			<Output>It's good to see you.</Output>
+		</div>
+	)
+}
+
+// Il test di Greeting funziona anche se usa Output
+test('renders greeting with output component', () => {
+	render(<Greeting />)
+	const outputElement = screen.getByText('It\'s good to see you.')
+	expect(outputElement).toBeInTheDocument()
+})
+```
+
+## Test con Richieste HTTP Asincrone
+
+Quando un componente effettua richieste HTTP, ci sono due sfide principali:
+
+1. **Attendere il completamento**: usare `findBy` invece di `getBy` per attendere che i dati vengano caricati
+2. **Evitare richieste reali**: usare mock per simulare le richieste invece di inviarle realmente
+
+### Attendere Dati Asincroni
+
+```jsx
+// Async.test.js
+import { render, screen } from '@testing-library/react'
+import Async from './Async'
+
+test('renders posts if request succeeds', async () => {
+	// Arrange
+	render(<Async />)
+	
+	// Act: nessuna azione, il componente carica automaticamente
+	
+	// Assert: attendere che i post vengano renderizzati
+	const listItemElements = await screen.findAllByRole('listitem')
+	expect(listItemElements).not.toHaveLength(0)
+})
+```
+
+### Mocking di Fetch
+
+Per evitare di inviare richieste HTTP reali durante i test, si sostituisce `fetch` con una funzione mock:
+
+```jsx
+// Async.test.js
+import { render, screen } from '@testing-library/react'
+import Async from './Async'
+
+test('renders posts if request succeeds', async () => {
+	// Arrange: mockare fetch
+	window.fetch = jest.fn()
+	window.fetch.mockResolvedValueOnce({
+		json: async () => [
+			{ id: 'p1', title: 'First post' },
+			{ id: 'p2', title: 'Second post' }
+		]
+	})
+	
+	render(<Async />)
+	
+	// Assert
+	const listItemElements = await screen.findAllByRole('listitem')
+	expect(listItemElements).not.toHaveLength(0)
+})
+```
+
+`jest.fn()` crea una funzione mock che può essere configurata con `mockResolvedValueOnce()` per simulare il valore di risposta di una Promise.
+
+<details>
+<summary>Perché Mockare Fetch</summary>
+
+Mockare `fetch` durante i test è importante perché:
+
+- **Riduce traffico di rete**: evita di inviare molte richieste durante lo sviluppo
+- **Evita effetti collaterali**: non modifica dati su server o database
+- **Test più veloci**: i mock sono più veloci delle richieste reali
+- **Controllo degli scenari**: permette di testare diversi esiti (successo, errore) senza dipendere dal server
+
+Non si testa se `fetch` funziona correttamente (è una funzione del browser), ma se il componente si comporta correttamente in base ai diversi esiti della richiesta.
+
+</details>
+
+## Cosa Testare
+
+Quando si scrivono test, è importante sapere cosa testare:
+
+- **Cosa**: testare i singoli building block dell'applicazione, con test piccoli e focalizzati che verificano una cosa alla volta
+- **Come**: testare sia i casi di successo che quelli di errore, inclusi scenari rari ma possibili
+
+Ogni test dovrebbe essere indipendente e verificare un comportamento specifico.
+
+## Risorse per Approfondire
+
+Per approfondire il testing di applicazioni React:
+
+- **Jest Documentation**: documentazione ufficiale di Jest con guide su matchers, async code e mocking
+- **React Testing Library Documentation**: documentazione completa su come testare React, con esempi e API reference
+- **React Hooks Testing Library**: estensione per testare custom hooks in modo più semplice
+
+<details>
+<summary>Comandi Utili</summary>
+
+- `npm test`: esegue i test in modalità watch (ri-esegue i test quando i file cambiano)
+- Premere `a` durante l'esecuzione: esegue tutti i test
+- Premere `Ctrl+C`: interrompe l'esecuzione dei test
+
+</details>
+
+## Riepilogo
+
+Il testing automatizzato permette di verificare automaticamente che il codice funzioni correttamente ogni volta che si apportano modifiche. Jest esegue i test e verifica i risultati, mentre React Testing Library permette di renderizzare componenti e simulare interazioni utente in un ambiente di test. I test seguono il pattern AAA (Arrange, Act, Assert) e possono verificare componenti statici, interazioni utente, componenti multipli e richieste HTTP asincrone usando mock. Organizzare i test in suite con `describe()` aiuta a mantenere il codice di test organizzato e leggibile.
+
