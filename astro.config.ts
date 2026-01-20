@@ -20,6 +20,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   site: 'https://blog.vitoesposito.it',
+  trailingSlash: 'ignore',
   integrations: [
     expressiveCode({
       themes: ['github-light', 'github-dark'],
@@ -66,7 +67,11 @@ export default defineConfig({
     }),
     mdx(),
     react(),
-    sitemap(),
+    sitemap({
+      changefreq: 'weekly',
+      priority: 0.7,
+      lastmod: new Date(),
+    }),
     icon(),
   ],
   vite: {
