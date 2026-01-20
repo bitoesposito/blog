@@ -1,0 +1,376 @@
+---
+title: 'React Server Components e Feature Avanzate'
+description: 'Come funzionano React Server Components, Client Components, Server Actions, Suspense e il hook use() in progetti che supportano queste feature'
+date: 2026-01-20
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 20
+---
+
+## Introduzione
+
+Alcune feature di React, come React Server Components, Server Actions e il hook `use()` con Promises, richiedono setup di progetto speciali che supportano l'esecuzione di codice lato server. Queste feature non sono disponibili in progetti React standard come quelli creati con Vite, ma sono supportate da framework come Next.js. Questo articolo esplora come funzionano queste feature avanzate e come utilizzarle insieme.
+
+## Perché Alcune Feature Richiedono Setup Speciali
+
+React Server Components e Server Actions richiedono che il codice sia eseguito sul server, non solo nel browser. I progetti React standard eseguono tutto nel browser, quindi serve un setup che separi automaticamente il codice in due pacchetti: uno per il server e uno per il client, con un ambiente server per eseguire il codice che non deve girare nel browser.
+
+Framework come Next.js forniscono questo setup, permettendo di utilizzare queste feature avanzate.
+
+## React Server Components vs Client Components
+
+### Server Components
+
+I **React Server Components** sono componenti che non vengono mai eseguiti sul client. Il codice di questi componenti non arriva mai al client: vengono eseguiti sul server durante il build o quando una richiesta arriva al server.
+
+```jsx
+// RSCDemo.js - Server Component (default in Next.js)
+function RSCDemo() {
+	console.log('Questo log appare solo sul server')
+	return <div>Server Component</div>
+}
+```
+
+Vantaggi dei Server Components:
+- **Meno codice al client**: il codice non viene inviato al browser
+- **Data fetching sul server**: possibilità di fetch dati direttamente nel componente
+- **Supporto async/await**: i Server Components possono essere funzioni async
+
+### Client Components
+
+I **Client Components** vengono renderizzati sia sul server (pre-rendering) che sul client. Sul server generano HTML iniziale, poi vengono eseguiti nuovamente sul client per permettere interattività.
+
+Per convertire un componente in Client Component, si aggiunge la direttiva `'use client'` all'inizio del file:
+
+```jsx
+// ClientDemo.js - Client Component
+'use client'
+
+import { useState } from 'react'
+
+function ClientDemo() {
+	const [count, setCount] = useState(0)
+	
+	console.log('Questo log appare sia sul server che sul client')
+	
+	return (
+		<div>
+			<button onClick={() => setCount(count + 1)}>
+				Increment
+			</button>
+			<span>{count}</span>
+		</div>
+	)
+}
+```
+
+I Client Components sono necessari quando si utilizzano:
+- Hook di React come `useState`, `useEffect`, `useContext`
+- Event handlers come `onClick`, `onChange`
+- Browser APIs come `localStorage`, `window`
+
+## Combinare Server e Client Components
+
+Esistono regole specifiche per combinare Server e Client Components:
+
+### Server Component → Client Component
+
+Un Server Component può includere direttamente un Client Component nel suo JSX:
+
+```jsx
+// Server Component
+import ClientDemo from './ClientDemo'
+
+function ServerComponent() {
+	return (
+		<div>
+			<ClientDemo /> {/* Funziona */}
+		</div>
+	)
+}
+```
+
+### Client Component → Server Component
+
+Un Client Component **non può** includere direttamente un Server Component nel suo JSX, con un'eccezione: può accettare Server Components come `children`.
+
+```jsx
+// ❌ Non funziona
+'use client'
+import ServerComponent from './ServerComponent'
+
+function ClientComponent() {
+	return <ServerComponent /> // Errore
+}
+
+// ✅ Funziona con children
+'use client'
+function ClientComponent({ children }) {
+	return <div>{children}</div>
+}
+
+// Nel Server Component padre
+function Page() {
+	return (
+		<ClientComponent>
+			<ServerComponent /> {/* Funziona come children */}
+		</ClientComponent>
+	)
+}
+```
+
+<details>
+<summary>Forzare un componente come Server Component</summary>
+
+Se un Server Component viene usato dentro un Client Component, viene automaticamente convertito in Client Component. Per forzarlo a rimanere Server Component, si può usare `async`:
+
+```jsx
+// Server Component con async
+async function ServerComponent() {
+	const data = await fetchData()
+	return <div>{data}</div>
+}
+
+// Se questo viene usato in un Client Component senza async,
+// viene convertito automaticamente
+// Con async, rimane Server Component e genera errore se usato direttamente
+```
+
+</details>
+
+## Data Fetching con Server Components
+
+I Server Components semplificano il data fetching perché il codice viene eseguito sul server, dove si può utilizzare codice Node.js e `async/await`:
+
+```jsx
+// DataFetchingDemo.js - Server Component
+import fs from 'fs/promises'
+
+async function DataFetchingDemo() {
+	// Codice Node.js eseguito solo sul server
+	const fileContent = await fs.readFile('dummy-db.json', 'utf-8')
+	const users = JSON.parse(fileContent)
+	
+	return (
+		<ul>
+			{users.map(user => (
+				<li key={user.id}>{user.name}</li>
+			))}
+		</ul>
+	)
+}
+```
+
+Vantaggi rispetto a `useEffect` e `fetch`:
+- **Nessun loading state manuale**: i dati sono già disponibili quando il componente viene renderizzato
+- **Codice più semplice**: nessun `useEffect`, nessuna gestione di loading/error state
+- **Migliori performance**: i dati vengono fetchati sul server e inclusi nell'HTML iniziale
+
+## Server Actions
+
+Le **Server Actions** sono form actions eseguite sul server. Si creano aggiungendo la direttiva `'use server'` a una funzione async:
+
+```jsx
+// ServerActionsDemo.js - Server Component
+async function ServerActionsDemo() {
+	async function saveUserAction(formData) {
+		'use server'
+		
+		const name = formData.get('name')
+		const email = formData.get('email')
+		
+		// Codice eseguito solo sul server
+		console.log('Eseguito sul server')
+		
+		// Salvataggio dati
+		await saveUser({ name, email })
+	}
+	
+	return (
+		<form action={saveUserAction}>
+			<input name="name" />
+			<input name="email" />
+			<button type="submit">Save User</button>
+		</form>
+	)
+}
+```
+
+### Regole per Server Actions
+
+1. **Non possono essere definite in Client Components**: se un file ha `'use client'`, non può contenere `'use server'` nella stessa funzione
+2. **Possono essere usate in Client Components**: si possono definire in file separati e importarle
+
+```jsx
+// actions/users.js
+'use server'
+
+export async function saveUserAction(formData) {
+	// Codice server
+}
+
+// ClientComponent.js
+'use client'
+import { saveUserAction } from './actions/users'
+
+function ClientComponent() {
+	return (
+		<form action={saveUserAction}>
+			{/* Form */}
+		</form>
+	)
+}
+```
+
+<details>
+<summary>Differenza tra Form Actions e Server Actions</summary>
+
+Le **Form Actions** sono una feature standard di React disponibile in tutti i progetti React. Le **Server Actions** sono Form Actions eseguite sul server grazie alla direttiva `'use server'` e richiedono un setup speciale come Next.js.
+
+- Form Actions: eseguite sul client, disponibili ovunque
+- Server Actions: eseguite sul server, richiedono setup speciale
+
+</details>
+
+## Suspense e Data Fetching
+
+Il componente `Suspense` di React può essere usato con Server Components per mostrare un fallback durante il caricamento dei dati:
+
+```jsx
+// UsePromisesDemo.js - Server Component
+async function UsePromisesDemo() {
+	// Simula delay nel fetching
+	await new Promise(resolve => setTimeout(resolve, 2000))
+	
+	const users = await fetchUsers()
+	
+	return (
+		<ul>
+			{users.map(user => (
+				<li key={user.id}>{user.name}</li>
+			))}
+		</ul>
+	)
+}
+
+// page.js - Server Component
+import { Suspense } from 'react'
+import UsePromisesDemo from './UsePromisesDemo'
+
+function Page() {
+	return (
+		<div>
+			<h1>Users</h1>
+			<Suspense fallback={<p>Loading...</p>}>
+				<UsePromisesDemo />
+			</Suspense>
+		</div>
+	)
+}
+```
+
+Con `Suspense`, la pagina carica immediatamente mostrando il fallback, mentre i dati vengono fetchati in background. Questo migliora l'esperienza utente rispetto al caricamento completo della pagina.
+
+## Il Hook `use()` con Promises
+
+Il hook `use()` può essere usato per attendere Promises in Client Components senza `async/await`. Funziona solo con Promises create da librerie che si integrano con Suspense o con Promises create in Server Components e passate come props.
+
+```jsx
+// page.js - Server Component
+async function Page() {
+	// Promise creata nel Server Component
+	const fetchUsersPromise = new Promise((resolve) => {
+		setTimeout(async () => {
+			const users = await fetchUsers()
+			resolve(users)
+		}, 2000)
+	})
+	
+	return (
+		<Suspense fallback={<p>Loading...</p>}>
+			<UsePromisesDemo usersPromise={fetchUsersPromise} />
+		</Suspense>
+	)
+}
+
+// UsePromisesDemo.js - Client Component
+'use client'
+import { use, useState } from 'react'
+
+function UsePromisesDemo({ usersPromise }) {
+	const [count, setCount] = useState(0)
+	
+	// use() attende la Promise sul client
+	const users = use(usersPromise)
+	
+	return (
+		<div>
+			<button onClick={() => setCount(count + 1)}>
+				Increment: {count}
+			</button>
+			<ul>
+				{users.map(user => (
+					<li key={user.id}>{user.name}</li>
+				))}
+			</ul>
+		</div>
+	)
+}
+```
+
+Il hook `use()`:
+- Funziona solo con Promises compatibili con Suspense
+- Si integra con `Suspense` per mostrare il fallback durante l'attesa
+- Permette di utilizzare Promises in Client Components senza `async/await`
+
+## ErrorBoundary con Suspense
+
+Gli ErrorBoundary possono essere combinati con Suspense per gestire errori durante il data fetching:
+
+```jsx
+// ErrorBoundary.js - Class Component
+class ErrorBoundary extends React.Component {
+	constructor(props) {
+		super(props)
+		this.state = { hasError: false, error: null }
+	}
+	
+	static getDerivedStateFromError(error) {
+		return { hasError: true, error }
+	}
+	
+	render() {
+		if (this.state.hasError) {
+			return (
+				<div>
+					<p>{this.state.error.message}</p>
+					{this.props.fallback}
+				</div>
+			)
+		}
+		
+		return this.props.children
+	}
+}
+
+// page.js
+function Page() {
+	return (
+		<ErrorBoundary fallback={<p>Something went wrong</p>}>
+			<Suspense fallback={<p>Loading...</p>}>
+				<UsePromisesDemo />
+			</Suspense>
+		</ErrorBoundary>
+	)
+}
+```
+
+Questa combinazione fornisce:
+- **Suspense**: gestisce lo stato di loading
+- **ErrorBoundary**: gestisce gli errori durante il fetching
+- **Component**: gestisce il rendering dei dati
+
+## Riepilogo
+
+React Server Components, Server Actions e il hook `use()` sono feature avanzate di React che richiedono setup di progetto speciali. I Server Components vengono eseguiti solo sul server e semplificano il data fetching. I Client Components vengono eseguiti sia sul server che sul client e permettono l'utilizzo di hook e browser APIs. Le Server Actions permettono di eseguire codice server nelle form actions. Il hook `use()` permette di attendere Promises in Client Components quando integrate con Suspense. Queste feature lavorano insieme per creare applicazioni React performanti con data fetching efficiente e gestione degli stati di loading ed errori.
+
