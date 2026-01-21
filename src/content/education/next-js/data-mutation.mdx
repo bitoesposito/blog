@@ -1,0 +1,589 @@
+---
+title: 'Data Mutation in Next.js: Server Actions e Form Handling'
+description: 'Come modificare e creare dati in Next.js utilizzando Server Actions: gestione form, validazione, upload file, aggiornamenti ottimistici e revalidazione della cache'
+date: 2025-10-16
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Introduzione
+
+Questo capitolo esplora come modificare e creare dati in applicazioni Next.js utilizzando **Server Actions**. Analizziamo la gestione dei form, la validazione lato server, l'upload di file, gli aggiornamenti ottimistici e la revalidazione della cache per mantenere i dati sincronizzati.
+
+Le Server Actions sono una funzionalità di React resa disponibile da Next.js che permette di gestire mutazioni di dati direttamente nei componenti server, semplificando significativamente il processo rispetto agli approcci tradizionali.
+
+## Server Actions: Concetti Fondamentali
+
+Le **Server Actions** sono funzioni che vengono eseguite esclusivamente sul server. A differenza delle route handlers, possono essere utilizzate direttamente nei form e nei componenti, semplificando la gestione delle submission dei form.
+
+### Caratteristiche delle Server Actions
+
+- **Esecuzione solo sul server**: il codice non viene mai esposto al client
+- **Integrazione con form**: possono essere utilizzate direttamente come `action` su elementi form
+- **Gestione automatica**: Next.js gestisce automaticamente la serializzazione dei dati
+- **Type-safe**: supporto completo per TypeScript
+
+### Creare una Server Action
+
+Per creare una Server Action, è necessario:
+
+1. Aggiungere la direttiva `'use server'` all'interno della funzione
+2. Rendere la funzione `async`
+3. Accettare un oggetto `formData` come parametro
+
+```jsx
+// actions/posts.js
+'use server'
+
+import { redirect } from 'next/navigation'
+import { storePost } from '@/lib/posts'
+
+export async function createPost(formData) {
+  const title = formData.get('title')
+  const content = formData.get('content')
+  const image = formData.get('image')
+  
+  // Validazione e logica di salvataggio
+  await storePost({
+    title,
+    content,
+    imageUrl: '',
+    userId: 1
+  })
+  
+  redirect('/feed')
+}
+```
+
+### Utilizzare Server Actions nei Form
+
+```jsx
+// app/new-post/page.js
+import { createPost } from '@/actions/posts'
+
+export default function NewPostPage() {
+  return (
+    <form action={createPost}>
+      <input type="text" name="title" required />
+      <textarea name="content" required />
+      <input type="file" name="image" accept="image/*" required />
+      <button type="submit">Create Post</button>
+    </form>
+  )
+}
+```
+
+**Importante**: non si esegue la funzione (`createPost()`), ma si passa un riferimento alla funzione (`createPost`).
+
+## Organizzazione delle Server Actions
+
+### Server Actions in File Separati
+
+È buona pratica organizzare le Server Actions in file separati, specialmente quando diventano complesse:
+
+```jsx
+// actions/posts.js
+'use server'
+
+export async function createPost(formData) {
+  // Logica della Server Action
+}
+
+export async function togglePostLikeStatus(postId) {
+  // Altra Server Action
+}
+```
+
+Quando si utilizza `'use server'` all'inizio del file, tutte le funzioni esportate diventano automaticamente Server Actions.
+
+### Server Actions nei Componenti
+
+Le Server Actions possono essere definite anche direttamente nei componenti, ma questo richiede che il componente sia un Server Component:
+
+```jsx
+// app/new-post/page.js - Server Component
+export default function NewPostPage() {
+  async function createPost(formData) {
+    'use server'
+    // Logica della Server Action
+  }
+  
+  return <form action={createPost}>...</form>
+}
+```
+
+**Nota**: non è possibile definire Server Actions all'interno di Client Components. In questo caso, è necessario definirle in file separati e passarle come props.
+
+## Validazione dei Dati
+
+La validazione dovrebbe essere eseguita sia lato client che lato server. La validazione lato server è fondamentale per sicurezza.
+
+### Validazione Lato Client
+
+```jsx
+<form action={createPost}>
+  <input type="text" name="title" required />
+  <textarea name="content" required />
+  <input type="file" name="image" accept="image/*" required />
+</form>
+```
+
+L'attributo `required` fornisce feedback immediato all'utente, ma può essere disabilitato tramite developer tools del browser.
+
+### Validazione Lato Server
+
+```jsx
+'use server'
+
+export async function createPost(formData) {
+  const title = formData.get('title')
+  const content = formData.get('content')
+  const image = formData.get('image')
+  
+  const errors = []
+  
+  if (!title || title.trim() === '') {
+    errors.push('Title is required.')
+  }
+  
+  if (!content || content.trim() === '') {
+    errors.push('Content is required.')
+  }
+  
+  if (!image || image.size === 0) {
+    errors.push('Image is required.')
+  }
+  
+  if (errors.length > 0) {
+    return { errors }
+  }
+  
+  // Procedere con il salvataggio
+}
+```
+
+La validazione lato server è l'unica forma di validazione che non può essere aggirata dall'utente.
+
+## Gestione degli Errori con useActionState
+
+Il hook **`useActionState`** (precedentemente `useFormState`) permette di gestire lo stato del form e accedere alle risposte delle Server Actions, inclusi gli errori di validazione.
+
+### Implementazione Base
+
+```jsx
+'use client'
+
+import { useActionState } from 'react'
+import { createPost } from '@/actions/posts'
+
+export default function PostForm() {
+  const [state, formAction] = useActionState(createPost, { errors: null })
+  
+  return (
+    <form action={formAction}>
+      <input type="text" name="title" required />
+      <textarea name="content" required />
+      <input type="file" name="image" accept="image/*" required />
+      
+      {state.errors && (
+        <ul className="form-errors">
+          {state.errors.map((error, index) => (
+            <li key={index}>{error}</li>
+          ))}
+        </ul>
+      )}
+      
+      <button type="submit">Create Post</button>
+    </form>
+  )
+}
+```
+
+### Modificare la Server Action per useActionState
+
+Quando si utilizza `useActionState`, la Server Action riceve due parametri invece di uno:
+
+```jsx
+'use server'
+
+export async function createPost(prevState, formData) {
+  // prevState: stato precedente del form
+  // formData: dati del form
+  
+  const errors = []
+  // ... validazione
+  
+  if (errors.length > 0) {
+    return { errors }
+  }
+  
+  // Se tutto è valido, procedere con il salvataggio
+  // e redirect
+}
+```
+
+Il primo parametro (`prevState`) contiene lo stato precedente del form, utile per aggiornamenti incrementali. Il secondo parametro (`formData`) contiene i dati del form come prima.
+
+## Feedback durante la Submission
+
+Il hook **`useFormStatus`** fornisce informazioni sullo stato di submission di un form, permettendo di mostrare feedback all'utente durante l'elaborazione.
+
+### Implementazione
+
+```jsx
+'use client'
+
+import { useFormStatus } from 'react-dom'
+
+export default function SubmitButton() {
+  const { pending } = useFormStatus()
+  
+  return (
+    <button type="submit" disabled={pending}>
+      {pending ? 'Creating post...' : 'Create Post'}
+    </button>
+  )
+}
+```
+
+**Importante**: `useFormStatus` deve essere utilizzato all'interno di un componente che è figlio diretto o indiretto di un elemento `<form>`. Non funziona se chiamato nel componente che contiene il form stesso.
+
+### Pattern Consigliato
+
+```jsx
+// components/PostForm.js - Client Component
+'use client'
+
+import { useActionState } from 'react'
+import { createPost } from '@/actions/posts'
+import SubmitButton from './SubmitButton'
+
+export default function PostForm() {
+  const [state, formAction] = useActionState(createPost, { errors: null })
+  
+  return (
+    <form action={formAction}>
+      {/* Campi del form */}
+      <SubmitButton />
+      {state.errors && (
+        <ul className="form-errors">
+          {state.errors.map((error, index) => (
+            <li key={index}>{error}</li>
+          ))}
+        </ul>
+      )}
+    </form>
+  )
+}
+```
+
+## Upload di File
+
+L'upload di file richiede un approccio speciale. Per file generati a runtime (come immagini caricate dagli utenti), è consigliato utilizzare servizi cloud come **Cloudinary** o **AWS S3** invece del file system locale.
+
+### Configurazione Cloudinary
+
+```jsx
+// lib/cloudinary.js
+import { v2 as cloudinary } from 'cloudinary'
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
+
+export async function uploadImage(imageFile) {
+  const arrayBuffer = await imageFile.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload_stream(
+      {
+        folder: 'nextjs-course-mutations',
+      },
+      (error, result) => {
+        if (error) {
+          reject(error)
+          return
+        }
+        resolve(result.secure_url)
+      }
+    ).end(buffer)
+  })
+}
+```
+
+### Utilizzo nella Server Action
+
+```jsx
+'use server'
+
+import { uploadImage } from '@/lib/cloudinary'
+import { storePost } from '@/lib/posts'
+import { redirect } from 'next/navigation'
+
+export async function createPost(prevState, formData) {
+  const title = formData.get('title')
+  const content = formData.get('content')
+  const image = formData.get('image')
+  
+  // Validazione
+  const errors = []
+  if (!title || title.trim() === '') {
+    errors.push('Title is required.')
+  }
+  // ... altre validazioni
+  
+  if (errors.length > 0) {
+    return { errors }
+  }
+  
+  // Upload dell'immagine
+  let imageUrl = ''
+  try {
+    imageUrl = await uploadImage(image)
+  } catch (error) {
+    throw new Error('Image upload failed. Post was not created. Please try again later.')
+  }
+  
+  // Salvataggio nel database
+  await storePost({
+    title,
+    content,
+    imageUrl,
+    userId: 1
+  })
+  
+  redirect('/feed')
+}
+```
+
+### Variabili d'Ambiente
+
+Le credenziali per servizi esterni devono essere memorizzate in variabili d'ambiente:
+
+```bash
+# .env.local
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+Il file `.env.local` viene automaticamente caricato da Next.js e le variabili sono disponibili solo sul server.
+
+## Aggiornamenti Ottimistici
+
+Gli **aggiornamenti ottimistici** permettono di aggiornare l'interfaccia utente immediatamente, prima che l'operazione sul server sia completata, migliorando la percezione di reattività.
+
+### Hook useOptimistic
+
+```jsx
+'use client'
+
+import { useOptimistic } from 'react'
+
+export default function Posts({ posts }) {
+  const [optimisticPosts, updateOptimisticPosts] = useOptimistic(
+    posts,
+    (prevPosts, updatePostId) => {
+      const updatedPostIndex = prevPosts.findIndex(
+        post => post.id === updatePostId
+      )
+      
+      if (updatedPostIndex === -1) {
+        return prevPosts
+      }
+      
+      const updatedPost = {
+        ...prevPosts[updatedPostIndex],
+        isLiked: !prevPosts[updatedPostIndex].isLiked,
+        likes: prevPosts[updatedPostIndex].isLiked
+          ? prevPosts[updatedPostIndex].likes - 1
+          : prevPosts[updatedPostIndex].likes + 1
+      }
+      
+      const newPosts = [...prevPosts]
+      newPosts[updatedPostIndex] = updatedPost
+      
+      return newPosts
+    }
+  )
+  
+  return (
+    <ul>
+      {optimisticPosts.map(post => (
+        <PostItem key={post.id} post={post} />
+      ))}
+    </ul>
+  )
+}
+```
+
+### Combinare con Server Actions
+
+```jsx
+'use client'
+
+import { useOptimistic } from 'react'
+import { togglePostLikeStatus } from '@/actions/posts'
+
+export default function Posts({ posts }) {
+  const [optimisticPosts, updateOptimisticPosts] = useOptimistic(
+    posts,
+    (prevPosts, updatePostId) => {
+      // Logica di aggiornamento ottimistico
+    }
+  )
+  
+  async function updatePost(postId) {
+    updateOptimisticPosts(postId)
+    await togglePostLikeStatus(postId)
+  }
+  
+  return (
+    <ul>
+      {optimisticPosts.map(post => (
+        <PostItem 
+          key={post.id} 
+          post={post}
+          action={updatePost}
+        />
+      ))}
+    </ul>
+  )
+}
+```
+
+L'aggiornamento ottimistico viene applicato immediatamente, mentre la Server Action viene eseguita in background. React sincronizzerà automaticamente lo stato quando l'operazione sul server sarà completata.
+
+## Revalidazione della Cache
+
+Next.js esegue un caching aggressivo delle pagine. Quando i dati cambiano, è necessario invalidare la cache per mostrare i dati aggiornati.
+
+### Funzione revalidatePath
+
+```jsx
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { togglePostLikeStatus as updateLikeStatus } from '@/lib/posts'
+
+export async function togglePostLikeStatus(postId) {
+  await updateLikeStatus(postId, 2)
+  
+  // Revalidare una route specifica
+  revalidatePath('/feed')
+  
+  // Oppure revalidare tutte le pagine
+  revalidatePath('/', 'layout')
+}
+```
+
+### Quando Utilizzare revalidatePath
+
+Chiamare `revalidatePath` dopo ogni operazione che modifica dati visualizzati su una pagina:
+
+- Creazione di nuovi elementi
+- Aggiornamento di elementi esistenti
+- Eliminazione di elementi
+- Modifica di relazioni (like, follow, ecc.)
+
+```jsx
+'use server'
+
+export async function createPost(prevState, formData) {
+  // ... validazione e salvataggio
+  
+  await storePost(postData)
+  
+  // Revalidare le pagine che mostrano i post
+  revalidatePath('/', 'layout')
+  
+  redirect('/feed')
+}
+```
+
+### Modalità di Revalidazione
+
+```jsx
+// Revalidare solo una pagina specifica
+revalidatePath('/feed')
+
+// Revalidare una pagina e tutte le route annidate
+revalidatePath('/feed', 'layout')
+
+// Revalidare tutte le pagine dell'applicazione
+revalidatePath('/', 'layout')
+```
+
+## Pattern: Server Actions con Bind
+
+Quando si utilizza una Server Action con un form che deve passare dati aggiuntivi oltre a quelli del form, è possibile utilizzare il metodo `bind`:
+
+```jsx
+// actions/posts.js
+'use server'
+
+export async function togglePostLikeStatus(postId) {
+  // postId viene passato tramite bind
+  // formData sarebbe il secondo argomento se necessario
+  await updatePostLikeStatus(postId, 2)
+  revalidatePath('/', 'layout')
+}
+```
+
+```jsx
+// components/PostItem.js
+import { togglePostLikeStatus } from '@/actions/posts'
+
+export default function PostItem({ post, action }) {
+  return (
+    <form action={action.bind(null, post.id)}>
+      <button type="submit">
+        {post.isLiked ? 'Unlike' : 'Like'}
+      </button>
+    </form>
+  )
+}
+```
+
+Il metodo `bind` pre-configura la funzione con valori che verranno passati quando la funzione viene eseguita. Il primo argomento di `bind` è il contesto `this` (qui `null`), il secondo è il primo argomento che verrà passato alla funzione.
+
+## Best Practices
+
+### Organizzazione del Codice
+
+- **Separare Server Actions**: mantenere le Server Actions in file separati quando diventano complesse
+- **Validazione**: sempre validare sia lato client che lato server
+- **Error Handling**: gestire sempre potenziali errori nelle Server Actions
+
+### Performance
+
+- **Aggiornamenti ottimistici**: utilizzare `useOptimistic` per operazioni che migliorano l'UX
+- **Revalidazione selettiva**: revalidare solo le route necessarie, non tutte le pagine
+- **Upload asincroni**: gestire upload di file in modo asincrono per non bloccare altre operazioni
+
+### Sicurezza
+
+- **Validazione server-side**: mai fidarsi solo della validazione client-side
+- **Sanitizzazione**: sanitizzare sempre i dati utente prima di salvarli
+- **Autenticazione**: verificare sempre i permessi dell'utente prima di modificare dati
+
+### User Experience
+
+- **Feedback immediato**: utilizzare `useFormStatus` per mostrare feedback durante le operazioni
+- **Gestione errori**: mostrare messaggi di errore chiari e utili
+- **Redirect appropriati**: reindirizzare l'utente dopo operazioni di successo
+
+## Conclusione
+
+Le Server Actions rappresentano un modo potente e diretto per gestire mutazioni di dati in Next.js:
+
+- **Semplicità**: integrazione diretta con form e componenti
+- **Sicurezza**: esecuzione esclusiva sul server
+- **Performance**: aggiornamenti ottimistici e revalidazione selettiva della cache
+- **Developer Experience**: codice più pulito e manutenibile rispetto agli approcci tradizionali
+
+Comprendere questi pattern permette di costruire applicazioni Next.js interattive, sicure e performanti con una gestione efficace delle mutazioni di dati.

@@ -1,0 +1,438 @@
+---
+title: 'Caching in Next.js: Strategie e Controllo della Cache'
+description: 'Come funziona il caching in Next.js: request memoization, data cache, full route cache e router cache. Come controllare e invalidare la cache per mantenere i dati aggiornati'
+date: 2025-10-16
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 5
+---
+
+## Introduzione
+
+Next.js implementa un sistema di **caching** aggressivo per migliorare le prestazioni delle applicazioni. Questo capitolo esplora i quattro tipi di cache gestiti da Next.js, come controllarli e come invalidarli quando necessario per garantire che i dati visualizzati siano sempre aggiornati.
+
+Comprendere il sistema di caching è fondamentale per costruire applicazioni Next.js performanti e per evitare problemi comuni legati a dati obsoleti.
+
+## I Quattro Tipi di Cache in Next.js
+
+Next.js gestisce quattro diversi tipi di cache, ognuno con uno scopo specifico:
+
+### 1. Request Memoization
+
+La **request memoization** (memoizzazione delle richieste) è un meccanismo che evita richieste duplicate alla stessa fonte di dati durante una singola richiesta gestita dal server Next.js.
+
+**Scopo**: deduplicare richieste con la stessa configurazione all'interno di un singolo ciclo di richiesta.
+
+**Durata**: solo durante una singola richiesta al server.
+
+### 2. Data Cache
+
+La **data cache** memorizza i dati recuperati da fonti esterne (API, database) per riutilizzarli in richieste successive, evitando viaggi di andata e ritorno non necessari.
+
+**Scopo**: evitare richieste ripetute a fonti di dati quando i dati non sono cambiati.
+
+**Durata**: persiste fino a riconvalida manuale o dopo un periodo di tempo configurato.
+
+### 3. Full Route Cache
+
+La **full route cache** memorizza l'intera pagina renderizzata (HTML completo e payload dei Server Components) invece di solo i dati.
+
+**Scopo**: evitare il rendering completo di pagine che non sono cambiate.
+
+**Durata**: persiste fino a quando la data cache correlata viene riconvalidata.
+
+### 4. Router Cache
+
+La **router cache** è una cache lato client che memorizza i payload dei Server Components nella memoria del browser per velocizzare la navigazione tra le pagine.
+
+**Scopo**: migliorare la velocità di navigazione evitando richieste al server quando possibile.
+
+**Durata**: invalidata quando il server renderizza nuove pagine o quando l'utente lascia il sito.
+
+**Nota**: con Next.js 15, la router cache è stata resa meno aggressiva per evitare situazioni in cui le pagine potrebbero non riflettere i dati più recenti.
+
+## Request Memoization con Fetch
+
+La request memoization funziona automaticamente quando si utilizza la funzione `fetch` con la stessa configurazione in punti diversi dell'applicazione durante una singola richiesta.
+
+### Esempio
+
+```jsx
+// app/messages/layout.js
+export default async function MessagesLayout() {
+  const messages = await fetch('http://localhost:8080/messages')
+  // ...
+}
+
+// app/messages/page.js
+export default async function MessagesPage() {
+  const messages = await fetch('http://localhost:8080/messages')
+  // ...
+}
+```
+
+Se entrambe le richieste hanno la stessa configurazione (stesso URL, stesse opzioni), Next.js invierà una sola richiesta e riutilizzerà la risposta in entrambi i componenti.
+
+**Importante**: la request memoization funziona solo se le richieste hanno esattamente la stessa configurazione. Differenze nelle opzioni (headers, method, ecc.) impediscono la deduplicazione.
+
+## Data Cache con Fetch
+
+Quando si utilizza `fetch` in Next.js, i dati vengono automaticamente memorizzati nella data cache. Il comportamento predefinito varia tra Next.js 14 e 15.
+
+### Next.js 14 (Comportamento Predefinito)
+
+```jsx
+// Comportamento predefinito: 'force-cache'
+const response = await fetch('http://localhost:8080/messages')
+```
+
+Con `force-cache`, i dati vengono memorizzati nella cache e riutilizzati indefinitamente fino a riconvalida manuale.
+
+### Next.js 15 (Comportamento Predefinito)
+
+```jsx
+// Comportamento predefinito: 'no-store'
+const response = await fetch('http://localhost:8080/messages')
+```
+
+Con `no-store`, i dati non vengono memorizzati nella cache e viene sempre inviata una nuova richiesta.
+
+### Configurazione Esplicita della Cache
+
+È possibile configurare esplicitamente il comportamento della cache:
+
+```jsx
+// Forzare la cache (comportamento Next.js 14)
+const response = await fetch('http://localhost:8080/messages', {
+  cache: 'force-cache'
+})
+
+// Disabilitare la cache
+const response = await fetch('http://localhost:8080/messages', {
+  cache: 'no-store'
+})
+```
+
+### Revalidazione Temporale
+
+È possibile configurare un periodo di tempo dopo il quale la cache viene automaticamente riconvalidata:
+
+```jsx
+const response = await fetch('http://localhost:8080/messages', {
+  next: { revalidate: 3600 } // Riconvalida dopo 1 ora
+})
+```
+
+Con questa configurazione, i dati vengono memorizzati nella cache e riutilizzati per 3600 secondi (1 ora). Dopo questo periodo, la cache viene invalidata e viene inviata una nuova richiesta.
+
+### Tag per la Riconvalida
+
+È possibile assegnare tag alle richieste per riconvalidare selettivamente parti della cache:
+
+```jsx
+const response = await fetch('http://localhost:8080/messages', {
+  next: { 
+    revalidate: 3600,
+    tags: ['messages']
+  }
+})
+```
+
+I tag permettono di riconvalidare dati specifici senza invalidare l'intera cache.
+
+## Configurazione a Livello di File
+
+Invece di configurare ogni singola richiesta `fetch`, è possibile impostare configurazioni globali per un intero file.
+
+### Costante `revalidate`
+
+```jsx
+// app/messages/page.js
+export const revalidate = 3600 // Riconvalida ogni ora
+
+export default async function MessagesPage() {
+  const response = await fetch('http://localhost:8080/messages')
+  // Tutte le richieste fetch in questo file useranno revalidate: 3600
+}
+```
+
+La costante `revalidate` deve essere esportata e applica la riconvalida temporale a tutte le richieste `fetch` nel file.
+
+### Costante `dynamic`
+
+```jsx
+// app/messages/page.js
+export const dynamic = 'force-dynamic' // Disabilita completamente la cache
+
+export default async function MessagesPage() {
+  const response = await fetch('http://localhost:8080/messages')
+  // Equivalente a cache: 'no-store' per tutte le richieste
+}
+```
+
+Valori possibili per `dynamic`:
+
+- **`'auto'`** (default): comportamento normale
+- **`'force-dynamic'`**: disabilita la cache (equivalente a `cache: 'no-store'`)
+- **`'force-static'`**: forza la cache (equivalente a `cache: 'force-cache'`)
+
+### Funzione `unstable_noStore`
+
+Per disabilitare la cache solo per un componente specifico invece che per l'intero file:
+
+```jsx
+import { unstable_noStore } from 'next/cache'
+
+export default async function MessagesPage() {
+  unstable_noStore() // Disabilita la cache solo per questo componente
+  
+  const response = await fetch('http://localhost:8080/messages')
+  // Questa richiesta non verrà memorizzata nella cache
+}
+```
+
+**Nota**: al momento della scrittura, questa funzione è contrassegnata come `unstable`, ma potrebbe essere rinominata in `noStore` nelle versioni future.
+
+## Full Route Cache
+
+La **full route cache** memorizza l'intera pagina renderizzata invece di solo i dati. Questo avviene automaticamente durante il processo di build in produzione.
+
+### Comportamento in Produzione
+
+Quando si esegue `npm run build`, Next.js:
+
+1. Pre-renderizza tutte le pagine statiche
+2. Memorizza le pagine renderizzate nella cache
+3. Serve le pagine dalla cache senza re-renderizzarle
+
+Questo migliora significativamente le prestazioni, ma può causare problemi se i dati cambiano dopo il build.
+
+### Disabilitare la Full Route Cache
+
+Per disabilitare la full route cache per una pagina specifica:
+
+```jsx
+// app/messages/page.js
+export const dynamic = 'force-dynamic'
+
+export default async function MessagesPage() {
+  // Questa pagina verrà renderizzata su ogni richiesta
+  // invece di essere servita dalla cache
+}
+```
+
+Con `force-dynamic`, la pagina viene renderizzata dinamicamente su ogni richiesta, garantendo dati sempre aggiornati ma con un costo in termini di performance.
+
+## Riconvalida della Cache
+
+Quando i dati cambiano, è necessario invalidare la cache per mostrare i dati aggiornati.
+
+### `revalidatePath`
+
+La funzione `revalidatePath` permette di invalidare la cache di una route specifica:
+
+```jsx
+import { revalidatePath } from 'next/cache'
+
+export async function createMessage(formData) {
+  'use server'
+  
+  // Salvataggio del nuovo messaggio
+  await addMessage(formData.get('content'))
+  
+  // Riconvalidare la cache della pagina /messages
+  revalidatePath('/messages')
+}
+```
+
+**Modalità di riconvalida**:
+
+```jsx
+// Riconvalidare solo una pagina specifica
+revalidatePath('/messages')
+
+// Riconvalidare una pagina e tutte le route annidate
+revalidatePath('/messages', 'layout')
+
+// Riconvalidare tutte le pagine dell'applicazione
+revalidatePath('/', 'layout')
+```
+
+### `revalidateTag`
+
+Quando si utilizzano tag nelle richieste `fetch`, è possibile riconvalidare selettivamente usando `revalidateTag`:
+
+```jsx
+// app/messages/page.js
+const response = await fetch('http://localhost:8080/messages', {
+  next: { tags: ['messages'] }
+})
+
+// actions/messages.js
+import { revalidateTag } from 'next/cache'
+
+export async function createMessage(formData) {
+  'use server'
+  
+  await addMessage(formData.get('content'))
+  
+  // Riconvalidare tutti i dati con il tag 'messages'
+  revalidateTag('messages')
+}
+```
+
+I tag permettono di riconvalidare dati specifici senza invalidare l'intera cache, rendendo il processo più efficiente.
+
+## Caching con Fonti Dati Personalizzate
+
+Quando si accede direttamente a un database o a altre fonti di dati (invece di usare `fetch`), è necessario gestire manualmente la cache.
+
+### Deduplicazione Richieste con `cache` di React
+
+Per evitare richieste duplicate durante una singola richiesta, è possibile utilizzare la funzione `cache` di React:
+
+```jsx
+import { cache } from 'react'
+import sql from 'better-sqlite3'
+
+const db = sql('messages.db')
+
+// Avvolgere la funzione con cache per deduplicare le richieste
+const getMessages = cache(() => {
+  return db.prepare('SELECT * FROM messages').all()
+})
+
+export { getMessages }
+```
+
+Con questa configurazione, se `getMessages` viene chiamata più volte durante una singola richiesta, viene eseguita solo una volta e il risultato viene riutilizzato.
+
+### Cache dei Dati con `unstable_cache`
+
+Per abilitare la data cache con fonti di dati personalizzate, è possibile utilizzare `unstable_cache`:
+
+```jsx
+import { unstable_cache } from 'next/cache'
+import { cache } from 'react'
+import sql from 'better-sqlite3'
+
+const db = sql('messages.db')
+
+// Deduplicazione richieste
+const getMessagesUncached = cache(() => {
+  return db.prepare('SELECT * FROM messages').all()
+})
+
+// Cache dei dati
+export const getMessages = unstable_cache(
+  async () => {
+    return getMessagesUncached()
+  },
+  ['messages'], // Chiavi della cache (usate internamente)
+  {
+    tags: ['messages'] // Tag per riconvalida selettiva
+  }
+)
+```
+
+**Importante**: `unstable_cache` restituisce sempre una Promise, quindi le funzioni che lo utilizzano devono essere `async` e le chiamate devono usare `await`.
+
+### Riconvalida con Fonti Dati Personalizzate
+
+Quando si utilizzano fonti di dati personalizzate con `unstable_cache`, è possibile riconvalidare usando `revalidatePath` o `revalidateTag`:
+
+```jsx
+// actions/messages.js
+import { revalidatePath, revalidateTag } from 'next/cache'
+
+export async function createMessage(formData) {
+  'use server'
+  
+  await addMessage(formData.get('content'))
+  
+  // Opzione 1: Riconvalidare per path
+  revalidatePath('/messages')
+  
+  // Opzione 2: Riconvalidare per tag (se configurato)
+  revalidateTag('messages')
+}
+```
+
+## Best Practices
+
+### Quando Usare `force-cache`
+
+Utilizzare `force-cache` quando:
+
+- I dati cambiano raramente
+- Le prestazioni sono prioritarie
+- Si ha controllo completo su quando riconvalidare
+
+### Quando Usare `no-store`
+
+Utilizzare `no-store` quando:
+
+- I dati cambiano frequentemente
+- È necessario mostrare sempre dati aggiornati
+- La performance non è critica
+
+### Quando Usare `revalidate`
+
+Utilizzare `revalidate` quando:
+
+- I dati cambiano periodicamente ma non in tempo reale
+- Si vuole bilanciare performance e freschezza dei dati
+- Si conosce la frequenza di aggiornamento dei dati
+
+### Quando Usare `revalidatePath` vs `revalidateTag`
+
+- **`revalidatePath`**: quando si sa esattamente quale pagina riconvalidare
+- **`revalidateTag`**: quando più pagine condividono gli stessi dati e si vuole riconvalidarle tutte insieme
+
+### Pattern Consigliato
+
+```jsx
+// 1. Configurare tag nelle richieste
+const response = await fetch('http://localhost:8080/messages', {
+  next: { tags: ['messages'] }
+})
+
+// 2. Riconvalidare per tag quando i dati cambiano
+export async function createMessage(formData) {
+  'use server'
+  await addMessage(formData.get('content'))
+  revalidateTag('messages') // Riconvalida tutte le pagine che usano questo tag
+}
+```
+
+Questo pattern permette di:
+
+- Mantenere la cache per performance
+- Riconvalidare selettivamente quando necessario
+- Evitare riconvalidazioni eccessive
+
+## Differenze tra Next.js 14 e 15
+
+### Next.js 14
+
+- **Comportamento predefinito**: `cache: 'force-cache'`
+- **Cache più aggressiva**: dati e route vengono cachati più aggressivamente
+- **Router cache**: più aggressiva
+
+### Next.js 15
+
+- **Comportamento predefinito**: `cache: 'no-store'`
+- **Cache meno aggressiva**: per evitare problemi con dati obsoleti
+- **Router cache**: meno aggressiva per garantire dati più freschi
+
+**Raccomandazione**: se si migra da Next.js 14 a 15, verificare il comportamento della cache e aggiustare le configurazioni se necessario.
+
+## Conclusione
+
+Il sistema di caching di Next.js è potente ma complesso. Comprendere i diversi tipi di cache e come controllarli è essenziale per:
+
+- **Performance**: sfruttare la cache per migliorare le prestazioni
+- **Freschezza dei dati**: garantire che i dati visualizzati siano aggiornati quando necessario
+- **Efficienza**: riconvalidare solo quando necessario, evitando overhead non necessario
+
+Le strategie di caching devono essere bilanciate in base alle esigenze specifiche dell'applicazione: dati che cambiano frequentemente richiedono cache meno aggressiva, mentre dati statici possono beneficiare di cache più aggressiva.

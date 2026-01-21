@@ -1,0 +1,527 @@
+---
+title: 'Data Fetching in Next.js: Server Components e Database'
+description: 'Come recuperare dati in Next.js: fetching da API esterne, Server Components, accesso diretto a database e gestione degli stati di loading con Suspense'
+date: 2025-10-16
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 3
+---
+
+## Introduzione
+
+Questo capitolo esplora le diverse strategie per recuperare dati in applicazioni Next.js. Analizziamo i vantaggi del **data fetching** nei Server Components rispetto al client-side, come accedere direttamente a database e altre risorse server-side, e come gestire efficacemente gli stati di loading utilizzando `loading.js` e il componente **Suspense** di React.
+
+Comprendere questi pattern è fondamentale per costruire applicazioni Next.js performanti e con una buona esperienza utente.
+
+## Strategie di Data Fetching
+
+In Next.js esistono diverse strategie per recuperare dati, ognuna con i propri vantaggi e casi d'uso:
+
+1. **Client-side fetching**: utilizzando `useEffect` e `fetch` nel browser
+2. **Server-side fetching**: utilizzando Server Components con `async/await`
+3. **Accesso diretto a database**: quando si possiede il database, evitando HTTP requests
+
+La scelta della strategia dipende dalla struttura dell'applicazione e dalla posizione della sorgente dati.
+
+## Client-Side Data Fetching
+
+Il data fetching lato client è l'approccio tradizionale nelle applicazioni React. Utilizza `useEffect` e `fetch` per recuperare dati dopo che il componente è stato renderizzato nel browser.
+
+### Implementazione Base
+
+```jsx
+'use client'
+
+import { useState, useEffect } from 'react'
+
+export default function NewsPage() {
+  const [news, setNews] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  
+  useEffect(() => {
+    async function fetchNews() {
+      try {
+        setIsLoading(true)
+        const response = await fetch('http://localhost:8080/news')
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch news')
+        }
+        
+        const data = await response.json()
+        setNews(data)
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchNews()
+  }, [])
+  
+  if (isLoading) {
+    return <p>Loading...</p>
+  }
+  
+  if (error) {
+    return <p>Error: {error}</p>
+  }
+  
+  return <NewsList news={news} />
+}
+```
+
+### Limitazioni del Client-Side Fetching
+
+Questo approccio presenta alcuni svantaggi:
+
+- **SEO**: il contenuto non è presente nell'HTML iniziale, peggiorando l'indicizzazione
+- **Performance**: il JavaScript deve essere scaricato ed eseguito prima del fetching
+- **User Experience**: possibile "flash" di contenuto vuoto durante il caricamento
+- **Client Component**: richiede `'use client'`, aumentando il bundle JavaScript
+
+Quando si ispeziona il codice sorgente della pagina, il contenuto dei dati non è presente perché viene aggiunto solo dopo il rendering lato client.
+
+## Server-Side Data Fetching con Server Components
+
+Next.js permette di recuperare dati direttamente nei **Server Components**, che vengono eseguiti esclusivamente sul server. Questo approccio è preferibile quando possibile.
+
+### Fetching da API Esterne
+
+```jsx
+// app/news/page.js - Server Component (default)
+export default async function NewsPage() {
+  const response = await fetch('http://localhost:8080/news')
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch news')
+  }
+  
+  const news = await response.json()
+  
+  return <NewsList news={news} />
+}
+```
+
+**Vantaggi**:
+
+- Il contenuto è presente nell'HTML iniziale, migliorando SEO
+- Nessun JavaScript aggiuntivo necessario per il fetching
+- Migliore performance: il rendering avviene sul server
+- Codice più semplice: nessun `useEffect` o gestione dello stato
+
+### Funzione Fetch Estesa da Next.js
+
+Next.js estende la funzione `fetch` standard aggiungendo funzionalità di caching e ottimizzazione. La funzione è disponibile sia nel browser che in Node.js, rendendola utilizzabile nei Server Components.
+
+```jsx
+export default async function NewsPage() {
+  // Next.js estende fetch con caching automatico
+  const response = await fetch('http://localhost:8080/news', {
+    // Opzioni di caching (vedremo più avanti)
+    next: { revalidate: 3600 }
+  })
+  
+  const news = await response.json()
+  return <NewsList news={news} />
+}
+```
+
+## Accesso Diretto a Database
+
+Quando si possiede il database e non è necessario un server API separato, è possibile accedere direttamente al database dai Server Components. Questo elimina il round-trip HTTP e migliora le prestazioni.
+
+### Configurazione del Database
+
+```jsx
+// lib/news.js
+import sql from 'better-sqlite3'
+
+const db = sql('data.db')
+
+export async function getAllNews() {
+  // Simula un delay per dimostrare loading states
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  
+  const news = db.prepare('SELECT * FROM news').all()
+  return news
+}
+
+export function getNewsItem(slug) {
+  const newsItem = db.prepare('SELECT * FROM news WHERE slug = ?').get(slug)
+  return newsItem
+}
+
+export async function getNewsForYear(year) {
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  
+  const news = db.prepare(`
+    SELECT * FROM news 
+    WHERE strftime('%Y', date) = ?
+  `).all(year)
+  
+  return news
+}
+```
+
+### Utilizzo nei Componenti
+
+```jsx
+// app/news/page.js
+import { getAllNews } from '@/lib/news'
+
+export default async function NewsPage() {
+  const news = await getAllNews()
+  
+  return <NewsList news={news} />
+}
+```
+
+```jsx
+// app/news/[slug]/page.js
+import { getNewsItem } from '@/lib/news'
+import { notFound } from 'next/navigation'
+
+export default async function NewsDetailPage({ params }) {
+  const newsItem = await getNewsItem(params.slug)
+  
+  if (!newsItem) {
+    notFound()
+  }
+  
+  return (
+    <article>
+      <h1>{newsItem.title}</h1>
+      <p>{newsItem.content}</p>
+    </article>
+  )
+}
+```
+
+**Vantaggi dell'accesso diretto al database**:
+
+- **Performance**: nessun overhead HTTP
+- **Sicurezza**: credenziali database non esposte al client
+- **Semplicità**: codice più diretto senza layer API intermedio
+- **Efficienza**: query SQL ottimizzate direttamente
+
+## Gestione degli Stati di Loading
+
+Next.js fornisce diversi meccanismi per gestire gli stati di caricamento durante il data fetching.
+
+### File `loading.js`
+
+Il file `loading.js` è il modo più semplice per aggiungere un loading fallback a una route:
+
+```jsx
+// app/news/loading.js
+export default function NewsLoading() {
+  return <p>Loading news...</p>
+}
+```
+
+Questo componente viene mostrato automaticamente mentre la pagina o i componenti annidati stanno caricando dati.
+
+**Comportamento**:
+
+- Si attiva quando si naviga verso la route per la prima volta
+- Non si attiva quando si ricarica la stessa route (a causa del caching)
+- Si applica a tutte le route annidate nella stessa cartella
+
+### Loading Fallback Annidati
+
+È possibile creare loading fallback più specifici per route annidate:
+
+```jsx
+// app/news/[slug]/loading.js
+export default function NewsItemLoading() {
+  return <p>Loading news item...</p>
+}
+```
+
+Quando si naviga verso `/news/[slug]`, viene mostrato questo loading fallback più specifico invece di quello del parent.
+
+### Suspense per Loading Granulare
+
+Il componente **`Suspense`** di React permette un controllo più granulare sugli stati di loading, mostrando fallback per parti specifiche della pagina invece che per l'intera pagina.
+
+```jsx
+import { Suspense } from 'react'
+import { getAllNews } from '@/lib/news'
+
+async function NewsList() {
+  const news = await getAllNews()
+  return <NewsListComponent news={news} />
+}
+
+export default function NewsPage() {
+  return (
+    <main>
+      <header>
+        <h1>News</h1>
+      </header>
+      <Suspense fallback={<p>Loading news...</p>}>
+        <NewsList />
+      </Suspense>
+    </main>
+  )
+}
+```
+
+**Vantaggi di Suspense**:
+
+- **Granularità**: loading fallback solo per componenti specifici
+- **Streaming**: il contenuto viene mostrato non appena è disponibile
+- **Indipendenza**: multiple Suspense boundaries non si aspettano l'una con l'altra
+
+### Multiple Suspense Boundaries
+
+È possibile utilizzare più Suspense boundaries sulla stessa pagina per gestire il loading di diverse sezioni indipendentemente:
+
+```jsx
+import { Suspense } from 'react'
+
+async function FilterHeader({ year, month }) {
+  const availableYears = await getAvailableNewsYears()
+  // ... logica per il filtro
+  return <nav>{/* Links */}</nav>
+}
+
+async function FilteredNews({ year, month }) {
+  let news = undefined
+  
+  if (year && !month) {
+    news = await getNewsForYear(year)
+  } else if (year && month) {
+    news = await getNewsForYearAndMonth(year, month)
+  }
+  
+  return news && news.length > 0 ? (
+    <NewsList news={news} />
+  ) : (
+    <p>No news found.</p>
+  )
+}
+
+export default async function ArchivePage({ params }) {
+  const filter = params.filter
+  const selectedYear = filter?.[0]
+  const selectedMonth = filter?.[1]
+  
+  return (
+    <>
+      <Suspense fallback={<p>Loading filter...</p>}>
+        <FilterHeader year={selectedYear} month={selectedMonth} />
+      </Suspense>
+      
+      <Suspense fallback={<p>Loading news...</p>}>
+        <FilteredNews year={selectedYear} month={selectedMonth} />
+      </Suspense>
+    </>
+  )
+}
+```
+
+Ogni Suspense boundary gestisce il proprio loading state indipendentemente, permettendo di mostrare contenuto non appena è disponibile senza aspettare che tutto il contenuto sia caricato.
+
+## Pattern: Convertire Client Components in Server Components
+
+Quando un componente deve essere un Client Component per una funzionalità specifica (ad esempio, `useRouter`), ma ha bisogno anche di fare data fetching, è possibile separare le responsabilità:
+
+### Problema: Client Component con Data Fetching
+
+```jsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { getNewsItem } from '@/lib/news'
+
+export default function InterceptedImagePage({ params }) {
+  const router = useRouter()
+  const newsItem = await getNewsItem(params.slug) // ❌ Non funziona!
+  
+  return (
+    <div onClick={() => router.back()}>
+      <img src={newsItem.image} alt={newsItem.title} />
+    </div>
+  )
+}
+```
+
+### Soluzione: Separare le Responsabilità
+
+```jsx
+// components/ModalBackdrop.js - Client Component
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function ModalBackdrop({ children }) {
+  const router = useRouter()
+  
+  return (
+    <div 
+      className="modal-backdrop"
+      onClick={() => router.back()}
+    >
+      {children}
+    </div>
+  )
+}
+```
+
+```jsx
+// app/news/[slug]/(.)image/page.js - Server Component
+import { getNewsItem } from '@/lib/news'
+import { notFound } from 'next/navigation'
+import ModalBackdrop from '@/components/ModalBackdrop'
+
+export default async function InterceptedImagePage({ params }) {
+  const newsItem = await getNewsItem(params.slug)
+  
+  if (!newsItem) {
+    notFound()
+  }
+  
+  return (
+    <ModalBackdrop>
+      <img src={newsItem.image} alt={newsItem.title} />
+    </ModalBackdrop>
+  )
+}
+```
+
+Questo pattern mantiene il componente principale come Server Component, permettendo il data fetching, mentre il codice che richiede funzionalità client-side viene isolato in un componente separato.
+
+## Migrazione da Dummy Data a Database
+
+Quando si migra un'applicazione da dati hardcoded a un database, è importante:
+
+1. **Creare funzioni di accesso ai dati**: centralizzare la logica di accesso al database
+2. **Mantenere la stessa struttura dati**: assicurarsi che i dati dal database abbiano la stessa struttura dei dati dummy
+3. **Aggiornare tutti i componenti**: sostituire i riferimenti ai dati dummy con chiamate alle funzioni di database
+4. **Gestire loading states**: aggiungere loading fallback appropriati
+
+```jsx
+// lib/news.js - Funzioni centralizzate
+import sql from 'better-sqlite3'
+
+const db = sql('data.db')
+
+export async function getAllNews() {
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  return db.prepare('SELECT * FROM news').all()
+}
+
+export async function getNewsItem(slug) {
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  return db.prepare('SELECT * FROM news WHERE slug = ?').get(slug)
+}
+
+export async function getLatestNews() {
+  await new Promise(resolve => setTimeout(resolve, 1500))
+  return db.prepare(`
+    SELECT * FROM news 
+    ORDER BY date DESC 
+    LIMIT 3
+  `).all()
+}
+
+export async function getNewsForYear(year) {
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  return db.prepare(`
+    SELECT * FROM news 
+    WHERE strftime('%Y', date) = ?
+  `).all(year)
+}
+
+export async function getNewsForYearAndMonth(year, month) {
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  return db.prepare(`
+    SELECT * FROM news 
+    WHERE strftime('%Y', date) = ? 
+    AND strftime('%m', date) = ?
+  `).all(year, month.padStart(2, '0'))
+}
+
+export async function getAvailableNewsYears() {
+  return db.prepare(`
+    SELECT DISTINCT strftime('%Y', date) as year 
+    FROM news 
+    ORDER BY year DESC
+  `).all().map(row => row.year)
+}
+
+export async function getAvailableNewsMonths(year) {
+  return db.prepare(`
+    SELECT DISTINCT strftime('%m', date) as month 
+    FROM news 
+    WHERE strftime('%Y', date) = ?
+    ORDER BY month DESC
+  `).all(year).map(row => row.month)
+}
+```
+
+## Best Practices
+
+### Quando Usare Client-Side Fetching
+
+Utilizzare il client-side fetching quando:
+
+- Si recuperano dati da API esterne che non si controllano
+- I dati devono essere aggiornati frequentemente senza ricaricare la pagina
+- Si implementa polling o real-time updates
+- Si gestisce autenticazione lato client
+
+### Quando Usare Server-Side Fetching
+
+Preferire il server-side fetching quando:
+
+- Si possiede il database o la sorgente dati
+- SEO è importante
+- Si vogliono migliori performance iniziali
+- Si gestiscono dati sensibili
+
+### Gestione degli Errori
+
+Sempre gestire potenziali errori durante il data fetching:
+
+```jsx
+export default async function NewsPage() {
+  try {
+    const news = await getAllNews()
+    return <NewsList news={news} />
+  } catch (error) {
+    throw new Error('Failed to load news')
+  }
+}
+```
+
+Gli errori possono essere gestiti con file `error.js` appropriati.
+
+### Tipi di Dati
+
+Quando si lavora con database, prestare attenzione ai tipi di dati:
+
+```jsx
+// I valori dal database potrebbero essere stringhe
+const availableYears = await getAvailableNewsYears() // ['2024', '2023']
+
+// Assicurarsi di confrontare tipi corretti
+if (availableYears.includes(selectedYear)) { // selectedYear è stringa
+  // ...
+}
+```
+
+## Conclusione
+
+Il data fetching in Next.js offre diverse strategie, ognuna con i propri vantaggi:
+
+- **Server Components** permettono di recuperare dati direttamente sul server, migliorando SEO e performance
+- **Accesso diretto al database** elimina overhead HTTP quando si possiede la sorgente dati
+- **Loading states** possono essere gestiti con `loading.js` o `Suspense` per un controllo più granulare
+- **Pattern di separazione** permettono di mantenere Server Components anche quando alcune parti richiedono funzionalità client-side
+
+Comprendere questi pattern permette di costruire applicazioni Next.js efficienti, performanti e con una buona esperienza utente.

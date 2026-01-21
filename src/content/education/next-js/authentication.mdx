@@ -1,0 +1,609 @@
+---
+title: 'Autenticazione in Next.js: Login, Registrazione e Protezione Route'
+description: 'Come implementare un sistema di autenticazione completo in Next.js con registrazione, login, gestione sessioni e protezione delle route'
+date: 2025-10-16
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 7
+---
+
+## Introduzione
+
+L'autenticazione è un aspetto fondamentale di molte applicazioni web. Questo capitolo esplora come implementare un sistema di autenticazione completo in Next.js, includendo registrazione utenti, login, gestione delle sessioni e protezione delle route.
+
+Implementeremo l'autenticazione utilizzando **Lucia Auth**, una libreria moderna e flessibile che funziona perfettamente con Next.js App Router.
+
+## Come Funziona l'Autenticazione
+
+L'autenticazione è un processo in due parti:
+
+### 1. Registrazione e Login
+
+Quando un utente si registra o effettua il login:
+
+1. L'utente invia credenziali (email e password) al server
+2. Il server verifica le credenziali
+3. Se valide, viene creata una **sessione di autenticazione** nel database
+4. Un **cookie di sessione** contenente l'ID della sessione viene inviato al client
+5. Il browser memorizza automaticamente il cookie
+
+### 2. Protezione delle Route
+
+Quando un utente autenticato accede a una route protetta:
+
+1. Il browser invia automaticamente il cookie di sessione con la richiesta
+2. Il server verifica la validità del cookie e della sessione
+3. Se valida, la risorsa viene servita
+4. Se non valida, l'utente viene reindirizzato alla pagina di login
+
+## Setup Iniziale
+
+### Installazione di Lucia Auth
+
+Lucia Auth è una libreria che semplifica l'implementazione dell'autenticazione. Per utilizzarla con SQLite:
+
+```bash
+npm install lucia @lucia-auth/adapter-sqlite
+```
+
+### Configurazione di Lucia
+
+Creiamo un file per configurare Lucia:
+
+```jsx
+// lib/auth.js
+import { lucia } from 'lucia'
+import { betterSqlite3 } from '@lucia-auth/adapter-sqlite'
+import db from './db'
+
+export const auth = lucia({
+  adapter: betterSqlite3(db, {
+    user: 'users',
+    session: 'sessions',
+  }),
+  sessionCookie: {
+    expires: false,
+    attributes: {
+      secure: process.env.NODE_ENV === 'production',
+    },
+  },
+})
+```
+
+**Configurazioni importanti**:
+
+- **`adapter`**: specifica dove memorizzare sessioni e utenti
+- **`sessionCookie.expires`**: impostato a `false` per Next.js
+- **`sessionCookie.attributes.secure`**: abilita HTTPS solo in produzione
+
+## Registrazione Utenti
+
+### Validazione dei Dati
+
+Prima di creare un utente, è necessario validare i dati inseriti:
+
+```jsx
+// actions/auth-actions.js
+'use server'
+
+export async function signup(prevState, formData) {
+  const email = formData.get('email')
+  const password = formData.get('password')
+  
+  const errors = {}
+  
+  // Validazione email
+  if (!email || !email.includes('@')) {
+    errors.email = 'Inserire un indirizzo email valido'
+  }
+  
+  // Validazione password
+  if (!password || password.trim().length < 8) {
+    errors.password = 'La password deve essere lunga almeno 8 caratteri'
+  }
+  
+  // Se ci sono errori, restituirli
+  if (Object.keys(errors).length > 0) {
+    return { errors }
+  }
+  
+  // Creazione utente...
+}
+```
+
+### Hash delle Password
+
+**Mai memorizzare password in testo chiaro**. Utilizzare sempre funzioni di hash:
+
+```jsx
+// lib/hash.js
+import crypto from 'crypto'
+
+export function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex')
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex')
+  return `${salt}:${hash}`
+}
+
+export function verifyPassword(storedPassword, providedPassword) {
+  const [salt, hash] = storedPassword.split(':')
+  const hashVerify = crypto.pbkdf2Sync(providedPassword, salt, 1000, 64, 'sha512').toString('hex')
+  return hash === hashVerify
+}
+```
+
+**Come funziona**:
+
+- **Salt**: valore casuale aggiunto alla password prima dell'hash
+- **Hash**: stringa non reversibile generata dalla password + salt
+- **Verifica**: si ricalcola l'hash della password fornita e si confronta con quello memorizzato
+
+### Creazione Utente nel Database
+
+```jsx
+// lib/user.js
+import db from './db'
+import { hashPassword } from './hash'
+
+export function createUser(email, password) {
+  const hashedPassword = hashPassword(password)
+  
+  const result = db.prepare('INSERT INTO users (email, password) VALUES (?, ?)')
+    .run(email, hashedPassword)
+  
+  return result.lastInsertRowid
+}
+```
+
+### Gestione Errori e Creazione Sessione
+
+```jsx
+// actions/auth-actions.js
+'use server'
+
+import { createUser } from '@/lib/user'
+import { createAuthSession } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export async function signup(prevState, formData) {
+  const email = formData.get('email')
+  const password = formData.get('password')
+  
+  // Validazione...
+  const errors = {}
+  
+  if (!email || !email.includes('@')) {
+    errors.email = 'Inserire un indirizzo email valido'
+  }
+  
+  if (!password || password.trim().length < 8) {
+    errors.password = 'La password deve essere lunga almeno 8 caratteri'
+  }
+  
+  if (Object.keys(errors).length > 0) {
+    return { errors }
+  }
+  
+  try {
+    const userId = createUser(email, password)
+    await createAuthSession(userId)
+    redirect('/training')
+  } catch (error) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return {
+        errors: {
+          email: 'Sembra che esista già un account per questa email',
+        },
+      }
+    }
+    throw error
+  }
+}
+```
+
+### Form di Registrazione
+
+```jsx
+// components/auth-form.jsx
+'use client'
+
+import { useFormState } from 'react-dom'
+import { signup } from '@/actions/auth-actions'
+
+export default function AuthForm({ mode }) {
+  const [formState, formAction] = useFormState(signup, {})
+  
+  return (
+    <form action={formAction}>
+      {formState.errors && (
+        <ul id="form-errors">
+          {Object.entries(formState.errors).map(([key, value]) => (
+            <li key={key}>{value}</li>
+          ))}
+        </ul>
+      )}
+      
+      <input type="email" name="email" placeholder="Email" required />
+      <input type="password" name="password" placeholder="Password" required />
+      <button type="submit">
+        {mode === 'login' ? 'Login' : 'Crea account'}
+      </button>
+    </form>
+  )
+}
+```
+
+## Creazione e Gestione Sessioni
+
+### Creazione di una Sessione
+
+```jsx
+// lib/auth.js
+import { cookies } from 'next/headers'
+
+export async function createAuthSession(userId) {
+  const session = await auth.createSession(userId, {})
+  const sessionCookie = auth.createSessionCookie(session.id)
+  
+  cookies().set(
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes
+  )
+}
+```
+
+**Cosa succede**:
+
+1. **`createSession`**: crea una nuova voce nella tabella `sessions` del database
+2. **`createSessionCookie`**: genera i dati del cookie da impostare
+3. **`cookies().set`**: imposta il cookie nella risposta HTTP
+
+### Verifica di una Sessione
+
+```jsx
+// lib/auth.js
+import { cookies } from 'next/headers'
+
+export async function verifyAuth() {
+  const sessionCookie = cookies().get(auth.sessionCookieName)
+  
+  if (!sessionCookie || !sessionCookie.value) {
+    return { user: null, session: null }
+  }
+  
+  const sessionId = sessionCookie.value
+  const result = await auth.validateSession(sessionId)
+  
+  try {
+    if (result.session && result.session.fresh) {
+      const sessionCookie = auth.createSessionCookie(result.session.id)
+      cookies().set(
+        sessionCookie.name,
+        sessionCookie.value,
+        sessionCookie.attributes
+      )
+    }
+    
+    if (!result.session) {
+      const sessionCookie = auth.createBlankSessionCookie()
+      cookies().set(
+        sessionCookie.name,
+        sessionCookie.value,
+        sessionCookie.attributes
+      )
+    }
+  } catch {
+    // Ignora errori durante il rendering
+  }
+  
+  return {
+    user: result.user,
+    session: result.session,
+  }
+}
+```
+
+**Nota**: con Next.js 15+, potrebbe essere necessario usare `await cookies()` prima di chiamare `.get()` o `.set()`.
+
+## Protezione delle Route
+
+Per proteggere una route, verifichiamo la sessione prima di renderizzare il contenuto:
+
+```jsx
+// app/training/page.js
+import { verifyAuth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import { getTrainings } from '@/lib/trainings'
+
+export default async function TrainingPage() {
+  const { user, session } = await verifyAuth()
+  
+  if (!user || !session) {
+    redirect('/')
+  }
+  
+  const trainings = await getTrainings()
+  
+  return (
+    <main>
+      <h1>Formazioni</h1>
+      {/* Contenuto protetto */}
+    </main>
+  )
+}
+```
+
+**Flusso**:
+
+1. Chiamare `verifyAuth()` all'inizio del componente
+2. Se non c'è utente o sessione, reindirizzare alla pagina di login
+3. Altrimenti, renderizzare il contenuto protetto
+
+## Login degli Utenti
+
+### Implementazione del Login
+
+```jsx
+// actions/auth-actions.js
+'use server'
+
+import { getUserByEmail } from '@/lib/user'
+import { verifyPassword } from '@/lib/hash'
+import { createAuthSession } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export async function login(prevState, formData) {
+  const email = formData.get('email')
+  const password = formData.get('password')
+  
+  const existingUser = getUserByEmail(email)
+  
+  if (!existingUser) {
+    return {
+      errors: {
+        email: 'Impossibile autenticare l\'utente, verificare le credenziali',
+      },
+    }
+  }
+  
+  const isValidPassword = verifyPassword(existingUser.password, password)
+  
+  if (!isValidPassword) {
+    return {
+      errors: {
+        password: 'Impossibile autenticare l\'utente, verificare le credenziali',
+      },
+    }
+  }
+  
+  await createAuthSession(existingUser.id)
+  redirect('/training')
+}
+```
+
+### Funzione Helper per Recuperare Utente
+
+```jsx
+// lib/user.js
+import db from './db'
+
+export function getUserByEmail(email) {
+  return db.prepare('SELECT * FROM users WHERE email = ?').get(email)
+}
+```
+
+### Gestione Modalità Login/Signup
+
+Per gestire sia login che signup nello stesso form:
+
+```jsx
+// actions/auth-actions.js
+'use server'
+
+export async function auth(mode, prevState, formData) {
+  if (mode === 'login') {
+    return login(prevState, formData)
+  } else {
+    return signup(prevState, formData)
+  }
+}
+```
+
+Utilizzo nel componente:
+
+```jsx
+// components/auth-form.jsx
+'use client'
+
+import { useFormState } from 'react-dom'
+import { auth } from '@/actions/auth-actions'
+
+export default function AuthForm({ mode }) {
+  const authAction = auth.bind(null, mode)
+  const [formState, formAction] = useFormState(authAction, {})
+  
+  return (
+    <form action={formAction}>
+      {/* Form fields */}
+    </form>
+  )
+}
+```
+
+**Nota**: `bind` permette di preconfigurare parametri di una funzione. Il primo parametro (`null`) è il `this`, i successivi sono i parametri da preconfigurare.
+
+### Gestione Parametri di Query
+
+Per passare dalla modalità signup a login:
+
+```jsx
+// app/page.js
+export default function HomePage({ searchParams }) {
+  const formMode = searchParams.mode || 'signup'
+  
+  return (
+    <main>
+      <AuthForm mode={formMode} />
+    </main>
+  )
+}
+```
+
+```jsx
+// components/auth-form.jsx
+import Link from 'next/link'
+
+export default function AuthForm({ mode }) {
+  return (
+    <>
+      <form action={formAction}>
+        {/* Form fields */}
+      </form>
+      
+      {mode === 'login' ? (
+        <Link href="/?mode=signup">Crea un account</Link>
+      ) : (
+        <Link href="/?mode=login">Accedi con account esistente</Link>
+      )}
+    </>
+  )
+}
+```
+
+## Logout degli Utenti
+
+### Distruzione della Sessione
+
+```jsx
+// lib/auth.js
+import { cookies } from 'next/headers'
+
+export async function destroySession() {
+  const { session } = await verifyAuth()
+  
+  if (!session) {
+    return { error: 'Non autorizzato' }
+  }
+  
+  await auth.invalidateSession(session.id)
+  
+  const sessionCookie = auth.createBlankSessionCookie()
+  cookies().set(
+    sessionCookie.name,
+    sessionCookie.value,
+    sessionCookie.attributes
+  )
+}
+```
+
+### Azione Server per Logout
+
+```jsx
+// actions/auth-actions.js
+'use server'
+
+import { destroySession } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export async function logout() {
+  await destroySession()
+  redirect('/')
+}
+```
+
+### Pulsante Logout
+
+```jsx
+// app/(auth)/layout.js
+import { logout } from '@/actions/auth-actions'
+
+export default function AuthLayout({ children }) {
+  return (
+    <>
+      <header id="auth-header">
+        <p>Welcome back!</p>
+        <form action={logout}>
+          <button>Logout</button>
+        </form>
+      </header>
+      {children}
+    </>
+  )
+}
+```
+
+## Layout per Route Protette
+
+Utilizzando i **route groups**, è possibile creare un layout dedicato alle route protette:
+
+```jsx
+// app/(auth)/layout.js
+import '../globals.css'
+
+export const metadata = {
+  title: 'Next Auth',
+  description: 'Next.js Authentication',
+}
+
+export default function AuthLayout({ children }) {
+  return (
+    <>
+      <header id="auth-header">
+        <p>Welcome back!</p>
+        <form action={logout}>
+          <button>Logout</button>
+        </form>
+      </header>
+      {children}
+    </>
+  )
+}
+```
+
+**Nota**: i route groups non aggiungono segmenti all'URL. La cartella `(auth)` raggruppa le route senza modificare il percorso.
+
+**Importante**: se esiste già un `app/layout.js`, il layout del route group viene annidato dentro quello principale. In questo caso, non includere `<html>` e `<body>` nel layout del route group.
+
+## Best Practices
+
+### Sicurezza
+
+- **Mai memorizzare password in testo chiaro**: utilizzare sempre funzioni di hash
+- **Validazione lato server**: non fare affidamento solo sulla validazione client-side
+- **Cookie sicuri**: utilizzare `secure: true` in produzione (HTTPS)
+- **Messaggi di errore generici**: non rivelare se un'email esiste già nel sistema
+
+### Gestione Errori
+
+- **Gestire constraint del database**: catturare errori di unicità e restituire messaggi appropriati
+- **Validazione completa**: validare tutti i campi prima di processare i dati
+- **Feedback all'utente**: mostrare errori di validazione in modo chiaro
+
+### Performance
+
+- **Verifica sessioni efficiente**: `verifyAuth` dovrebbe essere chiamato solo quando necessario
+- **Aggiornamento sessioni**: rinnovare automaticamente le sessioni valide per mantenerle attive
+- **Pulizia sessioni**: invalidare sessioni scadute o non valide
+
+### Organizzazione del Codice
+
+- **Separazione delle responsabilità**: 
+  - `lib/auth.js`: logica di autenticazione e sessioni
+  - `lib/user.js`: operazioni sul database utenti
+  - `lib/hash.js`: funzioni di hash password
+  - `actions/auth-actions.js`: Server Actions per form
+- **Reutilizzabilità**: creare funzioni helper riutilizzabili per operazioni comuni
+
+## Conclusione
+
+Implementare un sistema di autenticazione completo in Next.js richiede:
+
+- **Registrazione**: validazione, hash password, creazione utente e sessione
+- **Login**: verifica credenziali, creazione sessione
+- **Protezione route**: verifica sessioni, reindirizzamento se non autenticati
+- **Logout**: invalidazione sessione, rimozione cookie
+
+Lucia Auth semplifica significativamente questo processo, gestendo automaticamente la creazione e validazione delle sessioni, mentre Next.js fornisce gli strumenti necessari per Server Actions, cookie e protezione delle route.
+
+Un sistema di autenticazione ben implementato è fondamentale per la sicurezza dell'applicazione e per garantire che solo gli utenti autorizzati possano accedere alle risorse protette.

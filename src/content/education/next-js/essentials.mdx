@@ -1,0 +1,897 @@
+---
+title: 'Essentials di Next.js: Routing, Componenti e Data Fetching'
+description: 'I concetti fondamentali di Next.js: App Router, Server Components, routing basato sul file system, fetching dati e gestione dei form con Server Actions'
+date: 2025-10-16
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 1
+---
+
+## Introduzione
+
+Questo capitolo esplora i concetti fondamentali di Next.js necessari per costruire applicazioni full-stack con React. Analizziamo il **App Router**, il sistema di routing basato sul file system, la differenza tra **Server Components** e **Client Components**, e come Next.js semplifica il processo di fetching dati e gestione dei form.
+
+## Creazione di un Progetto Next.js
+
+Per creare un nuovo progetto Next.js, è possibile utilizzare il comando fornito sul sito ufficiale:
+
+```bash
+npx create-next-app@latest
+```
+
+Durante la creazione del progetto, vengono richieste alcune configurazioni:
+
+- **Nome del progetto**: identificativo dell'applicazione
+- **TypeScript**: opzionale, consigliato per progetti più complessi
+- **ESLint**: strumento per l'analisi statica del codice
+- **Tailwind CSS**: libreria CSS utility-first (opzionale)
+- **App Router**: approccio moderno e consigliato per il routing
+
+Una volta creato il progetto, è possibile avviare il server di sviluppo con:
+
+```bash
+npm run dev
+```
+
+Il progetto viene servito su `localhost:3000` per impostazione predefinita.
+
+## Struttura del Progetto: La Cartella `app`
+
+La cartella **`app`** è il cuore di un progetto Next.js moderno. È qui che vengono configurate le route dell'applicazione utilizzando il file system.
+
+### File Riservati
+
+Next.js utilizza alcuni **nomi di file riservati** che hanno significati speciali quando creati all'interno della cartella `app`:
+
+- **`page.js`**: crea una nuova pagina visitabile
+- **`layout.js`**: definisce un layout che avvolge una o più pagine
+- **`loading.js`**: mostra contenuto di fallback durante il caricamento dei dati
+- **`error.js`**: gestisce errori generati da pagine o layout
+- **`not-found.js`**: pagina personalizzata per route non trovate
+- **`route.js`**: permette di creare API route che restituiscono dati invece di JSX
+
+### Creazione di Route
+
+Per creare una nuova route, è sufficiente aggiungere una cartella nella directory `app` con un file `page.js` al suo interno:
+
+```
+app/
+  about/
+    page.js
+```
+
+Questo crea automaticamente la route `/about` visitabile nel browser.
+
+```jsx
+// app/about/page.js
+export default function AboutPage() {
+  return (
+    <main>
+      <h1>About Us</h1>
+    </main>
+  )
+}
+```
+
+Il nome del componente esportato non ha importanza per Next.js, ma è buona pratica utilizzare nomi descrittivi.
+
+## Server Components vs Client Components
+
+Una delle caratteristiche fondamentali di Next.js è la distinzione tra **Server Components** e **Client Components**.
+
+### Server Components
+
+Per impostazione predefinita, tutti i componenti in Next.js sono **Server Components**. Questi componenti vengono eseguiti esclusivamente sul server e vengono renderizzati come HTML prima di essere inviati al browser.
+
+```jsx
+// app/page.js - Server Component di default
+export default function HomePage() {
+  console.log('Eseguito sul server')
+  
+  return (
+    <main>
+      <h1>Homepage</h1>
+    </main>
+  )
+}
+```
+
+I log di `console.log` in un Server Component appaiono nel terminale del server, non nella console del browser.
+
+**Vantaggi dei Server Components**:
+
+- Meno JavaScript inviato al client, migliorando le prestazioni
+- Accesso diretto a database e file system
+- Migliore SEO perché il contenuto è già presente nell'HTML
+- Sicurezza: codice sensibile non viene esposto al client
+
+### Client Components
+
+Quando un componente necessita di funzionalità disponibili solo nel browser (come event handlers, hooks come `useState` o `useEffect`, o API del browser), deve essere marcato come **Client Component** utilizzando la direttiva `'use client'`:
+
+```jsx
+'use client'
+
+import { useState, useEffect } from 'react'
+
+export default function ImageSlideshow() {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length)
+    }, 5000)
+    
+    return () => clearInterval(interval)
+  }, [])
+  
+  return (
+    <div>
+      <img src={images[currentIndex]} alt="Slideshow" />
+    </div>
+  )
+}
+```
+
+**Quando usare Client Components**:
+
+- Gestione di eventi utente (`onClick`, `onChange`, ecc.)
+- Utilizzo di hooks di React (`useState`, `useEffect`, `useContext`)
+- Accesso ad API del browser (`localStorage`, `window`, ecc.)
+- Componenti interattivi che richiedono stato locale
+
+**Regola importante**: aggiungere `'use client'` il più in basso possibile nell'albero dei componenti, mantenendo la maggior parte dei componenti come Server Components.
+
+## Layout e Pagine
+
+### Layout
+
+I file `layout.js` definiscono la struttura comune che avvolge una o più pagine. Ogni progetto Next.js deve avere almeno un **root layout** nella cartella `app`.
+
+```jsx
+// app/layout.js
+export default function RootLayout({ children }) {
+  return (
+    <html lang="it">
+      <body>
+        <header>
+          <nav>
+            {/* Navigazione comune */}
+          </nav>
+        </header>
+        {children}
+        <footer>
+          {/* Footer comune */}
+        </footer>
+      </body>
+    </html>
+  )
+}
+```
+
+Il prop `children` rappresenta il contenuto della pagina attualmente attiva. I layout possono essere annidati: un layout figlio viene avvolto dal layout padre.
+
+### Metadata
+
+I layout e le pagine possono esportare un oggetto `metadata` per definire metadati della pagina:
+
+```jsx
+// app/layout.js
+export const metadata = {
+  title: 'Next.js App',
+  description: 'Descrizione dell\'applicazione',
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="it">
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+Per pagine dinamiche, è possibile utilizzare una funzione `generateMetadata`:
+
+```jsx
+// app/meals/[slug]/page.js
+export async function generateMetadata({ params }) {
+  const meal = await getMeal(params.slug)
+  
+  return {
+    title: meal.title,
+    description: meal.summary,
+  }
+}
+```
+
+## Navigazione con il Componente Link
+
+Per la navigazione tra pagine, Next.js fornisce il componente **`Link`** che mantiene l'applicazione in modalità single-page application:
+
+```jsx
+import Link from 'next/link'
+
+export default function Navigation() {
+  return (
+    <nav>
+      <Link href="/">Home</Link>
+      <Link href="/about">About</Link>
+      <Link href="/meals">Meals</Link>
+    </nav>
+  )
+}
+```
+
+A differenza del tag `<a>` standard, il componente `Link`:
+
+- Non ricarica l'intera pagina
+- Pre-renderizza la pagina di destinazione sul server
+- Aggiorna solo la parte necessaria dell'interfaccia
+- Mantiene lo stato dell'applicazione
+
+### Evidenziare il Link Attivo
+
+Per evidenziare il link della pagina corrente, è possibile utilizzare il hook `usePathname`:
+
+```jsx
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+
+export default function NavLink({ href, children }) {
+  const pathname = usePathname()
+  const isActive = pathname === href || pathname.startsWith(href + '/')
+  
+  return (
+    <Link 
+      href={href} 
+      className={isActive ? 'active' : ''}
+    >
+      {children}
+    </Link>
+  )
+}
+```
+
+## Route Dinamiche
+
+Next.js supporta **route dinamiche** utilizzando parentesi quadre nei nomi delle cartelle:
+
+```
+app/
+  meals/
+    [mealSlug]/
+      page.js
+```
+
+Questo crea una route che accetta un segmento dinamico, accessibile tramite il prop `params`:
+
+```jsx
+// app/meals/[mealSlug]/page.js
+export default async function MealDetailPage({ params }) {
+  const meal = await getMeal(params.mealSlug)
+  
+  return (
+    <main>
+      <h1>{meal.title}</h1>
+      <p>{meal.summary}</p>
+    </main>
+  )
+}
+```
+
+Next.js è intelligente nel distinguere tra route statiche e dinamiche: una route statica come `/meals/share` ha la precedenza su una route dinamica come `/meals/[mealSlug]`.
+
+## Styling in Next.js
+
+Next.js supporta diversi approcci per lo styling delle applicazioni.
+
+### CSS Modules
+
+**CSS Modules** sono file CSS con scope limitato al componente che li importa. I nomi delle classi vengono automaticamente trasformati per evitare conflitti.
+
+```jsx
+// components/Header.module.css
+.header {
+  background-color: #333;
+  padding: 1rem;
+}
+
+.nav {
+  display: flex;
+  gap: 1rem;
+}
+```
+
+```jsx
+// components/Header.js
+import classes from './Header.module.css'
+
+export default function Header() {
+  return (
+    <header className={classes.header}>
+      <nav className={classes.nav}>
+        {/* Navigazione */}
+      </nav>
+    </header>
+  )
+}
+```
+
+### CSS Globale
+
+Per stili globali, è possibile importare file CSS direttamente nel layout:
+
+```jsx
+// app/layout.js
+import './globals.css'
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="it">
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+## Componente Image di Next.js
+
+Next.js fornisce un componente **`Image`** ottimizzato che migliora automaticamente le prestazioni delle immagini:
+
+```jsx
+import Image from 'next/image'
+import logo from '@/assets/logo.png'
+
+export default function Header() {
+  return (
+    <header>
+      <Image 
+        src={logo} 
+        alt="Logo" 
+        priority 
+      />
+    </header>
+  )
+}
+```
+
+**Vantaggi del componente Image**:
+
+- **Lazy loading automatico**: le immagini vengono caricate solo quando sono visibili
+- **Ottimizzazione del formato**: serve automaticamente WebP quando supportato
+- **Responsive images**: genera automaticamente diverse dimensioni per diversi viewport
+- **Prevenzione del layout shift**: richiede width/height o utilizza `fill`
+
+### Immagini Dinamiche
+
+Per immagini caricate dinamicamente (ad esempio da un database), è possibile utilizzare la prop `fill`:
+
+```jsx
+import Image from 'next/image'
+
+export default function MealItem({ image, title }) {
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '300px' }}>
+      <Image
+        src={image}
+        alt={title}
+        fill
+        style={{ objectFit: 'cover' }}
+      />
+    </div>
+  )
+}
+```
+
+Per immagini esterne, è necessario configurare `next.config.js`:
+
+```js
+// next.config.js
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'example.com',
+        pathname: '/images/**',
+      },
+    ],
+  },
+}
+```
+
+## Data Fetching con Server Components
+
+Uno dei vantaggi principali dei Server Components è la possibilità di accedere direttamente a database e altre risorse server-side senza necessità di API route intermedie.
+
+### Fetching Dati da Database
+
+```jsx
+// lib/meals.js
+import sql from 'better-sqlite3'
+
+const db = sql('meals.db')
+
+export async function getMeals() {
+  await new Promise((resolve) => setTimeout(resolve, 2000)) // Simula delay
+  
+  return db.prepare('SELECT * FROM meals').all()
+}
+
+export function getMeal(slug) {
+  return db.prepare('SELECT * FROM meals WHERE slug = ?').get(slug)
+}
+```
+
+```jsx
+// app/meals/page.js
+import { getMeals } from '@/lib/meals'
+import MealsGrid from '@/components/meals/MealsGrid'
+
+export default async function MealsPage() {
+  const meals = await getMeals()
+  
+  return (
+    <main>
+      <h1>Delicious Meals</h1>
+      <MealsGrid meals={meals} />
+    </main>
+  )
+}
+```
+
+**Vantaggi**:
+
+- Nessun `useEffect` o `fetch` necessario
+- Dati disponibili immediatamente durante il rendering
+- Codice più semplice e diretto
+- Migliore sicurezza: credenziali database non esposte al client
+
+### Funzioni Async nei Server Components
+
+A differenza dei componenti React standard, i Server Components possono essere funzioni `async`:
+
+```jsx
+export default async function MealsPage() {
+  const meals = await getMeals()
+  
+  return <MealsGrid meals={meals} />
+}
+```
+
+## Gestione degli Stati di Caricamento
+
+### File `loading.js`
+
+Per mostrare un indicatore di caricamento durante il fetching dei dati, è possibile creare un file `loading.js`:
+
+```jsx
+// app/meals/loading.js
+export default function MealsLoadingPage() {
+  return (
+    <p className="loading">Fetching meals...</p>
+  )
+}
+```
+
+Questo componente viene mostrato automaticamente mentre la pagina o i componenti annidati stanno caricando dati.
+
+### Suspense per Caricamento Granulare
+
+Per un controllo più granulare, è possibile utilizzare il componente **`Suspense`** di React:
+
+```jsx
+import { Suspense } from 'react'
+import { getMeals } from '@/lib/meals'
+import MealsGrid from '@/components/meals/MealsGrid'
+
+async function Meals() {
+  const meals = await getMeals()
+  return <MealsGrid meals={meals} />
+}
+
+export default function MealsPage() {
+  return (
+    <main>
+      <header>
+        <h1>Delicious Meals</h1>
+      </header>
+      <Suspense fallback={<p className="loading">Loading meals...</p>}>
+        <Meals />
+      </Suspense>
+    </main>
+  )
+}
+```
+
+Questo approccio permette di mostrare il contenuto statico (come l'header) immediatamente, mentre il contenuto dinamico viene caricato in background.
+
+## Gestione degli Errori
+
+### File `error.js`
+
+Per gestire errori nelle pagine, è possibile creare un file `error.js`:
+
+```jsx
+'use client'
+
+// app/meals/error.js
+export default function Error({ error }) {
+  return (
+    <main className="error">
+      <h1>An error occurred!</h1>
+      <p>Failed to fetch meal data. Please try again later.</p>
+    </main>
+  )
+}
+```
+
+Il componente `error.js` deve essere un Client Component perché deve gestire errori che possono verificarsi sia sul server che sul client.
+
+### Gestione di Route Non Trovate
+
+Per route non valide, è possibile creare un file `not-found.js`:
+
+```jsx
+// app/not-found.js
+export default function NotFound() {
+  return (
+    <main className="not-found">
+      <h1>Not found</h1>
+      <p>Unfortunately, we could not find the requested page or resource.</p>
+    </main>
+  )
+}
+```
+
+Per triggerare manualmente la pagina not-found:
+
+```jsx
+import { notFound } from 'next/navigation'
+
+export default async function MealDetailPage({ params }) {
+  const meal = await getMeal(params.mealSlug)
+  
+  if (!meal) {
+    notFound()
+  }
+  
+  return (
+    <main>
+      <h1>{meal.title}</h1>
+    </main>
+  )
+}
+```
+
+## Server Actions per la Gestione dei Form
+
+**Server Actions** sono funzioni che vengono eseguite esclusivamente sul server e possono essere utilizzate per gestire la submission dei form.
+
+### Creare una Server Action
+
+```jsx
+// lib/actions.js
+'use server'
+
+export async function shareMeal(prevState, formData) {
+  const meal = {
+    title: formData.get('title'),
+    summary: formData.get('summary'),
+    instructions: formData.get('instructions'),
+    creator: formData.get('name'),
+    creator_email: formData.get('email'),
+    image: formData.get('image'),
+  }
+  
+  // Validazione
+  if (!meal.title || meal.title.trim() === '') {
+    return { message: 'Invalid input' }
+  }
+  
+  // Salvataggio nel database
+  await saveMeal(meal)
+  
+  // Revalidazione della cache
+  revalidatePath('/meals')
+  
+  // Redirect
+  redirect('/meals')
+}
+```
+
+La direttiva `'use server'` può essere aggiunta all'inizio del file (tutte le funzioni esportate diventano Server Actions) o all'interno di una singola funzione.
+
+### Utilizzare Server Actions nei Form
+
+```jsx
+'use client'
+
+import { useActionState } from 'react'
+import { shareMeal } from '@/lib/actions'
+
+export default function ShareMealPage() {
+  const [state, formAction] = useActionState(shareMeal, { message: null })
+  
+  return (
+    <main>
+      <h1>Share your favorite meal</h1>
+      <form action={formAction}>
+        <p>
+          <label htmlFor="title">Title</label>
+          <input type="text" id="title" name="title" required />
+        </p>
+        {/* Altri campi */}
+        {state.message && <p className="error">{state.message}</p>}
+        <button type="submit">Share Meal</button>
+      </form>
+    </main>
+  )
+}
+```
+
+Il hook `useActionState` (precedentemente `useFormState`) gestisce lo stato del form e permette di accedere alla risposta della Server Action.
+
+### Feedback durante la Submission
+
+Per mostrare feedback durante la submission del form, è possibile utilizzare il hook `useFormStatus`:
+
+```jsx
+'use client'
+
+import { useFormStatus } from 'react-dom'
+
+export default function SubmitButton() {
+  const { pending } = useFormStatus()
+  
+  return (
+    <button type="submit" disabled={pending}>
+      {pending ? 'Submitting...' : 'Share Meal'}
+    </button>
+  )
+}
+```
+
+Questo componente deve essere utilizzato **all'interno** del form per funzionare correttamente.
+
+## Upload di Immagini
+
+Per gestire l'upload di immagini, è possibile creare un componente personalizzato:
+
+```jsx
+'use client'
+
+import { useRef, useState } from 'react'
+import Image from 'next/image'
+
+export default function ImagePicker({ label, name }) {
+  const [pickedImage, setPickedImage] = useState(null)
+  const imageInput = useRef()
+  
+  function handlePickClick() {
+    imageInput.current.click()
+  }
+  
+  function handleImageChange(event) {
+    const file = event.target.files[0]
+    
+    if (!file) {
+      setPickedImage(null)
+      return
+    }
+    
+    const fileReader = new FileReader()
+    fileReader.onload = () => {
+      setPickedImage(fileReader.result)
+    }
+    fileReader.readAsDataURL(file)
+  }
+  
+  return (
+    <div className={classes.picker}>
+      <label htmlFor={name}>{label}</label>
+      <div className={classes.controls}>
+        <input
+          className={classes.input}
+          type="file"
+          id={name}
+          accept="image/png, image/jpeg"
+          name={name}
+          ref={imageInput}
+          onChange={handleImageChange}
+          required
+        />
+        <button
+          className={classes.button}
+          type="button"
+          onClick={handlePickClick}
+        >
+          Pick an Image
+        </button>
+      </div>
+      <div className={classes.preview}>
+        {!pickedImage && <p>No image picked yet.</p>}
+        {pickedImage && (
+          <Image
+            src={pickedImage}
+            alt="The image selected by the user."
+            fill
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+Nel Server Action, l'immagine può essere salvata sul file system o su un servizio cloud:
+
+```jsx
+'use server'
+
+import fs from 'node:fs'
+import { saveMeal } from '@/lib/meals'
+
+export async function shareMeal(prevState, formData) {
+  const meal = {
+    // ... altri campi
+    image: formData.get('image'),
+  }
+  
+  // Salvataggio dell'immagine
+  const extension = meal.image.name.split('.').pop()
+  const fileName = `${meal.slug}.${extension}`
+  const stream = fs.createWriteStream(`public/images/${fileName}`)
+  const bufferedImage = await meal.image.arrayBuffer()
+  
+  stream.write(Buffer.from(bufferedImage), (error) => {
+    if (error) {
+      throw new Error('Saving image failed')
+    }
+  })
+  
+  meal.image = `/images/${fileName}`
+  
+  await saveMeal(meal)
+}
+```
+
+## Validazione dei Form
+
+La validazione dovrebbe essere eseguita sia sul client che sul server. Sul server, è fondamentale per sicurezza:
+
+```jsx
+'use server'
+
+function isInvalidText(text) {
+  return !text || text.trim() === ''
+}
+
+export async function shareMeal(prevState, formData) {
+  const meal = {
+    title: formData.get('title'),
+    summary: formData.get('summary'),
+    instructions: formData.get('instructions'),
+    creator: formData.get('name'),
+    creator_email: formData.get('email'),
+    image: formData.get('image'),
+  }
+  
+  if (
+    isInvalidText(meal.title) ||
+    isInvalidText(meal.summary) ||
+    isInvalidText(meal.instructions) ||
+    isInvalidText(meal.creator) ||
+    isInvalidText(meal.creator_email) ||
+    !meal.creator_email.includes('@') ||
+    !meal.image ||
+    meal.image.size === 0
+  ) {
+    return {
+      message: 'Invalid input - please check your data.',
+    }
+  }
+  
+  // Procedere con il salvataggio
+}
+```
+
+## Caching e Revalidazione
+
+Next.js esegue un caching aggressivo per migliorare le prestazioni. Durante il build di produzione, le pagine vengono pre-renderizzate e cachate.
+
+### Revalidazione della Cache
+
+Quando i dati cambiano (ad esempio dopo aver aggiunto un nuovo elemento), è necessario revalidare la cache:
+
+```jsx
+import { revalidatePath } from 'next/cache'
+
+export async function shareMeal(prevState, formData) {
+  // ... salvataggio dati
+  
+  revalidatePath('/meals')
+  redirect('/meals')
+}
+```
+
+`revalidatePath` accetta due parametri:
+
+1. **Path da revalidare**: il percorso della route
+2. **Tipo**: `'page'` (default) o `'layout'` per revalidare anche le route annidate
+
+```jsx
+// Revalidare solo la pagina /meals
+revalidatePath('/meals')
+
+// Revalidare tutte le route sotto /meals
+revalidatePath('/meals', 'layout')
+
+// Revalidare tutto il sito
+revalidatePath('/', 'layout')
+```
+
+## Organizzazione dei Componenti
+
+Non esiste un'unica struttura corretta per organizzare i componenti in Next.js. Alcune opzioni comuni:
+
+### Componenti Fuori dalla Cartella `app`
+
+```
+project-root/
+  app/
+    page.js
+    layout.js
+  components/
+    Header.js
+    Footer.js
+  lib/
+    meals.js
+    actions.js
+```
+
+**Vantaggi**: la cartella `app` contiene solo codice relativo al routing.
+
+### Componenti Dentro la Cartella `app`
+
+```
+app/
+  components/
+    Header.js
+  page.js
+  layout.js
+```
+
+**Vantaggi**: tutto il codice è centralizzato nella cartella `app`.
+
+La documentazione ufficiale di Next.js fornisce una guida completa sulle diverse strutture possibili. La scelta dipende dalle preferenze del team e dalla complessità del progetto.
+
+## Alias di Import
+
+Next.js supporta alias di import configurati in `jsconfig.json` o `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"]
+    }
+  }
+}
+```
+
+Questo permette di utilizzare import più puliti:
+
+```jsx
+import Header from '@/components/Header'
+import { getMeals } from '@/lib/meals'
+```
+
+## Conclusione
+
+Questi concetti fondamentali di Next.js forniscono le basi per costruire applicazioni full-stack moderne e performanti. La combinazione di Server Components, routing basato sul file system, e Server Actions semplifica significativamente lo sviluppo rispetto alle applicazioni React tradizionali.
+
+I prossimi capitoli approfondiranno argomenti più avanzati come l'ottimizzazione delle prestazioni, il deployment, e pattern avanzati per la gestione dello stato e dei dati.

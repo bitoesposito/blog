@@ -1,0 +1,378 @@
+---
+title: 'Ottimizzazione in Next.js: Immagini e Metadati'
+description: 'Come ottimizzare le immagini e configurare i metadati delle pagine in Next.js per migliorare performance e SEO'
+date: 2025-10-16
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 6
+---
+
+## Introduzione
+
+Questo capitolo esplora due aspetti fondamentali dell'ottimizzazione delle applicazioni Next.js: l'**ottimizzazione delle immagini** utilizzando il componente `Image` fornito da Next.js e la configurazione dei **metadati delle pagine** per migliorare la visibilità sui motori di ricerca.
+
+Entrambi questi aspetti sono cruciali per costruire applicazioni Next.js performanti e ben indicizzate dai motori di ricerca.
+
+## Ottimizzazione delle Immagini
+
+Le immagini sono spesso uno dei componenti più pesanti di un sito web. Next.js fornisce un componente `Image` ottimizzato che migliora automaticamente le prestazioni delle immagini.
+
+### Vantaggi del Componente Image
+
+Il componente `Image` di Next.js offre diversi vantaggi:
+
+- **Ottimizzazione automatica delle dimensioni**: serve automaticamente file più piccoli in formati ottimali
+- **Stabilità visiva**: evita layout shift durante il caricamento
+- **Lazy loading**: carica le immagini solo quando sono visibili
+- **Responsive images**: genera automaticamente diverse dimensioni per diversi viewport
+- **Formati moderni**: serve automaticamente WebP quando supportato
+
+### Immagini Locali
+
+Per immagini che fanno parte del progetto e vengono importate dal file system locale:
+
+```jsx
+import Image from 'next/image'
+import logo from '@/assets/logo.png'
+
+export default function Header() {
+  return (
+    <header>
+      <Image 
+        src={logo} 
+        alt="Logo" 
+        priority
+      />
+    </header>
+  )
+}
+```
+
+**Importante**: quando si importa un'immagine localmente, non si accede alla proprietà `src` dell'oggetto importato, ma si passa l'intero oggetto al prop `src`.
+
+L'oggetto importato contiene:
+- `src`: percorso dell'immagine ottimizzata
+- `width`: larghezza nativa dell'immagine
+- `height`: altezza nativa dell'immagine
+
+### Proprietà Width e Height
+
+Next.js determina automaticamente width e height dalle immagini importate localmente. Queste informazioni sono utilizzate per:
+
+- **Evitare layout shift**: riservare lo spazio appropriato prima del caricamento
+- **Generare responsive images**: creare diverse dimensioni per diversi viewport
+- **Ottimizzare le dimensioni**: servire immagini della dimensione appropriata
+
+È possibile sovrascrivere manualmente width e height:
+
+```jsx
+<Image 
+  src={logo} 
+  alt="Logo"
+  width={100}
+  height={100}
+/>
+```
+
+**Nota**: questo approccio non è raccomandato per immagini locali. È preferibile utilizzare il prop `sizes` per immagini responsive.
+
+### Prop `sizes`
+
+Il prop `sizes` permette di definire come l'immagine dovrebbe essere dimensionata in base alla larghezza del viewport:
+
+```jsx
+<Image 
+  src={logo} 
+  alt="Logo"
+  sizes="10vw"
+/>
+```
+
+Per immagini responsive, è possibile specificare multiple dimensioni:
+
+```jsx
+<Image 
+  src={logo} 
+  alt="Logo"
+  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+/>
+```
+
+### Prop `priority`
+
+Per immagini che sono sempre visibili al caricamento della pagina (come logo nell'header), è importante aggiungere il prop `priority`:
+
+```jsx
+<Image 
+  src={logo} 
+  alt="Logo"
+  priority
+/>
+```
+
+Questo:
+- Disabilita il lazy loading (non necessario per immagini sempre visibili)
+- Aggiunge `fetchpriority="high"` per indicare al browser di caricare l'immagine con priorità
+- Migliora le prestazioni del Largest Contentful Paint (LCP)
+
+**Raccomandazione**: aggiungere `priority` a tutte le immagini che sono visibili "above the fold" al caricamento della pagina.
+
+## Immagini da Fonti Esterne
+
+Per immagini caricate da servizi esterni (come Cloudinary, AWS S3, ecc.), il processo è leggermente diverso.
+
+### Configurazione di next.config.js
+
+Next.js blocca per sicurezza il caricamento di immagini da domini esterni. È necessario configurare i domini consentiti:
+
+```js
+// next.config.js
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+    ],
+  },
+}
+```
+
+### Prop `fill` per Immagini di Dimensioni Sconosciute
+
+Quando non si conoscono le dimensioni esatte dell'immagine (ad esempio, immagini caricate dagli utenti), è possibile utilizzare il prop `fill`:
+
+```jsx
+<div style={{ position: 'relative', width: '200px', height: '150px' }}>
+  <Image
+    src={imageUrl}
+    alt="User uploaded image"
+    fill
+    style={{ objectFit: 'cover' }}
+  />
+</div>
+```
+
+**Requisiti per `fill`**:
+- Il contenitore padre deve avere `position: relative`
+- Il contenitore padre deve avere width e height definite
+- L'immagine viene posizionata con `position: absolute`
+
+### Custom Loader per Ottimizzazioni Avanzate
+
+Per sfruttare le funzionalità di ottimizzazione on-demand di servizi come Cloudinary, è possibile utilizzare un custom loader:
+
+```jsx
+function cloudinaryLoader({ src, width, quality }) {
+  const params = ['f_auto', 'c_limit', `w_${width}`, `q_${quality || 'auto'}`]
+  return `https://res.cloudinary.com/demo/image/upload/${params.join(',')}${src}`
+}
+
+export default function PostImage({ imageUrl }) {
+  return (
+    <div style={{ position: 'relative', width: '200px', height: '150px' }}>
+      <Image
+        src={imageUrl}
+        alt="Post image"
+        fill
+        loader={cloudinaryLoader}
+        quality={75}
+      />
+    </div>
+  )
+}
+```
+
+Il loader riceve un oggetto con:
+- `src`: URL originale dell'immagine
+- `width`: larghezza richiesta da Next.js
+- `quality`: qualità impostata (se specificata)
+
+Il loader deve restituire l'URL finale dell'immagine ottimizzata.
+
+### Prop `quality`
+
+Il prop `quality` permette di controllare la qualità dell'immagine compressa:
+
+```jsx
+<Image
+  src={imageUrl}
+  alt="Image"
+  quality={75} // Valore tra 1 e 100
+/>
+```
+
+Valori più bassi producono file più piccoli ma qualità visiva inferiore. Il valore predefinito è 75.
+
+## Metadati delle Pagine
+
+I metadati delle pagine sono informazioni che descrivono il contenuto di una pagina. Sono utilizzati dai motori di ricerca per comprendere e indicizzare il contenuto.
+
+### Metadati Statici
+
+Per pagine con metadati che non cambiano, è possibile esportare un oggetto `metadata`:
+
+```jsx
+// app/page.js
+export const metadata = {
+  title: 'Latest Posts',
+  description: 'Browse our latest posts',
+}
+
+export default function HomePage() {
+  return (
+    <main>
+      {/* Contenuto della pagina */}
+    </main>
+  )
+}
+```
+
+**Campi comuni**:
+- `title`: titolo della pagina (mostrato nella tab del browser e nei risultati di ricerca)
+- `description`: descrizione della pagina (mostrata nei risultati di ricerca)
+
+### Metadati nel Layout
+
+I metadati possono essere impostati anche nei layout e vengono ereditati dalle pagine:
+
+```jsx
+// app/layout.js
+export const metadata = {
+  title: 'My Next.js App',
+  description: 'A Next.js application',
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="it">
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+**Comportamento**:
+- I metadati del layout vengono uniti con i metadati delle pagine
+- I metadati delle pagine hanno priorità e sovrascrivono quelli del layout
+- Se una pagina non definisce un campo, viene utilizzato quello del layout
+
+### Metadati Dinamici
+
+Per pagine con contenuto dinamico, è possibile utilizzare la funzione `generateMetadata`:
+
+```jsx
+// app/feed/page.js
+import { getPosts } from '@/lib/posts'
+
+export async function generateMetadata() {
+  const posts = await getPosts()
+  
+  return {
+    title: `Browse all our ${posts.length} posts`,
+    description: 'Browse all our posts',
+  }
+}
+
+export default async function FeedPage() {
+  const posts = await getPosts()
+  return (
+    <main>
+      {/* Contenuto della pagina */}
+    </main>
+  )
+}
+```
+
+La funzione `generateMetadata`:
+- Deve essere `async`
+- Riceve automaticamente un oggetto con `params` e `searchParams`
+- Deve restituire un oggetto con la stessa struttura di `metadata`
+
+### Metadati per Route Dinamiche
+
+Per route dinamiche, `generateMetadata` riceve i parametri della route:
+
+```jsx
+// app/posts/[slug]/page.js
+export async function generateMetadata({ params }) {
+  const post = await getPost(params.slug)
+  
+  if (!post) {
+    return {
+      title: 'Post not found',
+    }
+  }
+  
+  return {
+    title: post.title,
+    description: post.excerpt,
+  }
+}
+```
+
+### Metadati Open Graph
+
+Per controllare come le pagine appaiono quando condivise su social media:
+
+```jsx
+export const metadata = {
+  title: 'My Page',
+  description: 'Page description',
+  openGraph: {
+    title: 'My Page',
+    description: 'Page description',
+    images: ['/og-image.png'],
+  },
+}
+```
+
+I metadati Open Graph controllano:
+- L'immagine mostrata quando si condivide un link
+- Il titolo e la descrizione mostrati
+- Altri dettagli della preview
+
+## Best Practices
+
+### Ottimizzazione Immagini
+
+- **Ridimensionare immagini di input**: utilizzare immagini già ottimizzate come base
+- **Usare `priority` per immagini above-the-fold**: migliora il LCP
+- **Configurare `sizes` correttamente**: per immagini responsive
+- **Sfruttare custom loader**: quando si utilizzano servizi di ottimizzazione immagini
+- **Impostare `quality` appropriato**: bilanciare qualità e dimensione file
+
+### Metadati
+
+- **Impostare metadati in ogni pagina**: migliora SEO e condivisioni social
+- **Usare metadati dinamici quando necessario**: per contenuto che cambia
+- **Definire metadati di base nel layout**: per garantire metadati minimi su tutte le pagine
+- **Includere Open Graph**: per migliorare la condivisione sui social media
+- **Mantenere descrizioni concise**: 150-160 caratteri per risultati di ricerca ottimali
+
+### Performance
+
+- **Evitare immagini troppo grandi**: anche con ottimizzazione, immagini di input molto grandi possono rallentare il processo
+- **Utilizzare formati moderni**: Next.js serve automaticamente WebP quando supportato
+- **Lazy load quando possibile**: non aggiungere `priority` a immagini che non sono immediatamente visibili
+
+## Documentazione di Riferimento
+
+Per configurazioni più avanzate e casi d'uso specifici, consultare:
+
+- **Ottimizzazione immagini**: [Documentazione ufficiale Next.js](https://nextjs.org/docs/app/building-your-application/optimizing/images)
+- **Metadati API**: [Documentazione ufficiale Next.js](https://nextjs.org/docs/app/api-reference/functions/generate-metadata)
+
+Queste risorse contengono informazioni dettagliate su tutte le opzioni disponibili per ottimizzare immagini e metadati.
+
+## Conclusione
+
+L'ottimizzazione delle immagini e la configurazione dei metadati sono aspetti fondamentali per costruire applicazioni Next.js performanti e ben indicizzate:
+
+- **Componente Image**: semplifica l'ottimizzazione delle immagini con funzionalità automatiche
+- **Metadati statici e dinamici**: permettono di controllare come le pagine appaiono nei motori di ricerca e quando condivise
+- **Configurazioni avanzate**: custom loader e metadati Open Graph per casi d'uso specifici
+
+Implementare queste ottimizzazioni migliora significativamente le prestazioni, l'esperienza utente e la visibilità dell'applicazione.

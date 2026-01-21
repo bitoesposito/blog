@@ -1,0 +1,675 @@
+---
+title: 'Routing Avanzato e Rendering delle Pagine in Next.js'
+description: 'Pattern avanzati di routing in Next.js: parallel routes, catch-all routes, intercepting routes, route groups, route handlers e middleware'
+date: 2025-10-16
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 2
+---
+
+## Introduzione
+
+Questo capitolo approfondisce i pattern avanzati di routing e rendering delle pagine in Next.js. Costruisce sulle conoscenze acquisite nel capitolo degli essentials, esplorando funzionalità più sofisticate come **parallel routes**, **catch-all routes**, **intercepting routes**, **route groups**, **route handlers** e **middleware**.
+
+Queste funzionalità permettono di costruire applicazioni più complesse con pattern di navigazione avanzati, gestione di route multiple simultanee e controllo granulare sul comportamento delle route.
+
+## Route Dinamiche Annidate
+
+Next.js supporta route dinamiche annidate all'interno di altre route dinamiche. Questo permette di creare strutture di navigazione gerarchiche complesse.
+
+### Esempio: News con Dettagli
+
+```jsx
+// app/news/[slug]/page.js
+import { notFound } from 'next/navigation'
+import { DUMMY_NEWS } from '@/dummy-news'
+
+export default function NewsDetailPage({ params }) {
+  const newsItem = DUMMY_NEWS.find(item => item.slug === params.slug)
+  
+  if (!newsItem) {
+    notFound()
+  }
+  
+  return (
+    <article className="news-article">
+      <header>
+        <img src={`/images/news/${newsItem.image}`} alt={newsItem.title} />
+        <h1>{newsItem.title}</h1>
+        <time dateTime={newsItem.date}>{newsItem.date}</time>
+      </header>
+      <p>{newsItem.content}</p>
+    </article>
+  )
+}
+```
+
+Le route annidate ereditano i parametri della route padre. Una route dinamica annidata può accedere ai parametri della route dinamica che la contiene.
+
+## Parallel Routes
+
+Le **parallel routes** permettono di renderizzare il contenuto di due o più route separate simultaneamente sulla stessa pagina. Questo pattern è utile quando si vuole mostrare contenuto indipendente in sezioni diverse della stessa pagina.
+
+### Configurazione delle Parallel Routes
+
+Le parallel routes vengono create utilizzando cartelle che iniziano con il simbolo `@`:
+
+```
+app/
+  archive/
+    @archive/
+      page.js
+    @latest/
+      page.js
+    layout.js
+```
+
+```jsx
+// app/archive/layout.js
+export default function ArchiveLayout({ children, archive, latest }) {
+  return (
+    <div>
+      <h1>News Archive</h1>
+      <section id="archive-filter">
+        {archive}
+      </section>
+      <section id="archive-latest">
+        {latest}
+      </section>
+    </div>
+  )
+}
+```
+
+Il layout riceve automaticamente props con nomi corrispondenti alle cartelle parallel route (senza il simbolo `@`).
+
+### Default per Parallel Routes
+
+Quando una parallel route non ha una pagina corrispondente per un determinato path, è necessario fornire un file `default.js`:
+
+```jsx
+// app/archive/@latest/default.js
+export default function LatestDefault() {
+  return (
+    <>
+      <h2>Latest News</h2>
+      <NewsList news={getLatestNews()} />
+    </>
+  )
+}
+```
+
+Questo file viene utilizzato quando la parallel route non ha una pagina più specifica per il path corrente.
+
+## Catch-All Routes
+
+Le **catch-all routes** permettono di catturare tutti i segmenti di path dopo una determinata route, indipendentemente dal loro numero. Questo pattern è utile per creare pagine che gestiscono percorsi dinamici di lunghezza variabile.
+
+### Sintassi delle Catch-All Routes
+
+Le catch-all routes utilizzano tre punti (`...`) prima del nome del parametro:
+
+```
+app/
+  archive/
+    [...filter]/
+      page.js
+```
+
+```jsx
+// app/archive/[...filter]/page.js
+export default function FilteredArchivePage({ params }) {
+  const filter = params.filter // Array di stringhe
+  
+  const selectedYear = filter?.[0]
+  const selectedMonth = filter?.[1]
+  
+  let news = undefined
+  
+  if (selectedYear && !selectedMonth) {
+    news = getNewsForYear(selectedYear)
+  } else if (selectedYear && selectedMonth) {
+    news = getNewsForYearAndMonth(selectedYear, selectedMonth)
+  }
+  
+  return (
+    <>
+      <header id="archive-header">
+        <nav>
+          <ul>
+            {links.map(link => (
+              <li key={link}>
+                <Link href={selectedYear 
+                  ? `/archive/${selectedYear}/${link}`
+                  : `/archive/${link}`
+                }>
+                  {link}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </header>
+      {news && news.length > 0 ? (
+        <NewsList news={news} />
+      ) : (
+        <p>No news found for the selected period.</p>
+      )}
+    </>
+  )
+}
+```
+
+Il parametro `filter` sarà un array contenente tutti i segmenti di path catturati. Se non ci sono segmenti, sarà `undefined`.
+
+### Validazione nelle Catch-All Routes
+
+È importante validare i valori catturati per evitare errori:
+
+```jsx
+export default function FilteredArchivePage({ params }) {
+  const filter = params.filter
+  const selectedYear = filter?.[0]
+  const selectedMonth = filter?.[1]
+  
+  const availableYears = getAvailableNewsYears()
+  const availableMonths = selectedYear 
+    ? getAvailableNewsMonths(selectedYear) 
+    : []
+  
+  if (
+    (selectedYear && !availableYears.includes(Number(selectedYear))) ||
+    (selectedMonth && !availableMonths.includes(Number(selectedMonth)))
+  ) {
+    throw new Error('Invalid filter')
+  }
+  
+  // ... resto del codice
+}
+```
+
+## Intercepting Routes
+
+Le **intercepting routes** permettono di mostrare una pagina diversa a seconda di come si arriva a quella route. Se si naviga internamente (tramite link), viene mostrata una versione "intercettata" della pagina. Se si arriva tramite reload o URL diretto, viene mostrata la versione standard.
+
+### Configurazione delle Intercepting Routes
+
+Le intercepting routes utilizzano parentesi tonde `()` nel nome della cartella:
+
+```
+app/
+  news/
+    [slug]/
+      (.)image/
+        page.js
+      image/
+        page.js
+      page.js
+```
+
+Il pattern `(.)image` indica che questa route intercetta la route `image` nella stessa cartella. Il punto `.` rappresenta il percorso relativo alla route da intercettare.
+
+```jsx
+// app/news/[slug]/(.)image/page.js - Route intercettata
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function InterceptedImagePage({ params }) {
+  const router = useRouter()
+  const newsItem = DUMMY_NEWS.find(item => item.slug === params.slug)
+  
+  if (!newsItem) {
+    notFound()
+  }
+  
+  return (
+    <>
+      <div 
+        className="modal-backdrop"
+        onClick={() => router.back()}
+      >
+        <dialog className="modal" open>
+          <img 
+            src={`/images/news/${newsItem.image}`} 
+            alt={newsItem.title} 
+          />
+        </dialog>
+      </div>
+    </>
+  )
+}
+```
+
+```jsx
+// app/news/[slug]/image/page.js - Route standard
+export default function ImagePage({ params }) {
+  const newsItem = DUMMY_NEWS.find(item => item.slug === params.slug)
+  
+  if (!newsItem) {
+    notFound()
+  }
+  
+  return (
+    <div className="fullscreen-image">
+      <img 
+        src={`/images/news/${newsItem.image}`} 
+        alt={newsItem.title} 
+      />
+    </div>
+  )
+}
+```
+
+### Intercepting Routes con Parallel Routes
+
+Le intercepting routes possono essere combinate con parallel routes per creare modali che appaiono sopra il contenuto esistente:
+
+```
+app/
+  news/
+    [slug]/
+      @modal/
+        (.)image/
+          page.js
+        default.js
+      layout.js
+      page.js
+```
+
+```jsx
+// app/news/[slug]/layout.js
+export default function NewsDetailLayout({ children, modal }) {
+  return (
+    <>
+      {modal}
+      {children}
+    </>
+  )
+}
+```
+
+```jsx
+// app/news/[slug]/@modal/default.js
+export default function ModalDefault() {
+  return null
+}
+```
+
+Questo pattern permette di mostrare un'immagine in modal quando si clicca su di essa, mantenendo la pagina di dettaglio visibile in background.
+
+## Route Groups
+
+I **route groups** permettono di organizzare le route in gruppi logici senza influenzare la struttura URL. Questo è utile quando si vogliono applicare layout diversi a diverse sezioni dell'applicazione.
+
+### Configurazione dei Route Groups
+
+I route groups utilizzano parentesi tonde `()` nel nome della cartella:
+
+```
+app/
+  (content)/
+    layout.js
+    news/
+      page.js
+    archive/
+      page.js
+  (marketing)/
+    layout.js
+    page.js
+```
+
+Le cartelle con parentesi non aggiungono segmenti all'URL. `/news` rimane `/news`, non diventa `/(content)/news`.
+
+```jsx
+// app/(content)/layout.js
+import MainHeader from '@/components/main-header'
+
+export default function ContentLayout({ children }) {
+  return (
+    <div id="page">
+      <MainHeader />
+      {children}
+    </div>
+  )
+}
+```
+
+```jsx
+// app/(marketing)/layout.js
+export default function MarketingLayout({ children }) {
+  return (
+    <main>
+      {children}
+    </main>
+  )
+}
+```
+
+Ogni route group può avere il proprio layout, permettendo di avere navigazione diversa, stili diversi o struttura diversa per diverse sezioni dell'applicazione.
+
+### Nota Importante sui Route Groups
+
+Quando si utilizzano route groups, tutti i file speciali come `not-found.js` devono essere all'interno di un route group, non alla radice della cartella `app`:
+
+```
+app/
+  (content)/
+    not-found.js
+    layout.js
+    news/
+      page.js
+```
+
+## Route Handlers
+
+I **Route Handlers** permettono di creare endpoint API direttamente nell'applicazione Next.js senza necessità di un server API separato. Sono utili per gestire richieste HTTP che non restituiscono pagine HTML.
+
+### Creazione di Route Handlers
+
+I Route Handlers utilizzano il file `route.js`:
+
+```
+app/
+  api/
+    route.js
+```
+
+```jsx
+// app/api/route.js
+import { NextResponse } from 'next/server'
+
+export async function GET(request) {
+  // Logica per gestire richieste GET
+  return NextResponse.json({ message: 'Hello!' })
+}
+
+export async function POST(request) {
+  const body = await request.json()
+  // Logica per gestire richieste POST
+  return NextResponse.json({ success: true })
+}
+```
+
+I Route Handlers esportano funzioni con nomi corrispondenti ai metodi HTTP (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, ecc.).
+
+### Utilizzo dei Route Handlers
+
+I Route Handlers possono essere chiamati da qualsiasi client:
+
+```jsx
+// Chiamata da un componente client
+'use client'
+
+export default function MyComponent() {
+  async function handleSubmit() {
+    const response = await fetch('/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: 'value' })
+    })
+    const result = await response.json()
+  }
+  
+  return <button onClick={handleSubmit}>Submit</button>
+}
+```
+
+I Route Handlers sono Server Components di default e possono accedere direttamente a database e altre risorse server-side.
+
+## Middleware
+
+Il **middleware** in Next.js permette di eseguire codice prima che una richiesta venga completata. È utile per autenticazione, redirect, modifiche alle richieste e logging.
+
+### Configurazione del Middleware
+
+Il middleware viene creato con un file `middleware.js` nella root del progetto:
+
+```jsx
+// middleware.js
+import { NextResponse } from 'next/server'
+
+export function middleware(request) {
+  // Logica del middleware
+  console.log(request.url)
+  
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: '/news/:path*',
+}
+```
+
+Il middleware viene eseguito per ogni richiesta che corrisponde al pattern definito in `config.matcher`.
+
+### Utilizzo Comune del Middleware
+
+```jsx
+// middleware.js
+import { NextResponse } from 'next/server'
+
+export function middleware(request) {
+  // Esempio: redirect basato su autenticazione
+  const isAuthenticated = checkAuth(request)
+  
+  if (!isAuthenticated && request.nextUrl.pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+  
+  // Esempio: aggiungere header personalizzati
+  const response = NextResponse.next()
+  response.headers.set('X-Custom-Header', 'value')
+  
+  return response
+}
+
+export const config = {
+  matcher: [
+    '/news/:path*',
+    '/admin/:path*',
+  ],
+}
+```
+
+Il `matcher` può essere una stringa, un array di stringhe o un pattern più complesso utilizzando espressioni regolari.
+
+## Server Components vs Client Components: Approfondimento
+
+È importante comprendere quando utilizzare Server Components e quando utilizzare Client Components.
+
+### Server Components: Quando Utilizzarli
+
+I Server Components sono la scelta predefinita e dovrebbero essere utilizzati quando:
+
+- Si accede a database o file system
+- Si utilizzano API keys o credenziali sensibili
+- Si vuole ridurre il JavaScript inviato al client
+- Il componente non richiede interattività
+
+```jsx
+// Server Component (default)
+import { getMeals } from '@/lib/meals'
+
+export default async function MealsPage() {
+  const meals = await getMeals() // Eseguito solo sul server
+  
+  return <MealsGrid meals={meals} />
+}
+```
+
+### Client Components: Quando Utilizzarli
+
+I Client Components devono essere utilizzati quando:
+
+- Si utilizzano hooks di React (`useState`, `useEffect`, `useContext`)
+- Si gestiscono eventi del browser (`onClick`, `onChange`)
+- Si accede ad API del browser (`localStorage`, `window`)
+- Si utilizzano librerie che richiedono il browser
+
+```jsx
+'use client'
+
+import { useState } from 'react'
+
+export default function InteractiveComponent() {
+  const [count, setCount] = useState(0)
+  
+  return (
+    <button onClick={() => setCount(count + 1)}>
+      Count: {count}
+    </button>
+  )
+}
+```
+
+### Pattern: Minimizzare i Client Components
+
+Quando è necessario utilizzare un Client Component, è buona pratica mantenerlo il più piccolo possibile:
+
+```jsx
+// ❌ Non ideale: tutto il componente è client
+'use client'
+
+import { usePathname } from 'next/navigation'
+
+export default function Header() {
+  const pathname = usePathname()
+  
+  return (
+    <header>
+      <nav>
+        <Link href="/" className={pathname === '/' ? 'active' : ''}>
+          Home
+        </Link>
+        <Link href="/news" className={pathname === '/news' ? 'active' : ''}>
+          News
+        </Link>
+      </nav>
+    </header>
+  )
+}
+```
+
+```jsx
+// ✅ Meglio: solo la parte necessaria è client
+// components/Header.js - Server Component
+import NavLink from './NavLink'
+
+export default function Header() {
+  return (
+    <header>
+      <nav>
+        <NavLink href="/">Home</NavLink>
+        <NavLink href="/news">News</NavLink>
+      </nav>
+    </header>
+  )
+}
+
+// components/NavLink.js - Client Component
+'use client'
+
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
+
+export default function NavLink({ href, children }) {
+  const pathname = usePathname()
+  const isActive = pathname === href || pathname.startsWith(href + '/')
+  
+  return (
+    <Link href={href} className={isActive ? 'active' : ''}>
+      {children}
+    </Link>
+  )
+}
+```
+
+Questo pattern mantiene la maggior parte del codice come Server Components, migliorando le prestazioni.
+
+## Navigazione Programmatica
+
+Next.js fornisce il hook `useRouter` per la navigazione programmatica:
+
+```jsx
+'use client'
+
+import { useRouter } from 'next/navigation'
+
+export default function MyComponent() {
+  const router = useRouter()
+  
+  function handleBack() {
+    router.back() // Torna alla pagina precedente
+  }
+  
+  function handlePush() {
+    router.push('/news') // Naviga a una nuova pagina
+  }
+  
+  function handleRefresh() {
+    router.refresh() // Ricarica la pagina corrente
+  }
+  
+  return (
+    <div>
+      <button onClick={handleBack}>Back</button>
+      <button onClick={handlePush}>Go to News</button>
+      <button onClick={handleRefresh}>Refresh</button>
+    </div>
+  )
+}
+```
+
+## Gestione degli Errori nelle Route Avanzate
+
+Quando si utilizzano pattern di routing avanzati, è importante gestire correttamente gli errori:
+
+```jsx
+// app/archive/[...filter]/error.js
+'use client'
+
+export default function FilterError({ error }) {
+  return (
+    <div id="error">
+      <h2>An error occurred</h2>
+      <p>Invalid path. Please check your URL.</p>
+    </div>
+  )
+}
+```
+
+Il componente di errore deve essere un Client Component perché gli errori possono verificarsi sia sul server che sul client.
+
+## Best Practices
+
+### Organizzazione delle Route
+
+- Utilizzare route groups per organizzare route con layout comuni
+- Mantenere le route dinamiche il più specifiche possibile
+- Utilizzare catch-all routes solo quando necessario
+
+### Performance
+
+- Preferire Server Components quando possibile
+- Minimizzare l'uso di Client Components
+- Utilizzare parallel routes per caricare contenuto indipendente simultaneamente
+
+### Manutenibilità
+
+- Documentare pattern di routing complessi
+- Utilizzare nomi descrittivi per route dinamiche
+- Validare sempre i parametri delle route dinamiche
+
+## Conclusione
+
+Questi pattern avanzati di routing permettono di costruire applicazioni Next.js complesse con navigazione sofisticata e controllo granulare sul comportamento delle route. Ogni pattern ha i suoi casi d'uso specifici:
+
+- **Parallel Routes**: per contenuto indipendente sulla stessa pagina
+- **Catch-All Routes**: per percorsi dinamici di lunghezza variabile
+- **Intercepting Routes**: per modali e overlay
+- **Route Groups**: per organizzare route con layout diversi
+- **Route Handlers**: per endpoint API
+- **Middleware**: per logica cross-cutting su tutte le richieste
+
+Comprendere questi pattern permette di scegliere la soluzione più appropriata per ogni scenario specifico.
