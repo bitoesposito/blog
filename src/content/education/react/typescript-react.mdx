@@ -1,0 +1,430 @@
+---
+title: 'TypeScript con React'
+description: "Come utilizzare TypeScript con React per aggiungere type safety ai componenti, props, state, refs e context"
+date: 2026-01-21
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 23
+---
+
+## Introduzione
+
+TypeScript è un superset di JavaScript che aggiunge type safety statica. Con React, TypeScript permette di definire tipi per componenti, props, state e altri elementi, aiutando a prevenire errori durante lo sviluppo invece che a runtime. Questo articolo spiega come funziona TypeScript con React.
+
+## Cos'è TypeScript
+
+TypeScript estende JavaScript aggiungendo annotazioni di tipo. Il codice TypeScript viene compilato in JavaScript prima dell'esecuzione:
+
+```typescript
+// JavaScript: nessun controllo di tipo
+function add(a, b) {
+  return a + b;
+}
+add("2", "5"); // "25" (concatenazione)
+
+// TypeScript: type annotations
+function add(a: number, b: number): number {
+  return a + b;
+}
+add("2", "5"); // ❌ Errore: string non assegnabile a number
+```
+
+TypeScript usa type inference quando possibile, quindi non è necessario annotare ogni tipo esplicitamente.
+
+## Tipi Base
+
+### Primitivi
+
+```typescript
+let age: number = 30;
+let username: string = "John";
+let isInstructor: boolean = true;
+```
+
+### Array
+
+```typescript
+let hobbies: string[] = ["reading", "coding"];
+// oppure
+let hobbies: Array<string> = ["reading", "coding"];
+```
+
+### Oggetti
+
+```typescript
+let person: {
+  name: string;
+  age: number;
+} = {
+  name: "John",
+  age: 30
+};
+```
+
+### Type Inference
+
+TypeScript inferisce i tipi quando si assegna un valore immediatamente:
+
+```typescript
+let course = "React Guide"; // TypeScript inferisce: string
+course = 123; // ❌ Errore: number non assegnabile a string
+```
+
+### Union Types
+
+Permettono di accettare più tipi:
+
+```typescript
+let course: string | number = "React";
+course = 123; // ✅ Valido
+```
+
+### Type Aliases
+
+Evitano duplicazione di definizioni di tipo:
+
+```typescript
+type Person = {
+  name: string;
+  age: number;
+};
+
+let person: Person = { name: "John", age: 30 };
+let people: Person[] = [person];
+```
+
+## Funzioni e Tipi
+
+```typescript
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+// Return type void per funzioni che non ritornano nulla
+function printOutput(value: any): void {
+  console.log(value);
+}
+```
+
+Il return type può essere omesso se TypeScript lo può inferire.
+
+## Generics
+
+I generics permettono di creare funzioni type-safe ma flessibili:
+
+```typescript
+function insertAtBeginning<T>(array: T[], value: T): T[] {
+  return [value, ...array];
+}
+
+const numbers = insertAtBeginning([1, 2, 3], 0); // T inferito come number
+const strings = insertAtBeginning(["a", "b"], "c"); // T inferito come string
+```
+
+`T` è un placeholder di tipo che viene inferito quando si chiama la funzione.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Array come Generic Type</summary>
+<div class="px-4 pb-4">
+
+`number[]` è syntactic sugar per `Array<number>`. Tutti gli array sono di tipo `Array`, ma il tipo ha senso solo se si specifica il tipo degli elementi:
+
+```typescript
+let numbers: Array<number> = [1, 2, 3];
+// equivalente a
+let numbers: number[] = [1, 2, 3];
+```
+
+</div>
+</details>
+
+## Setup React con TypeScript
+
+Creare un progetto React con TypeScript:
+
+```bash
+npx create-react-app my-app --template typescript
+```
+
+I file hanno estensione `.tsx` invece di `.jsx` quando contengono JSX. Il TypeScript compiler viene eseguito automaticamente durante lo sviluppo e il build.
+
+### Dipendenze
+
+Oltre a `typescript`, sono necessari i pacchetti `@types` per le librerie JavaScript:
+
+```json
+{
+  "dependencies": {
+    "react": "^18.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0"
+  }
+}
+```
+
+## Componenti Funzionali con Props
+
+I componenti funzionali usano `React.FC` (Functional Component) come tipo:
+
+```typescript
+import React from 'react';
+
+type TodosProps = {
+  items: string[];
+};
+
+const Todos: React.FC<TodosProps> = (props) => {
+  return (
+    <ul>
+      {props.items.map(item => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+};
+
+export default Todos;
+```
+
+`React.FC` è un generic type che merge le props custom con le props base (come `children`). Le angle brackets (`<>`) specificano il tipo concreto per questa istanza del generic.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">React.FC e Generic Types</summary>
+<div class="px-4 pb-4">
+
+Quando si usa `React.FC<PropsType>`, si sta usando un generic type già definito da React. Le angle brackets non creano un nuovo generic, ma specificano il tipo concreto da usare per questa istanza:
+
+```typescript
+// React.FC è definito internamente come:
+// type FC<P = {}> = (props: P & { children?: ReactNode }) => JSX.Element
+
+// Quando si scrive:
+const Component: React.FC<MyProps> = (props) => { ... }
+
+// Si sta dicendo: usa React.FC con P = MyProps
+// Quindi props avrà tipo MyProps & { children?: ReactNode }
+```
+
+</div>
+</details>
+
+## Modelli di Dati con Classi
+
+Le classi possono essere usate come modelli di dati e come tipi:
+
+```typescript
+// models/todo.ts
+export class Todo {
+  id: string;
+  text: string;
+
+  constructor(todoText: string) {
+    this.text = todoText;
+    this.id = new Date().toISOString();
+  }
+}
+```
+
+La classe può essere usata sia come costruttore che come tipo:
+
+```typescript
+import { Todo } from './models/todo';
+
+const todos: Todo[] = [
+  new Todo("Learn React"),
+  new Todo("Learn TypeScript")
+];
+```
+
+## State con TypeScript
+
+`useState` è un generic function, quindi si può specificare il tipo dello state:
+
+```typescript
+import { useState } from 'react';
+import { Todo } from './models/todo';
+
+function App() {
+  // Specificare il tipo per evitare che TypeScript inferisca "never[]"
+  const [todos, setTodos] = useState<Todo[]>([]);
+
+  const addTodoHandler = (text: string) => {
+    const newTodo = new Todo(text);
+    setTodos(prevTodos => prevTodos.concat(newTodo));
+  };
+
+  return <Todos items={todos} />;
+}
+```
+
+Senza specificare il tipo, TypeScript inferisce `never[]` per un array vuoto iniziale.
+
+## Refs con TypeScript
+
+I refs devono specificare il tipo dell'elemento HTML a cui si connettono:
+
+```typescript
+import { useRef, FormEvent } from 'react';
+
+function NewTodo() {
+  const todoTextInputRef = useRef<HTMLInputElement>(null);
+
+  const submitHandler = (event: FormEvent) => {
+    event.preventDefault();
+    const enteredText = todoTextInputRef.current!.value;
+    // ...
+  };
+
+  return (
+    <form onSubmit={submitHandler}>
+      <input type="text" id="text" ref={todoTextInputRef} />
+      <button>Add Todo</button>
+    </form>
+  );
+}
+```
+
+- `useRef<HTMLInputElement>(null)`: specifica che il ref conterrà un `HTMLInputElement`
+- `FormEvent`: tipo dell'evento per form submission
+- `!`: operatore di non-null assertion quando si è certi che il valore non sia null
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Operatori ? e !</summary>
+<div class="px-4 pb-4">
+
+Quando si accede a proprietà che potrebbero essere null/undefined:
+
+- **`?`** (optional chaining): prova ad accedere, ritorna `undefined` se null
+  ```typescript
+  const value = ref.current?.value; // string | undefined
+  ```
+
+- **`!`** (non-null assertion): asserisce che il valore non è null
+  ```typescript
+  const value = ref.current!.value; // string
+  ```
+
+Usare `!` solo quando si è certi che il valore non sia null.
+
+</div>
+</details>
+
+## Props con Funzioni
+
+Quando si passano funzioni come props, si definisce il tipo della funzione:
+
+```typescript
+type NewTodoProps = {
+  onAddTodo: (text: string) => void;
+};
+
+const NewTodo: React.FC<NewTodoProps> = (props) => {
+  const submitHandler = (event: FormEvent) => {
+    // ...
+    props.onAddTodo(enteredText);
+  };
+  // ...
+};
+```
+
+La sintassi `(text: string) => void` definisce una funzione che:
+- Prende un parametro `text` di tipo `string`
+- Ritorna `void` (nessun valore)
+
+## Context API con TypeScript
+
+Il Context deve definire il tipo del valore che gestisce:
+
+```typescript
+import { createContext, useState, ReactNode } from 'react';
+import { Todo } from './models/todo';
+
+type TodosContextObj = {
+  items: Todo[];
+  addTodo: (text: string) => void;
+  removeTodo: (id: string) => void;
+};
+
+export const TodosContext = createContext<TodosContextObj>({
+  items: [],
+  addTodo: () => {},
+  removeTodo: () => {}
+});
+
+export const TodosContextProvider: React.FC<{ children: ReactNode }> = (props) => {
+  const [todos, setTodos] = useState<Todo[]>([]);
+
+  const addTodoHandler = (text: string) => {
+    const newTodo = new Todo(text);
+    setTodos(prevTodos => prevTodos.concat(newTodo));
+  };
+
+  const removeTodoHandler = (id: string) => {
+    setTodos(prevTodos => prevTodos.filter(todo => todo.id !== id));
+  };
+
+  const contextValue: TodosContextObj = {
+    items: todos,
+    addTodo: addTodoHandler,
+    removeTodo: removeTodoHandler
+  };
+
+  return (
+    <TodosContext.Provider value={contextValue}>
+      {props.children}
+    </TodosContext.Provider>
+  );
+};
+```
+
+`createContext` è un generic function che accetta il tipo del context value. Il tipo viene usato per type-checking quando si usa `useContext`.
+
+## tsconfig.json
+
+Il file `tsconfig.json` configura il TypeScript compiler:
+
+```json
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "strict": true,
+    "jsx": "react-jsx"
+  }
+}
+```
+
+Opzioni principali:
+- **`target`**: versione JavaScript di output (es. `es5`, `es2020`)
+- **`lib`**: librerie di tipo incluse (es. `dom` per tipi DOM come `HTMLInputElement`)
+- **`strict`**: abilita controlli rigorosi (es. no implicit `any`)
+- **`jsx`**: come gestire JSX (`react-jsx` per React 17+)
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Strict Mode</summary>
+<div class="px-4 pb-4">
+
+Con `"strict": true`, TypeScript:
+- Non permette implicit `any` (devi esplicitare i tipi)
+- Controlla null/undefined più rigorosamente
+- Abilita altri controlli di type safety
+
+Se un parametro non ha tipo e TypeScript non può inferirlo, si ottiene un errore invece di `any` implicito.
+
+</div>
+</details>
+
+## Riepilogo
+
+- **TypeScript**: Superset di JavaScript che aggiunge type safety statica; il codice viene compilato in JavaScript
+- **Tipi base**: `number`, `string`, `boolean`, array (`T[]` o `Array<T>`), oggetti, union types (`string | number`)
+- **Type inference**: TypeScript inferisce i tipi quando possibile; annotare esplicitamente solo quando necessario
+- **Type aliases**: Usare `type` per evitare duplicazione di definizioni di tipo
+- **Generics**: Permettono funzioni type-safe ma flessibili usando placeholder di tipo (`<T>`)
+- **React.FC**: Tipo per componenti funzionali; generic che merge props custom con props base
+- **useState**: Generic function; specificare il tipo per evitare `never[]` con array vuoti iniziali
+- **Refs**: Specificare il tipo dell'elemento HTML (`useRef<HTMLInputElement>(null)`)
+- **Event types**: `FormEvent` per form submission, `MouseEvent` per click, ecc.
+- **Context**: `createContext` è generic; definire il tipo del context value
+- **tsconfig.json**: Configura il compiler; `strict: true` abilita controlli rigorosi
