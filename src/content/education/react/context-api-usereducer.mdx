@@ -468,33 +468,9 @@ Il `Consumer` richiede una funzione come child (render prop pattern) che riceve 
 
 ## useReducer: Gestire State Complesso
 
-Quando si gestisce state complesso con molte proprietà e logica di aggiornamento, `useState` può diventare difficile da gestire. Si finisce spesso a scrivere funzioni di aggiornamento complesse che utilizzano la forma funzionale di `setState` per accedere allo state precedente.
+Quando si gestisce state complesso con molte proprietà e logica di aggiornamento, `useState` può diventare difficile da gestire. `useReducer` è un'alternativa che utilizza il pattern del **reducer** per organizzare la logica di aggiornamento.
 
-React fornisce l'hook `useReducer` come alternativa a `useState` per gestire state più complesso utilizzando il pattern del **reducer**.
-
-### Cos'è un Reducer
-
-Un **reducer** è una funzione che "riduce" uno o più valori complessi a un valore più semplice. In JavaScript, si è già incontrato questo concetto con il metodo `reduce` degli array:
-
-```jsx
-const numbers = [1, 2, 3, 4, 5];
-const sum = numbers.reduce((acc, num) => acc + num, 0);
-// sum = 15
-```
-
-In questo esempio, `reduce` prende un array di numeri e li riduce a un singolo numero (la somma). La funzione reducer riceve un accumulatore e il valore corrente, e restituisce il nuovo accumulatore.
-
-L'idea dietro `useReducer` è applicare questo stesso concetto alla gestione dello state: si definisce una funzione reducer che prende lo state corrente e un'azione, e restituisce il nuovo state.
-
-### Come Funziona useReducer
-
-`useReducer` è un hook che accetta due argomenti:
-1. Una funzione reducer
-2. Lo state iniziale
-
-E restituisce un array con due elementi:
-1. Lo state corrente
-2. Una funzione `dispatch` per inviare azioni al reducer
+### Sintassi Base
 
 ```jsx
 import { useReducer } from 'react';
@@ -502,209 +478,155 @@ import { useReducer } from 'react';
 const [state, dispatch] = useReducer(reducer, initialState);
 ```
 
-### Creare una Funzione Reducer
+- **reducer**: Funzione che specifica come lo state viene aggiornato
+- **initialState**: Valore iniziale dello state
+- **state**: State corrente
+- **dispatch**: Funzione per inviare azioni al reducer
 
-La funzione reducer accetta due parametri:
-- **state**: Lo snapshot garantito dello state più recente
-- **action**: L'azione dispatchata che descrive come aggiornare lo state
-
-La funzione reducer deve restituire il nuovo state. Tipicamente, si utilizza uno `switch` o una serie di `if` per gestire diversi tipi di azioni:
+### Esempio Base: Counter
 
 ```jsx
-function shoppingCartReducer(state, action) {
-  if (action.type === 'ADD_ITEM') {
-    // Logica per aggiungere un item
-    const existingItem = state.items.find(item => item.id === action.payload);
-    
-    if (existingItem) {
-      return {
-        items: state.items.map(item =>
-          item.id === action.payload
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      };
-    } else {
-      return {
-        items: [...state.items, { id: action.payload, quantity: 1 }]
-      };
-    }
+import { useReducer } from 'react';
+
+// Reducer definito FUORI dal componente
+function reducer(state, action) {
+  if (action.type === 'incremented_age') {
+    return { age: state.age + 1 };
   }
-  
-  if (action.type === 'UPDATE_ITEM') {
-    // Logica per aggiornare la quantità di un item
-    return {
-      items: state.items.map(item =>
-        item.id === action.payload.productId
-          ? { ...item, quantity: item.quantity + action.payload.amount }
-          : item
-      ).filter(item => item.quantity > 0)
-    };
-  }
-  
-  // Restituisce lo state invariato se l'azione non è riconosciuta
-  return state;
+  throw Error('Unknown action.');
+}
+
+export default function Counter() {
+  const [state, dispatch] = useReducer(reducer, { age: 42 });
+
+  return (
+    <>
+      <button onClick={() => dispatch({ type: 'incremented_age' })}>
+        Increment age
+      </button>
+      <p>Hello! You are {state.age}.</p>
+    </>
+  );
 }
 ```
 
-**Nota importante**: Il reducer deve essere una funzione pura. Non deve modificare direttamente lo state esistente, ma deve sempre restituire un nuovo oggetto state.
+**Come funziona**: `dispatch({ type: 'incremented_age' })` invia un'azione al reducer, che calcola il nuovo state. React aggiorna lo state e ri-renderizza il componente.
+
+### Scrivere un Reducer
+
+Il reducer è una **funzione pura** che riceve `(state, action)` e restituisce il nuovo state. Usa `switch` per gestire diversi tipi di azioni:
+
+```jsx
+function reducer(state, action) {
+  switch (action.type) {
+    case 'incremented_age': {
+      return {
+        ...state,
+        age: state.age + 1
+      };
+    }
+    case 'changed_name': {
+      return {
+        ...state,
+        name: action.nextName
+      };
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+```
+
+**Regole importanti**:
+- Deve essere definito **fuori dal componente**
+- Deve essere **puro**: non modifica lo state esistente, restituisce sempre un nuovo oggetto
+- Usa `...state` per copiare tutte le proprietà esistenti
+
+```jsx
+// ❌ SBAGLIATO: modifica lo state esistente
+function reducer(state, action) {
+  state.age++;  // Non fare questo!
+  return state;
+}
+
+// ✅ CORRETTO: restituisce un nuovo oggetto
+function reducer(state, action) {
+  return { ...state, age: state.age + 1 };
+}
+```
 
 ### Dispatchare Azioni
 
-Per aggiornare lo state gestito da `useReducer`, si utilizza la funzione `dispatch` passando un oggetto azione:
-
 ```jsx
-function Product({ id }) {
-  const [shoppingCart, dispatch] = useReducer(
-    shoppingCartReducer,
-    { items: [] }
-  );
-  
-  function handleAddToCart() {
-    dispatch({ type: 'ADD_ITEM', payload: id });
-  }
-  
-  return <button onClick={handleAddToCart}>Add to Cart</button>;
-}
+dispatch({ type: 'ACTION_TYPE', ...altriDati });
 ```
 
-L'oggetto azione può avere qualsiasi struttura, ma è comune utilizzare:
-- **type**: Una stringa che identifica il tipo di azione (es. `'ADD_ITEM'`, `'UPDATE_ITEM'`)
-- **payload**: I dati necessari per eseguire l'azione
+**Importante**: Dopo `dispatch`, lo state non cambia immediatamente. Si aggiorna nel prossimo render (comportamento identico a `useState`).
 
 ### Struttura delle Azioni
 
-Non c'è una struttura obbligatoria per le azioni, ma ci sono alcune convenzioni comuni:
+Le azioni hanno una proprietà `type` (obbligatoria) e possono avere altre proprietà per i dati:
 
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Convenzioni per le azioni</summary>
-<div class="px-4 pb-4">
-
-**Convenzione standard (Flux/Redux)**:
 ```jsx
-dispatch({
-  type: 'ADD_ITEM',        // Stringa in maiuscolo con underscore
-  payload: { id, quantity } // Dati necessari per l'azione
-});
-```
-
-**Alternativa con proprietà specifiche**:
-```jsx
-dispatch({
-  type: 'UPDATE_ITEM',
-  productId: id,
-  amount: 1
-});
-```
-
-**Azioni semplici senza payload**:
-```jsx
+// Azione semplice
 dispatch({ type: 'RESET_CART' });
+
+// Azione con payload (convenzione comune)
+dispatch({ type: 'ADD_ITEM', payload: { id: 1, quantity: 2 } });
+
+// Azione con proprietà specifiche
+dispatch({ type: 'UPDATE_ITEM', productId: 1, amount: 1 });
 ```
 
-La convenzione più comune è utilizzare `type` per identificare l'azione e `payload` per i dati, ma si può scegliere qualsiasi struttura che funzioni per il proprio caso d'uso.
+### Quando Usare useReducer vs useState
 
-</div>
-</details>
+**useReducer** quando:
+- State complesso (oggetti/array con molte proprietà)
+- Logiche di aggiornamento complesse
+- Molte funzioni di aggiornamento simili
 
-`useReducer` è utile quando lo state è complesso (oggetti/array con molte proprietà) e le logiche di aggiornamento sono complesse. Per state semplice (numeri, stringhe, booleani), `useState` è più appropriato.
+**useState** quando:
+- State semplice (numeri, stringhe, booleani)
+- Logiche di aggiornamento semplici
+- Poche funzioni di aggiornamento
 
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Confronto pratico: useState vs useReducer</summary>
-<div class="px-4 pb-4">
+### Esempio: Todo List
 
-**Con `useState`**:
 ```jsx
-function App() {
-  const [cart, setCart] = useState({ items: [] });
-  
-  function handleAddItem(id) {
-    setCart(prevCart => {
-      const existingItem = prevCart.items.find(item => item.id === id);
-      if (existingItem) {
-        return {
-          items: prevCart.items.map(item =>
-            item.id === id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          )
-        };
-      } else {
-        return {
-          items: [...prevCart.items, { id, quantity: 1 }]
-        };
-      }
-    });
+function todosReducer(state, action) {
+  switch (action.type) {
+    case 'added':
+      return [...state, { id: action.id, text: action.text, done: false }];
+    case 'changed':
+      return state.map(todo => 
+        todo.id === action.todo.id ? action.todo : todo
+      );
+    case 'deleted':
+      return state.filter(todo => todo.id !== action.id);
+    default:
+      throw Error('Unknown action: ' + action.type);
   }
-  
-  function handleUpdateQuantity(id, amount) {
-    setCart(prevCart => ({
-      items: prevCart.items.map(item =>
-        item.id === id
-          ? { ...item, quantity: item.quantity + amount }
-          : item
-      ).filter(item => item.quantity > 0)
-    }));
+}
+
+function TodoList() {
+  const [todos, dispatch] = useReducer(todosReducer, []);
+
+  function handleAddTodo(text) {
+    dispatch({ type: 'added', id: nextId++, text });
   }
-  
-  // ... molte altre funzioni simili
+
+  function handleDeleteTodo(id) {
+    dispatch({ type: 'deleted', id });
+  }
+
+  // ... resto del componente
 }
 ```
-
-**Con `useReducer`**:
-```jsx
-function cartReducer(state, action) {
-  if (action.type === 'ADD_ITEM') {
-    const existingItem = state.items.find(item => item.id === action.payload);
-    if (existingItem) {
-      return {
-        items: state.items.map(item =>
-          item.id === action.payload
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      };
-    } else {
-      return {
-        items: [...state.items, { id: action.payload, quantity: 1 }]
-      };
-    }
-  }
-  
-  if (action.type === 'UPDATE_QUANTITY') {
-    return {
-      items: state.items.map(item =>
-        item.id === action.payload.productId
-          ? { ...item, quantity: item.quantity + action.payload.amount }
-          : item
-      ).filter(item => item.quantity > 0)
-    };
-  }
-  
-  return state;
-}
-
-function App() {
-  const [cart, dispatch] = useReducer(cartReducer, { items: [] });
-  
-  function handleAddItem(id) {
-    dispatch({ type: 'ADD_ITEM', payload: id });
-  }
-  
-  function handleUpdateQuantity(id, amount) {
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { productId: id, amount } });
-  }
-}
-```
-
-Con `useReducer`, la logica complessa è separata dal componente, rendendo il componente più pulito e la logica più testabile.
-
-</div>
-</details>
 
 ### Combinare Context API e useReducer
 
-Context API e `useReducer` funzionano molto bene insieme. Si può utilizzare `useReducer` all'interno di un Context Provider per gestire lo state complesso del context:
+Pattern comune: usare `useReducer` all'interno di un Context Provider per gestire state complesso e eliminare prop drilling.
 
 ```jsx
 // store/shopping-cart-context.jsx
@@ -713,40 +635,44 @@ import { createContext, useReducer } from 'react';
 export const CartContext = createContext({
   items: [],
   addItemToCart: () => {},
-  updateItemQuantity: () => {}
+  removeItem: () => {}
 });
 
 function cartReducer(state, action) {
-  if (action.type === 'ADD_ITEM') {
-    // ... logica per aggiungere item
+  switch (action.type) {
+    case 'ADD_ITEM': {
+      const existingItem = state.items.find(item => item.id === action.payload);
+      if (existingItem) {
+        return {
+          items: state.items.map(item =>
+            item.id === action.payload
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        };
+      }
+      return {
+        items: [...state.items, { id: action.payload, quantity: 1 }]
+      };
+    }
+    case 'REMOVE_ITEM':
+      return {
+        items: state.items.filter(item => item.id !== action.payload)
+      };
+    default:
+      return state;
   }
-  
-  if (action.type === 'UPDATE_ITEM') {
-    // ... logica per aggiornare item
-  }
-  
-  return state;
 }
 
 export default function CartContextProvider({ children }) {
-  const [shoppingCart, dispatch] = useReducer(cartReducer, {
-    items: []
-  });
-  
-  function handleAddItemToCart(id) {
-    dispatch({ type: 'ADD_ITEM', payload: id });
-  }
-  
-  function handleUpdateItemQuantity(id, amount) {
-    dispatch({ type: 'UPDATE_ITEM', payload: { productId: id, amount } });
-  }
-  
+  const [shoppingCart, dispatch] = useReducer(cartReducer, { items: [] });
+
   const contextValue = {
     items: shoppingCart.items,
-    addItemToCart: handleAddItemToCart,
-    updateItemQuantity: handleUpdateItemQuantity
+    addItemToCart: (id) => dispatch({ type: 'ADD_ITEM', payload: id }),
+    removeItem: (id) => dispatch({ type: 'REMOVE_ITEM', payload: id })
   };
-  
+
   return (
     <CartContext.Provider value={contextValue}>
       {children}
@@ -755,37 +681,59 @@ export default function CartContextProvider({ children }) {
 }
 ```
 
-Questo pattern combina i vantaggi di entrambi:
-- **Context API**: Elimina il prop drilling
-- **useReducer**: Gestisce lo state complesso in modo organizzato
-
-### Posizionamento del Reducer
-
-La funzione reducer dovrebbe essere definita **fuori** dal componente, perché:
-- Non ha bisogno di accesso a props o altri valori del componente
-- Non dovrebbe essere ricreata ad ogni render
-- È più facile da testare quando è una funzione pura isolata
-
+**Uso**:
 ```jsx
-// ✅ Corretto: reducer fuori dal componente
-function cartReducer(state, action) {
-  // ... logica
-}
+// App.jsx
+<CartContextProvider>
+  <Header />
+  <Shop />
+</CartContextProvider>
 
-function CartContextProvider({ children }) {
-  const [state, dispatch] = useReducer(cartReducer, initialState);
-  // ...
-}
-
-// ❌ Evitare: reducer dentro il componente
-function CartContextProvider({ children }) {
-  function cartReducer(state, action) {
-    // ... logica
-  }
-  const [state, dispatch] = useReducer(cartReducer, initialState);
-  // ...
+// Product.jsx
+function Product({ id }) {
+  const cartCtx = useContext(CartContext);
+  return <button onClick={() => cartCtx.addItemToCart(id)}>Add to Cart</button>;
 }
 ```
+
+### Note Importanti
+
+**Posizionamento del reducer**: Deve essere definito **fuori dal componente** perché è una funzione pura che non ha bisogno di accesso a props o valori del componente, ed evita ricreazioni ad ogni render.
+
+```jsx
+// ✅ CORRETTO: fuori dal componente
+function reducer(state, action) { /* ... */ }
+function Component() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+}
+
+// ❌ SBAGLIATO: dentro il componente
+function Component() {
+  function reducer(state, action) { /* ... */ }
+  const [state, dispatch] = useReducer(reducer, initialState);
+}
+```
+
+**Initializer function (terzo parametro)**: Utile quando lo state iniziale richiede calcoli costosi. Passa la funzione come terzo argomento:
+
+```jsx
+function createInitialState(username) {
+  // Calcoli costosi
+  return { todos: /* ... */ };
+}
+
+// ❌ Chiamata ad ogni render
+const [state, dispatch] = useReducer(reducer, createInitialState(username));
+
+// ✅ Chiamata solo una volta
+const [state, dispatch] = useReducer(reducer, username, createInitialState);
+```
+
+**Problemi comuni**:
+- **State non si aggiorna**: Assicurati di restituire un nuovo oggetto, non modificare lo state esistente
+- **State diventa undefined**: Usa `...state` per copiare tutte le proprietà esistenti
+- **"Too many re-renders"**: Non dispatchare durante il render, solo in event handlers
+- **Reducer eseguito due volte**: Normale in Strict Mode (solo sviluppo), non causa problemi se il reducer è puro
 
 ## Considerazioni sulle Performance
 
@@ -824,10 +772,14 @@ Una convenzione comune è organizzare i context in una cartella `store` o `conte
 
 ## Riepilogo
 
-La **Context API** elimina il prop drilling: si crea un context con `createContext`, si fornisce con un `Provider`, e si accede con `useContext`. Quando il valore del context cambia, tutti i componenti che lo consumano vengono ri-renderizzati.
+**Context API**: Elimina il prop drilling creando un context con `createContext`, fornendolo con un `Provider`, e accedendovi con `useContext`.
 
-**useReducer** gestisce state complesso: si definisce una funzione reducer che prende state e azione, si usa `useReducer` per gestire lo state, e si dispatchano azioni per aggiornarlo. Il reducer deve essere una funzione pura che restituisce sempre un nuovo oggetto state.
+**useReducer**: Gestisce state complesso con il pattern reducer:
+- Sintassi: `const [state, dispatch] = useReducer(reducer, initialState)`
+- Reducer: Funzione pura `(state, action) => newState` definita fuori dal componente
+- Dispatch: `dispatch({ type: 'ACTION_TYPE', ...dati })` per aggiornare lo state
+- Regole: Reducer puro, restituisce sempre nuovo oggetto, usa `...state` per copiare proprietà
 
-La combinazione di Context API e `useReducer` è un pattern comune: il Context elimina il prop drilling mentre `useReducer` organizza la logica di gestione dello state complesso.
+La combinazione Context API + `useReducer` è un pattern comune per gestire state globale complesso senza prop drilling.
 
 
