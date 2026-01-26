@@ -54,11 +54,13 @@ const canonicalUrl = getCanonicalUrl(Astro.url, Astro.site)
 const publishedTime = post.data.date.toISOString()
 const modifiedTime = post.data.date.toISOString()
 
-// Gestisci noindex: Quote può avere noindex esplicito, altri solo se subpost
-const isSubpost = isSubpostFn(post.id)
-const noindex = collection === 'quote' 
-  ? (post.data.noindex ?? false) || isSubpost
-  : isSubpost
+// Gestisci noindex:
+// - Quote: può avere noindex esplicito
+// - Education: sempre indicizzabile
+// - Blog: sempre indicizzabile (anche i subpost si indicizzano)
+const noindex = collection === 'quote'
+  ? (post.data.noindex ?? false)
+  : false
 ---
 
 <title>{`${title} | ${SITE.title}`}</title>

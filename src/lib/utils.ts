@@ -47,6 +47,16 @@ export function getHeadingMargin(depth: number): string {
  * @returns Un URL normalizzato senza query params
  */
 export function getCanonicalUrl(url: URL, site: URL | string | undefined): URL {
+  // Verifica che url sia valido
+  if (!url || !url.pathname) {
+    throw new Error('Invalid URL provided to getCanonicalUrl')
+  }
+
+  // Verifica che site sia definito
+  if (!site) {
+    throw new Error('Site URL is required for canonical URL generation')
+  }
+
   // Normalizza il pathname: mantieni trailing slash solo per la homepage
   const pathname = url.pathname === '/' ? '/' : url.pathname.replace(/\/$/, '')
   
