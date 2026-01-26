@@ -93,3 +93,10 @@ export async function getEducationTOCSections(postId: string): Promise<TOCSectio
   return await getTOCSectionsGeneric('education', postId)
 }
 
+export async function getRecentEducation(
+  count: number,
+): Promise<CollectionEntry<'education'>[]> {
+  const education = await getAllEducation()
+  return education.slice(0, count)
+}
+

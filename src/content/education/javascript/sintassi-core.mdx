@@ -1,0 +1,610 @@
+---
+title: 'Sintassi Core di JavaScript'
+description: 'Variabili, operatori, tipi di dati, funzioni e importazione script: le basi della sintassi JavaScript'
+date: 2026-01-26
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 2
+---
+
+## Introduzione
+
+La sintassi core di JavaScript comprende gli elementi fondamentali necessari per scrivere qualsiasi programma: variabili, operatori, tipi di dati e funzioni. Questi concetti costituiscono le basi del linguaggio e sono essenziali per comprendere come JavaScript gestisce e manipola i dati.
+
+Questo capitolo esplora questi elementi fondamentali attraverso esempi pratici, mostrando come vengono utilizzati insieme per creare codice funzionale e interattivo.
+
+## Variabili e Costanti
+
+### Cosa sono le variabili
+
+Le **variabili** sono contenitori di dati. In qualsiasi programma, è necessario lavorare con informazioni che devono essere memorizzate temporaneamente per essere utilizzate successivamente.
+
+Ad esempio, in una calcolatrice è necessario memorizzare il risultato precedente e il numero appena inserito dall'utente per eseguire un'operazione matematica.
+
+### Creare variabili con let
+
+In JavaScript, si crea una variabile utilizzando la parola chiave **let**, seguita da un nome di propria scelta, un segno di uguale e il valore da memorizzare.
+
+```javascript
+let userName = 'Max';
+```
+
+Dopo la creazione, è possibile riassegnare un nuovo valore alla variabile. In questo caso, non si ripete la parola chiave `let`, che serve solo per dichiarare una nuova variabile.
+
+```javascript
+userName = 'Manu';
+```
+
+Una variabile è un contenitore di dati il cui valore può cambiare durante l'esecuzione del programma.
+
+### Creare costanti con const
+
+Le **costanti** sono un tipo speciale di variabile creata con la parola chiave **const**. La differenza principale è che il valore di una costante non può essere modificato dopo l'inizializzazione.
+
+```javascript
+const totalUsers = 100;
+```
+
+Se si tenta di modificare una costante, JavaScript genera un errore. Le costanti sono utili quando si ha bisogno di valori che non cambiano durante l'esecuzione del programma, permettendo di:
+
+- Inizializzare valori in un punto centrale del codice
+- Riutilizzare lo stesso valore in più punti
+- Modificare il valore in un unico punto invece che in molti
+
+### Quando usare let e const
+
+Come regola generale, è preferibile utilizzare `const` il più spesso possibile. Anche se le costanti sono più restrittive, rendono le intenzioni del codice più chiare: se un valore non cambia mai, è meglio dichiararlo come costante per comunicare questa informazione ad altri sviluppatori.
+
+Utilizza `let` solo quando sai che il valore dovrà cambiare durante l'esecuzione del programma.
+
+### Convenzioni di naming
+
+I nomi delle variabili e delle costanti devono seguire alcune regole:
+
+**Nomi consentiti:**
+- `userName` - utilizza **camelCase**: inizia con minuscola, ogni parola successiva inizia con maiuscola, nessuno spazio
+- `userName2` - può contenere lettere e cifre
+- `$userName` - può iniziare o contenere il carattere `$`
+- `_userName` - può iniziare o contenere il carattere underscore `_`
+
+**Nomi non consentiti:**
+- `2userName` - non può iniziare con una cifra
+- `user-name` - non può contenere trattini o altri caratteri speciali (tranne `$` e `_`)
+- `let`, `const`, `function` - non può utilizzare parole chiave riservate di JavaScript
+
+**Importante**: JavaScript è **case-sensitive**, quindi `userName` e `UserName` sono due variabili diverse.
+
+### Dichiarazione e inizializzazione
+
+È possibile dichiarare una variabile senza assegnarle immediatamente un valore:
+
+```javascript
+let currentResult; // variabile dichiarata ma non inizializzata
+```
+
+In questo caso, la variabile ha il valore `undefined` (vedi sezione sui tipi di dati). Successivamente, è possibile assegnarle un valore:
+
+```javascript
+currentResult = 0;
+```
+
+### Punto e virgola
+
+In JavaScript, l'uso del punto e virgola alla fine delle istruzioni è generalmente opzionale. È possibile scrivere codice senza punto e virgola, utilizzando solo il ritorno a capo per separare le istruzioni.
+
+Tuttavia, esistono alcuni casi rari in cui il punto e virgola è necessario. La scelta è personale, ma è importante essere coerenti: se si decide di utilizzare il punto e virgola, utilizzarlo sempre; se si decide di non utilizzarlo, evitarlo sempre.
+
+## Operatori
+
+Gli **operatori** sono caratteri speciali che permettono di manipolare valori ed eseguire operazioni.
+
+### Operatori matematici
+
+JavaScript supporta gli operatori matematici standard:
+
+- `+` - addizione
+- `-` - sottrazione
+- `*` - moltiplicazione
+- `/` - divisione
+- `%` - modulo (resto della divisione)
+- `**` - esponenziazione
+
+```javascript
+let result = 10 + 5;    // 15
+result = 10 - 5;         // 5
+result = 10 * 5;          // 50
+result = 10 / 5;          // 2
+result = 10 % 3;          // 1 (resto di 10/3)
+result = 2 ** 3;          // 8 (2 alla terza)
+```
+
+### Precedenza degli operatori
+
+JavaScript segue le regole matematiche standard per la precedenza degli operatori. La moltiplicazione e la divisione hanno precedenza sull'addizione e la sottrazione.
+
+```javascript
+let result = 10 + 5 * 3; // 25 (non 45)
+```
+
+È possibile utilizzare le parentesi per modificare l'ordine di esecuzione:
+
+```javascript
+let result = (10 + 5) * 3; // 45
+```
+
+### Operatore di assegnazione
+
+Il segno `=` è l'**operatore di assegnazione**, utilizzato per assegnare un valore a una variabile.
+
+### Operatori di assegnazione composti
+
+Quando si assegna a una variabile un valore basato sul suo valore corrente, è possibile utilizzare operatori di assegnazione composti:
+
+```javascript
+let currentResult = 10;
+
+// Invece di:
+currentResult = currentResult + 5;
+
+// Si può scrivere:
+currentResult += 5;  // equivalente a currentResult = currentResult + 5
+currentResult -= 3;  // equivalente a currentResult = currentResult - 3
+currentResult *= 2;  // equivalente a currentResult = currentResult * 2
+currentResult /= 4;  // equivalente a currentResult = currentResult / 4
+```
+
+### Operatori di incremento e decremento
+
+Per incrementare o decrementare una variabile di 1, è possibile utilizzare gli operatori `++` e `--`:
+
+```javascript
+let counter = 0;
+
+counter++;  // incrementa di 1 (counter diventa 1)
+counter--;  // decrementa di 1 (counter diventa 0)
+```
+
+La posizione dell'operatore (`++counter` vs `counter++`) influisce sul valore restituito dall'operazione:
+
+- `++counter` - restituisce il valore **dopo** l'incremento
+- `counter++` - restituisce il valore **prima** dell'incremento
+
+In molti casi, questa differenza non è rilevante perché si utilizza solo l'effetto collaterale (modificare la variabile), non il valore restituito.
+
+## Tipi di Dati
+
+JavaScript supporta diversi tipi di dati fondamentali. Comprendere questi tipi è essenziale per lavorare efficacemente con il linguaggio.
+
+### Numbers
+
+I **numeri** possono essere:
+
+- **Interi** (integer): numeri senza decimali, come `5`, `-10`, `1000`
+- **Floating point** (float): numeri con decimali, come `3.14`, `-0.5`, `22.956`
+
+```javascript
+let integer = 42;
+let float = 3.14159;
+let negative = -10;
+```
+
+I numeri vengono utilizzati per calcoli matematici, conteggi, misurazioni e qualsiasi operazione che richieda valori numerici.
+
+### Strings
+
+Le **stringhe** (o **string**) rappresentano testo. Si creano racchiudendo il testo tra:
+
+- Singoli apici: `'testo'`
+- Doppi apici: `"testo"`
+- Backtick: `` `testo` ``
+
+```javascript
+let name = 'Max';
+let message = "Ciao mondo";
+let greeting = `Benvenuto`;
+```
+
+**Importante**: è necessario utilizzare lo stesso tipo di apice per aprire e chiudere la stringa. Non è possibile mescolare singoli e doppi apici.
+
+Le stringhe sono utilizzate per:
+
+- Nomi utente
+- Messaggi all'utente
+- Contenuto testuale da visualizzare
+- Input dell'utente (che viene sempre ricevuto come stringa)
+
+### Concatenazione di stringhe
+
+L'operatore `+` può essere utilizzato anche per concatenare (unire) stringhe:
+
+```javascript
+let firstName = 'Max';
+let lastName = 'Schwarz';
+let fullName = firstName + ' ' + lastName; // "Max Schwarz"
+```
+
+Quando si utilizza `+` con stringhe, JavaScript esegue la concatenazione invece dell'addizione matematica.
+
+### Template Literals
+
+I **template literals** (creati con i backtick) permettono di incorporare valori dinamici nelle stringhe utilizzando la sintassi `${}`:
+
+```javascript
+let name = 'Max';
+let age = 30;
+let message = `Ciao, mi chiamo ${name} e ho ${age} anni.`;
+// Risultato: "Ciao, mi chiamo Max e ho 30 anni."
+```
+
+I template literals supportano anche stringhe multi-linea:
+
+```javascript
+let multiLine = `Questa è una stringa
+che si estende su
+più righe`;
+```
+
+### Caratteri di escape
+
+Quando si utilizzano singoli o doppi apici, è necessario "escapare" caratteri speciali utilizzando il backslash `\`:
+
+- `\n` - nuova riga
+- `\'` - apice singolo
+- `\"` - apice doppio
+- `\\` - backslash
+
+```javascript
+let message = 'Ciao,\ncome stai?'; // contiene una nuova riga
+let quote = 'L\'insegnante disse: "Studia!"';
+```
+
+### Booleans
+
+I **booleani** sono valori che possono essere solo `true` o `false`. Sono particolarmente utili con le strutture di controllo (if statements) che verranno trattate in un modulo successivo.
+
+```javascript
+let isLoggedIn = true;
+let hasPermission = false;
+```
+
+I booleani rappresentano condizioni che possono essere vere o false, come "l'utente è loggato" o "l'operazione è completata".
+
+### Objects
+
+Gli **oggetti** permettono di raggruppare dati correlati. Si creano utilizzando le parentesi graffe `{}` e contengono coppie **chiave-valore**:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 30,
+  email: 'max@example.com'
+};
+```
+
+Le chiavi (come `name`, `age`) identificano le proprietà dell'oggetto, mentre i valori (come `'Max'`, `30`) sono i dati memorizzati.
+
+Gli oggetti sono ideali per rappresentare entità del mondo reale che hanno più attributi correlati, come un utente con nome, età ed email.
+
+### Accedere alle proprietà degli oggetti
+
+Per accedere a una proprietà di un oggetto, si utilizza la **dot notation**:
+
+```javascript
+const user = {
+  name: 'Max',
+  age: 30
+};
+
+console.log(user.name);  // "Max"
+console.log(user.age);   // 30
+```
+
+### Arrays
+
+Gli **array** sono liste di dati. Si creano utilizzando le parentesi quadre `[]`:
+
+```javascript
+let numbers = [1, 2, 3, 4, 5];
+let names = ['Max', 'Anna', 'Tom'];
+let mixed = [1, 'testo', true, null];
+```
+
+Gli elementi di un array sono separati da virgole. Un array può contenere qualsiasi tipo di dato, anche oggetti o altri array.
+
+### Operazioni con gli array
+
+Per aggiungere un elemento a un array, si utilizza il metodo `push()`:
+
+```javascript
+let numbers = [1, 2, 3];
+numbers.push(4);  // [1, 2, 3, 4]
+```
+
+Per accedere a un elemento specifico, si utilizza l'**indice** (posizione) tra parentesi quadre. Gli array sono **zero-based**, quindi il primo elemento ha indice 0:
+
+```javascript
+let numbers = [10, 20, 30];
+console.log(numbers[0]);  // 10 (primo elemento)
+console.log(numbers[1]);  // 20 (secondo elemento)
+console.log(numbers[2]);  // 30 (terzo elemento)
+```
+
+### Undefined
+
+**Undefined** è il valore predefinito di una variabile che è stata dichiarata ma non inizializzata:
+
+```javascript
+let userName;
+console.log(userName); // undefined
+```
+
+`undefined` è anche il valore restituito quando si cerca di accedere a una proprietà o elemento che non esiste.
+
+**Importante**: non assegnare mai esplicitamente `undefined` a una variabile. È un valore predefinito che indica l'assenza di un valore assegnato.
+
+### Null
+
+**Null** rappresenta intenzionalmente l'assenza di un valore. A differenza di `undefined`, `null` deve essere assegnato esplicitamente:
+
+```javascript
+let userInput = null; // valore intenzionalmente vuoto
+```
+
+`null` è spesso utilizzato per resettare o cancellare un valore che precedentemente conteneva dati.
+
+### NaN
+
+**NaN** (Not a Number) è un valore speciale di tipo `number` che indica il risultato di un'operazione matematica non valida:
+
+```javascript
+let result = 3 * 'testo'; // NaN
+let invalid = NaN + 5;     // NaN
+```
+
+`NaN` viene generato quando si tenta di eseguire operazioni matematiche con valori che non possono essere convertiti in numeri.
+
+### typeof
+
+L'operatore **typeof** permette di verificare il tipo di un valore a runtime:
+
+```javascript
+typeof 'testo'     // "string"
+typeof 42          // "number"
+typeof true        // "boolean"
+typeof {}          // "object"
+typeof []          // "object" (gli array sono oggetti)
+typeof undefined   // "undefined"
+typeof null        // "object" (nota: questo è un bug storico)
+typeof NaN         // "number"
+```
+
+`typeof` restituisce sempre una stringa che descrive il tipo del valore.
+
+## Funzioni
+
+Le **funzioni** sono blocchi di codice riutilizzabili che possono essere eseguiti su richiesta. Possono essere pensate come "codice on demand": si definisce il codice una volta e lo si esegue quando necessario.
+
+### Definire una funzione
+
+Una funzione si definisce utilizzando la parola chiave **function**, seguita da un nome, una lista di parametri (opzionali) tra parentesi e il corpo della funzione tra parentesi graffe:
+
+```javascript
+function add(num1, num2) {
+  const result = num1 + num2;
+  return result;
+}
+```
+
+### Parametri
+
+I **parametri** sono variabili che la funzione riceve come input. Permettono di passare dati alla funzione quando viene chiamata:
+
+```javascript
+function greet(name) {
+  console.log('Ciao, ' + name);
+}
+
+greet('Max');  // "Ciao, Max"
+```
+
+Una funzione può avere zero, uno o più parametri, separati da virgole.
+
+### Chiamare una funzione
+
+Per eseguire una funzione, si utilizza il suo nome seguito da parentesi, passando eventuali argomenti richiesti:
+
+```javascript
+let sum = add(5, 3);  // chiama la funzione add con argomenti 5 e 3
+console.log(sum);     // 8
+```
+
+### Return
+
+La parola chiave **return** permette a una funzione di restituire un valore. Quando viene eseguito `return`, la funzione termina immediatamente e restituisce il valore specificato:
+
+```javascript
+function multiply(a, b) {
+  return a * b;
+}
+
+let product = multiply(4, 5);  // product contiene 20
+```
+
+Se una funzione non ha un `return` esplicito, restituisce `undefined`.
+
+**Importante**: qualsiasi codice dopo un `return` all'interno di una funzione non viene eseguito.
+
+### Scope delle variabili
+
+Le variabili definite all'interno di una funzione hanno uno **scope locale**: sono accessibili solo all'interno della funzione. Le variabili definite fuori dalle funzioni hanno uno **scope globale** e sono accessibili ovunque, anche all'interno delle funzioni.
+
+```javascript
+let globalVar = 'Sono globale';
+
+function myFunction() {
+  let localVar = 'Sono locale';
+  console.log(globalVar);  // OK: può accedere alla variabile globale
+  console.log(localVar);   // OK: può accedere alla variabile locale
+}
+
+console.log(globalVar);  // OK: variabile globale
+console.log(localVar);   // ERRORE: variabile locale non accessibile
+```
+
+### Funzioni come valori
+
+In JavaScript, le funzioni possono essere passate come argomenti ad altre funzioni o assegnate a variabili. Questo è particolarmente utile per gli event handler:
+
+```javascript
+// Definire la funzione
+function handleClick() {
+  console.log('Pulsante cliccato');
+}
+
+// Passare la funzione (senza parentesi) come event handler
+button.addEventListener('click', handleClick);
+```
+
+**Nota importante**: quando si passa una funzione come argomento, non si utilizzano le parentesi. `handleClick` passa la funzione, mentre `handleClick()` la esegue immediatamente.
+
+### Hoisting delle funzioni
+
+A differenza delle variabili dichiarate con `let` e `const`, le funzioni possono essere chiamate prima della loro definizione nel codice. Questo comportamento è chiamato **hoisting**:
+
+```javascript
+// La funzione può essere chiamata qui, anche se è definita dopo
+greet('Max');
+
+function greet(name) {
+  console.log('Ciao, ' + name);
+}
+```
+
+Questo non funziona con le variabili: devono essere dichiarate prima di essere utilizzate.
+
+## Commenti
+
+I **commenti** permettono di aggiungere note esplicative al codice senza influenzarne l'esecuzione. Sono utili per spiegare la logica complessa o fornire contesto per altri sviluppatori.
+
+### Commenti su singola riga
+
+I commenti su singola riga iniziano con `//`:
+
+```javascript
+// Questo è un commento su singola riga
+let result = 10 + 5;  // Commento inline
+```
+
+### Commenti su più righe
+
+I commenti su più righe iniziano con `/*` e terminano con `*/`:
+
+```javascript
+/*
+Questo è un commento
+che si estende su
+più righe
+*/
+```
+
+### Best practices per i commenti
+
+- **Non commentare l'ovvio**: evita commenti che ripetono semplicemente ciò che il codice fa
+- **Aggiungi contesto**: usa i commenti per spiegare il "perché", non il "cosa"
+- **Sii conciso**: commenti brevi e diretti sono più efficaci di spiegazioni lunghe
+- **Mantieni i commenti aggiornati**: assicurati che i commenti riflettano il codice corrente
+
+## Importazione di Script
+
+### Script inline vs esterni
+
+JavaScript può essere incluso in una pagina HTML in due modi:
+
+**Script inline** (scritto direttamente nell'HTML):
+```html
+<script>
+  alert('Ciao mondo');
+</script>
+```
+
+**Script esterni** (file separato):
+```html
+<script src="assets/scripts/app.js"></script>
+```
+
+Gli script esterni sono generalmente preferibili perché:
+
+- Mantengono l'HTML pulito e organizzato
+- Permettono il riutilizzo del codice tra più pagine
+- Facilitano la manutenzione e il debugging
+
+### Posizionamento degli script
+
+Il posizionamento degli script nell'HTML influisce su quando vengono caricati ed eseguiti:
+
+**Nell'`<head>`**:
+- Gli script vengono scaricati e eseguiti prima che il contenuto HTML sia completamente caricato
+- Può bloccare il rendering della pagina
+- Può causare errori se lo script cerca di accedere a elementi DOM non ancora disponibili
+
+**Alla fine del `<body>`**:
+- Gli script vengono scaricati ed eseguiti dopo che l'HTML è stato parsato
+- Non blocca il rendering iniziale
+- Garantisce che gli elementi DOM siano disponibili
+
+### L'attributo defer
+
+L'attributo **defer** permette di ottenere il meglio di entrambi gli approcci:
+
+```html
+<script src="assets/scripts/vendor.js" defer></script>
+<script src="assets/scripts/app.js" defer></script>
+```
+
+Con `defer`:
+
+- Gli script vengono **scaricati immediatamente** (non bloccano il parsing HTML)
+- Gli script vengono **eseguiti solo dopo** che tutto l'HTML è stato parsato
+- L'**ordine di esecuzione** è garantito (gli script vengono eseguiti nell'ordine in cui appaiono)
+
+Questo è l'approccio raccomandato per la maggior parte degli script che interagiscono con il DOM.
+
+### L'attributo async
+
+L'attributo **async** è simile a `defer`, ma con una differenza importante:
+
+```html
+<script src="assets/scripts/analytics.js" async></script>
+```
+
+Con `async`:
+
+- Gli script vengono **scaricati immediatamente** (non bloccano il parsing HTML)
+- Gli script vengono **eseguiti non appena sono scaricati** (non aspettano il parsing completo)
+- L'**ordine di esecuzione non è garantito** (lo script più veloce può eseguire per primo)
+
+`async` è utile per script indipendenti che non interagiscono con il DOM, come script di analytics o tracking.
+
+### Quando usare defer vs async
+
+- **Usa `defer`** quando:
+  - Lo script interagisce con il DOM
+  - Lo script dipende da altri script (l'ordine di esecuzione è importante)
+  - Vuoi garantire che l'HTML sia completamente parsato prima dell'esecuzione
+
+- **Usa `async`** quando:
+  - Lo script è indipendente e non interagisce con il DOM
+  - L'ordine di esecuzione non è importante
+  - Vuoi che lo script esegua il prima possibile
+
+### Limitazioni
+
+- `defer` e `async` funzionano **solo con script esterni** (quelli con l'attributo `src`)
+- Per script inline, questi attributi vengono ignorati
+- Non è possibile combinare script inline e attributo `src` nello stesso tag `<script>`
+
+## Conclusione
+
+La sintassi core di JavaScript fornisce gli strumenti fondamentali per manipolare dati, eseguire calcoli e organizzare il codice in funzioni riutilizzabili. Comprendere variabili, operatori, tipi di dati e funzioni è essenziale per costruire applicazioni JavaScript più complesse.
+
+Gli elementi trattati in questo capitolo - dalle variabili agli operatori, dai tipi di dati alle funzioni - costituiscono le fondamenta su cui si costruiscono programmi JavaScript più sofisticati. La padronanza di questi concetti è il primo passo verso lo sviluppo di applicazioni web interattive e dinamiche.

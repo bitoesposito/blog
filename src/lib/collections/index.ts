@@ -54,6 +54,7 @@ export {
   getAdjacentEducation,
   groupEducationByYear,
   getEducationTOCSections,
+  getRecentEducation,
 } from './education'
 
 // Quote

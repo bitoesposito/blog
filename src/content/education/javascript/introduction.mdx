@@ -1,0 +1,148 @@
+---
+title: "Cos'è JavaScript?"
+description: 'Introduzione a JavaScript: definizione, caratteristiche principali e ambienti di esecuzione'
+date: 2026-01-26
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 1
+---
+
+## Introduzione
+
+JavaScript è un linguaggio di programmazione **dinamico** e **debolmente tipizzato** che viene compilato al momento dell'esecuzione. Può essere eseguito come parte di una pagina web nel browser o direttamente su qualsiasi macchina in un cosiddetto **ambiente host**.
+
+Questo linguaggio è stato creato per rendere le pagine web più dinamiche, permettendo di modificare il contenuto di una pagina direttamente dal browser senza dover ricaricare l'intera pagina.
+
+## Come funzionano le pagine web
+
+Quando visiti una pagina web, il tuo browser invia una richiesta al server dove è ospitato il file HTML. Il server risponde inviando il documento HTML al browser, che lo visualizza.
+
+In un'interazione tradizionale, quando l'utente compie un'azione - ad esempio, clicca su un pulsante per inviare un modulo - viene inviata una nuova richiesta al server. Il server elabora la richiesta, eventualmente salva i dati in un database, e risponde con una nuova pagina HTML, ad esempio una pagina di conferma.
+
+Questo flusso richiesta-risposta funziona, ma richiede il caricamento di una nuova pagina ogni volta. JavaScript permette di rendere questo processo più reattivo, modificando la pagina già caricata senza dover inviare una nuova richiesta al server.
+
+## JavaScript in azione
+
+Immagina una pagina con dei link che, quando cliccati, aprono delle informazioni in un overlay invece di navigare verso una nuova pagina. Questo è possibile grazie a JavaScript, che può modificare dinamicamente il DOM (Document Object Model) della pagina già caricata.
+
+Questo approccio offre un'esperienza utente migliore perché:
+
+- Non interrompe il flusso di navigazione
+- È più veloce, non richiede il download di nuovo codice HTML
+- Rende l'esperienza più simile a quella di un'applicazione mobile
+
+## Caratteristiche principali
+
+### Linguaggio interpretato
+
+JavaScript è un linguaggio **interpretato**, il che significa che viene compilato al volo durante l'esecuzione, non durante lo sviluppo.
+
+Quando il codice JavaScript viene eseguito in un browser, un componente chiamato **JavaScript engine** si occupa di:
+
+1. **Parsing**: legge e comprende il codice JavaScript
+2. **Compilazione**: compila il codice in **machine code** per un'esecuzione più veloce
+3. **Esecuzione**: esegue il codice compilato
+
+Ogni browser ha il proprio engine:
+
+- **Chrome**: V8
+- **Firefox**: SpiderMonkey
+- Altri browser utilizzano questi engine o hanno i propri
+
+Gli engine moderni implementano numerose ottimizzazioni. Possono iniziare a eseguire il codice non compilato e compilarlo contemporaneamente, passando dinamicamente al codice compilato quando è pronto.
+
+**Nota tecnica**: l'esecuzione del codice JavaScript avviene su un **singolo thread**. Anche se i computer moderni supportano il multi-threading, l'esecuzione del codice JavaScript avviene sempre su un unico thread del sistema operativo.
+
+### Linguaggio dinamico
+
+JavaScript è **dinamico** perché:
+
+- Il codice viene valutato ed eseguito a runtime
+- Il codice può cambiare a runtime (non il codice sorgente, ma il comportamento durante l'esecuzione)
+- Le variabili possono cambiare tipo durante l'esecuzione
+
+Ad esempio, una variabile può contenere inizialmente del testo e successivamente un numero, nella stessa variabile. Questo è possibile in JavaScript ma non in molti altri linguaggi di programmazione.
+
+### Debolmente tipizzato
+
+JavaScript è **debolmente tipizzato**, il che significa che:
+
+- Non è necessario dichiarare esplicitamente il tipo di dato che una variabile conterrà
+- I tipi di dato vengono **inferiti automaticamente** dal valore assegnato
+- I tipi possono cambiare da una riga all'altra
+
+In altri linguaggi, devi dichiarare in anticipo che una variabile conterrà un numero o del testo. In JavaScript, semplicemente assegni un valore e se è un numero, viene trattato come tale.
+
+Questa flessibilità può essere sia un vantaggio che una fonte di errori, ed è importante essere consapevoli di come JavaScript gestisce i tipi durante lo sviluppo.
+
+## Ambienti di esecuzione
+
+### Browser
+
+Il browser è l'ambiente originale per cui JavaScript è stato inventato. Quando JavaScript viene eseguito nel browser, può:
+
+- Interagire con il DOM (Document Object Model) per modificare HTML e CSS
+- Inviare richieste HTTP in background senza ricaricare la pagina
+- Accedere a determinate API del browser
+
+Tuttavia, per motivi di sicurezza, JavaScript nel browser **non può**:
+
+- Accedere al file system locale
+- Interagire direttamente con il sistema operativo
+
+Il browser fornisce una **sandbox** sicura dove JavaScript può operare con limitazioni ben definite.
+
+### Node.js
+
+**Node.js** è un ambiente che permette di eseguire JavaScript al di fuori del browser, direttamente su una macchina. È stato creato estraendo l'engine V8 da Chrome e rendendolo disponibile come strumento standalone.
+
+Con Node.js, JavaScript può essere utilizzato per:
+
+- Sviluppare applicazioni server-side
+- Costruire backend per applicazioni web
+- Accedere al file system
+- Interagire con il sistema operativo
+
+Tuttavia, Node.js **non può** manipolare direttamente HTML o CSS come JavaScript nel browser, perché non ha accesso a una pagina web caricata.
+
+### Stessa sintassi, ambienti diversi
+
+La sintassi e i concetti fondamentali di JavaScript sono identici sia nel browser che in Node.js. La differenza principale risiede nelle **API disponibili** in ciascun ambiente:
+
+- Nel browser: API per manipolare il DOM, gestire eventi del browser, ecc.
+- In Node.js: API per accedere al file system, gestire richieste HTTP server-side, ecc.
+
+## Storia di JavaScript
+
+JavaScript è stato introdotto nel **1995** da Netscape con il nome **LiveScript**, successivamente rinominato in JavaScript per sfruttare la popolarità di Java all'epoca.
+
+Nel **1996**, Microsoft rilasciò la propria versione di JavaScript per Internet Explorer, creando frammentazione tra i browser.
+
+A fine **1996**, JavaScript fu sottoposto al comitato **ECMA** per iniziare un processo di standardizzazione. ECMA International è l'organizzazione responsabile della standardizzazione di JavaScript, garantendo che tutti i browser implementino lo stesso standard.
+
+Il processo di standardizzazione continuò fino al 2005 circa, con Microsoft che alla fine si unì agli sforzi di standardizzazione. Dal 2010-2011 in poi, lo sviluppo di JavaScript ha subito una forte accelerazione.
+
+### ECMAScript e JavaScript
+
+**ECMAScript** è il linguaggio standardizzato gestito da ECMA International. **JavaScript** è l'implementazione più famosa di ECMAScript da parte dei vendor di browser.
+
+In pratica, ECMAScript e JavaScript sono strettamente correlati: ECMAScript definisce lo standard, mentre i vendor di browser implementano questo standard come JavaScript nei loro engine.
+
+Ogni browser implementa le funzionalità di ECMAScript nel proprio engine JavaScript. A volte, i vendor implementano funzionalità anche prima che siano completamente finalizzate nello standard ECMAScript, permettendo l'uso di codice JavaScript di nuova generazione prima che sia disponibile in tutti i browser.
+
+### JavaScript moderno
+
+Nel **2015-2016**, JavaScript ha subito una revisione importante con l'introduzione di molte nuove funzionalità e una sintassi più moderna. Molti tutorial e corsi insegnano ancora la sintassi vecchia, ma è importante apprendere la sintassi moderna fin dall'inizio.
+
+JavaScript è un linguaggio in continua evoluzione, con nuove funzionalità aggiunte regolarmente attraverso il processo di standardizzazione ECMAScript.
+
+## Conclusione
+
+JavaScript è un linguaggio di programmazione potente e versatile che:
+
+- Permette di creare interazioni dinamiche nelle pagine web
+- Viene eseguito sia nel browser che lato server
+- È dinamico, debolmente tipizzato e interpretato
+- È in continua evoluzione attraverso il processo di standardizzazione ECMAScript
+
+Comprendere queste caratteristiche fondamentali è essenziale per utilizzare JavaScript in modo efficace e per capire come funziona sotto il cofano.

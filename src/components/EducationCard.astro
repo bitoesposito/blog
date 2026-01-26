@@ -48,7 +48,19 @@ const subpostCount = !isEducationSubpost(entry.id) ? await getEducationSubpostCo
     }
 
     <div class="grow">
-      <h3 class="mb-1 text-lg font-medium">{entry.data.title}</h3>
+      <div class="mb-1 flex items-center gap-2 w-full justify-between">
+        <h3 class="text-lg font-medium">{entry.data.title}</h3>
+        {
+          entry.data.certificateProvider && (
+            <img
+              src={`/static/${entry.data.certificateProvider}-certified.svg`}
+              alt={`Certificato ${entry.data.certificateProvider === 'udemy' ? 'Udemy' : 'Google'}`}
+              class="h-8 shrink-0 px-3 py-1 dark:invert"
+              loading="lazy"
+            />
+          )
+        }
+      </div>
       <p class="text-muted-foreground mb-1 text-sm">{entry.data.description}</p>
 
       <div

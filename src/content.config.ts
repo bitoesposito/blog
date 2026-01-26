@@ -60,6 +60,7 @@ const education = defineCollection({
       authors: z.array(z.string()).optional(),
       draft: z.boolean().optional(),
       certificate: z.string().url().optional(), // Link al certificato di completamento
+      certificateProvider: z.enum(['udemy', 'google']).optional(), // Provider del certificato (udemy o google)
     }),
 })
 

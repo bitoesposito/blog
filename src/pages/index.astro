@@ -1,18 +1,20 @@
 ---
 import BlogCard from '@/components/BlogCard.astro'
 import ProjectCard from '@/components/ProjectCard.astro'
+import EducationCard from '@/components/EducationCard.astro'
 import Link from '@/components/Link.astro'
 import PageHead from '@/components/PageHead.astro'
 import { buttonVariants } from '@/components/ui/button'
 import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
-import { getAuthorById, getRecentPosts, getAllProjects } from '@/lib/collections'
+import { getAuthorById, getRecentPosts, getAllProjects, getRecentEducation } from '@/lib/collections'
 import AuthorCard from '@/components/AuthorCard.astro'
 
 const blog = await getRecentPosts(SITE.featuredPostCount)
 const author = await getAuthorById('vitoesposito')
 // Prendi i primi 3 progetti più recenti (già ordinati per startDate da getAllProjects)
 const projects = (await getAllProjects()).slice(0, 3)
+const education = await getRecentEducation(SITE.featuredEducationCount)
 ---
 
 <Layout class="max-w-3xl">
@@ -88,6 +90,41 @@ const projects = (await getAllProjects()).slice(0, 3)
               <li>
                 <ProjectCard project={project} cardClass={cardClass} />
               </li>
+              )
+            })
+          }
+        </ul>
+      </section>
+    )
+  }
+
+  {
+    education.length > 0 && (
+      <section class="flex flex-col gap-y-4" aria-labelledby="formazione-recente-heading">
+        <div class="flex items-center justify-between">
+          <h2 id="formazione-recente-heading" class="text-2xl font-medium">Formazione recente</h2>
+          <Link
+            href="/education"
+            class={buttonVariants({ variant: 'ghost' }) + ' group'}
+            title="Vedi tutta la formazione"
+          >
+            Tutta la formazione<span
+              class="ml-1.5 transition-transform group-hover:translate-x-1"
+              aria-hidden="true"
+              >&rarr;</span
+            >
+          </Link>
+        </div>
+        <ul class="flex flex-col" aria-label="Lista della formazione recente">
+          {
+            education.map((entry, index) => {
+              const isFirst = index === 0
+              const isLast = index === education.length - 1
+              const cardClass = `${isFirst ? 'rounded-tl-xl rounded-tr-xl' : 'rounded-t-none'} ${isLast ? 'rounded-bl-xl rounded-br-xl' : 'rounded-b-none'} ${!isFirst ? 'border-t-0 -mt-[1px]' : ''}`
+              return (
+                <li>
+                  <EducationCard entry={entry} cardClass={cardClass} />
+                </li>
               )
             })
           }
