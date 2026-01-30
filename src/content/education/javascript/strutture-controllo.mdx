@@ -1,0 +1,518 @@
+---
+title: "Strutture di controllo"
+description: "Condizionali, booleani, loop e gestione degli errori in JavaScript"
+date: 2026-01-30
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 3
+---
+
+## Introduzione
+
+Dopo variabili, operatori e tipi di dati, un altro blocco fondamentale in JavaScript (e nella maggior parte dei linguaggi) è quello delle **strutture di controllo**. Con questo termine si intende la possibilità di non eseguire sempre lo stesso codice dall’inizio alla fine: a seconda di una condizione si può eseguire un blocco piuttosto che un altro, oppure ripetere un blocco più volte finché una condizione è vera o finché non si esauriscono i dati.
+
+In questo capitolo si trattano:
+
+- **Istruzioni condizionali** (`if`, `else`, `else if`) e **espressioni condizionali** (operatore ternario)
+- **Valori booleani** e **operatori** che producono booleani, indispensabili nelle condizioni
+- **Loop** (`for`, `for/of`, `for/in`, `while`, `do/while`) per ripetere codice
+- **Gestione degli errori** con `try`/`catch`/`finally` per fallire in modo controllato (messaggio all’utente o fallback)
+
+---
+
+## Esecuzione condizionale e if
+
+L’**esecuzione condizionale** permette di eseguire un blocco di codice solo quando una certa condizione è soddisfatta. Senza questa possibilità molti scenari reali non sarebbero gestibili; anche dove non è strettamente obbligatoria, permette di scrivere codice più chiaro e compatto.
+
+La condizione in un `if` deve essere un valore **booleano** (`true` o `false`). Spesso questo valore si ottiene con operatori di confronto (`===`, `>`, `<`, ecc.), che restituiscono un booleano senza modificare le variabili usate.
+
+### Sintassi dell’if
+
+Si usa la parola chiave **`if`**, tra parentesi la **condizione** (un’espressione che vale `true` o `false`), e tra parentesi graffe il **corpo** da eseguire se la condizione è vera. Non si mette il punto e virgola dopo la graffa di chiusura.
+
+```javascript
+if (condizione) {
+	// codice eseguito solo se condizione è true
+}
+```
+
+Se si ha già una variabile booleana, si può usarla direttamente senza confrontarla di nuovo con `=== true` (ridondante):
+
+```javascript
+const isLoggedIn = true;
+if (isLoggedIn) {
+	// eseguito perché isLoggedIn è true
+}
+```
+
+### else e else if
+
+Con **`else`** si definisce il blocco da eseguire quando la condizione dell’`if` è falsa. Con **`else if`** si aggiungono altre condizioni da valutare in sequenza; si evita così di annidare molti `if` e si mantiene il codice più leggibile.
+
+```javascript
+if (tipoCalcolo === 'add') {
+	currentResult += enteredNumber;
+} else if (tipoCalcolo === 'subtract') {
+	currentResult -= enteredNumber;
+} else if (tipoCalcolo === 'multiply') {
+	currentResult *= enteredNumber;
+} else {
+	currentResult /= enteredNumber;
+}
+```
+
+Se nessuna condizione è vera e non c’è `else`, non viene eseguito nessuno di quei blocchi. Se c’è `else`, quel blocco viene sempre eseguito quando nessuna condizione precedente è vera.
+
+È buona pratica usare sempre le **parentesi graffe** anche per blocchi di una sola riga, e mettere `else` sulla stessa riga della graffa di chiusura dell’`if` per coerenza con lo stile più diffuso.
+
+---
+
+## Valori booleani e operatori di confronto
+
+Le condizioni negli `if` sono in pratica valori booleani. Oltre a usare variabili che contengono già `true` o `false`, si usano gli **operatori di confronto** (o **comparison operators**), che restituiscono un booleano.
+
+### Uguaglianza e disuguaglianza
+
+| Operatore | Significato | Esempio |
+|-----------|-------------|---------|
+| `==` | Uguaglianza di valore (con coercizione di tipo) | `2 == '2'` → `true` |
+| `===` | Uguaglianza di valore e tipo | `2 === '2'` → `false` |
+| `!=` | Disuguaglianza di valore | `2 != '3'` → `true` |
+| `!==` | Disuguaglianza di valore o tipo | `2 !== '2'` → `true` |
+
+In JavaScript è preferibile usare **`===`** e **`!==`**: obbligano a essere espliciti sui tipi (ad esempio convertendo l’input utente in numero prima del confronto) e riducono errori sottili.
+
+```javascript
+// Preferibile: confronto stretto
+if (parseInt(enteredValue, 10) === 100) { ... }
+
+// Evitabile: confronto con coercizione
+if (enteredValue == 100) { ... }
+```
+
+### Confronti numerici e tra stringhe
+
+Per numeri e stringhe si usano:
+
+- `>` (maggiore)
+- `<` (minore)
+- `>=` (maggiore o uguale)
+- `<=` (minore o uguale)
+
+Con le **stringhe**, `>` e `<` usano l’ordinamento **lessicografico** (basato su Unicode): ad esempio `'b' > 'a'` è `true`, e i caratteri maiuscoli sono considerati “minori” dei minuscoli. Il confronto parte dal primo carattere e prosegue solo se è uguale.
+
+```javascript
+'ab' > 'aa'   // true
+'a' > 'B'     // true (minuscolo dopo maiuscolo in Unicode)
+'a' > 'b'     // false
+```
+
+### Negazione con !
+
+L’operatore **`!`** nega un valore booleano (o un valore valutato come truthy/falsy). Si usa sia nei confronti (`!==`) sia per invertire una condizione:
+
+```javascript
+const isLoggedIn = true;
+if (!isLoggedIn) {
+	// eseguito solo se isLoggedIn è false
+}
+```
+
+Scrivere `if (isLoggedIn === false)` è equivalente ma ridondante quando si ha già un booleano.
+
+---
+
+## Confronto di oggetti e array
+
+Per **oggetti** e **array** il confronto con `==` o `===` non si basa sul contenuto ma sul **riferimento**: due oggetti (o due array) con le stesse proprietà e gli stessi valori sono considerati uguali solo se sono lo stesso riferimento in memoria.
+
+```javascript
+const person1 = { name: 'Vito' };
+const person2 = { name: 'Vito' };
+console.log(person1 === person2); // false: sono due oggetti diversi
+
+const person3 = person1;
+console.log(person3 === person1); // true: stesso riferimento
+```
+
+Per confrontare il contenuto bisogna confrontare le singole proprietà (o gli elementi), ad esempio `person1.name === person2.name`. Il motivo per cui oggetti e array si confrontano per riferimento verrà approfondito in un modulo successivo; per ora è sufficiente tenere presente questo comportamento.
+
+---
+
+## Combinare condizioni (&& e ||)
+
+Si possono combinare più condizioni con:
+
+- **`&&`** (AND): l’espressione è `true` solo se **tutte** le condizioni sono vere
+- **`||`** (OR): l’espressione è `true` se **almeno una** condizione è vera
+
+```javascript
+if (name === 'Vito' && age === 30) {
+	// eseguito solo se entrambe le condizioni sono vere
+}
+
+if (isAdmin || (name === 'Vito' && age === 30)) {
+	// eseguito se isAdmin è true oppure se name e age soddisfano le condizioni
+}
+```
+
+Per controllare l’ordine di valutazione si usano le **parentesi**:
+
+```javascript
+if ((condizioneA && condizioneB) || condizioneC) {
+	// prima si valuta (A && B), poi il risultato con C tramite ||
+}
+```
+
+Un uso tipico è la **validazione** all’inizio di una funzione: se un parametro non è tra i valori ammessi, si esce subito con `return`:
+
+```javascript
+if (
+	calculationType !== 'add' &&
+	calculationType !== 'subtract' &&
+	calculationType !== 'multiply' &&
+	calculationType !== 'divide'
+) {
+	return; // interrompe la funzione
+}
+```
+
+---
+
+## Precedenza degli operatori
+
+La **precedenza degli operatori** determina l’ordine in cui vengono valutate le espressioni. Per i numeri valgono le regole matematiche usuali (moltiplicazione/divisione prima di addizione/sottrazione); le parentesi permettono di cambiare l’ordine.
+
+Per **`&&`** e **`||`**: **`&&`** ha precedenza maggiore di **`||`**. Quindi in un’espressione con entrambi, prima vengono valutate le parti collegate da `&&`, poi il risultato viene combinato con `||`. In caso di dubbi è utile usare le parentesi per rendere esplicita l’intenzione. Una tabella completa è disponibile su [MDN - Operator precedence](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence).
+
+---
+
+## Valori truthy e falsy
+
+Le condizioni negli `if` (e in altri contesti che si aspettano un booleano) non richiedono obbligatoriamente `true` o `false`: JavaScript **coercisce** il valore a booleano. Non avviene una conversione permanente della variabile; viene generato temporaneamente un booleano per la valutazione.
+
+Valori **falsy** (trattati come `false`):
+
+- `0` (numero zero)
+- `''` (stringa vuota)
+- `null`
+- `undefined`
+- `NaN`
+
+Valori **truthy** (trattati come `true`):
+
+- Qualsiasi numero diverso da zero (anche negativi)
+- Qualsiasi stringa non vuota
+- Oggetti e array (anche `{}` e `[]`)
+
+Esempi tipici:
+
+```javascript
+const nameInput = 'Vito';
+if (nameInput) {
+	// eseguito: stringa non vuota è truthy
+}
+
+let enteredNumber = 0;
+if (!enteredNumber) {
+	// eseguito: 0 è falsy, quindi !enteredNumber è true
+	return; // evita ad esempio di dividere per zero
+}
+```
+
+**Nota**: la coercizione non modifica la variabile. `if (userInput)` equivale concettualmente a valutare un booleano generato dal contesto; `userInput` resta una stringa (o altro tipo).
+
+---
+
+## Operatore ternario
+
+L’**operatore ternario** è un’espressione condizionale che **restituisce un valore** in base a una condizione. A differenza di `if`, che è uno **statement** e non può essere assegnato a una variabile, il ternario si usa dove serve un valore.
+
+Sintassi: `condizione ? valoreSeTrue : valoreSeFalse`
+
+```javascript
+const userName = isLoggedIn ? 'Vito' : null;
+```
+
+Entrambi i rami (`valoreSeTrue` e `valoreSeFalse`) devono essere espressioni che producono un valore (non blocchi con più istruzioni). Si può usare per inizializzare costanti in modo condizionale:
+
+```javascript
+const maxDamage = mode === MODE_ATTACK ? ATTACK_VALUE : STRONG_ATTACK_VALUE;
+const logEvent = mode === MODE_ATTACK ? LOG_EVENT_PLAYER_ATTACK : LOG_EVENT_PLAYER_STRONG_ATTACK;
+```
+
+È possibile annidare ternari (`cond1 ? a : cond2 ? b : c`), ma con più di un livello il codice diventa poco leggibile: in quei casi è preferibile usare `if`/`else if`/`else`.
+
+---
+
+## Statement ed espressioni
+
+In JavaScript ha senso distinguere:
+
+- **Espressione**: qualcosa che **produce un valore** e può stare a destra di `=` o in un `return` (es. `3 + 2`, `condizione ? a : b`, chiamate di funzione).
+- **Statement**: un’istruzione che **non** restituisce un valore utilizzabile (es. `if`, `for`, `while`).
+
+Un `if` è solo uno statement: non si può assegnare il risultato di un `if` a una variabile. Per scegliere un valore da assegnare si usa l’operatore ternario (espressione) o si assegna il valore nei rami dell’`if`:
+
+```javascript
+// Non valido: if non restituisce un valore
+// const x = if (cond) { 1 } else { 2 };
+
+// Valido: ternario è un’espressione
+const x = cond ? 1 : 2;
+```
+
+---
+
+## Shortcut con operatori logici
+
+### Doppia negazione (!!) per ottenere un booleano
+
+Usando **`!!`** si forza la conversione di un valore truthy/falsy in un **booleano** reale (`true`/`false`):
+
+```javascript
+const userInput = '';
+const isValidInput = !!userInput; // false (stringa vuota → false)
+const value = 1;
+const isTruthy = !!value; // true
+```
+
+### || per valori di default
+
+L’operatore **`||`** restituisce il **primo** operando se è truthy, altrimenti il secondo. Si usa spesso per assegnare un valore di default:
+
+```javascript
+const enteredValue = ''; // es. input utente vuoto
+const userName = enteredValue || 'Vito'; // 'Vito'
+```
+
+Se `enteredValue` è falsy (stringa vuota, `null`, `undefined`, `0`), viene usato `'Vito'`.
+
+### && per valore condizionato
+
+L’operatore **`&&`** restituisce il primo operando se è falsy, altrimenti il secondo. Si può usare per “assegnare solo se una condizione è vera”:
+
+```javascript
+const isLoggedIn = true;
+const shoppingCart = isLoggedIn && ['libro1', 'libro2']; // ['libro1', 'libro2']
+```
+
+Se `isLoggedIn` fosse `false`, `shoppingCart` sarebbe `false`. Né `||` né `&&` modificano le variabili usate negli operandi; restituiscono solo un valore.
+
+---
+
+## Switch case
+
+Quando si devono confrontare **molti valori** con **uguaglianza stretta** (`===`), **`switch`** può rendere il codice più lineare rispetto a una lunga catena di `else if`.
+
+```javascript
+switch (evento) {
+	case LOG_EVENT_PLAYER_ATTACK:
+		logEntry.target = 'monster';
+		break;
+	case LOG_EVENT_PLAYER_STRONG_ATTACK:
+		logEntry.target = 'monster';
+		break;
+	case LOG_EVENT_MONSTER_ATTACK:
+		logEntry.target = 'player';
+		break;
+	case LOG_EVENT_PLAYER_HEAL:
+		logEntry.target = 'player';
+		break;
+	case LOG_EVENT_GAME_OVER:
+		logEntry = { event: evento, value: value, /* ... */ };
+		break;
+	default:
+		logEntry = {};
+}
+```
+
+- **`switch (valore)`**: il valore viene confrontato con ogni `case` con `===`.
+- **`break`**: termina il `switch` e evita il **fall-through** (esecuzione dei case successivi). Senza `break`, l’esecuzione prosegue nel case successivo.
+- **`default`**: opzionale; viene eseguito se nessun `case` corrisponde.
+
+`switch` è adatto soprattutto a confronti per uguaglianza. Per condizioni più complesse (range, confronti multipli) è preferibile usare `if`/`else if`.
+
+---
+
+## Loop
+
+I **loop** permettono di eseguire più volte uno stesso blocco di codice senza riscriverlo. In JavaScript i costrutti principali sono: **`for`**, **`for...of`**, **`for...in`**, **`while`** e **`do...while`**.
+
+### for
+
+Il **`for`** classico usa una variabile di controllo (spesso `i`), un’espressione di **uscita** e un’espressione eseguita **dopo ogni iterazione** (tipicamente incremento). Le tre parti sono separate da `;`.
+
+```javascript
+for (let i = 0; i < 3; i++) {
+	console.log(i); // 0, 1, 2
+}
+```
+
+- Inizializzazione: `let i = 0` (eseguita una volta).
+- Condizione: `i < 3` (valutata prima di ogni iterazione; se falsa il loop termina).
+- Aggiornamento: `i++` (eseguito dopo ogni iterazione).
+
+Per scorrere un array per indice:
+
+```javascript
+for (let i = 0; i < battleLog.length; i++) {
+	console.log(battleLog[i]);
+}
+```
+
+Si possono usare anche contatori che partono da un valore alto e decrementano, o condizioni più complesse; le tre parti sono flessibili, ma la forma sopra è la più comune.
+
+### for...of
+
+**`for...of`** itera sugli **elementi** di un array (o di un iterabile), senza gestire manualmente l’indice:
+
+```javascript
+for (const logEntry of battleLog) {
+	console.log(logEntry);
+}
+```
+
+`logEntry` è una costante che in ogni iterazione vale l’elemento corrente. Se serve anche l’indice, si può usare un `for` classico o mantenere un contatore a parte.
+
+### for...in
+
+**`for...in`** itera sulle **chiavi** (nomi delle proprietà) di un oggetto:
+
+```javascript
+const obj = { a: 1, b: 2, c: 3 };
+for (const key in obj) {
+	console.log(key, obj[key]); // 'a' 1, 'b' 2, 'c' 3
+}
+```
+
+Per accedere al valore della proprietà si usa la **notazione a parentesi quadre** `obj[key]`, perché `key` è una variabile che contiene il nome della proprietà.
+
+### while e do...while
+
+**`while`** ripete il blocco **finché** la condizione è vera; la condizione è valutata **prima** di ogni iterazione:
+
+```javascript
+let j = 0;
+while (j < 3) {
+	console.log(j);
+	j++;
+}
+```
+
+**`do...while`** esegue il blocco **almeno una volta** e poi valuta la condizione:
+
+```javascript
+let j = 3;
+do {
+	console.log(j); // viene stampato 3
+	j++;
+} while (j < 3);
+```
+
+Il `while` è utile quando non si sa in anticipo quante iterazioni servono (es. generazione di numeri casuali fino a un certo risultato). Per un numero noto di iterazioni o per scorrere array, `for` e `for...of` sono spesso più chiari.
+
+---
+
+## break e continue
+
+- **`break`**: termina **subito** il loop in cui si trova (solo quel loop, non eventuali esterni). Si usa in `switch` per evitare il fall-through e nei loop per uscire in anticipo.
+- **`continue`**: salta il resto dell’iterazione **corrente** e passa alla successiva.
+
+```javascript
+for (let i = 0; i < 5; i++) {
+	if (i === 3) continue; // salta solo quando i è 3
+	console.log(i); // 0, 1, 2, 4
+}
+```
+
+```javascript
+for (let i = 0; i < 5; i++) {
+	if (i === 3) break; // esce dal loop
+	console.log(i); // 0, 1, 2
+}
+```
+
+### Labeled statements
+
+Si può dare un **etichetta** a un loop (o ad altro statement) e usarla con `break` o `continue` per uscire o saltare da un loop **esterno** quando si è dentro loop annidati:
+
+```javascript
+outerWhile: while (condizioneEsterna) {
+	for (let k = 0; k < 5; k++) {
+		if (k === 3) break outerWhile; // interrompe il while, non solo il for
+	}
+}
+```
+
+È una funzionalità usata raramente; va usata con attenzione (in particolare con `continue` su loop esterni) per non creare loop infiniti.
+
+---
+
+## Gestione degli errori (try / catch / finally)
+
+Alcuni errori non sono evitabili in fase di sviluppo: input utente non valido, rete non disponibile, ecc. La **gestione degli errori** permette di **catturare** questi errori e reagire in modo controllato: mostrare un messaggio, usare un valore di fallback o fare pulizia.
+
+### throw
+
+Si può **lanciare** un errore con **`throw`**. Si può lanciare qualsiasi valore; l’uso più comune è un oggetto con almeno una proprietà **`message`**:
+
+```javascript
+function getMaxLifeValues() {
+	const enteredValue = prompt('Vita massima?', '100');
+	const parsedValue = parseInt(enteredValue, 10);
+	if (isNaN(parsedValue) || parsedValue <= 0) {
+		throw { message: 'Invalid user input, not a number.' };
+	}
+	return parsedValue;
+}
+```
+
+Se `throw` viene eseguito, l’esecuzione della funzione si interrompe e l’errore può essere gestito da un blocco `catch` più esterno.
+
+### try e catch
+
+Si racchiude il codice che **può** lanciare un errore in un blocco **`try`**. Il blocco **`catch`** riceve l’errore lanciato (o generato dal motore) e permette di gestirlo senza far crashare l’intero script.
+
+```javascript
+let chosenMaxLife = 100;
+try {
+	chosenMaxLife = getMaxLifeValues();
+} catch (error) {
+	console.log(error); // es. { message: 'Invalid user input, not a number.' }
+	chosenMaxLife = 100; // fallback
+}
+// il resto del codice può usare chosenMaxLife
+```
+
+È buona pratica limitare il contenuto del `try` al codice che può effettivamente generare l’errore che si vuole gestire, non l’intero programma.
+
+### finally
+
+Il blocco **`finally`** (opzionale) viene eseguito **sempre** dopo `try` (e `catch` se presente), sia che ci sia stato un errore sia che no. È utile per operazioni di **pulizia** (chiudere risorse, resettare stati) che devono avvenire in ogni caso. Se in `catch` si **rilancia** l’errore con `throw error`, il codice dopo il `try`/`catch` non viene eseguito, ma `finally` sì.
+
+```javascript
+try {
+	chosenMaxLife = getMaxLifeValues();
+} catch (error) {
+	console.log(error);
+	chosenMaxLife = 100;
+} finally {
+	// eseguito sempre (pulizia, reset, ecc.)
+}
+```
+
+In molti casi `finally` non è necessario; diventa utile in contesti più avanzati (connessioni, rilancio errori, più livelli di gestione).
+
+---
+
+## Riepilogo
+
+- **Condizionali**: `if`/`else`/`else if` per eseguire codice in base a condizioni; la condizione deve essere booleana (o truthy/falsy).
+- **Confronti**: preferire `===` e `!==`; per oggetti e array il confronto è per riferimento.
+- **Combinazioni**: `&&` e `||` per unire condizioni; usare parentesi per chiarire la precedenza.
+- **Truthy/falsy**: in contesti booleani, JavaScript converte valori; `0`, `''`, `null`, `undefined`, `NaN` sono falsy.
+- **Ternario**: `condizione ? valoreSeTrue : valoreSeFalse` quando serve un valore condizionato in un’espressione.
+- **Switch**: utile per molti confronti per uguaglianza; usare `break` per evitare il fall-through.
+- **Loop**: `for` (con indice), `for...of` (elementi), `for...in` (chiavi oggetto), `while`, `do...while`; `break` e `continue` per controllare il flusso.
+- **Errori**: `try`/`catch`/`finally` e `throw` per gestire errori in modo controllato e fallback.

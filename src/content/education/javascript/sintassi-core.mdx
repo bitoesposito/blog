@@ -26,7 +26,7 @@ Ad esempio, in una calcolatrice è necessario memorizzare il risultato precedent
 In JavaScript, si crea una variabile utilizzando la parola chiave **let**, seguita da un nome di propria scelta, un segno di uguale e il valore da memorizzare.
 
 ```javascript
-let userName = 'Max';
+let userName = 'Vito';
 ```
 
 Dopo la creazione, è possibile riassegnare un nuovo valore alla variabile. In questo caso, non si ripete la parola chiave `let`, che serve solo per dichiarare una nuova variabile.
@@ -199,7 +199,7 @@ Le **stringhe** (o **string**) rappresentano testo. Si creano racchiudendo il te
 - Backtick: `` `testo` ``
 
 ```javascript
-let name = 'Max';
+let name = 'Vito';
 let message = "Ciao mondo";
 let greeting = `Benvenuto`;
 ```
@@ -218,9 +218,9 @@ Le stringhe sono utilizzate per:
 L'operatore `+` può essere utilizzato anche per concatenare (unire) stringhe:
 
 ```javascript
-let firstName = 'Max';
-let lastName = 'Schwarz';
-let fullName = firstName + ' ' + lastName; // "Max Schwarz"
+let firstName = 'Vito';
+let lastName = 'Esposito';
+let fullName = firstName + ' ' + lastName; // "Vito Esposito"
 ```
 
 Quando si utilizza `+` con stringhe, JavaScript esegue la concatenazione invece dell'addizione matematica.
@@ -230,10 +230,10 @@ Quando si utilizza `+` con stringhe, JavaScript esegue la concatenazione invece 
 I **template literals** (creati con i backtick) permettono di incorporare valori dinamici nelle stringhe utilizzando la sintassi `${}`:
 
 ```javascript
-let name = 'Max';
+let name = 'Vito';
 let age = 30;
 let message = `Ciao, mi chiamo ${name} e ho ${age} anni.`;
-// Risultato: "Ciao, mi chiamo Max e ho 30 anni."
+// Risultato: "Ciao, mi chiamo Vito e ho 30 anni."
 ```
 
 I template literals supportano anche stringhe multi-linea:
@@ -275,13 +275,13 @@ Gli **oggetti** permettono di raggruppare dati correlati. Si creano utilizzando 
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 30,
   email: 'max@example.com'
 };
 ```
 
-Le chiavi (come `name`, `age`) identificano le proprietà dell'oggetto, mentre i valori (come `'Max'`, `30`) sono i dati memorizzati.
+Le chiavi (come `name`, `age`) identificano le proprietà dell'oggetto, mentre i valori (come `'Vito'`, `30`) sono i dati memorizzati.
 
 Gli oggetti sono ideali per rappresentare entità del mondo reale che hanno più attributi correlati, come un utente con nome, età ed email.
 
@@ -291,11 +291,11 @@ Per accedere a una proprietà di un oggetto, si utilizza la **dot notation**:
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 30
 };
 
-console.log(user.name);  // "Max"
+console.log(user.name);  // "Vito"
 console.log(user.age);   // 30
 ```
 
@@ -305,7 +305,7 @@ Gli **array** sono liste di dati. Si creano utilizzando le parentesi quadre `[]`
 
 ```javascript
 let numbers = [1, 2, 3, 4, 5];
-let names = ['Max', 'Anna', 'Tom'];
+let names = ['Vito', 'Anna', 'Tom'];
 let mixed = [1, 'testo', true, null];
 ```
 
@@ -404,7 +404,7 @@ function greet(name) {
   console.log('Ciao, ' + name);
 }
 
-greet('Max');  // "Ciao, Max"
+greet('Vito');  // "Ciao, Vito"
 ```
 
 Una funzione può avere zero, uno o più parametri, separati da virgole.
@@ -473,7 +473,7 @@ A differenza delle variabili dichiarate con `let` e `const`, le funzioni possono
 
 ```javascript
 // La funzione può essere chiamata qui, anche se è definita dopo
-greet('Max');
+greet('Vito');
 
 function greet(name) {
   console.log('Ciao, ' + name);

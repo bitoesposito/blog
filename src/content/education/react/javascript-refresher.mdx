@@ -312,7 +312,7 @@ function greet(userName, message) {
   console.log(userName + ': ' + message);
 }
 
-greet('Max', 'Hello');
+greet('Vito', 'Hello');
 greet('Manuel', 'Hi, how are you?');
 ```
 
@@ -333,7 +333,7 @@ function greet(userName, message) {
   console.log(userName + ': ' + message);
 }
 
-greet('Max', 'Hello');
+greet('Vito', 'Hello');
 greet('Manuel', 'Hi, how are you?');
 ```
 
@@ -348,7 +348,7 @@ function greet(userName, message = 'Hello') {
   console.log(userName + ': ' + message);
 }
 
-greet('Max'); // Usa il valore predefinito 'Hello'
+greet('Vito'); // Usa il valore predefinito 'Hello'
 greet('Manuel', 'Hi'); // Sovrascrive il valore predefinito
 ```
 
@@ -363,7 +363,7 @@ function createGreeting(userName, message) {
   return 'Hello, I am ' + userName + '. ' + message;
 }
 
-const greeting = createGreeting('Max', 'Hello');
+const greeting = createGreeting('Vito', 'Hello');
 console.log(greeting); // 'Hello, I am Max. Hello'
 ```
 
@@ -415,12 +415,12 @@ Gli oggetti permettono di raggruppare più valori utilizzando coppie chiave-valo
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 34
 };
 
-console.log(user); // { name: 'Max', age: 34 }
-console.log(user.name); // 'Max'
+console.log(user); // { name: 'Vito', age: 34 }
+console.log(user.name); // 'Vito'
 console.log(user.age);  // 34
 ```
 
@@ -432,11 +432,11 @@ Si accede alle proprietà di un oggetto utilizzando la notazione a punti:
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 34
 };
 
-console.log(user.name); // 'Max'
+console.log(user.name); // 'Vito'
 console.log(user.age);  // 34
 ```
 
@@ -448,7 +448,7 @@ Gli oggetti possono contenere funzioni, chiamate metodi:
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 34,
   greet() {
     console.log('Hello');
@@ -467,7 +467,7 @@ All'interno di un metodo, si può accedere alle proprietà dell'oggetto utilizza
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 34,
   greet() {
     console.log('Hello');
@@ -543,7 +543,7 @@ Gli array possono contenere qualsiasi tipo di valore: stringhe, numeri, oggetti,
 const mixedArray = [
   'string',
   42,
-  { name: 'Max' },
+  { name: 'Vito' },
   ['nested', 'array']
 ];
 ```
@@ -619,7 +619,7 @@ La destructuring permette di estrarre facilmente valori da array e oggetti e ass
 Invece di accedere manualmente agli elementi di un array:
 
 ```javascript
-const userNameData = ['Max', 'Schwarzmuller'];
+const userNameData = ['Vito', 'Esposito'];
 const firstName = userNameData[0];
 const lastName = userNameData[1];
 ```
@@ -627,11 +627,11 @@ const lastName = userNameData[1];
 Si può usare la destructuring:
 
 ```javascript
-const userNameData = ['Max', 'Schwarzmuller'];
+const userNameData = ['Vito', 'Esposito'];
 const [firstName, lastName] = userNameData;
 
-console.log(firstName); // 'Max'
-console.log(lastName);  // 'Schwarzmuller'
+console.log(firstName); // 'Vito'
+console.log(lastName);  // 'Esposito'
 ```
 
 La sintassi utilizza parentesi quadre a sinistra del segno di uguale. La prima variabile viene mappata sul primo elemento dell'array, la seconda sul secondo elemento, e così via. I nomi delle variabili dipendono da voi.
@@ -642,7 +642,7 @@ Invece di accedere manualmente alle proprietà di un oggetto:
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 34
 };
 const name = user.name;
@@ -653,12 +653,12 @@ Si può usare la destructuring:
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 34
 };
 
 const { name, age } = user;
-console.log(name); // 'Max'
+console.log(name); // 'Vito'
 console.log(age);  // 34
 ```
 
@@ -670,12 +670,12 @@ console.log(age);  // 34
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 34
 };
 
 const { name: userName, age: userAge } = user;
-console.log(userName); // 'Max'
+console.log(userName); // 'Vito'
 console.log(userAge);  // 34
 ```
 
@@ -738,7 +738,7 @@ L'operatore spread funziona anche con gli oggetti:
 
 ```javascript
 const user = {
-  name: 'Max',
+  name: 'Vito',
   age: 34
 };
 
@@ -748,7 +748,7 @@ const extendedUser = {
 };
 
 console.log(extendedUser);
-// { name: 'Max', age: 34, isAdmin: true }
+// { name: 'Vito', age: 34, isAdmin: true }
 ```
 
 L'operatore spread estrae tutte le coppie chiave-valore dall'oggetto e le aggiunge al nuovo oggetto. Questo è molto utile per creare nuovi oggetti basati su oggetti esistenti.
@@ -763,13 +763,13 @@ const originalArray = [1, 2, 3];
 const clonedArray = [...originalArray];
 
 // Clonare un oggetto
-const originalObject = { name: 'Max', age: 34 };
+const originalObject = { name: 'Vito', age: 34 };
 const clonedObject = { ...originalObject };
 ```
 
 Questo crea una copia superficiale (shallow copy) che previene mutazioni indesiderate degli originali. È importante notare che è una copia superficiale: se l'oggetto o l'array contiene oggetti annidati, quelli non vengono clonati.
 
-**Nota**: questo operatore verrà utilizzato spesso nel corso quando si lavora con React, specialmente per aggiornare lo stato in modo immutabile.
+**Nota**: questo operatore verrà utilizzato spesso quando si lavora con React, specialmente per aggiornare lo stato in modo immutabile.
 
 </div>
 </details>
@@ -825,7 +825,7 @@ for (const hobby of hobbies) {
 - Con la parola chiave `of`, si dice a JavaScript di creare una nuova costante per ogni elemento dell'array
 - Il codice tra le parentesi graffe viene eseguito per ogni elemento
 
-Questo tipo di ciclo è molto comune e verrà utilizzato spesso nel corso.
+Questo tipo di ciclo è molto comune e verrà utilizzato spesso.
 
 ### Altri tipi di cicli
 
