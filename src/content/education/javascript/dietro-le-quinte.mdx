@@ -1,0 +1,731 @@
+---
+title: "Dietro le quinte di JavaScript"
+description: "ES5 vs ES6, var vs let/const, scope, hoisting, esecuzione del codice, primitive vs reference values e garbage collection"
+date: 2026-01-30
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Introduzione
+
+Questo modulo esplora il funzionamento interno di JavaScript, analizzando come il browser elabora ed esegue il codice, le differenze tra le versioni del linguaggio e alcuni comportamenti che possono risultare confusi se non compresi correttamente.
+
+Gli argomenti trattati includono:
+
+- **Evoluzione di JavaScript**: ES5 vs ES6 e le differenze sintattiche
+- **Scope e variabili**: var, let, const e il concetto di block scope
+- **Hoisting**: come JavaScript gestisce le dichiarazioni
+- **Esecuzione del codice**: parsing, compilazione ed esecuzione
+- **Memoria**: heap, stack e gestione della memoria
+- **Tipi di valori**: primitive vs reference values
+- **Garbage collection**: gestione automatica della memoria
+
+Comprendere questi concetti è fondamentale per scrivere codice JavaScript corretto ed efficiente, evitando comportamenti inattesi e ottimizzando le prestazioni.
+
+---
+
+## ES5 vs ES6: l'evoluzione di JavaScript
+
+### Cos'è ECMAScript
+
+**ES** sta per **ECMAScript**, il linguaggio standardizzato dietro JavaScript. ECMAScript è il linguaggio definito dall'organizzazione **ECMA International**, che stabilisce le specifiche tecniche che i browser devono implementare nei propri JavaScript engine.
+
+ECMAScript è ancora in sviluppo attivo. Persone provenienti dai diversi browser e altri partecipanti al processo lavorano continuamente su nuove funzionalità, miglioramenti e correzioni. Questo processo deve essere condotto con grande attenzione perché non è possibile modificare il linguaggio in modo che le pagine web esistenti smettano di funzionare nei browser più vecchi.
+
+### ECMAScript 5 (ES5)
+
+**ECMAScript 5** è stata una versione importante rilasciata in passato. Includeva miglioramenti significativi e, soprattutto, una standardizzazione più solida. Prima di ES5, molti browser implementavano JavaScript in modi diversi, creando frammentazione.
+
+ES5 rappresentò il primo grande standard dopo ECMAScript 3 su cui i browser potevano convergere, fornendo un terreno comune per l'implementazione delle funzionalità.
+
+### ECMAScript 6 (ES6) / ECMAScript 2015
+
+**ECMAScript 6**, anche noto come **ECMAScript 2015**, è stato finalizzato nel 2015 e rappresenta un'altra pietra miliare importante nello sviluppo di JavaScript.
+
+È importante comprendere che il rilascio di un nuovo standard non significa che tutti i browser implementino immediatamente tutte le nuove funzionalità. Le funzionalità vengono aggiunte ai browser in modo incrementale, a velocità diverse, e i browser più vecchi (come Internet Explorer 9) non includono queste nuove funzionalità.
+
+### Supporto browser per ES6 e versioni successive
+
+I browser moderni hanno un supporto eccellente per ES6 e le versioni successive. Inoltre, tutti i browser moderni (incluso Edge) hanno funzionalità di aggiornamento automatico, il che significa che gli utenti non devono installare manualmente nuove versioni del browser.
+
+Questo permette alle funzionalità di essere integrate nei browser a un ritmo molto più veloce, e sempre più utenti utilizzano automaticamente le versioni più recenti dei browser.
+
+### Differenze principali tra ES5 e ES6
+
+ES6 ha introdotto molti cambiamenti sintattici significativi rispetto a ES5. Una delle differenze più importanti riguarda la creazione di variabili: in ES5 e versioni precedenti esisteva solo la parola chiave `var`, mentre ES6 ha introdotto `let` e `const`.
+
+Questa differenza potrebbe sembrare minore, ma è in realtà molto importante, come vedremo nelle sezioni successive.
+
+ES6 e le versioni successive hanno introdotto molte nuove funzionalità che mirano a:
+
+- Scrivere codice più pulito e leggibile
+- Ridurre la necessità di workaround o hack
+- Rendere più difficile scrivere codice problematico
+- Migliorare le prestazioni
+
+### Sviluppo continuo
+
+JavaScript è ancora in sviluppo attivo. ES6 è stata una pietra miliare importante, ma non rappresenta l'ultima versione. Il processo di sviluppo è continuo: nuove funzionalità vengono aggiunte alla specifica ECMAScript regolarmente, e i vendor dei browser iniziano a implementarle nei propri JavaScript engine.
+
+Non abbiamo più etichette di versione grandi per ogni nuova funzionalità, ma il processo di evoluzione continua costantemente.
+
+---
+
+## var vs let vs const: block scope
+
+### Tre modi per creare variabili
+
+In JavaScript esistono tre modi per creare variabili:
+
+- **`var`**: disponibile sin dall'inizio di JavaScript
+- **`let`**: introdotto con ES6
+- **`const`**: introdotto con ES6
+
+`var` e `let` creano variabili modificabili, mentre `const` crea costanti che non possono essere riassegnate dopo l'inizializzazione.
+
+### La differenza fondamentale: scope
+
+La differenza principale tra `var` e `let`/`const` non riguarda solo la disponibilità temporale, ma il tipo di **scope** che utilizzano:
+
+- **`var`**: utilizza **function scope** e **global scope**
+- **`let`** e **`const`**: utilizzano **block scope**
+
+### Function scope vs block scope
+
+Con `var`, una variabile creata all'interno di una funzione è accessibile solo all'interno di quella funzione. Una variabile creata al di fuori di qualsiasi funzione è globale e accessibile ovunque.
+
+Con `let` e `const`, lo scope è determinato dalle **parentesi graffe** (`{}`), non dalle funzioni. Le parentesi graffe creano un **blocco**, e le variabili dichiarate con `let` o `const` all'interno di un blocco sono accessibili solo all'interno di quel blocco.
+
+```javascript
+// Esempio con var (function scope)
+function greet() {
+	if (true) {
+		var age = 30; // accessibile in tutta la funzione
+	}
+	console.log(age); // funziona: 30
+}
+
+// Esempio con let (block scope)
+function greet() {
+	if (true) {
+		let age = 30; // accessibile solo nel blocco if
+	}
+	console.log(age); // errore: age is not defined
+}
+```
+
+### Esempi pratici di block scope
+
+I blocchi sono creati da:
+
+- Istruzioni `if` e `else`
+- Loop (`for`, `while`, ecc.)
+- Funzioni
+- Blocchi `try/catch`
+- Qualsiasi coppia di parentesi graffe `{}` (quando non usate per creare oggetti)
+
+```javascript
+const name = 'Max';
+
+if (name === 'Max') {
+	const hobbies = ['sports', 'cooking']; // block scope
+	console.log(hobbies); // funziona
+}
+
+console.log(hobbies); // errore: hobbies is not defined
+```
+
+### Vantaggi del block scope
+
+Il block scope offre maggiore controllo su dove i dati sono disponibili. Questo:
+
+- **Previene errori accidentali**: se una variabile è dichiarata in un blocco, probabilmente è intesa per essere usata solo in quel blocco
+- **Forza codice più chiaro**: se hai bisogno di una variabile in più punti, devi dichiararla a un livello superiore
+- **Evita comportamenti inattesi**: con `var`, una variabile dichiarata in un `if` diventa accessibile ovunque nella funzione, anche se non era l'intenzione
+
+### Perché non usare più var
+
+In JavaScript moderno, `let` e `const` sono preferiti a `var` perché:
+
+1. **Block scope**: offre maggiore controllo e chiarezza
+2. **Prevenzione di errori**: impedisce la ri-dichiarazione accidentale
+3. **Comportamento più prevedibile**: evita comportamenti confusi legati allo scope
+
+`var` è ancora presente nel linguaggio per motivi di retrocompatibilità: rimuoverlo significherebbe rompere milioni di script esistenti su pagine web in tutto il mondo.
+
+### Blocchi arbitrari
+
+È possibile creare blocchi arbitrari usando solo parentesi graffe:
+
+```javascript
+{
+	const test = 'test';
+	console.log(test); // funziona
+}
+
+console.log(test); // errore: test is not defined
+```
+
+Questa sintassi non è comunemente usata, ma dimostra che i blocchi sono creati semplicemente dalle parentesi graffe, non necessariamente da istruzioni specifiche.
+
+---
+
+## Hoisting: come JavaScript legge le dichiarazioni
+
+### Cos'è l'hoisting
+
+**Hoisting** è un comportamento di JavaScript per cui il motore JavaScript, quando carica uno script, esamina l'intero script e "solleva" (hoist) le dichiarazioni di funzioni e variabili all'inizio del file.
+
+Questo comportamento è diverso per `var`, `let` e `const`.
+
+### Hoisting con var
+
+Con `var`, la dichiarazione viene spostata all'inizio del file e la variabile viene inizializzata con il valore `undefined`:
+
+```javascript
+console.log(userName); // undefined (non errore!)
+var userName = 'Max';
+```
+
+Comportamento equivalente a:
+
+```javascript
+var userName = undefined; // hoisting
+console.log(userName); // undefined
+userName = 'Max';
+```
+
+### Hoisting con let e const
+
+Con `let` e `const`, l'hoisting avviene ancora, ma la variabile non viene inizializzata. Questo crea una "temporal dead zone" dove la variabile esiste ma non può essere accessibile:
+
+```javascript
+console.log(userName); // errore: Cannot access 'userName' before initialization
+let userName = 'Max';
+```
+
+### Perché l'hoisting con var è problematico
+
+L'hoisting con `var` può portare a codice confuso e difficile da capire:
+
+```javascript
+// Codice scritto così
+console.log(userName);
+var userName = 'Max';
+
+// Comportamento equivalente
+var userName = undefined;
+console.log(userName); // undefined invece di errore
+userName = 'Max';
+```
+
+Se un altro sviluppatore legge il codice e vede `console.log(userName)` prima della dichiarazione, potrebbe confondersi cercando dove `userName` è definito.
+
+Con `let` e `const`, sei **forzato** a dichiarare la variabile prima di usarla, rendendo il codice più chiaro e prevedibile.
+
+### Ri-dichiarazione con var
+
+Un altro comportamento problematico di `var` è che permette la ri-dichiarazione della stessa variabile nello stesso scope:
+
+```javascript
+var name = 'Max';
+var name = 'Manuel'; // funziona senza errore
+console.log(name); // 'Manuel'
+```
+
+Con `let` e `const`, questo genera un errore:
+
+```javascript
+let name = 'Max';
+let name = 'Manuel'; // errore: Identifier 'name' has already been declared
+```
+
+La ri-dichiarazione di una variabile non è mai necessaria: se vuoi cambiare il valore, usa l'assegnazione, non la ri-dichiarazione.
+
+### Variabili senza keyword
+
+JavaScript è un linguaggio permissivo. Se crei una variabile senza `var`, `let` o `const`, JavaScript aggiunge implicitamente `var`:
+
+```javascript
+userName = 'Max'; // JavaScript aggiunge implicitamente var
+console.log(userName); // 'Max'
+```
+
+Questo comportamento è **sconsigliato** perché:
+
+- Rende il codice confuso: altri sviluppatori potrebbero pensare che la variabile sia dichiarata altrove
+- Può creare variabili globali inaspettate
+- Rende difficile tracciare dove le variabili sono dichiarate
+
+---
+
+## Strict mode
+
+### Cos'è lo strict mode
+
+Lo **strict mode** è una modalità speciale di JavaScript introdotta con ES5 che disabilita alcuni comportamenti permissivi del linguaggio, rendendo il codice più sicuro e prevedibile.
+
+### Come abilitare lo strict mode
+
+Per abilitare lo strict mode, aggiungi la stringa `'use strict';` all'inizio del file o all'inizio di una funzione:
+
+```javascript
+'use strict';
+
+// Tutto il codice in questo file è in strict mode
+let userName = 'Max';
+```
+
+```javascript
+function myFunction() {
+	'use strict';
+	// Solo il codice in questa funzione è in strict mode
+}
+```
+
+### Comportamenti disabilitati in strict mode
+
+Lo strict mode disabilita vari comportamenti problematici:
+
+- **Variabili senza keyword**: genera un errore invece di creare implicitamente una variabile globale
+- **Uso di nomi riservati**: non permette di usare nomi riservati come `undefined` come nomi di variabili
+- **Altre pratiche problematiche**: disabilita vari altri comportamenti che possono portare a bug
+
+```javascript
+'use strict';
+
+userName = 'Max'; // errore: userName is not defined
+```
+
+### Strict mode e sintassi moderna
+
+La sintassi moderna di JavaScript (ES6+) già proibisce molti dei comportamenti che lo strict mode disabilita. Ad esempio, `let` e `const` già impediscono l'uso di nomi riservati come variabili.
+
+Tuttavia, abilitare lo strict mode può essere comunque utile per essere "super sicuri" e catturare eventuali comportamenti problematici che potrebbero sfuggire.
+
+### Quando usare lo strict mode
+
+Lo strict mode è opzionale, ma è generalmente consigliato per:
+
+- Nuovi progetti: previene errori comuni
+- Codice legacy: può aiutare a identificare problemi esistenti
+- Team development: garantisce che tutti seguano le stesse regole
+
+---
+
+## Come il browser esegue JavaScript
+
+### Il processo di esecuzione
+
+Quando il browser carica una pagina HTML e trova un tag `<script>`, esegue immediatamente il codice JavaScript contenuto. Questo processo può essere suddiviso in due parti principali:
+
+1. **Cosa fa il browser con il codice**: come viene elaborato tecnicamente
+2. **Come viene eseguito il codice**: gestione del flusso di esecuzione e dell'ordine
+
+### Parsing e compilazione
+
+Il browser ha un **JavaScript engine** che si occupa di elaborare ed eseguire il codice JavaScript. Ogni browser principale ha il proprio engine:
+
+- **Chrome**: V8
+- **Firefox**: SpiderMonkey
+- **Edge**: V8 (basato su Chromium)
+
+Gli engine tipicamente consistono di due parti:
+
+1. **Interpreter**: legge lo script, lo traduce in bytecode e inizia l'esecuzione
+2. **Compiler (JIT)**: compila il bytecode in machine code per un'esecuzione più veloce
+
+### Il processo completo
+
+1. **Parsing**: il browser legge e carica lo script JavaScript
+2. **Interpretazione**: l'interpreter traduce il codice in bytecode e inizia l'esecuzione
+3. **Compilazione**: il compiler (in parallelo) compila il bytecode in machine code
+4. **Esecuzione ottimizzata**: una volta compilato, il codice viene eseguito come machine code, che è molto più veloce
+
+### Ottimizzazioni
+
+Il JavaScript engine applica varie tecniche di ottimizzazione:
+
+- **Caching**: codice che non è cambiato tra esecuzioni può essere riutilizzato senza ricompilazione
+- **Just-In-Time (JIT) compilation**: compilazione al volo durante l'esecuzione
+- **Ottimizzazioni specifiche**: ogni engine implementa ottimizzazioni avanzate
+
+### Browser APIs
+
+Il browser fornisce anche varie **API** (Application Programming Interfaces) che possono essere utilizzate dal codice JavaScript:
+
+- **DOM API**: per manipolare HTML e CSS
+- **Fetch API**: per fare richieste HTTP
+- **Geolocation API**: per ottenere la posizione dell'utente
+- E molte altre
+
+Queste API sono scritte in linguaggi di basso livello (come C++) e il browser fornisce "ponti di comunicazione" che permettono al codice JavaScript di chiamarle. Quando il codice viene compilato, queste chiamate alle API vengono incluse nel machine code finale.
+
+---
+
+## Heap e Stack: gestione della memoria
+
+### Due tipi di memoria
+
+Il JavaScript engine gestisce la memoria utilizzando due concetti principali:
+
+- **Heap**: memoria a lungo termine per l'allocazione di dati
+- **Stack**: memoria a breve termine per la gestione del flusso di esecuzione
+
+### Il Heap
+
+Il **heap** è la memoria a lungo termine del sistema. Qui vengono memorizzati i dati con cui lavora il programma: oggetti, array, funzioni e altri dati che devono persistere.
+
+Il browser gestisce l'allocazione della memoria nel heap, utilizzando la memoria di sistema allocata dal sistema operativo.
+
+### Lo Stack
+
+Lo **stack** è la memoria a breve termine che gestisce il flusso di esecuzione del programma. Principalmente, lo stack tiene traccia di:
+
+- Quale funzione è attualmente in esecuzione
+- L'ordine delle chiamate di funzione
+- A quale funzione ritornare quando una funzione termina
+
+### Come funziona lo stack
+
+Lo stack funziona come una pila (LIFO - Last In, First Out):
+
+1. Quando una funzione viene chiamata, viene **pushata** (aggiunta) in cima allo stack
+2. Quando una funzione termina, viene **poppata** (rimossa) dallo stack
+3. La funzione in cima allo stack è sempre quella attualmente in esecuzione
+
+```javascript
+function greet() {
+	const userName = getName();
+	console.log('Hello ' + userName);
+}
+
+function getName() {
+	return prompt('Your name?');
+}
+
+greet(); // chiamata iniziale
+```
+
+**Flusso di esecuzione nello stack:**
+
+1. Script anonimo (esecuzione principale) → pushato nello stack
+2. `greet()` → pushata nello stack
+3. `getName()` → pushata nello stack
+4. `prompt()` → pushata nello stack
+5. `prompt()` ritorna → poppata dallo stack
+6. `getName()` ritorna → poppata dallo stack
+7. `greet()` termina → poppata dallo stack
+8. Script termina → poppato dallo stack
+
+### Visualizzare lo stack nel debugger
+
+È possibile visualizzare lo stack utilizzando gli strumenti di sviluppo del browser:
+
+1. Apri gli strumenti di sviluppo (F12)
+2. Vai alla scheda "Sources"
+3. Imposta un breakpoint nel codice
+4. Nella sezione "Call Stack" vedrai lo stack delle chiamate di funzione
+
+### JavaScript è single-threaded
+
+JavaScript è **single-threaded**, il che significa che può eseguire solo una cosa alla volta. Lo stack garantisce questo comportamento: le funzioni vengono eseguite una alla volta, nell'ordine in cui vengono chiamate.
+
+### Event Loop
+
+Oltre allo stack, i browser moderni hanno un meccanismo chiamato **Event Loop** che gestisce il codice asincrono e gli event listener. L'Event Loop non fa parte del JavaScript engine, ma del browser stesso.
+
+Quando imposti un event listener, il browser lo gestisce. Quando l'evento si verifica, il browser "pinga" il JavaScript engine, che esegue la funzione callback quando lo stack è vuoto.
+
+Approfondiremo l'Event Loop in un modulo successivo quando parleremo di codice asincrono.
+
+---
+
+## Primitive vs Reference Values
+
+### Due categorie di valori
+
+In JavaScript, tutti i valori possono essere categorizzati in due tipi:
+
+- **Primitive values**: valori primitivi
+- **Reference values**: valori di riferimento
+
+Questa distinzione è fondamentale per comprendere come JavaScript gestisce i dati in memoria.
+
+### Primitive Values
+
+I **primitive values** sono sei tipi di dati:
+
+1. **String**
+2. **Number**
+3. **Boolean**
+4. **Null**
+5. **Undefined**
+6. **Symbol** (avanzato, vedremo più avanti)
+
+Ogni stringa, numero o booleano che crei è un valore primitivo.
+
+### Come sono memorizzati i primitive values
+
+I primitive values sono tipicamente memorizzati nello **stack** perché:
+
+- Sono relativamente piccoli
+- Sono facili da duplicare
+- Non occupano molta memoria
+- Hanno una vita breve
+
+### Copiare primitive values
+
+Quando copi un valore primitivo (assegnandolo a una nuova variabile), il **valore viene effettivamente copiato**:
+
+```javascript
+let name = 'Max';
+let anotherUser = name; // copia il valore
+
+name = 'Manuel';
+console.log(anotherUser); // 'Max' (non è cambiato)
+```
+
+Questo comportamento è quello che ci aspettiamo: ogni variabile ha la propria copia del valore.
+
+### Reference Values
+
+Tutti gli **oggetti** (inclusi array, che sono oggetti) sono **reference values**. Questo include:
+
+- Oggetti letterali `{}`
+- Array `[]`
+- Funzioni (che sono oggetti)
+- Date, RegExp, e altri oggetti built-in
+
+### Come sono memorizzati i reference values
+
+I reference values sono memorizzati nello **heap** perché:
+
+- Sono più complessi
+- Occupano più memoria
+- Sono più costosi da creare e duplicare
+
+Quando crei un oggetto, viene memorizzato nello heap e la variabile contiene solo un **puntatore** (l'indirizzo di memoria) all'oggetto, non l'oggetto stesso.
+
+### Copiare reference values
+
+Quando copi un reference value, viene copiato solo il **puntatore**, non l'oggetto stesso:
+
+```javascript
+const hobbies = ['sports'];
+const newHobbies = hobbies; // copia solo il puntatore
+
+hobbies.push('cooking');
+console.log(newHobbies); // ['sports', 'cooking'] (è cambiato!)
+```
+
+Entrambe le variabili puntano allo stesso oggetto in memoria. Modificare una modifica l'altra perché puntano alla stessa posizione.
+
+### Stesso comportamento con oggetti
+
+```javascript
+const person = { age: 30 };
+const anotherPerson = person; // copia solo il puntatore
+
+anotherPerson.age = 32;
+console.log(person.age); // 32 (è cambiato!)
+```
+
+### Creare copie reali
+
+Per creare una copia reale di un oggetto o array, puoi usare lo **spread operator** (`...`):
+
+```javascript
+// Copia di un oggetto
+const person = { age: 30 };
+const anotherPerson = { ...person }; // nuova copia
+
+anotherPerson.age = 32;
+console.log(person.age); // 30 (non è cambiato)
+
+// Copia di un array
+const hobbies = ['sports'];
+const moreHobbies = [...hobbies]; // nuova copia
+
+hobbies.push('cooking');
+console.log(moreHobbies); // ['sports'] (non è cambiato)
+```
+
+Approfondiremo lo spread operator nei moduli su array e oggetti.
+
+### Confronto di reference values
+
+Quando confronti due oggetti o array, JavaScript confronta i **puntatori**, non i contenuti:
+
+```javascript
+const person1 = { age: 30 };
+const person2 = { age: 30 };
+
+console.log(person1 === person2); // false!
+```
+
+Anche se i contenuti sono identici, sono due oggetti diversi in memoria con indirizzi diversi, quindi il confronto restituisce `false`.
+
+### const con reference values
+
+Un comportamento importante da comprendere è che `const` previene la riassegnazione della variabile, ma non previene la modifica dell'oggetto a cui punta:
+
+```javascript
+const hobbies = ['sports'];
+
+hobbies.push('cooking'); // funziona! Modifica l'oggetto
+console.log(hobbies); // ['sports', 'cooking']
+
+hobbies = ['sports', 'running']; // errore! Tenta di riassegnare
+```
+
+Questo perché `const` memorizza il puntatore, e il puntatore non cambia quando modifichi l'oggetto. Cambiare l'oggetto stesso non cambia il puntatore.
+
+### Perché è importante
+
+Comprendere la differenza tra primitive e reference values è cruciale perché:
+
+- Spiega perché modificare un oggetto in un punto del codice lo modifica anche in altri punti
+- Spiega perché i confronti tra oggetti non funzionano come ci si aspetta
+- Spiega perché `const` permette di modificare oggetti e array
+- Aiuta a evitare bug comuni legati alla mutazione accidentale
+
+---
+
+## Garbage Collection
+
+### Cos'è la garbage collection
+
+La **garbage collection** è il processo automatico con cui il JavaScript engine libera la memoria non più utilizzata. Senza questo processo, la memoria si riempirebbe rapidamente, causando problemi di prestazioni o crash del browser.
+
+### Come funziona
+
+Il **garbage collector** è parte di ogni JavaScript engine moderno. Periodicamente, controlla la memoria heap per trovare oggetti che non sono più referenziati da nessuna variabile o parte del codice.
+
+Quando trova tali oggetti, li rimuove dalla memoria, liberando spazio.
+
+### Quando viene eseguita la garbage collection
+
+La garbage collection viene eseguita automaticamente dal JavaScript engine secondo la propria logica e programmazione. Non puoi forzare manualmente la garbage collection, ma puoi aiutare il processo assicurandoti che gli oggetti non più necessari non siano referenziati.
+
+### Esempio di garbage collection
+
+```javascript
+let person = { name: 'Max' };
+
+// ... usa person ...
+
+person = null; // rimuove il riferimento all'oggetto
+// L'oggetto { name: 'Max' } può ora essere garbage collected
+```
+
+Quando imposti `person = null`, rimuovi il riferimento all'oggetto. Se non ci sono altri riferimenti a quell'oggetto, il garbage collector lo rimuoverà dalla memoria.
+
+### Memory leaks
+
+Un **memory leak** (perdita di memoria) si verifica quando hai un oggetto che non usi più ma che è ancora referenziato da qualche parte nel codice. In questo caso, il garbage collector non può rimuoverlo perché pensa che tu ne abbia ancora bisogno.
+
+```javascript
+// Esempio di potenziale memory leak
+function addListener() {
+	const button = document.querySelector('button');
+	button.addEventListener('click', function() {
+		console.log('clicked');
+	});
+}
+
+// Se chiami addListener() più volte, crei più event listener
+// Ogni funzione è un nuovo oggetto in memoria
+```
+
+### Come evitare memory leaks
+
+Per evitare memory leaks:
+
+1. **Rimuovi event listener** quando non sono più necessari
+2. **Evita di creare funzioni anonime** in loop o funzioni che vengono chiamate ripetutamente
+3. **Imposta variabili a `null`** quando non sono più necessarie (se appropriato)
+4. **Usa strumenti di profiling** per identificare memory leaks
+
+Gli strumenti di sviluppo del browser includono profiler di memoria che possono aiutare a identificare memory leaks.
+
+### Garbage collection moderna
+
+I garbage collector moderni sono molto sofisticati e possono identificare oggetti non utilizzati anche se sono memorizzati in variabili `let` o `const`, purché non siano più referenziati o utilizzati nel codice.
+
+---
+
+## JavaScript Language vs Browser APIs
+
+### Due componenti distinti
+
+Il codice JavaScript che scrivi può essere suddiviso in due parti:
+
+1. **JavaScript Language**: la sintassi core del linguaggio (let, const, funzioni, ecc.)
+2. **Browser APIs**: API fornite dal browser che puoi utilizzare dal tuo codice JavaScript
+
+### JavaScript Language
+
+Il **JavaScript Language** comprende:
+
+- Sintassi core (let, const, var, function, ecc.)
+- Tipi di dati primitivi
+- Operatori
+- Strutture di controllo
+- E tutto ciò che fa parte del linguaggio stesso
+
+Il JavaScript Language **non sa nulla** del DOM, del browser, o di altre API. È solo il linguaggio.
+
+### Standardizzazione del JavaScript Language
+
+Il JavaScript Language è avanzato dal **TC39** (Technical Committee 39), un gruppo dell'organizzazione Ecma International. Questo comitato è responsabile di aggiungere nuove funzionalità al linguaggio JavaScript stesso.
+
+Puoi esplorare le proposte attuali del TC39 su: https://github.com/tc39/proposals
+
+**Importante**: anche se una funzionalità diventa parte del linguaggio, non significa che tutti i JavaScript engine la supportino immediatamente. I vendor degli engine fanno del loro meglio per fornire supporto il prima possibile, ma questo processo richiede tempo.
+
+D'altra parte, i vendor degli engine a volte iniziano a supportare certe funzionalità **prima** che TC39 le renda ufficiali, perché in ultima analisi spetta a loro decidere quale sintassi il loro engine comprende.
+
+### Browser APIs
+
+Le **Browser APIs** sono funzionalità fornite dal browser che puoi utilizzare dal tuo codice JavaScript:
+
+- **DOM API**: per manipolare HTML e CSS
+- **Fetch API**: per fare richieste HTTP
+- **Geolocation API**: per ottenere la posizione dell'utente
+- **Storage API**: per memorizzare dati localmente
+- E molte altre
+
+### Standardizzazione delle Browser APIs
+
+Anche le Browser APIs sono standardizzate perché i diversi vendor di browser (Google per Chrome, Microsoft per Edge, ecc.) vogliono fornire funzionalità simili e API simili. Non sarebbe una buona esperienza per gli sviluppatori se dovessi chiamare funzioni diverse per far funzionare i tuoi script in browser diversi.
+
+Il gruppo di lavoro che gestisce le Browser APIs si chiama **WHATWG** (Web Hypertext Application Technology Working Group). Puoi saperne di più su: https://whatwg.org/
+
+**Importante**: WHATWG non è correlato a TC39! Sono due organizzazioni separate che gestiscono aspetti diversi dello sviluppo web.
+
+---
+
+## Conclusione
+
+Questo modulo ha esplorato il funzionamento interno di JavaScript, coprendo:
+
+- **Evoluzione del linguaggio**: ES5 vs ES6 e le differenze sintattiche
+- **Scope e variabili**: var, let, const e block scope
+- **Hoisting**: come JavaScript gestisce le dichiarazioni
+- **Esecuzione del codice**: parsing, compilazione ed esecuzione da parte del browser
+- **Gestione della memoria**: heap, stack e come JavaScript organizza i dati
+- **Tipi di valori**: primitive vs reference values e le loro implicazioni
+- **Garbage collection**: gestione automatica della memoria
+- **Architettura**: differenza tra JavaScript Language e Browser APIs
+
+Comprendere questi concetti è fondamentale per:
+
+- Scrivere codice JavaScript corretto ed efficiente
+- Evitare comportamenti inattesi e bug comuni
+- Ottimizzare le prestazioni delle applicazioni
+- Comprendere come il browser elabora ed esegue il codice
+
+Questi concetti formano le fondamenta per comprendere JavaScript a un livello più profondo e per utilizzare il linguaggio in modo efficace e professionale.
+
