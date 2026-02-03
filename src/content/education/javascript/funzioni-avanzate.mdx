@@ -1,0 +1,506 @@
+---
+title: "Funzioni avanzate"
+description: "Function expressions, arrow functions, default arguments, rest operator, callback e bind in JavaScript"
+date: 2026-02-03
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Introduzione
+
+Le funzioni sono un costrutto fondamentale in JavaScript e in molti altri linguaggi. Permettono di definire codice riutilizzabile che può essere eseguito più volte da punti diversi del programma.
+
+Oltre alle funzioni dichiarate con `function`, JavaScript offre modi alternativi di creare e configurare funzioni che rendono il codice più flessibile e conciso.
+
+In questo capitolo si approfondiscono:
+
+- **Function expressions** e **anonymous functions**: modi alternativi di definire funzioni
+- **Arrow functions**: sintassi abbreviata con caratteristiche speciali
+- **Default arguments**: valori predefiniti per i parametri
+- **Rest operator**: raccogliere argomenti multipli in un array
+- **Callback functions**: passare funzioni come argomenti ad altre funzioni
+- **bind, call, apply**: metodi per configurare e chiamare funzioni
+
+---
+
+## Funzioni come oggetti e metodi
+
+### Funzioni come oggetti
+
+In JavaScript, le **funzioni sono oggetti**. Questo significa che hanno proprietà e metodi come qualsiasi altro oggetto, anche se appartengono a un tipo speciale chiamato `function`.
+
+```javascript
+function startGame() {
+	console.log('Game is starting');
+}
+
+console.log(typeof startGame); // "function"
+```
+
+Usando `console.dir()` invece di `console.log()`, è possibile vedere le proprietà interne della funzione (come `name`, `arguments`, `prototype`), confermando che è un oggetto con caratteristiche speciali.
+
+### Metodi: funzioni negli oggetti
+
+Le funzioni possono essere memorizzate come proprietà di oggetti. Quando una funzione è una proprietà di un oggetto, viene chiamata **metodo**.
+
+```javascript
+const person = {
+	name: 'Max',
+	greet: function() {
+		console.log('Hello there');
+	}
+};
+
+person.greet(); // "Hello there"
+```
+
+I metodi vengono chiamati usando la **dot notation** (`oggetto.metodo()`). Molti oggetti forniti dal browser espongono metodi utili, come `addEventListener` sugli elementi HTML.
+
+---
+
+## Function declarations vs function expressions
+
+### Function declaration
+
+La **function declaration** (o **function statement**) è il modo classico di definire una funzione:
+
+```javascript
+function startGame() {
+	console.log('Game is starting');
+}
+```
+
+Quando JavaScript legge lo script, trova tutte le function declarations e le **registra** prima dell'esecuzione. Questo processo è chiamato **hoisting**: le funzioni dichiarate sono disponibili in tutto lo scope, anche se chiamate prima della loro definizione nel codice.
+
+```javascript
+// Funziona: la funzione è "sollevata" (hoisted)
+startGame();
+
+function startGame() {
+	console.log('Game is starting');
+}
+```
+
+### Function expression
+
+Una **function expression** è una funzione assegnata a una variabile o costante:
+
+```javascript
+const start = function() {
+	console.log('Game is starting');
+};
+```
+
+La differenza principale è che con le function expressions:
+
+- La variabile viene sollevata ma **non inizializzata** (resta `undefined` fino alla riga di assegnazione)
+- Non è possibile chiamare la funzione prima della sua definizione
+- La funzione può essere **anonima** (senza nome)
+
+```javascript
+// Errore: non è possibile accedere a start prima dell'inizializzazione
+start(); // ReferenceError
+
+const start = function() {
+	console.log('Game is starting');
+};
+```
+
+### Quando usare quale sintassi
+
+Entrambe le sintassi sono valide. La function expression forza a definire le funzioni prima di usarle, rendendo il flusso del codice più esplicito. La function declaration può essere più conveniente quando si preferisce definire le funzioni alla fine del file.
+
+La scelta è spesso una questione di stile personale o di convenzioni del progetto.
+
+---
+
+## Anonymous functions
+
+Una **anonymous function** è una funzione senza nome. Si crea quando si usa una function expression senza specificare un nome tra `function` e le parentesi.
+
+```javascript
+const start = function() {
+	console.log('Game is starting');
+};
+```
+
+Il nome `start` è il nome della variabile, non della funzione. La funzione stessa è anonima.
+
+### Quando usare anonymous functions
+
+Le anonymous functions sono utili quando:
+
+- La funzione viene usata **una sola volta** in un punto specifico del codice
+- Si passa una funzione come argomento a un'altra funzione (ad esempio, a `addEventListener`)
+
+```javascript
+startGameBtn.addEventListener('click', function() {
+	console.log('Button clicked');
+	// codice eseguito al click
+});
+```
+
+In questo caso, definire la funzione separatamente non è necessario se viene usata solo qui. Tutto il codice è visibile nel punto di utilizzo, migliorando la leggibilità.
+
+### Naming per il debugging
+
+Anche se una funzione è anonima, è possibile assegnarle un nome per facilitare il debugging:
+
+```javascript
+const start = function startGame() {
+	console.log('Game is starting');
+};
+```
+
+Il nome `startGame` non è accessibile nello scope globale, ma viene usato dagli strumenti di sviluppo per identificare la funzione negli stack trace degli errori. Se si omette il nome, gli errori mostreranno "anonymous" invece del nome della funzione.
+
+---
+
+## Arrow functions
+
+Le **arrow functions** sono una sintassi alternativa per creare funzioni, introdotta in ES6. Sono sempre **anonymous** e devono essere assegnate a una variabile o usate dove si aspetta una funzione.
+
+### Sintassi base
+
+```javascript
+const start = () => {
+	console.log('Game is starting');
+};
+```
+
+La sintassi usa una freccia (`=>`) tra la lista dei parametri e il corpo della funzione. Non c'è la parola chiave `function`.
+
+### Sintassi abbreviata
+
+Le arrow functions offrono diverse forme abbreviate:
+
+**1. Nessun argomento**: le parentesi sono obbligatorie
+
+```javascript
+const greet = () => {
+	console.log('Hi there');
+};
+```
+
+**2. Un solo argomento**: le parentesi possono essere omesse
+
+```javascript
+const log = message => {
+	console.log(message);
+};
+
+// Equivalente a:
+const log = (message) => {
+	console.log(message);
+};
+```
+
+**3. Corpo con una sola espressione**: si possono omettere le graffe e il `return`
+
+```javascript
+const add = (a, b) => a + b;
+
+// Equivalente a:
+const add = (a, b) => {
+	return a + b;
+};
+```
+
+**4. Restituire un oggetto**: serve racchiudere l'oggetto tra parentesi
+
+```javascript
+const createPerson = name => ({ name: name });
+
+// Senza parentesi sarebbe un errore di sintassi
+// Le graffe verrebbero interpretate come delimitatori del corpo della funzione
+```
+
+### Quando usare arrow functions
+
+Le arrow functions sono preferibili quando:
+
+- Si vuole codice più conciso
+- Si passa una funzione come callback
+- Si ha bisogno di una funzione anonima
+
+Hanno anche un comportamento speciale con `this` (vedi modulo sugli oggetti), ma per ora la loro principale utilità è la brevità della sintassi.
+
+---
+
+## Default arguments
+
+I **default arguments** permettono di assegnare valori predefiniti ai parametri di una funzione. Se un argomento non viene passato o è `undefined`, viene usato il valore predefinito.
+
+### Sintassi
+
+```javascript
+const getWinner = (cChoice, pChoice = DEFAULT_USER_CHOICE) => {
+	// pChoice sarà DEFAULT_USER_CHOICE se non viene passato o è undefined
+};
+```
+
+### Comportamento con undefined
+
+Il valore predefinito viene usato **solo** quando l'argomento è `undefined`. Altri valori falsy (`null`, `0`, `''`) non attivano il default:
+
+```javascript
+const greet = (name = 'Guest') => {
+	console.log(`Hello, ${name}`);
+};
+
+greet();           // "Hello, Guest" (undefined → default)
+greet(undefined);  // "Hello, Guest" (undefined → default)
+greet(null);       // "Hello, null" (null non attiva il default)
+greet(0);          // "Hello, 0" (0 non attiva il default)
+```
+
+Questo comportamento è intenzionale: `0` è un valore valido che non deve essere sostituito con un default.
+
+### Ordine dei parametri
+
+I parametri con default possono essere posizionati prima di parametri senza default, ma questo può portare a comportamenti inattesi:
+
+```javascript
+const example = (a = 10, b) => {
+	console.log(a, b);
+};
+
+example(5);  // a = 5, b = undefined
+// Il primo argomento viene assegnato ad 'a' anche se ha un default
+```
+
+In genere è meglio mettere i parametri con default **alla fine** della lista, così gli argomenti opzionali possono essere omessi facilmente.
+
+### Riferimenti ad altri parametri
+
+È possibile usare parametri precedenti nel valore di default:
+
+```javascript
+const calculate = (base, multiplier = base * 2) => {
+	return base * multiplier;
+};
+```
+
+Il parametro referenziato deve essere definito **prima** di quello che lo usa.
+
+---
+
+## Rest operator
+
+Il **rest operator** (`...`) permette di raccogliere un numero variabile di argomenti in un **array**. Va usato nell'ultimo parametro della funzione.
+
+### Sintassi
+
+```javascript
+const sumUp = (...numbers) => {
+	let sum = 0;
+	for (const num of numbers) {
+		sum += num;
+	}
+	return sum;
+};
+
+sumUp(1, 5, 10, -3, 6); // 19
+```
+
+Il rest operator raccoglie tutti gli argomenti passati e li mette nell'array `numbers`.
+
+### Rest operator con altri parametri
+
+È possibile avere parametri normali prima del rest operator:
+
+```javascript
+const combine = (operation, ...numbers) => {
+	// operation riceve il primo argomento
+	// numbers contiene tutti gli argomenti successivi
+};
+```
+
+**Importante**: il rest operator deve essere l'**ultimo** parametro. Non può esserci un parametro dopo di esso, e non può esserci più di un rest operator nella stessa funzione.
+
+### Alternativa: arguments (solo function keyword)
+
+Nelle funzioni create con `function` (non arrow functions), esiste una variabile speciale `arguments` che contiene tutti gli argomenti passati:
+
+```javascript
+function subtractUp() {
+	let result = 0;
+	for (const num of arguments) {
+		result -= num;
+	}
+	return result;
+}
+```
+
+`arguments` è un oggetto **array-like**, non un vero array. Il rest operator è preferibile perché produce un array vero e la sintassi è più esplicita.
+
+---
+
+## Funzioni dentro funzioni
+
+È possibile definire una funzione **all'interno** di un'altra funzione. La funzione interna è disponibile solo nello scope della funzione esterna.
+
+```javascript
+const sumUp = (...numbers) => {
+	const validateNumber = (number) => {
+		return isNaN(number) ? 0 : number;
+	};
+
+	let sum = 0;
+	for (const num of numbers) {
+		sum += validateNumber(num);
+	}
+	return sum;
+};
+```
+
+`validateNumber` esiste solo dentro `sumUp` e non può essere chiamata dall'esterno.
+
+### Quando usare funzioni annidate
+
+Le funzioni annidate sono utili quando:
+
+- Una funzione è usata **solo** all'interno di un'altra funzione
+- Si vuole mantenere lo scope limitato e non "inquinare" lo scope globale
+
+Nella maggior parte dei casi, le funzioni globali sono preferibili perché permettono maggiore riutilizzo e testabilità. Le funzioni annidate diventano più rilevanti quando si approfondiscono concetti avanzati come closure e performance.
+
+---
+
+## Callback functions
+
+Una **callback function** è una funzione passata come argomento a un'altra funzione, che viene chiamata ("richiamata") in un momento successivo, spesso in modo asincrono o in risposta a un evento.
+
+### Pattern callback
+
+```javascript
+const sumUp = (resultHandler, ...numbers) => {
+	let sum = 0;
+	for (const num of numbers) {
+		sum += num;
+	}
+	resultHandler(sum); // chiama la funzione passata come argomento
+};
+
+const showResult = (result) => {
+	alert(`The result after adding all numbers is ${result}`);
+};
+
+sumUp(showResult, 1, 5, 10, -3, 6);
+```
+
+`showResult` è una callback: viene passata a `sumUp` e chiamata da `sumUp` quando il calcolo è completato.
+
+### Callback con event listeners
+
+Il pattern callback è molto comune con gli event listener:
+
+```javascript
+startGameBtn.addEventListener('click', function() {
+	// questa funzione è una callback
+	// viene chiamata dal browser quando avviene il click
+	console.log('Button clicked');
+});
+```
+
+La funzione passata a `addEventListener` non viene eseguita immediatamente, ma viene chiamata dal browser quando l'evento si verifica.
+
+### Quando usare callback
+
+Le callback sono utili quando:
+
+- Si vuole eseguire codice **dopo** che un'operazione è completata
+- Si gestiscono **eventi** (click, input, ecc.)
+- Si lavora con operazioni **asincrone** (richieste di rete, timer)
+
+È possibile passare sia funzioni anonime sia funzioni nominate come callback. Le funzioni nominate possono essere riutilizzate in più punti.
+
+---
+
+## bind, call e apply
+
+I metodi **`bind`**, **`call`** e **`apply`** permettono di configurare come una funzione viene chiamata, in particolare il valore di `this` e gli argomenti passati.
+
+### bind
+
+**`bind`** crea una **nuova funzione** con alcuni argomenti già configurati. La funzione originale non viene modificata.
+
+```javascript
+const showResult = (messageText, result) => {
+	alert(`${messageText} ${result}`);
+};
+
+const showSumResult = showResult.bind(null, 'The result after adding all numbers is');
+// showSumResult è una nuova funzione con messageText già impostato
+
+showSumResult(19); // "The result after adding all numbers is 19"
+```
+
+**Sintassi**: `funzione.bind(thisArg, arg1, arg2, ...)`
+
+- **Primo argomento** (`thisArg`): valore di `this` (per ora si può passare `null` o ignorarlo)
+- **Argomenti successivi**: valori preconfigurati per i parametri della funzione
+
+Gli argomenti passati quando si chiama la funzione bindata vengono **aggiunti dopo** quelli preconfigurati:
+
+```javascript
+const greet = (greeting, name) => {
+	console.log(`${greeting}, ${name}`);
+};
+
+const greetHello = greet.bind(null, 'Hello');
+greetHello('Max'); // "Hello, Max"
+// 'Hello' è preconfigurato, 'Max' viene passato alla chiamata
+```
+
+### Quando usare bind
+
+`bind` è utile quando:
+
+- Si passa una funzione come callback e si vogliono **preconfigurare alcuni argomenti**
+- Si vuole creare una versione specializzata di una funzione senza riscriverla
+
+Esempio pratico: unificare più funzioni simili usando `bind` per differenziare solo i parametri:
+
+```javascript
+const calculate = (operation, enteredNumber) => {
+	// logica comune per tutte le operazioni
+	// operation determina quale operazione eseguire
+};
+
+addBtn.addEventListener('click', calculate.bind(null, 'add'));
+subtractBtn.addEventListener('click', calculate.bind(null, 'subtract'));
+multiplyBtn.addEventListener('click', calculate.bind(null, 'multiply'));
+```
+
+### call e apply
+
+**`call`** e **`apply`** sono simili a `bind`, ma **eseguono immediatamente** la funzione invece di crearne una nuova:
+
+```javascript
+const greet = (greeting, name) => {
+	console.log(`${greeting}, ${name}`);
+};
+
+greet.call(null, 'Hello', 'Max');  // esegue immediatamente
+greet.apply(null, ['Hello', 'Max']); // stessa cosa, argomenti in array
+```
+
+La differenza tra `call` e `apply` è che `apply` accetta gli argomenti come **array**, mentre `call` li accetta separatamente.
+
+Per ora `bind` è il più utile perché permette di preparare funzioni da passare come callback. `call` e `apply` sono meno comuni quando si può chiamare direttamente la funzione.
+
+---
+
+## Riepilogo
+
+- **Funzioni come oggetti**: le funzioni sono oggetti speciali con proprietà e metodi. Quando sono proprietà di oggetti, si chiamano **metodi**.
+- **Function declarations vs expressions**: le declarations sono sollevate (hoisted) e disponibili ovunque; le expressions devono essere definite prima dell'uso.
+- **Anonymous functions**: funzioni senza nome, utili quando si passa una funzione come argomento e viene usata una sola volta.
+- **Arrow functions**: sintassi concisa con forme abbreviate per parametri singoli e corpi con una sola espressione. Sempre anonymous.
+- **Default arguments**: valori predefiniti per parametri quando l'argomento è `undefined`. Meglio posizionarli alla fine della lista.
+- **Rest operator**: raccoglie argomenti multipli in un array. Deve essere l'ultimo parametro.
+- **Funzioni annidate**: funzioni definite dentro altre funzioni, disponibili solo nello scope della funzione esterna.
+- **Callback functions**: funzioni passate come argomenti ad altre funzioni, chiamate in un momento successivo (eventi, operazioni asincrone).
+- **bind**: crea una nuova funzione con argomenti preconfigurati. Utile per preparare callback con valori già noti.
