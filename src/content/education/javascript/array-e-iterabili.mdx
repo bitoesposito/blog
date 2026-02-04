@@ -1,0 +1,1130 @@
+---
+title: "Array e Iterabili"
+description: "Array, metodi array, spread operator, destructuring, Sets, Maps, WeakSet e WeakMap in JavaScript"
+date: 2026-02-04
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 7
+---
+
+## Introduzione
+
+Gli array sono una delle strutture dati più importanti in JavaScript, utilizzati per memorizzare e manipolare collezioni di valori. Questo modulo esplora in dettaglio come lavorare con gli array, i loro metodi e altre strutture dati iterabili come Sets e Maps.
+
+Gli argomenti trattati includono:
+
+- **Iterabili e array-like**: definizioni e differenze
+- **Creazione di array**: diversi metodi e quando usarli
+- **Manipolazione di array**: aggiungere, rimuovere e modificare elementi
+- **Metodi array**: map, filter, reduce, forEach e molti altri
+- **Sintassi avanzata**: spread operator e destructuring
+- **Sets e Maps**: strutture dati alternative
+- **WeakSet e WeakMap**: versioni specializzate per la gestione della memoria
+
+Comprendere questi concetti è essenziale per lavorare efficacemente con i dati in JavaScript.
+
+---
+
+## Iterabili e Array-like
+
+### Cos'è un iterabile
+
+Un **iterabile** è tecnicamente un oggetto che implementa il protocollo iterabile e ha un metodo `@@iterator` con la proprietà `Symbol.iterator`.
+
+In termini più semplici, un iterabile è qualsiasi oggetto su cui puoi utilizzare un loop `for/of`.
+
+```javascript
+// Esempi di iterabili
+const array = [1, 2, 3];
+const string = 'hello';
+const nodeList = document.querySelectorAll('div');
+
+// Tutti possono essere iterati con for/of
+for (const item of array) {
+	console.log(item);
+}
+```
+
+### Iterabili comuni
+
+Non tutti gli iterabili sono array. Esempi di iterabili includono:
+
+- **Array**: la struttura dati principale
+- **Stringhe**: ogni carattere può essere iterato
+- **NodeList**: risultato di `querySelectorAll`
+- **Maps e Sets**: strutture dati che vedremo più avanti
+
+### Array-like objects
+
+Un oggetto **array-like** è diverso da un iterabile, anche se spesso le due caratteristiche coincidono. Un oggetto array-like:
+
+- Ha una proprietà `length`
+- Utilizza indici numerici per accedere agli elementi
+
+Esempi di oggetti array-like includono:
+
+- **NodeList**: ha `length` e indici numerici
+- **Stringhe**: hanno `length` e indici numerici
+- **Arguments**: l'oggetto `arguments` nelle funzioni
+
+### Differenze importanti
+
+Gli array reali hanno metodi speciali che non esistono su oggetti array-like o altri iterabili. Ad esempio, `map`, `filter`, `reduce` sono disponibili solo su array veri.
+
+Per convertire un iterabile o un oggetto array-like in un array reale, puoi utilizzare `Array.from()`:
+
+```javascript
+const nodeList = document.querySelectorAll('li');
+const array = Array.from(nodeList); // converte in array reale
+// Ora puoi usare tutti i metodi array
+```
+
+---
+
+## Creare Array
+
+### Metodo principale: square brackets
+
+Il modo più comune e raccomandato per creare un array è utilizzare le **parentesi quadre**:
+
+```javascript
+const numbers = [1, 2, 3];
+const hobbies = ['sports', 'cooking'];
+```
+
+Questo è il metodo più performante e più leggibile. Puoi anche avere una virgola finale per migliorare la leggibilità:
+
+```javascript
+const data = [
+	'item1',
+	'item2',
+	'item3', // virgola finale opzionale
+];
+```
+
+### Constructor Array
+
+Puoi creare un array utilizzando il costruttore `Array` con la parola chiave `new`:
+
+```javascript
+const numbers = new Array(); // array vuoto
+const moreNumbers = new Array(1, 2, 3); // array con elementi
+```
+
+**Comportamento speciale**: se passi un singolo numero, viene interpretato come lunghezza dell'array, non come elemento:
+
+```javascript
+const arr = new Array(5); // array vuoto con lunghezza 5, non [5]!
+console.log(arr.length); // 5
+console.log(arr[0]); // undefined
+```
+
+Questo comportamento può essere confuso, quindi è meglio evitare `new Array()` nella maggior parte dei casi.
+
+### Array.of()
+
+Il metodo `Array.of()` crea un array dagli argomenti passati:
+
+```javascript
+const numbers = Array.of(1, 2, 3); // [1, 2, 3]
+const single = Array.of(5); // [5] (non array vuoto!)
+```
+
+`Array.of()` è più prevedibile di `new Array()` quando si passa un singolo numero, ma è comunque più lento delle parentesi quadre.
+
+### Array.from()
+
+`Array.from()` è particolarmente utile perché converte un **iterabile** o un oggetto **array-like** in un array reale:
+
+```javascript
+// Da stringa
+const chars = Array.from('hello'); // ['h', 'e', 'l', 'l', 'o']
+
+// Da NodeList
+const listItems = document.querySelectorAll('li');
+const itemsArray = Array.from(listItems); // array reale
+
+// Ora puoi usare metodi array
+itemsArray.map(item => item.textContent);
+```
+
+Questo è estremamente utile quando lavori con strutture dati che non sono array ma che vuoi trattare come tali.
+
+---
+
+## Cosa memorizzare negli Array
+
+### Tipi di dati
+
+Gli array possono contenere qualsiasi tipo di dato:
+
+```javascript
+const mixed = [
+	10, // numero
+	'hello', // stringa
+	{ name: 'Max' }, // oggetto
+	true, // booleano
+];
+```
+
+### Array uniformi vs misti
+
+Gli array possono essere **uniformi** (stesso tipo) o **misti** (tipi diversi):
+
+```javascript
+// Array uniforme
+const hobbies = ['sports', 'cooking', 'reading'];
+
+// Array misto
+const personalData = [
+	30, // numero
+	'Max', // stringa
+	{ age: 30, name: 'Max' }, // oggetto
+];
+```
+
+### Array multidimensionali
+
+Gli array possono contenere altri array, creando strutture **multidimensionali**:
+
+```javascript
+const analyticsData = [
+	[1, 1.6],
+	[-5.3, 5.4],
+	[2.1, 3.2],
+];
+
+// Iterare array multidimensionali
+for (const data of analyticsData) {
+	for (const dataPoint of data) {
+		console.log(dataPoint);
+	}
+}
+```
+
+Puoi avere array annidati a qualsiasi livello di profondità e mescolare array con altri tipi di dati.
+
+### Accesso basato su indice
+
+Gli array sono **basati su indice**, con indici che iniziano da **0**:
+
+```javascript
+const personalData = [30, 'Max', { age: 30 }];
+
+console.log(personalData[0]); // 30 (primo elemento)
+console.log(personalData[1]); // 'Max' (secondo elemento)
+console.log(personalData.length); // 3
+// L'indice massimo è length - 1
+```
+
+**Nota importante**: la lunghezza dell'array è sempre `maxIndex + 1`. Se un array ha lunghezza 3, gli indici validi sono 0, 1 e 2.
+
+---
+
+## Aggiungere e Rimuovere Elementi
+
+### push() - aggiungere alla fine
+
+Il metodo `push()` aggiunge uno o più elementi **alla fine** dell'array:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies.push('reading');
+console.log(hobbies); // ['sports', 'cooking', 'reading']
+
+// Puoi aggiungere più elementi
+hobbies.push('coding', 'music');
+```
+
+`push()` restituisce la nuova lunghezza dell'array.
+
+### pop() - rimuovere dalla fine
+
+Il metodo `pop()` rimuove l'**ultimo elemento** dell'array e lo restituisce:
+
+```javascript
+const hobbies = ['sports', 'cooking', 'reading'];
+const lastHobby = hobbies.pop();
+console.log(lastHobby); // 'reading'
+console.log(hobbies); // ['sports', 'cooking']
+```
+
+### unshift() - aggiungere all'inizio
+
+Il metodo `unshift()` aggiunge uno o più elementi **all'inizio** dell'array:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies.unshift('coding');
+console.log(hobbies); // ['coding', 'sports', 'cooking']
+```
+
+`unshift()` restituisce la nuova lunghezza dell'array.
+
+### shift() - rimuovere dall'inizio
+
+Il metodo `shift()` rimuove il **primo elemento** dell'array e lo restituisce:
+
+```javascript
+const hobbies = ['coding', 'sports', 'cooking'];
+const firstHobby = hobbies.shift();
+console.log(firstHobby); // 'coding'
+console.log(hobbies); // ['sports', 'cooking']
+```
+
+### Perché "shift" e "unshift"?
+
+I nomi derivano dall'operazione di **spostamento** degli elementi:
+
+- **shift**: sposta tutti gli elementi di una posizione a sinistra, eliminando il primo
+- **unshift**: sposta tutti gli elementi di una posizione a destra, inserendo un nuovo elemento all'inizio
+
+### Considerazioni sulle prestazioni
+
+`push()` e `pop()` sono più veloci di `unshift()` e `shift()` perché:
+
+- `push/pop` operano solo sull'ultimo elemento
+- `unshift/shift` devono spostare tutti gli elementi dell'array
+
+Usa `unshift/shift` solo quando necessario.
+
+### Modificare elementi esistenti
+
+Puoi modificare elementi direttamente tramite indice:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies[1] = 'reading';
+console.log(hobbies); // ['sports', 'reading']
+```
+
+Puoi anche assegnare a indici che non esistono ancora:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies[5] = 'reading';
+console.log(hobbies); // ['sports', 'cooking', empty × 3, 'reading']
+console.log(hobbies[3]); // undefined
+```
+
+Questo crea "buchi" nell'array ed è generalmente sconsigliato.
+
+---
+
+## splice() - metodo versatile
+
+### Cos'è splice
+
+Il metodo `splice()` è estremamente versatile e permette di:
+
+- Inserire elementi in posizioni specifiche
+- Rimuovere elementi
+- Sostituire elementi
+
+### Sintassi
+
+```javascript
+array.splice(startIndex, deleteCount, ...itemsToInsert);
+```
+
+- **startIndex**: indice da cui iniziare (incluso)
+- **deleteCount**: numero di elementi da rimuovere
+- **itemsToInsert**: elementi da inserire (opzionale)
+
+### Inserire elementi
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies.splice(1, 0, 'reading'); // inserisce 'reading' all'indice 1
+console.log(hobbies); // ['sports', 'reading', 'cooking']
+```
+
+### Rimuovere elementi
+
+```javascript
+const hobbies = ['sports', 'reading', 'cooking'];
+hobbies.splice(0, 1); // rimuove 1 elemento dall'indice 0
+console.log(hobbies); // ['reading', 'cooking']
+
+// Rimuovere tutti gli elementi da un indice in poi
+hobbies.splice(1); // rimuove tutto dall'indice 1 in poi
+console.log(hobbies); // ['reading']
+```
+
+### Sostituire elementi
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+hobbies.splice(1, 1, 'reading'); // sostituisce 'cooking' con 'reading'
+console.log(hobbies); // ['sports', 'reading']
+```
+
+### Indici negativi
+
+`splice()` supporta **indici negativi** che contano dalla fine:
+
+```javascript
+const hobbies = ['sports', 'cooking', 'reading'];
+hobbies.splice(-1, 1); // rimuove l'ultimo elemento
+console.log(hobbies); // ['sports', 'cooking']
+```
+
+### Valore di ritorno
+
+`splice()` restituisce un array contenente gli elementi rimossi:
+
+```javascript
+const hobbies = ['sports', 'cooking', 'reading'];
+const removed = hobbies.splice(0, 2);
+console.log(removed); // ['sports', 'cooking']
+console.log(hobbies); // ['reading']
+```
+
+---
+
+## slice() - copiare e selezionare
+
+### Copiare un array
+
+`slice()` senza argomenti crea una **copia completa** dell'array:
+
+```javascript
+const testResults = [1, 5.3, 1.5, 10.99, 1.5];
+const storedResults = testResults.slice();
+console.log(storedResults); // nuovo array indipendente
+```
+
+Questo è utile perché gli array sono reference values. Con `slice()` ottieni un nuovo array con un nuovo indirizzo in memoria.
+
+### Selezionare un range
+
+`slice()` può selezionare una porzione dell'array:
+
+```javascript
+const testResults = [1, 5.3, 1.5, 10.99, 1.5];
+
+// slice(startIndex, endIndex)
+// startIndex incluso, endIndex escluso
+const selected = testResults.slice(0, 2);
+console.log(selected); // [1, 5.3]
+
+// Da un indice fino alla fine
+const fromIndex = testResults.slice(2);
+console.log(fromIndex); // [1.5, 10.99, 1.5]
+
+// Con indici negativi
+const lastTwo = testResults.slice(-2);
+console.log(lastTwo); // [10.99, 1.5]
+```
+
+### slice() non modifica l'originale
+
+Importante: `slice()` **non modifica** l'array originale, restituisce sempre un nuovo array.
+
+---
+
+## concat() - concatenare array
+
+Il metodo `concat()` combina array esistenti creando un **nuovo array**:
+
+```javascript
+const testResults = [1, 5.3, 1.5];
+const moreResults = [10.99, 1.5];
+const allResults = testResults.concat(moreResults);
+console.log(allResults); // [1, 5.3, 1.5, 10.99, 1.5]
+```
+
+### Differenza con push()
+
+`push()` aggiunge un array come elemento singolo (creando un array annidato), mentre `concat()` estrae gli elementi:
+
+```javascript
+const arr1 = [1, 2];
+const arr2 = [3, 4];
+
+arr1.push(arr2); // [1, 2, [3, 4]] - array annidato
+arr1.concat(arr2); // [1, 2, 3, 4] - elementi estratti
+```
+
+### Vantaggi
+
+`concat()` è utile quando:
+
+- Vuoi combinare array senza modificare gli originali
+- Hai bisogno di un nuovo array indipendente
+- Vuoi evitare mutazioni accidentali
+
+---
+
+## Trovare Elementi negli Array
+
+### indexOf() e lastIndexOf()
+
+`indexOf()` restituisce l'indice del primo elemento che corrisponde al valore cercato:
+
+```javascript
+const testResults = [1, 5.3, 1.5, 10.99, 1.5];
+const index = testResults.indexOf(1.5);
+console.log(index); // 2
+
+// Se non trovato, restituisce -1
+const notFound = testResults.indexOf(99);
+console.log(notFound); // -1
+```
+
+`lastIndexOf()` cerca dalla fine:
+
+```javascript
+const testResults = [1, 5.3, 1.5, 10.99, 1.5];
+const lastIndex = testResults.lastIndexOf(1.5);
+console.log(lastIndex); // 4
+```
+
+**Limitazione**: funzionano solo con **primitive values**, non con oggetti.
+
+### find() e findIndex()
+
+Per oggetti o valori complessi, usa `find()` e `findIndex()`:
+
+```javascript
+const personData = [
+	{ name: 'Max', age: 30 },
+	{ name: 'Manuel', age: 31 },
+];
+
+// find() restituisce l'elemento trovato
+const manuel = personData.find(person => person.name === 'Manuel');
+console.log(manuel); // { name: 'Manuel', age: 31 }
+
+// findIndex() restituisce l'indice
+const manuelIndex = personData.findIndex(person => person.name === 'Manuel');
+console.log(manuelIndex); // 1
+```
+
+La funzione passata a `find()` viene eseguita su ogni elemento e deve restituire `true` per l'elemento cercato.
+
+**Importante**: `find()` restituisce lo **stesso oggetto** presente nell'array, non una copia. Modificarlo modificherà anche l'originale.
+
+### includes()
+
+`includes()` verifica se un valore è presente nell'array:
+
+```javascript
+const testResults = [1, 5.3, 1.5, 10.99];
+const hasValue = testResults.includes(10.99);
+console.log(hasValue); // true
+```
+
+È equivalente a `indexOf(value) !== -1` ma più leggibile.
+
+---
+
+## forEach() - iterare con accesso all'indice
+
+`forEach()` è un'alternativa ai loop `for/of` che fornisce accesso all'indice:
+
+```javascript
+const prices = [10.99, 5.99, 3.99, 6.59];
+const tax = 0.19;
+
+prices.forEach((price, index, array) => {
+	const taxAdjustedPrice = price * (1 + tax);
+	console.log(`Price ${index}: ${taxAdjustedPrice}`);
+});
+```
+
+La funzione callback riceve:
+1. **Valore corrente**: l'elemento dell'array
+2. **Indice**: l'indice corrente
+3. **Array completo**: l'array originale (raramente usato)
+
+### Quando usare forEach
+
+Usa `forEach()` quando:
+
+- Hai bisogno dell'indice durante l'iterazione
+- Preferisci un approccio più funzionale ai loop
+- Vuoi trasformare elementi in oggetti con informazioni aggiuntive
+
+---
+
+## map() - trasformare array
+
+`map()` crea un **nuovo array** trasformando ogni elemento:
+
+```javascript
+const prices = [10.99, 5.99, 3.99];
+const tax = 0.19;
+
+const taxAdjustedPrices = prices.map((price, index) => {
+	return {
+		index: index,
+		taxAdjustedPrice: price * (1 + tax),
+	};
+});
+
+console.log(taxAdjustedPrices);
+// [{ index: 0, taxAdjustedPrice: 13.08 }, ...]
+```
+
+### Differenza con forEach
+
+- **forEach**: esegue codice per ogni elemento, non restituisce nulla
+- **map**: restituisce un nuovo array con elementi trasformati
+
+### Vantaggi di map
+
+- Non modifica l'array originale
+- Restituisce un nuovo array pronto all'uso
+- Codice più conciso e leggibile
+- Può essere concatenato con altri metodi
+
+---
+
+## sort() e reverse()
+
+### sort()
+
+`sort()` ordina l'array **in place** (modifica l'originale):
+
+```javascript
+const prices = [10.99, 5.99, 3.99, 6.59];
+prices.sort(); // ordina come stringhe!
+console.log(prices); // [10.99, 3.99, 5.99, 6.59] - non corretto!
+```
+
+Per ordinare correttamente i numeri, passa una funzione di confronto:
+
+```javascript
+const prices = [10.99, 5.99, 3.99, 6.59];
+prices.sort((a, b) => {
+	if (a > b) return 1; // a viene dopo b
+	if (a === b) return 0; // stesso ordine
+	return -1; // a viene prima di b
+});
+console.log(prices); // [3.99, 5.99, 6.59, 10.99]
+```
+
+Versione più concisa:
+
+```javascript
+prices.sort((a, b) => a - b); // ordine crescente
+prices.sort((a, b) => b - a); // ordine decrescente
+```
+
+### reverse()
+
+`reverse()` inverte l'ordine degli elementi:
+
+```javascript
+const prices = [3.99, 5.99, 6.59, 10.99];
+prices.reverse();
+console.log(prices); // [10.99, 6.59, 5.99, 3.99]
+```
+
+**Nota**: invece di ordinare e poi invertire, è meglio modificare la logica di `sort()`.
+
+---
+
+## filter() - filtrare elementi
+
+`filter()` crea un nuovo array contenente solo gli elementi che soddisfano una condizione:
+
+```javascript
+const prices = [10.99, 5.99, 3.99, 6.59];
+const filteredPrices = prices.filter(price => price > 6);
+console.log(filteredPrices); // [10.99, 6.59]
+```
+
+La funzione passata a `filter()` deve restituire `true` per gli elementi da mantenere, `false` per quelli da escludere.
+
+### Caratteristiche
+
+- Non modifica l'array originale
+- Restituisce un nuovo array
+- Utile per ridurre il numero di elementi in base a criteri
+
+---
+
+## reduce() - ridurre a un valore
+
+`reduce()` riduce un array a un **singolo valore**:
+
+```javascript
+const prices = [10.99, 5.99, 3.99, 6.59];
+const sum = prices.reduce((prevValue, curValue) => {
+	return prevValue + curValue;
+}, 0); // 0 è il valore iniziale
+
+console.log(sum); // 27.56
+```
+
+### Come funziona
+
+1. **Prima esecuzione**: `prevValue` = valore iniziale (0), `curValue` = primo elemento
+2. **Esecuzioni successive**: `prevValue` = risultato precedente, `curValue` = elemento corrente
+3. **Risultato finale**: il valore restituito dall'ultima esecuzione
+
+### Sintassi concisa
+
+```javascript
+const sum = prices.reduce((prev, cur) => prev + cur, 0);
+```
+
+### Altri usi di reduce
+
+`reduce()` può essere usato per:
+
+- Sommare valori
+- Trovare massimo/minimo
+- Contare occorrenze
+- Trasformare array in oggetti
+- Qualsiasi operazione che combina elementi
+
+---
+
+## Arrow Functions con Array Methods
+
+Le arrow functions rendono il codice con i metodi array molto più conciso:
+
+```javascript
+// Versione completa
+const filtered = prices.filter(function(price) {
+	return price > 6;
+});
+
+// Con arrow function
+const filtered = prices.filter(price => price > 6);
+```
+
+### Vantaggi
+
+- **Più breve**: meno codice da scrivere
+- **Più leggibile**: quando la logica è semplice
+- **Return implicito**: con una singola espressione
+
+### Quando usare arrow functions
+
+Usa arrow functions quando:
+
+- La funzione è semplice e breve
+- Non hai bisogno di `this` binding
+- Vuoi codice più conciso
+
+---
+
+## Chaining Methods
+
+Puoi **concatenare** i metodi array uno dopo l'altro:
+
+```javascript
+const originalArray = [
+	{ price: 10.99 },
+	{ price: 5.99 },
+	{ price: 29.99 },
+];
+
+const sum = originalArray
+	.map(obj => obj.price)
+	.reduce((sumVal, curVal) => sumVal + curVal, 0);
+
+console.log(sum); // 46.97
+```
+
+Ogni metodo restituisce un array (o valore), quindi puoi chiamare il metodo successivo direttamente sul risultato.
+
+### Vantaggi
+
+- Codice più conciso
+- Evita variabili intermedie non necessarie
+- Leggibilità migliorata per trasformazioni complesse
+
+---
+
+## Metodi String: split() e join()
+
+### split() - da stringa ad array
+
+`split()` divide una stringa in un array usando un separatore:
+
+```javascript
+const data = 'New York;10.99;2000';
+const transformedData = data.split(';');
+console.log(transformedData); // ['New York', '10.99', '2000']
+```
+
+Puoi specificare un limite opzionale:
+
+```javascript
+const text = 'a,b,c,d';
+const firstTwo = text.split(',', 2); // ['a', 'b']
+```
+
+### join() - da array a stringa
+
+`join()` unisce gli elementi di un array in una stringa:
+
+```javascript
+const nameFragments = ['Max', 'Schwarz'];
+const fullName = nameFragments.join(' '); // 'Max Schwarz'
+const withComma = nameFragments.join(); // 'Max,Schwarz' (virgola di default)
+```
+
+### Utilizzo pratico
+
+Questi metodi sono utili per:
+
+- Parsing di dati CSV
+- Costruire stringhe da array
+- Trasformare dati tra formati stringa e array
+
+---
+
+## Spread Operator
+
+### Cos'è lo spread operator
+
+Lo **spread operator** (`...`) estrae tutti gli elementi da un array:
+
+```javascript
+const nameFragments = ['Max', 'Schwarz'];
+const copiedFragments = [...nameFragments];
+console.log(copiedFragments); // nuovo array indipendente
+```
+
+### Copiare array
+
+Lo spread operator è un modo semplice per copiare array:
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+const copiedHobbies = [...hobbies];
+
+hobbies.push('reading');
+console.log(copiedHobbies); // ['sports', 'cooking'] - non modificato
+```
+
+### Passare argomenti a funzioni
+
+Lo spread operator è utile quando una funzione richiede argomenti separati invece di un array:
+
+```javascript
+const prices = [10.99, 5.99, 3.99];
+const minPrice = Math.min(...prices); // invece di Math.min(10.99, 5.99, 3.99)
+console.log(minPrice); // 3.99
+```
+
+### Limitazione: copia superficiale
+
+Lo spread operator crea una **copia superficiale**. Per array di oggetti, gli oggetti stessi non vengono copiati:
+
+```javascript
+const persons = [
+	{ name: 'Max', age: 30 },
+	{ name: 'Manuel', age: 31 },
+];
+
+const copiedPersons = [...persons];
+persons[0].age = 31; // modifica anche copiedPersons!
+console.log(copiedPersons[0].age); // 31
+```
+
+Per copiare anche gli oggetti, usa `map()`:
+
+```javascript
+const copiedPersons = persons.map(person => ({
+	name: person.name,
+	age: person.age,
+}));
+```
+
+---
+
+## Array Destructuring
+
+### Cos'è la destructuring
+
+La **destructuring** permette di estrarre elementi da un array in variabili separate:
+
+```javascript
+const nameData = ['Max', 'Schwarz'];
+const [firstName, lastName] = nameData;
+console.log(firstName); // 'Max'
+console.log(lastName); // 'Schwarz'
+```
+
+### Vantaggi
+
+Invece di:
+
+```javascript
+const firstName = nameData[0];
+const lastName = nameData[1];
+```
+
+Puoi scrivere:
+
+```javascript
+const [firstName, lastName] = nameData;
+```
+
+### Rest operator nella destructuring
+
+Puoi raccogliere gli elementi rimanenti con il **rest operator**:
+
+```javascript
+const nameData = ['Max', 'Schwarz', 'Mr', 30];
+const [firstName, lastName, ...otherInfo] = nameData;
+console.log(otherInfo); // ['Mr', 30]
+```
+
+### Utilizzo pratico
+
+La destructuring è utile quando:
+
+- Ricevi dati come array ma vuoi lavorare con variabili separate
+- Leggi valori da funzioni che restituiscono array
+- Vuoi codice più leggibile e conciso
+
+---
+
+## Sets
+
+### Cos'è un Set
+
+Un **Set** è una struttura dati che memorizza **valori unici**. A differenza degli array:
+
+- **Nessun duplicato**: ogni valore può apparire solo una volta
+- **Ordine non garantito**: l'ordine degli elementi può cambiare
+- **Nessun accesso per indice**: non puoi accedere agli elementi tramite indice
+
+### Creare un Set
+
+```javascript
+const ids = new Set(); // Set vuoto
+const idsWithData = new Set([1, 2, 3]); // Set con valori iniziali
+```
+
+### Metodi principali
+
+```javascript
+const ids = new Set([1, 2, 3]);
+
+// Aggiungere valori
+ids.add(4);
+ids.add(2); // ignorato, già presente
+
+// Verificare esistenza
+ids.has(2); // true
+
+// Eliminare valori
+ids.delete(2);
+
+// Dimensione
+ids.size; // numero di elementi
+```
+
+### Iterare un Set
+
+```javascript
+const ids = new Set(['hi', 'from', 'set']);
+
+// Usando entries()
+for (const entry of ids.entries()) {
+	console.log(entry); // ['hi', 'hi'] - valore ripetuto due volte
+	console.log(entry[0]); // 'hi' - il valore effettivo
+}
+```
+
+### Quando usare Set
+
+Usa Set quando:
+
+- Hai bisogno di valori unici
+- Vuoi verificare rapidamente l'esistenza di un valore
+- Non ti interessa l'ordine degli elementi
+- Non hai bisogno di accesso per indice
+
+---
+
+## Maps
+
+### Cos'è una Map
+
+Una **Map** è una struttura dati che memorizza coppie **chiave-valore**. A differenza degli oggetti:
+
+- **Chiavi di qualsiasi tipo**: puoi usare oggetti, array, numeri come chiavi
+- **Ordine garantito**: l'ordine delle inserzioni è preservato
+- **Metodi dedicati**: metodi specifici per gestire le coppie
+
+### Creare una Map
+
+```javascript
+const personData = new Map();
+
+// Inizializzare con dati
+const personData = new Map([
+	[person1, [{ date: 'yesterday', price: 10 }]],
+]);
+```
+
+### Metodi principali
+
+```javascript
+const personData = new Map();
+
+// Aggiungere coppie chiave-valore
+personData.set(person1, [{ date: 'yesterday', price: 10 }]);
+personData.set(person2, [{ date: 'two weeks ago', price: 100 }]);
+
+// Ottenere valore per chiave
+const purchases = personData.get(person1);
+
+// Verificare esistenza chiave
+personData.has(person1); // true
+
+// Eliminare coppia
+personData.delete(person1);
+
+// Dimensione
+personData.size; // numero di coppie
+```
+
+### Iterare una Map
+
+```javascript
+const personData = new Map([
+	[person1, purchases1],
+	[person2, purchases2],
+]);
+
+// Iterare tutte le entry (chiave-valore)
+for (const [key, value] of personData.entries()) {
+	console.log(key, value);
+}
+
+// Solo le chiavi
+for (const key of personData.keys()) {
+	console.log(key);
+}
+
+// Solo i valori
+for (const value of personData.values()) {
+	console.log(value);
+}
+```
+
+### Quando usare Map
+
+Usa Map quando:
+
+- Hai bisogno di chiavi di tipo complesso (oggetti, array)
+- L'ordine delle inserzioni è importante
+- Gestisci grandi quantità di dati chiave-valore
+- Aggiungi/rimuovi coppie frequentemente
+
+### Map vs Object
+
+| Caratteristica | Map | Object |
+|----------------|-----|--------|
+| Chiavi | Qualsiasi tipo | Solo stringhe, numeri, symbol |
+| Ordine | Garantito | Non garantito |
+| Prestazioni | Migliori per grandi quantità | Migliori per piccole quantità |
+| Metodi | Metodi dedicati | Metodi integrati limitati |
+
+---
+
+## WeakSet e WeakMap
+
+### Cos'è WeakSet
+
+**WeakSet** è una versione specializzata di Set che:
+
+- Accetta solo **oggetti** come valori
+- Permette la **garbage collection** automatica degli oggetti non più referenziati
+- Non permette di iterare o ottenere tutti gli elementi
+
+### Creare WeakSet
+
+```javascript
+const persons = new WeakSet();
+const person = { name: 'Max' };
+
+persons.add(person);
+persons.has(person); // true
+
+// Se l'oggetto non è più referenziato, può essere garbage collected
+person = null; // WeakSet non impedisce la garbage collection
+```
+
+### Quando usare WeakSet
+
+Usa WeakSet quando:
+
+- Memorizzi oggetti temporanei
+- Vuoi che gli oggetti non referenziati vengano automaticamente rimossi
+- Non hai bisogno di iterare o contare gli elementi
+
+### Cos'è WeakMap
+
+**WeakMap** è simile a WeakSet ma per coppie chiave-valore:
+
+- Le **chiavi** devono essere oggetti
+- I **valori** possono essere qualsiasi tipo
+- Permette garbage collection automatica delle chiavi non referenziate
+
+### Creare WeakMap
+
+```javascript
+const personData = new WeakMap();
+const person = { name: 'Max' };
+
+personData.set(person, [{ date: 'yesterday', price: 10 }]);
+const purchases = personData.get(person);
+
+// Se person non è più referenziato, la coppia può essere garbage collected
+person = null;
+```
+
+### Quando usare WeakMap
+
+Usa WeakMap quando:
+
+- Vuoi associare dati temporanei a oggetti
+- Non vuoi impedire la garbage collection degli oggetti chiave
+- Non hai bisogno di iterare o contare le coppie
+
+### Limitazioni
+
+WeakSet e WeakMap hanno limitazioni intenzionali:
+
+- Non puoi iterare gli elementi
+- Non puoi ottenere la dimensione (`size`)
+- Non puoi ottenere tutti gli elementi
+- Solo metodi: `add`, `delete`, `has` (WeakSet) o `set`, `get`, `delete`, `has` (WeakMap)
+
+Queste limitazioni esistono perché JavaScript non può garantire quali elementi sono ancora presenti se alcuni sono stati garbage collected.
+
+---
+
+## Conclusione
+
+Questo modulo ha esplorato in dettaglio gli array e le strutture dati iterabili in JavaScript:
+
+- **Array**: la struttura dati principale con molti metodi utili
+- **Metodi array**: map, filter, reduce, forEach e molti altri per trasformare e manipolare dati
+- **Sintassi avanzata**: spread operator e destructuring per codice più conciso
+- **Sets**: per valori unici
+- **Maps**: per coppie chiave-valore flessibili
+- **WeakSet/WeakMap**: per gestione avanzata della memoria
+
+### Quando usare cosa
+
+- **Array**: nella maggior parte dei casi, quando hai bisogno di una lista ordinata di elementi
+- **Set**: quando hai bisogno di valori unici e verifiche rapide di esistenza
+- **Map**: quando hai bisogno di chiavi complesse o grandi quantità di dati chiave-valore
+- **WeakSet/WeakMap**: in applicazioni avanzate con gestione automatica della memoria
+
+Gli array rimangono la struttura dati più importante e utilizzata, ma comprendere Sets e Maps ti dà strumenti aggiuntivi per risolvere problemi specifici in modo efficiente.
+
+
