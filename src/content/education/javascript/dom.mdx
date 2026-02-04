@@ -1,0 +1,669 @@
+---
+title: "DOM - Document Object Model"
+description: "Interagire con HTML dal JavaScript: query, manipolazione, creazione e rimozione di elementi"
+date: 2026-01-30
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 5
+---
+
+## Introduzione
+
+Il **DOM** (Document Object Model) è la rappresentazione ad oggetti del documento HTML caricato dal browser. Quando il browser legge un file HTML, lo **parsa** e crea una struttura ad albero di oggetti JavaScript che rappresentano ogni elemento, testo e attributo della pagina.
+
+JavaScript può interagire con questa struttura per leggere e modificare il contenuto della pagina senza ricaricarla, permettendo di creare interfacce dinamiche e reattive.
+
+In questo capitolo si approfondiscono:
+
+- **DOM e browser**: come il browser trasforma HTML in oggetti JavaScript
+- **document e window**: oggetti globali per accedere al DOM
+- **Nodes ed Elements**: differenze tra nodi ed elementi
+- **Query methods**: selezionare elementi nel DOM (`querySelector`, `getElementById`, ecc.)
+- **Manipolazione**: leggere e modificare proprietà, stili e classi CSS
+- **Attributi vs proprietà**: differenze e quando usarli
+- **DOM traversal**: navigare tra elementi (parent, children, siblings)
+- **Creazione e inserimento**: aggiungere nuovi elementi al DOM
+- **Rimozione**: eliminare elementi dal DOM
+
+---
+
+## Cos'è il DOM
+
+Il **DOM** (Document Object Model) è la rappresentazione ad oggetti del documento HTML caricato dal browser. Quando il browser scarica un file HTML, lo **parsa** e crea una struttura ad albero di oggetti JavaScript che rappresentano ogni elemento, testo e attributo della pagina.
+
+### Come funziona
+
+Il browser legge il file HTML dall'alto verso il basso. Quando incontra elementi HTML, li **parsa** e li **rende** come pixel sullo schermo. Contemporaneamente, crea oggetti JavaScript in memoria che rappresentano questi elementi.
+
+JavaScript può accedere a questi oggetti attraverso API fornite dal browser, permettendo di:
+
+- Leggere il contenuto degli elementi
+- Modificare stili e attributi
+- Aggiungere o rimuovere elementi
+- Reagire a eventi dell'utente
+
+### Struttura ad albero
+
+Il DOM è organizzato come un **albero di nodi**. Ogni elemento HTML diventa un **element node** (nodo elemento), mentre il testo diventa un **text node** (nodo testo). I nodi mantengono le relazioni parent-child presenti nell'HTML originale.
+
+```html
+<html>
+  <head>
+    <title>My Page</title>
+  </head>
+  <body>
+    <header>
+      <h1>Title</h1>
+    </header>
+  </body>
+</html>
+```
+
+Nell'esempio sopra, `html` è il nodo radice, `head` e `body` sono suoi figli, `title` è figlio di `head`, e così via. Anche gli spazi bianchi tra gli elementi vengono rappresentati come **text nodes**.
+
+---
+
+## document e window
+
+### document
+
+L'oggetto **`document`** è il punto di ingresso principale al DOM. È un oggetto globale fornito dal browser che rappresenta il documento HTML caricato.
+
+```javascript
+console.dir(document); // mostra tutte le proprietà dell'oggetto document
+```
+
+Proprietà importanti di `document`:
+
+- **`document.body`**: riferimento diretto all'elemento `<body>`
+- **`document.head`**: riferimento diretto all'elemento `<head>`
+- **`document.documentElement`**: riferimento all'elemento `<html>`
+
+`document` espone metodi per selezionare elementi (`querySelector`, `getElementById`, ecc.) e creare nuovi elementi (`createElement`).
+
+### window
+
+L'oggetto **`window`** è l'oggetto globale più in alto nel browser. `document` è una proprietà di `window`, quindi tecnicamente si accede a `document` tramite `window.document`.
+
+```javascript
+window.document === document; // true
+```
+
+`window` fornisce accesso a:
+
+- **API del browser**: `alert()`, `prompt()`, `console`
+- **Proprietà della finestra**: `innerWidth`, `innerHeight`, `outerWidth`, `outerHeight`
+- **Eventi della finestra**: eventi che riguardano la finestra/tab corrente
+
+**Importante**: `window` rappresenta la **tab corrente**, non l'intera finestra del browser. Non è possibile accedere a contenuti di altre tab per motivi di sicurezza.
+
+### Accesso implicito a window
+
+Quando si scrive codice JavaScript nel browser, le funzioni e variabili globali sono automaticamente cercate in `window` se non trovate nello scope corrente:
+
+```javascript
+alert('Hello');        // equivalente a window.alert('Hello')
+console.log('Test');   // equivalente a window.console.log('Test')
+```
+
+---
+
+## Nodes ed Elements
+
+Nel DOM esistono diversi tipi di **nodi** (nodes). I più importanti sono:
+
+### Element nodes
+
+Gli **element nodes** (o semplicemente **elements**) sono nodi creati da tag HTML. Ogni tag HTML (`<div>`, `<p>`, `<button>`, ecc.) diventa un element node nel DOM.
+
+```javascript
+const h1 = document.querySelector('h1');
+console.log(h1); // elemento <h1>
+```
+
+Gli elementi hanno proprietà e metodi specifici per interagire con loro: cambiare stili, aggiungere classi CSS, leggere contenuti, ecc.
+
+### Text nodes
+
+I **text nodes** sono nodi che rappresentano testo. Anche gli spazi bianchi tra gli elementi HTML vengono rappresentati come text nodes.
+
+```javascript
+const ul = document.querySelector('ul');
+console.log(ul.childNodes); // include sia elementi che text nodes (spazi bianchi)
+```
+
+**Nota**: nella maggior parte dei casi non si lavora direttamente con i text nodes. Si modifica il testo usando proprietà come `textContent` sugli elementi, che gestisce automaticamente i text nodes.
+
+### Differenza pratica
+
+La differenza principale è che:
+
+- **Elements** sono creati da tag HTML e hanno metodi per manipolare stili, classi, attributi
+- **Text nodes** contengono solo testo e sono gestiti automaticamente quando si modifica `textContent` di un elemento
+
+Quando si seleziona un elemento con `querySelector` o `getElementById`, si ottiene sempre un **element node**, non un text node.
+
+---
+
+## Query methods: selezionare elementi
+
+Per lavorare con elementi del DOM, è necessario prima **selezionarli**. JavaScript offre diversi metodi per questo scopo.
+
+### Metodi per un singolo elemento
+
+**`querySelector(cssSelector)`**
+
+Prende un selettore CSS e restituisce il **primo** elemento che corrisponde. Restituisce `null` se non trova corrispondenze.
+
+```javascript
+const h1 = document.querySelector('h1');              // primo h1
+const button = document.querySelector('.btn-primary'); // primo elemento con classe btn-primary
+const modal = document.querySelector('#add-modal');    // elemento con id add-modal
+```
+
+**`getElementById(id)`**
+
+Prende un ID (senza `#`) e restituisce l'elemento con quell'ID. Poiché gli ID devono essere unici, restituisce sempre un solo elemento o `null`.
+
+```javascript
+const modal = document.getElementById('add-modal'); // più veloce di querySelector('#add-modal')
+```
+
+**Quando usare quale**: `getElementById` è leggermente più veloce quando si cerca per ID. `querySelector` è più flessibile e supporta qualsiasi selettore CSS.
+
+### Metodi per più elementi
+
+**`querySelectorAll(cssSelector)`**
+
+Prende un selettore CSS e restituisce **tutti** gli elementi che corrispondono come **NodeList** (non-live, snapshot del DOM al momento della query).
+
+```javascript
+const buttons = document.querySelectorAll('button');        // tutti i button
+const items = document.querySelectorAll('.list-item');      // tutti gli elementi con classe list-item
+const paragraphs = document.querySelectorAll('div p');     // tutti i <p> dentro <div>
+```
+
+**`getElementsByTagName(tagName)`**
+
+Prende il nome di un tag HTML e restituisce tutti gli elementi con quel tag come **HTMLCollection** (live, si aggiorna automaticamente).
+
+```javascript
+const paragraphs = document.getElementsByTagName('p');
+```
+
+**`getElementsByClassName(className)`**
+
+Prende il nome di una classe CSS (senza punto) e restituisce tutti gli elementi con quella classe come **HTMLCollection** (live).
+
+```javascript
+const items = document.getElementsByClassName('list-item');
+```
+
+### Live vs non-live
+
+- **Live collections** (`getElementsByTagName`, `getElementsByClassName`): si aggiornano automaticamente quando il DOM cambia
+- **Non-live collections** (`querySelectorAll`): sono snapshot al momento della query, non si aggiornano
+
+Nella maggior parte dei casi questa differenza non è rilevante. `querySelectorAll` è generalmente preferito per la sua flessibilità.
+
+### Query su elementi già selezionati
+
+Tutti i metodi di query possono essere chiamati anche su elementi già selezionati, limitando la ricerca ai discendenti di quell'elemento:
+
+```javascript
+const modal = document.getElementById('add-modal');
+const button = modal.querySelector('button'); // cerca solo dentro modal
+const inputs = modal.querySelectorAll('input'); // tutti gli input dentro modal
+```
+
+Questo è più efficiente che cercare nell'intero documento quando si sa già dove si trova l'elemento.
+
+---
+
+## Manipolazione del DOM
+
+Una volta selezionato un elemento, è possibile leggere e modificare le sue proprietà.
+
+### Leggere proprietà
+
+**`textContent`**
+
+Restituisce tutto il testo contenuto nell'elemento e nei suoi discendenti, senza tag HTML.
+
+```javascript
+const h1 = document.querySelector('h1');
+console.log(h1.textContent); // "Dive into the DOM"
+```
+
+**`id`**
+
+Restituisce l'ID dell'elemento come stringa.
+
+```javascript
+const modal = document.getElementById('add-modal');
+console.log(modal.id); // "add-modal"
+```
+
+**`className`**
+
+Restituisce tutte le classi CSS dell'elemento come stringa (separate da spazi).
+
+```javascript
+const button = document.querySelector('button');
+console.log(button.className); // "btn btn-primary"
+```
+
+### Modificare proprietà
+
+Le stesse proprietà possono essere **modificate** assegnando nuovi valori:
+
+```javascript
+const h1 = document.querySelector('h1');
+h1.textContent = 'New Title';        // cambia il testo
+h1.id = 'new-id';                    // cambia l'ID
+h1.className = 'title main-title';    // cambia le classi CSS
+```
+
+Quando si modifica una proprietà, il browser aggiorna automaticamente la visualizzazione della pagina.
+
+### Modificare stili
+
+La proprietà **`style`** permette di modificare gli stili CSS inline di un elemento:
+
+```javascript
+const h1 = document.querySelector('h1');
+h1.style.color = 'white';
+h1.style.backgroundColor = 'red';
+```
+
+**Importante**: i nomi delle proprietà CSS con trattini vengono convertiti in **camelCase**:
+
+- `background-color` → `backgroundColor`
+- `font-size` → `fontSize`
+- `margin-top` → `marginTop`
+
+Gli stili inline hanno la **massima specificità** in CSS, quindi sovrascrivono stili definiti in classi o fogli di stile esterni.
+
+### Gestione delle classi CSS
+
+**`className`**
+
+Permette di impostare tutte le classi come stringa:
+
+```javascript
+const element = document.querySelector('.some-element');
+element.className = 'new-class another-class';
+```
+
+**Problema**: sostituisce tutte le classi esistenti. Se si vuole aggiungere o rimuovere una singola classe, bisogna gestire manualmente la stringa.
+
+**`classList`**
+
+Oggetto con metodi per gestire singole classi senza modificare le altre:
+
+```javascript
+const element = document.querySelector('.some-element');
+
+element.classList.add('new-class');        // aggiunge una classe
+element.classList.remove('old-class');     // rimuove una classe
+element.classList.toggle('active');         // aggiunge se assente, rimuove se presente
+element.classList.contains('active');      // restituisce true se la classe è presente
+```
+
+`classList` è preferibile quando si vuole modificare singole classi mantenendo le altre.
+
+---
+
+## Attributi vs proprietà
+
+È importante distinguere tra **attributi** (nel codice HTML) e **proprietà** (negli oggetti JavaScript del DOM).
+
+### Attributi
+
+Gli **attributi** sono ciò che si scrive nel codice HTML:
+
+```html
+<input id="user-input" class="form-control" value="Default text">
+```
+
+`id`, `class` e `value` sono attributi dell'elemento HTML.
+
+### Proprietà
+
+Le **proprietà** sono valori memorizzati nell'oggetto JavaScript che rappresenta l'elemento:
+
+```javascript
+const input = document.querySelector('input');
+console.log(input.id);        // proprietà id
+console.log(input.className);  // proprietà className (nota: non "class")
+console.log(input.value);     // proprietà value
+```
+
+### Relazioni tra attributi e proprietà
+
+Non tutti gli attributi hanno una corrispondenza diretta con le proprietà:
+
+**1. Mappatura uno-a-uno con sincronizzazione bidirezionale**
+
+```javascript
+input.id = 'new-id';
+// L'attributo HTML viene aggiornato automaticamente
+```
+
+**2. Mappatura con nomi diversi**
+
+```html
+<!-- Attributo: class -->
+<div class="container"></div>
+```
+
+```javascript
+// Proprietà: className (non "class" perché "class" è una parola riservata)
+element.className = 'container';
+```
+
+**3. Mappatura uno-a-uno con sincronizzazione unidirezionale**
+
+```javascript
+// Se l'utente modifica il valore dell'input:
+input.value = 'User typed text';
+// La proprietà value cambia, ma l'attributo HTML "value" resta "Default text"
+```
+
+Questo comportamento è intenzionale: l'attributo `value` mantiene il valore iniziale, mentre la proprietà `value` riflette l'input corrente dell'utente.
+
+### Metodi per attributi
+
+**`getAttribute(name)`** e **`setAttribute(name, value)`**
+
+Permettono di leggere e scrivere attributi direttamente:
+
+```javascript
+const input = document.querySelector('input');
+const originalValue = input.getAttribute('value'); // legge l'attributo HTML
+input.setAttribute('value', 'New default');        // modifica l'attributo HTML
+```
+
+**Quando usare**: generalmente si preferisce lavorare con le proprietà quando disponibili. Gli attributi sono utili quando si vuole accedere a valori personalizzati o mantenere valori iniziali.
+
+---
+
+## DOM traversal: navigare tra elementi
+
+Una volta selezionato un elemento, è possibile navigare verso elementi correlati usando proprietà di **traversal**.
+
+### Terminologia
+
+- **Child**: figlio diretto (un livello sotto)
+- **Descendant**: figlio diretto o indiretto (qualsiasi livello sotto)
+- **Parent**: genitore diretto (un livello sopra)
+- **Ancestor**: genitore diretto o indiretto (qualsiasi livello sopra)
+- **Sibling**: elemento allo stesso livello (stesso genitore)
+
+### Navigare verso i figli
+
+**`children`**
+
+Restituisce una **HTMLCollection** di tutti i **figli diretti** che sono elementi (esclude text nodes).
+
+```javascript
+const ul = document.querySelector('ul');
+console.log(ul.children); // HTMLCollection con tutti i <li>
+```
+
+**`childNodes`**
+
+Restituisce una **NodeList** di tutti i **figli diretti** inclusi text nodes (spazi bianchi).
+
+```javascript
+const ul = document.querySelector('ul');
+console.log(ul.childNodes); // NodeList con elementi E text nodes
+```
+
+**`firstElementChild`** e **`lastElementChild`**
+
+Restituiscono rispettivamente il primo e l'ultimo figlio che è un elemento.
+
+```javascript
+const ul = document.querySelector('ul');
+const firstItem = ul.firstElementChild; // primo <li>
+const lastItem = ul.lastElementChild;   // ultimo <li>
+```
+
+**`firstChild`** e **`lastChild`**
+
+Restituiscono rispettivamente il primo e l'ultimo nodo figlio (può essere un text node).
+
+### Navigare verso i genitori
+
+**`parentElement`** e **`parentNode`**
+
+Restituiscono il genitore diretto. Per la maggior parte degli elementi sono equivalenti. `parentNode` può restituire `document` per `document.documentElement`, mentre `parentElement` restituisce `null`.
+
+```javascript
+const li = document.querySelector('li');
+const ul = li.parentElement; // o li.parentNode
+```
+
+**`closest(cssSelector)`**
+
+Restituisce l'**antenato più vicino** (non necessariamente diretto) che corrisponde al selettore CSS.
+
+```javascript
+const button = document.querySelector('button');
+const modal = button.closest('.modal'); // cerca il primo antenato con classe "modal"
+```
+
+### Navigare tra siblings
+
+**`nextElementSibling`** e **`previousElementSibling`**
+
+Restituiscono rispettivamente il prossimo e il precedente elemento allo stesso livello.
+
+```javascript
+const firstLi = document.querySelector('li');
+const secondLi = firstLi.nextElementSibling;
+```
+
+**`nextSibling`** e **`previousSibling`**
+
+Restituiscono rispettivamente il prossimo e il precedente nodo allo stesso livello (può essere un text node).
+
+### Quando usare DOM traversal
+
+Il DOM traversal è utile quando:
+
+- Si ha già selezionato un elemento e si vuole accedere a elementi correlati
+- È più efficiente navigare che fare una nuova query su tutto il documento
+- La relazione tra elementi è stabile (es. `<li>` sarà sempre figlio di `<ul>`)
+
+**Attenzione**: se la struttura HTML può cambiare, è meglio usare query methods con selettori CSS più specifici invece di fare affidamento su relazioni di posizione.
+
+---
+
+## Creazione e inserimento di elementi
+
+Esistono due approcci principali per aggiungere contenuto al DOM: inserire codice HTML come stringa o creare elementi programmaticamente.
+
+### innerHTML
+
+La proprietà **`innerHTML`** permette di impostare il contenuto HTML di un elemento come stringa:
+
+```javascript
+const section = document.querySelector('section');
+section.innerHTML = '<h2>New Title</h2><p>Some content</p>';
+```
+
+**Caratteristiche**:
+
+- **Sostituisce** tutto il contenuto esistente dell'elemento
+- Il browser **parsa** la stringa HTML e crea gli elementi
+- Non si ha accesso diretto agli elementi creati (bisogna ri-queryarli)
+
+**Problemi**:
+
+- Se si usa `innerHTML += 'new content'`, tutto il contenuto viene **ri-renderizzato**, causando perdita di input utente e problemi di performance
+- Non ideale quando si vuole aggiungere elementi mantenendo quelli esistenti
+
+### insertAdjacentHTML
+
+Il metodo **`insertAdjacentHTML`** permette di inserire HTML in posizioni specifiche rispetto a un elemento:
+
+```javascript
+const div = document.querySelector('div');
+div.insertAdjacentHTML('beforeend', '<p>New paragraph</p>');
+```
+
+**Posizioni disponibili**:
+
+- `'beforebegin'`: prima dell'elemento (fuori)
+- `'afterbegin'`: all'inizio dell'elemento (dentro, prima del primo figlio)
+- `'beforeend'`: alla fine dell'elemento (dentro, dopo l'ultimo figlio)
+- `'afterend'`: dopo l'elemento (fuori)
+
+Questo metodo è preferibile a `innerHTML +=` perché inserisce solo il nuovo contenuto senza ri-renderizzare l'esistente.
+
+### createElement
+
+Il metodo **`document.createElement(tagName)`** crea un nuovo elemento DOM senza ancora inserirlo nel documento:
+
+```javascript
+const newLi = document.createElement('li');
+newLi.textContent = 'Item 4';
+```
+
+**Vantaggi**:
+
+- Si ha **accesso diretto** all'elemento creato prima di inserirlo
+- Si possono configurare proprietà, aggiungere event listener, ecc. prima dell'inserimento
+- Non causa ri-rendering di elementi esistenti
+
+### Metodi di inserimento
+
+**`appendChild(node)`** e **`append(...nodes)`**
+
+Inseriscono elementi alla **fine** del contenuto di un elemento padre:
+
+```javascript
+const ul = document.querySelector('ul');
+const newLi = document.createElement('li');
+ul.appendChild(newLi);  // metodo classico
+ul.append(newLi);       // metodo moderno (supporta più argomenti)
+```
+
+**`prepend(...nodes)`**
+
+Inserisce elementi all'**inizio** del contenuto di un elemento padre:
+
+```javascript
+const ul = document.querySelector('ul');
+const newLi = document.createElement('li');
+ul.prepend(newLi); // inserisce come primo figlio
+```
+
+**`before(...nodes)`** e **`after(...nodes)`**
+
+Inseriscono elementi **prima** o **dopo** l'elemento selezionato (non dentro, ma come sibling):
+
+```javascript
+const secondLi = document.querySelector('li:nth-child(2)');
+const newLi = document.createElement('li');
+secondLi.before(newLi); // inserisce prima di secondLi
+secondLi.after(newLi);  // inserisce dopo secondLi
+```
+
+**`insertAdjacentElement(position, element)`**
+
+Inserisce un elemento in una posizione specifica (stesse posizioni di `insertAdjacentHTML`):
+
+```javascript
+const target = document.querySelector('.target');
+const newElement = document.createElement('div');
+target.insertAdjacentElement('afterend', newElement);
+```
+
+### Browser support
+
+- **`appendChild`**: supportato ovunque
+- **`append`**, **`prepend`**: non supportati in Internet Explorer
+- **`before`**, **`after`**: non supportati in Internet Explorer e Safari (versioni più vecchie)
+
+Per massima compatibilità, usare `appendChild` e `insertAdjacentElement`.
+
+### Spostare vs copiare elementi
+
+Quando si inserisce un elemento già presente nel DOM, viene **spostato**, non copiato:
+
+```javascript
+const ul = document.querySelector('ul');
+const firstLi = ul.firstElementChild;
+ul.append(firstLi); // sposta firstLi alla fine, non crea una copia
+```
+
+Per creare una copia, usare **`cloneNode(deep)`**:
+
+```javascript
+const original = document.querySelector('li');
+const copy = original.cloneNode(true); // true = copia anche i figli
+ul.append(copy); // ora ci sono due elementi
+```
+
+---
+
+## Rimozione di elementi
+
+Per rimuovere elementi dal DOM esistono diversi metodi.
+
+### remove()
+
+Il metodo **`remove()`** rimuove l'elemento su cui viene chiamato:
+
+```javascript
+const element = document.querySelector('.to-remove');
+element.remove(); // rimuove l'elemento dal DOM
+```
+
+**Browser support**: non supportato in Internet Explorer.
+
+### removeChild()
+
+Il metodo **`removeChild(child)`** viene chiamato sul **genitore** e rimuove il figlio specificato:
+
+```javascript
+const ul = document.querySelector('ul');
+const li = ul.querySelector('li');
+ul.removeChild(li); // rimuove li da ul
+```
+
+**Browser support**: supportato ovunque.
+
+### innerHTML = ''
+
+Impostare `innerHTML` a stringa vuota rimuove tutto il contenuto di un elemento:
+
+```javascript
+const container = document.querySelector('.container');
+container.innerHTML = ''; // rimuove tutti i figli
+```
+
+Questo metodo è utile quando si vuole svuotare completamente un contenitore.
+
+### Event listeners e memoria
+
+Quando un elemento viene rimosso dal DOM, gli **event listener** associati vengono automaticamente puliti dal browser se non ci sono più riferimenti all'elemento nel codice JavaScript. Non si creano memory leak semplicemente rimuovendo elementi.
+
+---
+
+## Riepilogo
+
+- **DOM**: rappresentazione ad oggetti del documento HTML caricato dal browser
+- **document**: oggetto globale per accedere al DOM; `document.body`, `document.head`, `document.documentElement` forniscono accesso diretto a parti del documento
+- **window**: oggetto globale più in alto; `document` è una proprietà di `window`
+- **Nodes vs Elements**: gli elementi sono nodi creati da tag HTML; i text nodes rappresentano testo; generalmente si lavora con elementi
+- **Query methods**: `querySelector`/`querySelectorAll` (flessibili), `getElementById` (veloce per ID), `getElementsByTagName`/`getElementsByClassName` (live collections)
+- **Manipolazione**: `textContent`, `id`, `className` per leggere/modificare; `style` per stili inline; `classList` per gestire singole classi CSS
+- **Attributi vs proprietà**: gli attributi sono nel codice HTML, le proprietà sono negli oggetti JavaScript; non sempre hanno sincronizzazione bidirezionale
+- **DOM traversal**: `children`, `parentElement`, `nextElementSibling` per navigare tra elementi correlati; utile quando la struttura è stabile
+- **Creazione elementi**: `createElement` per creare elementi programmaticamente (accesso diretto); `innerHTML`/`insertAdjacentHTML` per inserire HTML come stringa
+- **Inserimento**: `appendChild`/`append` (fine), `prepend` (inizio), `before`/`after` (sibling), `insertAdjacentElement` (posizioni specifiche)
+- **Rimozione**: `remove()` (moderno), `removeChild()` (compatibilità), `innerHTML = ''` (svuotare contenitore)
