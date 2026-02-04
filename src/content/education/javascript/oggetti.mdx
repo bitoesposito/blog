@@ -1,0 +1,1069 @@
+---
+title: "Oggetti"
+description: "Oggetti in JavaScript: creazione, proprietà dinamiche, this keyword, getters e setters, destructuring e spread operator"
+date: 2026-02-04
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 8
+---
+
+## Introduzione
+
+Dopo aver approfondito gli array, è importante esaminare gli **oggetti**, una struttura dati ancora più importante in JavaScript. In realtà, gli array sono essi stessi oggetti, e con gli oggetti possiamo fare moltissimo in JavaScript.
+
+Gli oggetti sono fondamentali per:
+
+- **Raggruppare dati**: organizzare informazioni correlate in un'unica struttura
+- **Raggruppare funzionalità**: includere metodi che operano sui dati dell'oggetto
+- **Rappresentare entità del mondo reale**: modellare concetti come bottoni, film, utenti, ecc.
+
+Molte cose in JavaScript sono oggetti: quando lavoriamo con il DOM, ogni nodo a cui accediamo con `getElementById` o altri metodi di selezione è un oggetto JavaScript. Gli oggetti sono ovunque in JavaScript e sono estremamente versatili.
+
+---
+
+## Cos'è un Oggetto
+
+### Definizione
+
+Gli **oggetti** sono strutture dati fondamentali in JavaScript che tipicamente aiutano a riflettere entità del mondo reale. Questo significa che con gli oggetti abbiamo un modo di lavorare con cose come bottoni o film, che sono entità concrete per noi umani.
+
+Quando creiamo un oggetto per rappresentare un film, ha senso che abbia proprietà come `title`, `previewImage` o `rating`. Possiamo pensare come pensiamo nel mondo reale, ma ora quando scriviamo il codice.
+
+Tecnicamente, gli oggetti in JavaScript sono strutture dati composte da:
+
+- **Proprietà**: coppie chiave-valore che memorizzano dati
+- **Metodi**: funzioni associate all'oggetto (anch'esse coppie chiave-valore, ma il valore è una funzione)
+
+Le proprietà sono variabili nell'oggetto, i metodi sono funzioni nell'oggetto. Usiamo le proprietà per memorizzare dati correlati e i metodi per definire azioni che hanno senso per quell'oggetto.
+
+### Valori Primitivi vs Riferimenti
+
+In JavaScript esistono due tipi di valori:
+
+- **Valori primitivi**: `number`, `string`, `boolean`, `null`, `undefined`, `symbol`
+- **Valori di riferimento**: sono tutti oggetti
+
+Tutto ciò che non è un valore primitivo è un oggetto. Questo include:
+
+- Oggetti creati con la notazione letterale `{}`
+- Array (che sono oggetti speciali con proprietà `length` e funzionalità iterabili)
+- Nodi DOM (elementi selezionati nel DOM)
+- E molto altro ancora
+
+### Oggetti e Valori Primitivi
+
+È importante riconoscere che, in ultima analisi, gli oggetti sono composti da valori primitivi. Anche se un oggetto ha valori di riferimento annidati (array o altri oggetti), se si scava a fondo si finisce sempre con valori primitivi.
+
+```javascript
+const complexPerson = {
+	name: 'Max', // stringa => valore primitivo
+	hobbies: ['Sports', 'Cooking'], // array di stringhe => valori primitivi
+	address: {
+		street: 'Some Street 5', // stringa => valore primitivo
+		stateId: 5, // numero => valore primitivo
+		country: 'Germany', // stringa => valore primitivo
+		phone: {
+			number: 123456789, // numero => valore primitivo
+			isMobile: true // booleano => valore primitivo
+		}
+	}
+};
+```
+
+I valori primitivi sono i mattoni fondamentali che contengono i dati, mentre gli oggetti (e gli array) sono utili per organizzare e lavorare con quei dati.
+
+---
+
+## Creare Oggetti
+
+### Notazione Letterale
+
+Il modo più comune per creare un oggetto è utilizzare la **notazione letterale** con le parentesi graffe:
+
+```javascript
+const person = {
+	name: 'Max',
+	age: 30,
+	hobbies: ['Sports', 'Cooking'],
+	greet: function() {
+		console.log('Hi there!');
+	}
+};
+```
+
+Puoi creare un oggetto e memorizzarlo in una costante o in una variabile. All'interno delle parentesi graffe, puoi avere coppie chiave-valore dove:
+
+- Le **proprietà** memorizzano valori statici (non funzioni)
+- I **metodi** sono funzioni assegnate a una chiave
+
+### Accesso alle Proprietà
+
+Puoi accedere alle proprietà e ai metodi utilizzando la **notazione a punto**:
+
+```javascript
+console.log(person.name); // 'Max'
+console.log(person.age); // 30
+person.greet(); // 'Hi there!'
+```
+
+---
+
+## Proprietà Dinamiche
+
+### Aggiungere Proprietà
+
+Dopo aver creato un oggetto, puoi aggiungere nuove proprietà dinamicamente:
+
+```javascript
+const person = {
+	name: 'Max',
+	age: 30
+};
+
+// Aggiungere una nuova proprietà
+person.isAdmin = true;
+
+console.log(person); // { name: 'Max', age: 30, isAdmin: true }
+```
+
+Se accedi a una proprietà che non esiste, otterrai `undefined` senza errori. Puoi semplicemente assegnare un valore a quella proprietà per aggiungerla all'oggetto.
+
+Se la proprietà esiste già, l'assegnazione sovrascriverà il valore precedente:
+
+```javascript
+person.age = 31; // sovrascrive il valore precedente
+```
+
+### Eliminare Proprietà
+
+Per rimuovere completamente una proprietà da un oggetto, puoi utilizzare l'operatore **`delete`**:
+
+```javascript
+delete person.age;
+
+console.log(person.age); // undefined
+console.log(person); // { name: 'Max' } - age non è più presente
+```
+
+**Nota importante**: dopo aver eliminato una proprietà, accedervi restituirà `undefined`, ma questo è diverso da avere una proprietà con valore `undefined`.
+
+### undefined vs null vs delete
+
+Esistono differenze sottili tra questi approcci:
+
+```javascript
+// Impostare a undefined
+person.age = undefined;
+// La proprietà esiste ancora, ma ha valore undefined
+
+// Impostare a null
+person.age = null;
+// La proprietà esiste ancora, ma ha valore null (reset intenzionale)
+
+// Eliminare la proprietà
+delete person.age;
+// La proprietà non esiste più nell'oggetto
+```
+
+**Best practice**:
+
+- Usa `null` quando vuoi resettare un valore ma mantenere la proprietà
+- Usa `delete` quando vuoi rimuovere completamente la proprietà
+- Evita di assegnare `undefined` manualmente (è il valore predefinito per proprietà non inizializzate)
+
+---
+
+## Nomi delle Proprietà
+
+### Chiavi come Stringhe
+
+Tutte le chiavi degli oggetti sono automaticamente convertite (coerced) in stringhe da JavaScript. Anche se scrivi `age` senza virgolette, JavaScript lo tratta come la stringa `'age'`.
+
+Un oggetto è essenzialmente un dizionario di chiavi (stringhe) e valori (di qualsiasi tipo).
+
+### Chiavi con Spazi o Caratteri Speciali
+
+Se vuoi utilizzare nomi di proprietà con spazi o caratteri speciali, devi racchiuderli tra virgolette:
+
+```javascript
+const person = {
+	'first name': 'Max', // chiave con spazio
+	'last-name': 'Miller', // chiave con trattino
+	age: 30
+};
+```
+
+**Nota**: mentre puoi utilizzare questi nomi negli oggetti, non puoi utilizzarli come nomi di variabili. Questa flessibilità è esclusiva degli oggetti.
+
+### Accesso a Chiavi con Spazi
+
+Per accedere a proprietà con spazi o caratteri speciali, devi utilizzare la **notazione con parentesi quadre**:
+
+```javascript
+// Questo NON funziona:
+// person.first name ❌
+
+// Questo funziona:
+console.log(person['first name']); // 'Max'
+```
+
+### Chiavi Numeriche
+
+Puoi anche utilizzare numeri come chiavi:
+
+```javascript
+const person = {
+	name: 'Max',
+	1.5: 'hello' // chiave numerica
+};
+
+// Accesso con parentesi quadre
+console.log(person[1.5]); // 'hello'
+// console.log(person.1.5); ❌ non funziona
+
+// Puoi anche usare le virgolette
+console.log(person['1.5']); // 'hello'
+```
+
+**Nota**: i numeri negativi non sono consentiti come chiavi. Solo numeri positivi o zero.
+
+### Ordine delle Proprietà
+
+L'ordine delle proprietà in un oggetto JavaScript segue queste regole:
+
+- **Chiavi stringa**: mantengono l'ordine di inserimento
+- **Chiavi numeriche**: vengono ordinate automaticamente
+
+```javascript
+const obj1 = {
+	name: 'Max',
+	age: 30,
+	hobby: 'Sports'
+};
+// Ordine: name, age, hobby (ordine di inserimento)
+
+const obj2 = {
+	5: 'five',
+	1: 'one',
+	3: 'three'
+};
+// Ordine: 1, 3, 5 (numeri ordinati)
+```
+
+---
+
+## Notazione a Punto vs Parentesi Quadre
+
+### Notazione a Punto
+
+La notazione a punto è la più comune e leggibile:
+
+```javascript
+const person = {
+	name: 'Max',
+	age: 30
+};
+
+console.log(person.name); // 'Max'
+console.log(person.age); // 30
+```
+
+**Limitazioni**: funziona solo con chiavi che sono identificatori JavaScript validi (senza spazi, trattini, ecc.).
+
+### Notazione con Parentesi Quadre
+
+La notazione con parentesi quadre è più flessibile:
+
+```javascript
+const person = {
+	'first name': 'Max',
+	age: 30
+};
+
+console.log(person['first name']); // 'Max'
+console.log(person['age']); // 30
+```
+
+**Vantaggi**:
+
+- Funziona con qualsiasi stringa come chiave
+- Permette l'accesso dinamico alle proprietà
+
+### Accesso Dinamico
+
+La vera potenza delle parentesi quadre risiede nell'accesso dinamico:
+
+```javascript
+const person = {
+	name: 'Max',
+	age: 30
+};
+
+const keyName = 'name';
+console.log(person[keyName]); // 'Max' - usa il valore della variabile
+
+// Questo NON funzionerebbe con la notazione a punto:
+// person.keyName cercherebbe una proprietà chiamata "keyName"
+```
+
+Puoi anche utilizzare qualsiasi espressione che restituisca un valore:
+
+```javascript
+const key = 'na' + 'me';
+console.log(person[key]); // 'Max'
+
+// Con una funzione
+function getKey() {
+	return 'age';
+}
+console.log(person[getKey()]); // 30
+```
+
+### Impostare Proprietà Dinamicamente
+
+Puoi anche impostare proprietà dinamicamente utilizzando le parentesi quadre nella definizione dell'oggetto:
+
+```javascript
+const userChosenKeyName = 'level'; // valore da input utente
+
+const person = {
+	name: 'Max',
+	[userChosenKeyName]: 5 // usa il valore della variabile come chiave
+};
+
+console.log(person); // { name: 'Max', level: 5 }
+```
+
+Questo è estremamente utile quando non conosci il nome della proprietà in anticipo, ad esempio quando proviene da input dell'utente.
+
+### Esempio con DOM
+
+Un esempio interessante riguarda l'oggetto `style` dei nodi DOM:
+
+```javascript
+const element = document.getElementById('myElement');
+
+// Notazione a punto (camelCase)
+element.style.backgroundColor = 'red';
+
+// Notazione con parentesi quadre (CSS originale)
+element.style['background-color'] = 'red'; // funziona anche così!
+```
+
+L'oggetto `style` ha sia le proprietà tradotte in camelCase che le proprietà CSS originali, accessibili tramite parentesi quadre.
+
+---
+
+## Shorthand per Proprietà
+
+Quando il nome della proprietà corrisponde esattamente al nome della variabile che contiene il valore, puoi utilizzare una sintassi abbreviata:
+
+```javascript
+const title = 'Javascript - The Complete Guide';
+const level = 5;
+
+// Sintassi completa
+const movie = {
+	title: title,
+	level: level
+};
+
+// Sintassi abbreviata (shorthand)
+const movie = {
+	title,
+	level
+};
+```
+
+Questa sintassi abbreviata è equivalente alla sintassi completa quando il nome della proprietà e il nome della variabile corrispondono.
+
+---
+
+## Spread Operator con Oggetti
+
+Il **spread operator** (`...`) può essere utilizzato anche con gli oggetti per creare copie o unire oggetti:
+
+```javascript
+const person = {
+	name: 'Max',
+	hobbies: ['Sports', 'Cooking']
+};
+
+// Creare una copia
+const person2 = { ...person };
+
+person.age = 30;
+console.log(person2.age); // undefined - person2 è una copia indipendente
+```
+
+### Copia Superficiale
+
+Il spread operator crea una **copia superficiale** (shallow copy). Questo significa che:
+
+- Le proprietà primitive vengono copiate completamente
+- I valori di riferimento (oggetti, array) vengono copiati solo il riferimento, non il valore stesso
+
+```javascript
+const person = {
+	name: 'Max',
+	hobbies: ['Sports', 'Cooking']
+};
+
+const person2 = { ...person };
+
+person.hobbies.push('Coding');
+console.log(person2.hobbies); // ['Sports', 'Cooking', 'Coding']
+// person2.hobbies punta allo stesso array di person.hobbies
+```
+
+### Copia Profonda Parziale
+
+Se vuoi copiare anche gli array o gli oggetti annidati, devi farlo manualmente:
+
+```javascript
+const person = {
+	name: 'Max',
+	hobbies: ['Sports', 'Cooking'],
+	age: 30
+};
+
+const person3 = {
+	...person,
+	age: 29, // sovrascrive age
+	hobbies: [...person.hobbies] // crea una nuova copia dell'array
+};
+
+person.hobbies.pop();
+console.log(person3.hobbies); // ['Sports', 'Cooking'] - non modificato
+```
+
+### Unire Oggetti
+
+Puoi unire più oggetti utilizzando lo spread operator:
+
+```javascript
+const defaults = {
+	color: 'blue',
+	size: 'medium'
+};
+
+const userSettings = {
+	size: 'large'
+};
+
+const finalSettings = {
+	...defaults,
+	...userSettings // sovrascrive size
+};
+// { color: 'blue', size: 'large' }
+```
+
+---
+
+## Object.assign()
+
+Un metodo alternativo per copiare o unire oggetti è `Object.assign()`:
+
+```javascript
+const person = {
+	name: 'Max',
+	age: 30
+};
+
+const person2 = Object.assign({}, person);
+
+person.name = 'Maximilian';
+console.log(person2.name); // 'Max' - person2 è una copia indipendente
+```
+
+### Sintassi
+
+```javascript
+Object.assign(target, source1, source2, ...);
+```
+
+- **target**: l'oggetto di destinazione (spesso un nuovo oggetto `{}`)
+- **source1, source2, ...**: gli oggetti sorgente da cui copiare le proprietà
+
+`Object.assign()` restituisce l'oggetto target con tutte le proprietà dei sorgenti unite.
+
+### Quando Usare Object.assign() vs Spread
+
+Entrambi i metodi funzionano, ma lo **spread operator** è generalmente preferito perché:
+
+- Sintassi più breve e leggibile
+- Più moderno (introdotto in ES6)
+- Supporto equivalente nei browser moderni
+
+Usa `Object.assign()` solo se devi supportare browser molto vecchi o se preferisci la sua sintassi esplicita.
+
+---
+
+## Destructuring di Oggetti
+
+Il **destructuring** permette di estrarre proprietà da un oggetto e memorizzarle in variabili separate:
+
+```javascript
+const movie = {
+	id: 1,
+	info: {
+		title: 'Javascript - The Complete Guide',
+		level: 5
+	}
+};
+
+// Destructuring
+const { info } = movie;
+// Equivalente a: const info = movie.info;
+
+console.log(info.title); // 'Javascript - The Complete Guide'
+```
+
+### Destructuring Annidato
+
+Puoi anche fare destructuring di oggetti annidati:
+
+```javascript
+const { info: { title } } = movie;
+// Estrae title da movie.info
+
+console.log(title); // 'Javascript - The Complete Guide'
+```
+
+### Rinomina durante il Destructuring
+
+Puoi assegnare un nuovo nome alla proprietà estratta:
+
+```javascript
+const { info: { title: movieTitle } } = movie;
+
+console.log(movieTitle); // 'Javascript - The Complete Guide'
+// 'title' non è più disponibile, solo 'movieTitle'
+```
+
+### Rest Parameter
+
+Puoi utilizzare il **rest parameter** per raccogliere le proprietà rimanenti:
+
+```javascript
+const movie = {
+	id: 1,
+	title: 'Javascript Guide',
+	level: 5
+};
+
+const { id, ...otherProps } = movie;
+
+console.log(id); // 1
+console.log(otherProps); // { title: 'Javascript Guide', level: 5 }
+```
+
+### Differenze con Array Destructuring
+
+Importante: nel destructuring di oggetti, l'**ordine non conta**, conta solo il **nome della chiave**:
+
+```javascript
+// Array destructuring - l'ordine conta
+const [first, second] = ['a', 'b'];
+
+// Object destructuring - solo il nome della chiave conta
+const { age, name } = { name: 'Max', age: 30 };
+// Funziona indipendentemente dall'ordine
+```
+
+---
+
+## Verificare l'Esistenza di Proprietà
+
+### Operatore `in`
+
+Puoi verificare se una proprietà esiste in un oggetto utilizzando l'operatore **`in`**:
+
+```javascript
+const movie = {
+	title: 'Javascript Guide',
+	info: {
+		level: 5
+	}
+};
+
+if ('info' in movie) {
+	console.log('info esiste');
+}
+
+if (!('rating' in movie)) {
+	console.log('rating non esiste');
+}
+```
+
+### Confronto con undefined
+
+Un'alternativa è verificare se la proprietà è `undefined`:
+
+```javascript
+if (movie.info !== undefined) {
+	console.log('info esiste');
+}
+
+if (movie.rating === undefined) {
+	console.log('rating non esiste');
+}
+```
+
+**Nota**: questo metodo può essere fuorviante se una proprietà è stata esplicitamente impostata a `undefined`. L'operatore `in` è più affidabile per verificare l'esistenza della proprietà.
+
+---
+
+## Chaining (Concatenazione)
+
+Il **chaining** è la possibilità di accedere a proprietà o chiamare metodi in sequenza su un singolo oggetto o sul valore restituito da un'operazione precedente:
+
+```javascript
+const movie = {
+	info: {
+		title: 'Javascript Guide'
+	}
+};
+
+// Chaining di proprietà
+console.log(movie.info.title); // 'Javascript Guide'
+
+// Chaining di metodi
+const randomId = Math.random().toString();
+// Math.random() restituisce un numero
+// .toString() viene chiamato su quel numero
+```
+
+Non è necessario dividere questo codice su più righe con variabili intermedie. Il chaining è una caratteristica comune e potente in JavaScript.
+
+---
+
+## La Keyword `this`
+
+La keyword **`this`** è uno dei concetti più importanti e talvolta complessi in JavaScript. Si riferisce a ciò che ha chiamato la funzione, ovvero l'oggetto responsabile dell'esecuzione della funzione.
+
+### `this` nei Metodi
+
+Quando una funzione è un metodo di un oggetto, `this` si riferisce all'oggetto stesso:
+
+```javascript
+const movie = {
+	info: {
+		title: 'Javascript Guide'
+	},
+	getFormattedTitle() {
+		return this.info.title.toUpperCase();
+	}
+};
+
+console.log(movie.getFormattedTitle()); // 'JAVASCRIPT GUIDE'
+// 'this' si riferisce a 'movie'
+```
+
+### Regola Generale per `this`
+
+Un modo semplice per ricordare a cosa si riferisce `this` è guardare **cosa c'è prima del punto** quando chiami la funzione:
+
+```javascript
+movie.getFormattedTitle();
+//     ^
+//     'movie' è prima del punto, quindi 'this' si riferisce a 'movie'
+```
+
+### `this` nel Contesto Globale
+
+Fuori da qualsiasi funzione, `this` si riferisce all'oggetto globale (`window` nel browser):
+
+```javascript
+console.log(this); // window (sempre, anche in strict mode)
+```
+
+### `this` in Funzioni Normali
+
+In una funzione normale chiamata nel contesto globale:
+
+```javascript
+function something() {
+	console.log(this);
+}
+
+something(); 
+// window in non-strict mode
+// undefined in strict mode
+```
+
+### `this` in Arrow Functions
+
+Le **arrow functions** hanno un comportamento speciale: **non legano `this`**. Invece, `this` mantiene il valore che avrebbe nel contesto circostante:
+
+```javascript
+const person = {
+	name: 'Max',
+	greet: () => {
+		console.log(this.name); // undefined o nome globale
+		// 'this' si riferisce al contesto globale, non a 'person'
+	}
+};
+
+person.greet(); // non funziona come previsto
+```
+
+### Arrow Functions vs Funzioni Normali con `this`
+
+```javascript
+const members = {
+	teamName: 'Blue Rockets',
+	people: ['Max', 'Manuel'],
+	getTeamMembers() {
+		// Arrow function - mantiene 'this' del contesto esterno
+		this.people.forEach(person => {
+			console.log(person + ' - ' + this.teamName);
+			// 'this' si riferisce a 'members'
+		});
+		
+		// Funzione normale - 'this' è legato diversamente
+		this.people.forEach(function(person) {
+			console.log(person + ' - ' + this.teamName);
+			// 'this' si riferisce al contesto globale (window)
+		});
+	}
+};
+```
+
+Le arrow functions sono spesso preferite quando vuoi mantenere il contesto `this` del codice circostante.
+
+### `this` negli Event Listeners
+
+Quando una funzione viene eseguita come event listener, `this` si riferisce all'elemento che ha scatenato l'evento:
+
+```javascript
+const button = document.getElementById('myButton');
+
+button.addEventListener('click', function() {
+	console.log(this); // l'elemento button
+});
+
+// Con arrow function
+button.addEventListener('click', () => {
+	console.log(this); // window (non l'elemento button!)
+});
+```
+
+**Nota**: questo comportamento si applica solo alle funzioni normali, non alle arrow functions.
+
+### Gestire `this` con bind(), call() e apply()
+
+Quando hai bisogno di controllare esplicitamente a cosa si riferisce `this`, puoi utilizzare:
+
+#### `bind()`
+
+Prepara una funzione per l'esecuzione futura con `this` preconfigurato:
+
+```javascript
+const movie = {
+	title: 'Javascript Guide'
+};
+
+function getTitle() {
+	return this.title;
+}
+
+const boundGetTitle = getTitle.bind(movie);
+console.log(boundGetTitle()); // 'Javascript Guide'
+```
+
+#### `call()`
+
+Esegue immediatamente la funzione con `this` specificato:
+
+```javascript
+getTitle.call(movie); // 'Javascript Guide'
+// Esegue la funzione subito con 'this' = movie
+```
+
+#### `apply()`
+
+Simile a `call()`, ma gli argomenti vengono passati come array:
+
+```javascript
+function greet(greeting, punctuation) {
+	return greeting + ' ' + this.name + punctuation;
+}
+
+const person = { name: 'Max' };
+
+greet.apply(person, ['Hello', '!']); // 'Hello Max!'
+greet.call(person, 'Hello', '!'); // 'Hello Max!' (stesso risultato)
+```
+
+**Differenza principale**:
+
+- `call()`: argomenti passati separatamente
+- `apply()`: argomenti passati come array
+- `bind()`: restituisce una nuova funzione, non esegue immediatamente
+
+### Problema Comune: Destructuring di Metodi
+
+Quando estrai un metodo da un oggetto, perdi il binding di `this`:
+
+```javascript
+const movie = {
+	info: {
+		title: 'Javascript Guide'
+	},
+	getFormattedTitle() {
+		return this.info.title.toUpperCase();
+	}
+};
+
+const { getFormattedTitle } = movie;
+getFormattedTitle(); // Errore! 'this' è undefined o window
+
+// Soluzioni:
+// 1. Chiamare direttamente sull'oggetto
+movie.getFormattedTitle(); // ✅
+
+// 2. Usare bind()
+const boundMethod = getFormattedTitle.bind(movie);
+boundMethod(); // ✅
+
+// 3. Usare call() o apply()
+getFormattedTitle.call(movie); // ✅
+```
+
+### Riepilogo di `this`
+
+| Contesto | `this` si riferisce a |
+|----------|----------------------|
+| Contesto globale | `window` (sempre) |
+| Funzione normale (non-strict) | `window` |
+| Funzione normale (strict) | `undefined` |
+| Arrow function | Stesso valore del contesto esterno |
+| Metodo chiamato su oggetto | L'oggetto su cui è chiamato |
+| Event listener (funzione normale) | L'elemento che ha scatenato l'evento |
+| Event listener (arrow function) | Contesto globale |
+
+**Consiglio**: quando hai dubbi, usa `console.log(this)` per vedere a cosa si riferisce in quel momento specifico.
+
+---
+
+## Getters e Setters
+
+I **getters** e **setters** sono proprietà speciali che permettono di controllare come una proprietà viene letta o scritta.
+
+### Definire Getters e Setters
+
+```javascript
+const movie = {
+	info: {
+		_title: '', // proprietà interna (convenzione: underscore per proprietà private)
+		
+		get title() {
+			return this._title;
+		},
+		
+		set title(val) {
+			if (val.trim() === '') {
+				this._title = 'Default';
+				return;
+			}
+			this._title = val;
+		}
+	}
+};
+```
+
+### Utilizzare Getters e Setters
+
+I getters e setters vengono utilizzati come proprietà normali, non come metodi:
+
+```javascript
+// Setter - viene chiamato automaticamente
+movie.info.title = 'Javascript Guide';
+
+// Getter - viene chiamato automaticamente
+console.log(movie.info.title); // 'Javascript Guide'
+```
+
+### Validazione con Setters
+
+I setters sono utili per aggiungere validazione:
+
+```javascript
+const movie = {
+	info: {
+		_title: '',
+		
+		set title(val) {
+			if (val.trim() === '') {
+				this._title = 'Untitled';
+			} else {
+				this._title = val;
+			}
+		},
+		
+		get title() {
+			return this._title.toUpperCase(); // trasformazione al momento della lettura
+		}
+	}
+};
+
+movie.info.title = 'javascript guide';
+console.log(movie.info.title); // 'JAVASCRIPT GUIDE'
+```
+
+### Proprietà Read-Only
+
+Se definisci solo un getter senza setter, la proprietà diventa **read-only**:
+
+```javascript
+const movie = {
+	info: {
+		_id: 1,
+		
+		get id() {
+			return this._id;
+		}
+		// Nessun setter definito
+	}
+};
+
+console.log(movie.info.id); // 1 ✅
+movie.info.id = 2; // Errore! ❌ Cannot set property id
+```
+
+### Quando Usare Getters e Setters
+
+I getters e setters sono utili quando:
+
+- Vuoi aggiungere validazione quando si imposta un valore
+- Vuoi trasformare un valore quando viene letto
+- Vuoi creare proprietà read-only
+- Vuoi aggiungere logica aggiuntiva all'accesso alle proprietà
+
+Non sono necessari per ogni proprietà, ma sono uno strumento potente quando ne hai bisogno.
+
+---
+
+## Esempio Pratico: Applicazione Film
+
+Vediamo un esempio completo che utilizza molti dei concetti appresi:
+
+```javascript
+// Array per memorizzare i film
+const movies = [];
+
+// Selezionare elementi DOM
+const addMovieButton = document.getElementById('add-movie-button');
+const searchButton = document.getElementById('search-btn');
+const titleInput = document.getElementById('title');
+const extraNameInput = document.getElementById('extra-name');
+const extraValueInput = document.getElementById('extra-value');
+const filterInput = document.getElementById('filter');
+const movieList = document.getElementById('movie-list');
+
+// Handler per aggiungere un film
+const addMovieHandler = () => {
+	const title = titleInput.value.trim();
+	const extraName = extraNameInput.value.trim();
+	const extraValue = extraValueInput.value.trim();
+	
+	// Validazione
+	if (title === '' || extraName === '' || extraValue === '') {
+		return;
+	}
+	
+	// Creare nuovo film con proprietà dinamica
+	const newMovie = {
+		id: Math.random(),
+		info: {
+			title, // shorthand
+			[extraName]: extraValue // proprietà dinamica
+		}
+	};
+	
+	movies.push(newMovie);
+	renderMovies();
+};
+
+// Renderizzare i film
+const renderMovies = (filter = '') => {
+	// Gestire visibilità della lista
+	if (movies.length === 0) {
+		movieList.classList.remove('visible');
+		return;
+	}
+	
+	movieList.classList.add('visible');
+	movieList.innerHTML = ''; // pulire la lista
+	
+	// Filtrare i film
+	const filteredMovies = filter === '' 
+		? movies 
+		: movies.filter(movie => 
+			movie.info.title.toLowerCase().includes(filter.toLowerCase())
+		);
+	
+	// Renderizzare ogni film
+	filteredMovies.forEach(movie => {
+		const { info } = movie; // destructuring
+		
+		let text = info.title;
+		
+		// Iterare attraverso le proprietà dinamiche
+		for (const key in info) {
+			if (key !== 'title') {
+				text += ` - ${key}: ${info[key]}`; // accesso dinamico
+			}
+		}
+		
+		const movieEl = document.createElement('li');
+		movieEl.textContent = text;
+		movieList.append(movieEl);
+	});
+};
+
+// Handler per la ricerca
+const searchMovieHandler = () => {
+	const filterTerm = filterInput.value.trim();
+	renderMovies(filterTerm);
+};
+
+// Collegare gli event listeners
+addMovieButton.addEventListener('click', addMovieHandler);
+searchButton.addEventListener('click', searchMovieHandler);
+```
+
+Questo esempio dimostra:
+
+- Creazione di oggetti con proprietà dinamiche
+- Accesso dinamico alle proprietà con parentesi quadre
+- Destructuring di oggetti
+- Iterazione attraverso le proprietà con `for/in`
+- Utilizzo di metodi array come `filter()`
+- Manipolazione del DOM
+
+---
+
+## Conclusione
+
+Gli oggetti sono fondamentali in JavaScript e comprendere come funzionano è essenziale per scrivere codice efficace. Questo modulo ha coperto:
+
+- **Creazione e manipolazione** di oggetti
+- **Proprietà dinamiche** e accesso flessibile
+- **Spread operator** e copia di oggetti
+- **Destructuring** per estrarre valori
+- **Keyword `this`** e il suo comportamento complesso
+- **Getters e setters** per controllare l'accesso alle proprietà
+
+Questi concetti sono il pane quotidiano di JavaScript. I moduli successivi aggiungeranno strumenti più avanzati per lavorare con gli oggetti, ma è fondamentale avere una solida comprensione di questi fondamenti.
+
+---
+
+## Risorse Utili
+
+- [MDN - this keyword](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this)
+- [MDN - Objects](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)
+- [MDN - Object.assign()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
+- [MDN - Destructuring assignment](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment)
+
