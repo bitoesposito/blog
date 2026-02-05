@@ -1,0 +1,631 @@
+---
+title: "Classi e Object-Oriented Programming"
+description: "Classi, istanze, ereditarietà, metodi statici e campi privati in JavaScript"
+date: 2026-02-05
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 9
+---
+
+## Introduzione
+
+L'**Object-Oriented Programming** (OOP) è un approccio alla programmazione che organizza il codice attorno a **oggetti** che rappresentano entità del mondo reale. In JavaScript, questo approccio può essere implementato usando **classi**, che fungono da **blueprint** (progetti) per creare oggetti con struttura e comportamento comuni.
+
+Le classi permettono di definire una volta la struttura e la logica di un tipo di oggetto, per poi creare **istanze** multiple con dati diversi ma stessa struttura. Questo riduce la duplicazione del codice e rende il codice più organizzato e manutenibile.
+
+In questo capitolo si approfondiscono:
+
+- **Object-Oriented Programming**: filosofia e vantaggi dell'approccio OOP
+- **Classi e istanze**: definire classi e creare oggetti con `new`
+- **Costruttori**: inizializzare oggetti con valori personalizzati
+- **Campi e metodi**: proprietà e funzioni nelle classi
+- **Metodi statici**: metodi accessibili sulla classe stessa, non sulle istanze
+- **Ereditarietà**: estendere classi per condividere codice comune
+- **Campi privati**: proprietà accessibili solo dall'interno della classe
+- **Object descriptors**: configurare proprietà (writable, configurable, enumerable)
+
+---
+
+## Cos'è Object-Oriented Programming
+
+L'**Object-Oriented Programming** (OOP) è un paradigma di programmazione che organizza il codice attorno a **oggetti** che rappresentano entità del mondo reale o concetti del dominio applicativo.
+
+### Filosofia OOP
+
+L'idea centrale è che tutto il codice e i dati correlati siano raggruppati in **oggetti** che rappresentano entità specifiche. Ogni oggetto contiene:
+
+- **Dati** (proprietà): informazioni relative all'entità
+- **Comportamento** (metodi): logica che opera su quei dati
+
+### Esempio pratico
+
+In un'applicazione di e-commerce, si potrebbero avere:
+
+- **ProductList**: oggetto che gestisce la lista di prodotti (dati: array di prodotti, metodi: `render()`, `fetchProducts()`)
+- **Product**: oggetto che rappresenta un singolo prodotto (dati: titolo, prezzo, immagine; metodi: `render()`, `addToCart()`)
+- **ShoppingCart**: oggetto che gestisce il carrello (dati: array di prodotti, totale; metodi: `render()`, `addProduct()`, `calculateTotal()`)
+
+Ogni oggetto è responsabile della propria logica e dei propri dati, rendendo il codice più organizzato e facile da comprendere.
+
+### Vantaggi dell'OOP
+
+- **Organizzazione**: logica correlata è raggruppata insieme
+- **Riutilizzo**: classi possono essere riutilizzate per creare più istanze
+- **Manutenibilità**: modifiche a una classe si riflettono su tutte le istanze
+- **Chiarezza**: è più facile capire cosa fa un oggetto guardando la sua classe
+
+---
+
+## Classi e istanze
+
+### Cos'è una classe
+
+Una **classe** è un blueprint (progetto) che definisce la struttura e il comportamento degli oggetti che verranno creati da essa. Non è un oggetto in sé, ma una definizione di come gli oggetti dovrebbero essere.
+
+### Cos'è un'istanza
+
+Un'**istanza** è un oggetto concreto creato da una classe. Ogni istanza ha la stessa struttura definita nella classe, ma può contenere dati diversi.
+
+### Definire una classe
+
+```javascript
+class Product {
+	title = 'Default';
+	imageUrl = '';
+	description = '';
+	price = 0;
+}
+```
+
+La sintassi usa la parola chiave **`class`**, seguita dal nome della classe (convenzione: **PascalCase**, prima lettera maiuscola). Le proprietà definite nella classe sono chiamate **campi** (fields) e diventano **proprietà** quando si crea un'istanza.
+
+**Differenze rispetto agli object literals**:
+
+- Si usa `=` invece di `:` per assegnare valori
+- Si termina con `;` invece di `,`
+- Non si crea un oggetto immediatamente, solo una definizione
+
+### Creare un'istanza
+
+Per creare un oggetto da una classe, si usa l'operatore **`new`** seguito dal nome della classe:
+
+```javascript
+const product = new Product();
+console.log(product); // { title: 'Default', imageUrl: '', description: '', price: 0 }
+```
+
+**Importante**: `new` è obbligatorio. Chiamare `Product()` senza `new` genera un errore.
+
+### Quando usare classi vs object literals
+
+**Usa classi quando**:
+
+- Devi creare **molte istanze** simili con la stessa struttura
+- Vuoi garantire che tutti gli oggetti abbiano le stesse proprietà
+- Hai logica riutilizzabile da associare agli oggetti
+
+**Usa object literals quando**:
+
+- Crei un oggetto **una sola volta** o in un punto specifico
+- Non hai bisogno di riutilizzare la struttura
+- Vuoi semplicemente raggruppare dati correlati
+
+---
+
+## Costruttori
+
+### Il metodo constructor
+
+Il metodo **`constructor`** è un metodo speciale che viene chiamato automaticamente quando si crea un'istanza con `new`. Permette di inizializzare l'oggetto con valori personalizzati.
+
+```javascript
+class Product {
+	constructor(title, imageUrl, description, price) {
+		this.title = title;
+		this.imageUrl = imageUrl;
+		this.description = description;
+		this.price = price;
+	}
+}
+```
+
+**`this`** si riferisce all'istanza che sta per essere creata. Assegnando valori a `this.title`, si crea una proprietà `title` sull'oggetto.
+
+### Creare istanze con valori iniziali
+
+```javascript
+const pillow = new Product('A Pillow', 'https://...', 'A soft pillow', 19.99);
+const carpet = new Product('A Carpet', 'https://...', 'A carpet', 89.99);
+```
+
+Ogni istanza ha dati diversi ma la stessa struttura, garantita dalla classe.
+
+### Campi vs proprietà nel constructor
+
+I **campi** definiti nella classe (es. `title = 'Default'`) vengono creati automaticamente come proprietà. Se si assegna un valore nel `constructor` con `this.title = title`, si **sovrascrive** il valore del campo.
+
+Se si inizializzano sempre le proprietà nel `constructor`, i campi con valori di default possono essere omessi:
+
+```javascript
+class Product {
+	// Non serve definire i campi se li inizializziamo nel constructor
+	constructor(title, imageUrl, description, price) {
+		this.title = title;
+		this.imageUrl = imageUrl;
+		this.description = description;
+		this.price = price;
+	}
+}
+```
+
+I campi sono utili quando si vogliono valori di default che non vengono sempre sovrascritti nel `constructor`.
+
+---
+
+## Metodi nelle classi
+
+### Definire metodi
+
+I **metodi** sono funzioni definite nella classe che diventano proprietà delle istanze:
+
+```javascript
+class ProductItem {
+	constructor(product) {
+		this.product = product;
+	}
+
+	render() {
+		const prodEl = document.createElement('li');
+		prodEl.className = 'product-item';
+		prodEl.innerHTML = `
+			<div>
+				<img src="${this.product.imageUrl}" alt="${this.product.title}">
+				<div class="product-item__content">
+					<h2>${this.product.title}</h2>
+					<h3>$${this.product.price}</h3>
+					<p>${this.product.description}</p>
+					<button>Add to Cart</button>
+				</div>
+			</div>
+		`;
+		return prodEl;
+	}
+
+	addToCart() {
+		console.log('Adding product to cart');
+		console.log(this.product);
+	}
+}
+```
+
+Si usa la **method shorthand notation** (senza `function`). `this` si riferisce all'istanza su cui viene chiamato il metodo.
+
+### Chiamare metodi
+
+```javascript
+const productItem = new ProductItem(pillow);
+const element = productItem.render(); // chiama il metodo sull'istanza
+productItem.addToCart();              // chiama un altro metodo
+```
+
+### Problema con `this` negli event listener
+
+Quando si passa un metodo come callback a un event listener, `this` non si riferisce più all'istanza:
+
+```javascript
+const button = prodEl.querySelector('button');
+button.addEventListener('click', productItem.addToCart);
+// this dentro addToCart sarà il button, non productItem
+```
+
+**Soluzioni**:
+
+1. **Usare `bind`**:
+
+```javascript
+button.addEventListener('click', productItem.addToCart.bind(productItem));
+```
+
+2. **Usare arrow function**:
+
+```javascript
+button.addEventListener('click', () => productItem.addToCart());
+```
+
+3. **Definire il metodo come campo con arrow function**:
+
+```javascript
+class ProductItem {
+	addToCart = () => {
+		// this si riferisce sempre all'istanza
+		console.log(this.product);
+	};
+}
+```
+
+---
+
+## Metodi statici
+
+### Cosa sono i metodi statici
+
+I **metodi statici** sono metodi accessibili sulla **classe stessa**, non sulle istanze. Si definiscono con la parola chiave **`static`**.
+
+```javascript
+class App {
+	static init() {
+		// logica di inizializzazione
+		const shop = new Shop();
+		App.cart = shop.cart; // proprietà statica
+	}
+
+	static addProductToCart(product) {
+		App.cart.addProduct(product);
+	}
+}
+```
+
+### Chiamare metodi statici
+
+```javascript
+App.init();                    // chiamata sulla classe, non su un'istanza
+App.addProductToCart(product); // stesso modo
+```
+
+**Non si può** chiamare `new App().init()` perché `init` non esiste sulle istanze.
+
+### Quando usare metodi statici
+
+I metodi statici sono utili per:
+
+- **Funzioni helper** che non necessitano di un'istanza
+- **Comunicazione tra classi**: condividere dati o funzionalità senza creare istanze
+- **Configurazione globale**: inizializzare l'applicazione
+
+**Esempio**: una classe `App` con metodi statici può fungere da "colla" tra diverse parti dell'applicazione senza dover passare riferimenti tra oggetti.
+
+---
+
+## Ereditarietà
+
+### Cos'è l'ereditarietà
+
+L'**ereditarietà** permette a una classe di **ereditare** proprietà e metodi da un'altra classe (classe base o superclasse). La classe che eredita è chiamata **sottoclasse** o **classe derivata**.
+
+### Sintassi: extends
+
+```javascript
+class Component {
+	constructor(renderHookId) {
+		this.hookId = renderHookId;
+	}
+
+	createRootElement(tag, cssClasses, attributes) {
+		const rootElement = document.createElement(tag);
+		if (cssClasses) {
+			rootElement.className = cssClasses;
+		}
+		if (attributes && attributes.length > 0) {
+			for (const attr of attributes) {
+				rootElement.setAttribute(attr.name, attr.value);
+			}
+		}
+		const hook = document.getElementById(this.hookId);
+		hook.append(rootElement);
+		return rootElement;
+	}
+}
+
+class ShoppingCart extends Component {
+	constructor(renderHookId) {
+		super(renderHookId); // chiama il constructor della classe base
+		this.items = [];
+	}
+
+	render() {
+		const cartEl = this.createRootElement('section', 'cart');
+		// logica specifica del carrello
+		return cartEl;
+	}
+}
+```
+
+La parola chiave **`extends`** indica che `ShoppingCart` eredita da `Component`. La sottoclasse ha accesso a tutti i metodi della classe base tramite `this`.
+
+### super
+
+La parola chiave **`super`** permette di:
+
+1. **Chiamare il constructor della classe base**:
+
+```javascript
+constructor(renderHookId) {
+	super(renderHookId); // DEVE essere chiamato prima di usare this
+	this.items = [];      // solo dopo super
+}
+```
+
+**Regola importante**: `super()` deve essere chiamato **prima** di usare `this` nel constructor della sottoclasse.
+
+2. **Chiamare metodi della classe base**:
+
+```javascript
+class Child extends Parent {
+	myMethod() {
+		super.parentMethod(); // chiama il metodo della classe base
+	}
+}
+```
+
+### Override di metodi
+
+Una sottoclasse può **sovrascrivere** (override) un metodo della classe base definendo un metodo con lo stesso nome:
+
+```javascript
+class Component {
+	render() {
+		// implementazione base
+	}
+}
+
+class ShoppingCart extends Component {
+	render() {
+		// implementazione specifica per ShoppingCart
+		// questa sostituisce completamente il render della classe base
+	}
+}
+```
+
+Quando si chiama `cart.render()`, viene eseguita l'implementazione di `ShoppingCart`, non quella di `Component`.
+
+### Vantaggi dell'ereditarietà
+
+- **Riduzione duplicazione**: codice comune in una classe base
+- **Consistenza**: tutte le sottoclassi hanno la stessa interfaccia base
+- **Manutenibilità**: modifiche alla classe base si riflettono su tutte le sottoclassi
+
+### Limitazioni
+
+- In JavaScript si può ereditare da **una sola classe** (no multiple inheritance)
+- L'ereditarietà può creare dipendenze strette tra classi
+
+---
+
+## Campi privati
+
+### Cos'è un campo privato
+
+I **campi privati** sono proprietà accessibili **solo dall'interno della classe** che li definisce. Non possono essere letti o modificati dall'esterno.
+
+### Sintassi
+
+Si definiscono usando il simbolo **`#`** prima del nome:
+
+```javascript
+class ProductList {
+	#products = []; // campo privato
+
+	constructor() {
+		// #products è accessibile qui
+		this.#products = [];
+	}
+
+	fetchProducts() {
+		// #products è accessibile qui
+		this.#products = [/* ... */];
+	}
+
+	renderProducts() {
+		// #products è accessibile qui
+		for (const product of this.#products) {
+			// ...
+		}
+	}
+}
+```
+
+### Accesso ai campi privati
+
+```javascript
+const list = new ProductList();
+console.log(list.#products); // Errore: private field must be declared in an enclosing class
+```
+
+I campi privati sono accessibili **solo** nella classe che li definisce, non nelle sottoclassi o dall'esterno.
+
+### Quando usare campi privati
+
+Usa campi privati quando:
+
+- Una proprietà è usata **solo internamente** alla classe
+- Vuoi prevenire modifiche accidentali dall'esterno
+- Vuoi nascondere dettagli di implementazione
+
+**Esempio**: `products` in `ProductList` dovrebbe essere modificato solo tramite `fetchProducts()`, non direttamente dall'esterno.
+
+### Pseudo-private properties (convenzione)
+
+Prima dell'introduzione dei campi privati, si usava la convenzione di prefixare con `_`:
+
+```javascript
+class ProductList {
+	_products = []; // convenzione: "privato", ma tecnicamente accessibile
+}
+```
+
+Questa è solo una **convenzione**, non previene realmente l'accesso. I campi privati con `#` sono una protezione **reale** a livello di linguaggio.
+
+---
+
+## Getters e setters nelle classi
+
+### Getters
+
+I **getters** permettono di accedere a valori calcolati come se fossero proprietà:
+
+```javascript
+class ShoppingCart {
+	constructor() {
+		this.items = [];
+	}
+
+	get totalAmount() {
+		return this.items.reduce((sum, item) => sum + item.price, 0);
+	}
+}
+
+const cart = new ShoppingCart();
+console.log(cart.totalAmount); // chiama il getter automaticamente
+```
+
+### Setters
+
+I **setters** permettono di impostare valori con logica personalizzata:
+
+```javascript
+class ShoppingCart {
+	constructor() {
+		this.items = [];
+		this._totalOutput = null;
+	}
+
+	set cartItems(items) {
+		this.items = items;
+		// aggiorna l'UI quando cambiano gli items
+		if (this._totalOutput) {
+			this._totalOutput.innerHTML = `Total: $${this.totalAmount.toFixed(2)}`;
+		}
+	}
+
+	addProduct(product) {
+		const updatedItems = [...this.items, product];
+		this.cartItems = updatedItems; // usa il setter
+	}
+}
+```
+
+Quando si assegna `cart.cartItems = newItems`, viene chiamato il setter, che può eseguire logica aggiuntiva (come aggiornare l'UI).
+
+---
+
+## Object descriptors
+
+Ogni proprietà di un oggetto ha un **descriptor** che contiene metadati che influenzano come la proprietà può essere usata.
+
+### Visualizzare descriptors
+
+```javascript
+const person = {
+	name: 'Max',
+	greet() {
+		console.log(this.name);
+	}
+};
+
+const descriptor = Object.getOwnPropertyDescriptor(person, 'name');
+console.log(descriptor);
+// { value: 'Max', writable: true, enumerable: true, configurable: true }
+```
+
+### Proprietà del descriptor
+
+- **`value`**: il valore della proprietà
+- **`writable`**: se la proprietà può essere modificata (`true`/`false`)
+- **`enumerable`**: se la proprietà appare in `for...in` e `Object.keys()` (`true`/`false`)
+- **`configurable`**: se la proprietà può essere eliminata o riconfigurata (`true`/`false`)
+
+### Modificare descriptors
+
+**`Object.defineProperty()`** permette di modificare o creare proprietà con configurazione personalizzata:
+
+```javascript
+const person = {
+	name: 'Max'
+};
+
+Object.defineProperty(person, 'name', {
+	writable: false,    // non modificabile
+	configurable: false, // non eliminabile
+	enumerable: true,
+	value: 'Max'
+});
+
+person.name = 'Maximilian'; // non ha effetto (writable: false)
+delete person.name;         // non ha effetto (configurable: false)
+```
+
+### Esempi d'uso
+
+**Rendere una proprietà non modificabile**:
+
+```javascript
+Object.defineProperty(person, 'name', {
+	writable: false,
+	configurable: true,
+	enumerable: true,
+	value: person.name // mantiene il valore corrente
+});
+```
+
+**Escludere metodi da `for...in`**:
+
+```javascript
+Object.defineProperty(person, 'greet', {
+	value: person.greet,
+	writable: true,
+	configurable: true,
+	enumerable: false // non appare in for...in
+});
+
+for (const key in person) {
+	console.log(key); // solo 'name', non 'greet'
+}
+```
+
+Questo è utile quando si vuole iterare solo sulle proprietà dati, escludendo i metodi.
+
+---
+
+## instanceof
+
+L'operatore **`instanceof`** verifica se un oggetto è un'istanza di una classe specifica:
+
+```javascript
+class Person {
+	constructor(name) {
+		this.name = name;
+	}
+}
+
+const p = new Person('Max');
+console.log(p instanceof Person);  // true
+console.log(p instanceof Object);  // true (tutte le classi ereditano da Object)
+console.log(p instanceof Array);  // false
+```
+
+### Con elementi DOM
+
+Gli elementi DOM sono istanze di classi built-in:
+
+```javascript
+const button = document.querySelector('button');
+console.log(button instanceof HTMLButtonElement); // true
+console.log(button instanceof HTMLElement);        // true (classe base)
+console.log(button instanceof Element);           // true (classe base più alta)
+```
+
+---
+
+## Riepilogo
+
+- **Object-Oriented Programming**: paradigma che organizza il codice attorno a oggetti che rappresentano entità del dominio
+- **Classi**: blueprint per creare oggetti con struttura e comportamento comuni; si definiscono con `class NomeClasse {}`
+- **Istanze**: oggetti concreti creati con `new NomeClasse()`; hanno la stessa struttura ma dati diversi
+- **Costruttori**: metodo `constructor()` chiamato automaticamente alla creazione; inizializza l'oggetto con `this`
+- **Metodi**: funzioni definite nella classe che diventano proprietà delle istanze; `this` si riferisce all'istanza
+- **Metodi statici**: definiti con `static`; accessibili sulla classe stessa, non sulle istanze; utili per helper e comunicazione tra classi
+- **Ereditarietà**: `extends` permette a una classe di ereditare da un'altra; `super()` chiama il constructor della classe base; override di metodi possibile
+- **Campi privati**: definiti con `#nomeCampo`; accessibili solo dall'interno della classe; protezione reale a livello di linguaggio
+- **Getters e setters**: `get` e `set` per proprietà calcolate o con logica personalizzata
+- **Object descriptors**: `writable`, `configurable`, `enumerable` controllano come le proprietà possono essere usate; modificabili con `Object.defineProperty()`
+- **instanceof**: operatore per verificare se un oggetto è istanza di una classe
