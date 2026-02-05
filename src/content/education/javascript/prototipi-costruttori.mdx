@@ -1,0 +1,543 @@
+---
+title: "Prototipi e Constructor Functions"
+description: "Come funzionano le classi dietro le quinte: constructor functions, prototypes e prototypical inheritance"
+date: 2026-02-05
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 10
+---
+
+## Introduzione
+
+Le **classi** in JavaScript sono una feature relativamente recente (ES6). Prima della loro introduzione, JavaScript utilizzava **constructor functions** e **prototypes** per creare oggetti basati su blueprint e implementare l'ereditarietà.
+
+Comprendere questi concetti è fondamentale perché:
+
+- Le classi sono **syntactic sugar** per constructor functions e prototypes
+- JavaScript è un linguaggio **prototype-based** alla base
+- Questi concetti sono spesso oggetto di domande nei colloqui tecnici
+- Aiutano a capire il comportamento di oggetti e metodi
+
+In questo capitolo si approfondiscono:
+
+- **Constructor functions**: come creare blueprint senza classi
+- **Prototypes**: oggetti fallback per condividere codice
+- **Prototype chain**: catena di oggetti prototipo
+- **Metodi su prototype vs istanza**: differenze di performance e memoria
+- **Object.create e setPrototypeOf**: creare oggetti con prototype personalizzati
+- **Differenze tra classi e constructor functions**: quando e perché usare quale approccio
+
+---
+
+## Constructor functions
+
+### Cos'è una constructor function
+
+Una **constructor function** è una funzione speciale che agisce come blueprint per creare oggetti. Viene chiamata con l'operatore **`new`**, che fa comportare la funzione in modo diverso rispetto a una chiamata normale.
+
+### Sintassi
+
+```javascript
+function Person() {
+	this.name = 'Max';
+	this.age = 30;
+	this.greet = function() {
+		console.log(`Hi, I am ${this.name} and I am ${this.age} years old`);
+	};
+}
+
+const p = new Person();
+p.greet(); // "Hi, I am Max and I am 30 years old"
+```
+
+**Convenzione**: il nome della funzione inizia con una **lettera maiuscola** per indicare che deve essere chiamata con `new`. Questa è solo una convenzione, non ha impatto tecnico.
+
+### Cosa fa `new`
+
+Quando si chiama una funzione con `new`, JavaScript:
+
+1. Crea un **oggetto vuoto**
+2. Imposta **`this`** a quell'oggetto
+3. **Esegue** il corpo della funzione (che può aggiungere proprietà a `this`)
+4. **Restituisce** `this` (l'oggetto creato)
+
+**Importante**: senza `new`, la funzione si comporta normalmente e non restituisce un oggetto:
+
+```javascript
+const p = Person(); // undefined (non restituisce nulla)
+p.greet(); // Errore: cannot read property 'greet' of undefined
+```
+
+### Classi come syntactic sugar
+
+Le classi sono essenzialmente **syntactic sugar** per constructor functions:
+
+```javascript
+// Con classe
+class Person {
+	constructor() {
+		this.name = 'Max';
+		this.age = 30;
+	}
+	greet() {
+		console.log(`Hi, I am ${this.name}`);
+	}
+}
+
+// Equivalente con constructor function
+function Person() {
+	this.name = 'Max';
+	this.age = 30;
+}
+Person.prototype.greet = function() {
+	console.log(`Hi, I am ${this.name}`);
+};
+```
+
+Le classi rendono la sintassi più chiara e aggiungono alcune ottimizzazioni, ma dietro le quinte utilizzano gli stessi meccanismi.
+
+---
+
+## Prototypes
+
+### Cos'è un prototype
+
+Un **prototype** è un oggetto collegato a un altro oggetto che funge da **fallback** quando si cerca una proprietà o un metodo che non esiste sull'oggetto stesso.
+
+JavaScript è un linguaggio **prototype-based**: ogni oggetto ha un prototype collegato che viene consultato automaticamente quando si accede a proprietà o metodi.
+
+### Come funziona
+
+Quando si accede a una proprietà o metodo su un oggetto:
+
+1. JavaScript cerca **sull'oggetto stesso**
+2. Se non trova, cerca sul **prototype** dell'oggetto
+3. Se non trova, cerca sul **prototype del prototype**
+4. Continua fino alla fine della **prototype chain**
+5. Se non trova nulla, restituisce `undefined` (proprietà) o genera un errore (metodo)
+
+### Esempio pratico
+
+```javascript
+const p = new Person();
+console.log(p.toString()); // funziona anche se toString non è definito in Person
+```
+
+`toString` funziona perché esiste nel prototype di `p`, che a sua volta ha un prototype che contiene `toString`.
+
+### `__proto__` vs `prototype`
+
+**`__proto__`** (o `[[Prototype]]`)
+
+- Proprietà presente su **ogni oggetto**
+- Punta al **prototype collegato** (fallback object)
+- Non modificare direttamente (usare `Object.setPrototypeOf()`)
+
+```javascript
+const p = new Person();
+console.log(p.__proto__); // mostra il prototype di p
+```
+
+**`prototype`** (solo su constructor functions)
+
+- Proprietà presente solo su **funzioni** (che sono oggetti)
+- Definisce quale prototype assegnare agli oggetti creati con quella funzione
+- Si modifica per configurare il prototype degli oggetti futuri
+
+```javascript
+function Person() {}
+Person.prototype.greet = function() {
+	console.log('Hello');
+};
+
+const p = new Person();
+console.log(p.__proto__ === Person.prototype); // true
+```
+
+**Relazione**: `p.__proto__` punta allo stesso oggetto di `Person.prototype` quando `p` è creato con `new Person()`.
+
+---
+
+## Prototype chain
+
+### Catena di prototypes
+
+La **prototype chain** è la catena di oggetti prototype collegati tra loro. Quando JavaScript cerca una proprietà, percorre questa catena fino a trovarla o fino alla fine.
+
+```javascript
+const p = new Person();
+p.toString(); // cerca in: p → Person.prototype → Object.prototype → null
+```
+
+### Struttura tipica
+
+1. **Oggetto istanza** (`p`): proprietà specifiche dell'istanza
+2. **Prototype del constructor** (`Person.prototype`): metodi condivisi tra tutte le istanze
+3. **Object.prototype**: prototype base con metodi come `toString()`, `valueOf()`
+4. **`null`**: fine della catena
+
+### Esempio visivo
+
+```javascript
+function Person() {
+	this.name = 'Max';
+}
+
+Person.prototype.greet = function() {
+	console.log('Hello');
+};
+
+const p = new Person();
+
+// p ha: { name: 'Max' }
+// p.__proto__ ha: { greet: function, constructor: Person }
+// p.__proto__.__proto__ ha: { toString: function, valueOf: function, ... }
+// p.__proto__.__proto__.__proto__ è null
+```
+
+### Oggetti built-in e prototypes
+
+Ogni tipo built-in ha il proprio prototype con metodi specifici:
+
+- **`Array.prototype`**: `push()`, `pop()`, `map()`, `filter()`, ecc.
+- **`String.prototype`**: `slice()`, `replace()`, `split()`, ecc.
+- **`Object.prototype`**: `toString()`, `valueOf()`, `hasOwnProperty()`, ecc.
+
+Quando si crea un array con `[]`, l'oggetto array ha `Array.prototype` come prototype, che contiene tutti i metodi degli array.
+
+---
+
+## Metodi su prototype vs istanza
+
+### Metodi su prototype (preferibile)
+
+Quando si definisce un metodo nella classe usando la **method shorthand**, JavaScript lo aggiunge al **prototype**, non all'istanza:
+
+```javascript
+class Person {
+	greet() {
+		console.log('Hello');
+	}
+}
+
+const p1 = new Person();
+const p2 = new Person();
+console.log(p1.__proto__.greet === p2.__proto__.greet); // true
+// Stesso oggetto in memoria, condiviso tra tutte le istanze
+```
+
+**Vantaggi**:
+
+- **Memoria**: il metodo esiste una sola volta, condiviso tra tutte le istanze
+- **Performance**: non viene ricreato per ogni istanza
+- **Efficienza**: ideale quando si creano molte istanze
+
+### Metodi come proprietà dell'istanza
+
+Si può definire un metodo come **proprietà** usando un campo con arrow function:
+
+```javascript
+class Person {
+	greet = () => {
+		console.log('Hello');
+	};
+}
+
+const p1 = new Person();
+const p2 = new Person();
+console.log(p1.greet === p2.greet); // false
+// Oggetti diversi, creati per ogni istanza
+```
+
+**Quando usare**:
+
+- Quando si vuole garantire che `this` si riferisca sempre all'istanza (utile con event listener)
+- Quando si creano poche istanze (l'impatto su memoria/performance è minimo)
+
+**Svantaggi**:
+
+- **Memoria**: il metodo viene ricreato per ogni istanza
+- **Performance**: creazione più costosa quando si hanno molte istanze
+
+### Equivalente con constructor function
+
+```javascript
+// Metodo su prototype (preferibile)
+function Person() {
+	this.name = 'Max';
+}
+Person.prototype.greet = function() {
+	console.log('Hello');
+};
+
+// Metodo come proprietà (meno efficiente)
+function Person() {
+	this.name = 'Max';
+	this.greet = function() {
+		console.log('Hello');
+	};
+}
+```
+
+---
+
+## Ereditarietà con prototypes
+
+### Come funziona `extends` dietro le quinte
+
+Quando si usa `extends` in una classe, JavaScript:
+
+1. Crea un oggetto basato sulla classe base
+2. Lo imposta come prototype della classe derivata
+3. Configura la prototype chain correttamente
+
+```javascript
+class AgedPerson {
+	printAge() {
+		console.log(this.age);
+	}
+}
+
+class Person extends AgedPerson {
+	constructor() {
+		super();
+		this.name = 'Max';
+		this.age = 30;
+	}
+	greet() {
+		console.log('Hello');
+	}
+}
+```
+
+**Equivalente con constructor functions**:
+
+```javascript
+function AgedPerson() {}
+AgedPerson.prototype.printAge = function() {
+	console.log(this.age);
+};
+
+function Person() {
+	AgedPerson.call(this); // equivalente a super()
+	this.name = 'Max';
+	this.age = 30;
+}
+
+// Imposta il prototype di Person a un oggetto basato su AgedPerson
+Person.prototype = Object.create(AgedPerson.prototype);
+Person.prototype.constructor = Person; // mantiene il riferimento corretto
+
+Person.prototype.greet = function() {
+	console.log('Hello');
+};
+```
+
+### `super()` e prototypes
+
+Quando si chiama `super()` nel constructor di una sottoclasse:
+
+1. Viene creato un oggetto basato sulla classe base
+2. Quell'oggetto viene impostato come prototype della sottoclasse
+3. Il constructor della classe base viene eseguito per inizializzare l'oggetto
+
+Questo spiega perché `super()` deve essere chiamato **prima** di usare `this` nella sottoclasse: il prototype deve essere configurato prima che l'oggetto possa essere utilizzato.
+
+---
+
+## Modificare prototypes
+
+### Aggiungere metodi al prototype
+
+Invece di sostituire l'intero prototype, è meglio **aggiungere** metodi al prototype esistente:
+
+```javascript
+function Person() {
+	this.name = 'Max';
+}
+
+// ❌ Sostituisce l'intero prototype (perde constructor)
+Person.prototype = {
+	printAge() {
+		console.log(this.age);
+	}
+};
+
+// ✅ Aggiunge al prototype esistente (mantiene constructor)
+Person.prototype.printAge = function() {
+	console.log(this.age);
+};
+```
+
+Mantenere il `constructor` nel prototype è utile per creare nuove istanze quando non si ha accesso diretto alla constructor function:
+
+```javascript
+const p2 = new p.__proto__.constructor(); // crea una nuova istanza di Person
+```
+
+### `Object.setPrototypeOf()`
+
+Permette di cambiare il prototype di un oggetto **dopo** la sua creazione:
+
+```javascript
+const course = {
+	title: 'JavaScript - The Complete Guide',
+	rating: 5
+};
+
+const coursePrototype = {
+	printRating() {
+		console.log(`${this.rating}/5`);
+	}
+};
+
+Object.setPrototypeOf(course, coursePrototype);
+course.printRating(); // "5/5"
+```
+
+**Uso**: scenario avanzato quando si vuole modificare il prototype di un oggetto esistente. Generalmente è meglio configurare il prototype prima della creazione.
+
+### Mantenere il prototype originale
+
+Se si vuole aggiungere funzionalità mantenendo il prototype esistente:
+
+```javascript
+const newPrototype = {
+	...Object.getPrototypeOf(course),
+	printRating() {
+		console.log(`${this.rating}/5`);
+	}
+};
+
+Object.setPrototypeOf(course, newPrototype);
+```
+
+---
+
+## Object.create()
+
+### Creare oggetti con prototype personalizzato
+
+**`Object.create(prototype)`** crea un oggetto vuoto con un prototype specificato:
+
+```javascript
+const studentPrototype = {
+	printProgress() {
+		console.log(this.progress);
+	}
+};
+
+const student = Object.create(studentPrototype);
+student.name = 'Max';
+student.progress = 0.8;
+student.printProgress(); // "0.8"
+```
+
+**Vantaggi**:
+
+- Si può specificare il prototype **durante la creazione**
+- Non richiede una constructor function
+- Utile per creare oggetti con prototype personalizzati senza classi
+
+### Con property descriptors
+
+`Object.create()` accetta un secondo argomento per definire proprietà con descriptors:
+
+```javascript
+const student = Object.create(studentPrototype, {
+	name: {
+		configurable: true,
+		enumerable: true,
+		value: 'Max',
+		writable: true
+	},
+	progress: {
+		configurable: false,
+		enumerable: true,
+		value: 0.8,
+		writable: false
+	}
+});
+```
+
+### Quando usare Object.create()
+
+- Quando si vuole creare un oggetto con un prototype specifico senza definire una classe
+- Quando si lavora con oggetti che devono ereditare da oggetti esistenti
+- In scenari avanzati dove si ha bisogno di controllo fine sul prototype
+
+---
+
+## Differenze tra classi e constructor functions
+
+### Obbligatorietà di `new`
+
+**Classi**: devono essere chiamate con `new`. Chiamare una classe senza `new` genera un errore.
+
+```javascript
+class Person {}
+const p = Person(); // TypeError: Class constructor Person cannot be invoked without 'new'
+```
+
+**Constructor functions**: tecnicamente possono essere chiamate senza `new`, ma non funzionano come previsto:
+
+```javascript
+function Person() {
+	this.name = 'Max';
+}
+const p = Person(); // undefined (non restituisce un oggetto)
+```
+
+### Enumerabilità dei metodi
+
+**Classi**: i metodi definiti con method shorthand sono **non-enumerabili** per default:
+
+```javascript
+class Person {
+	greet() {}
+}
+const p = new Person();
+for (const key in p) {
+	console.log(key); // non stampa 'greet'
+}
+```
+
+**Constructor functions**: i metodi aggiunti nel constructor sono **enumerabili**:
+
+```javascript
+function Person() {
+	this.greet = function() {};
+}
+const p = new Person();
+for (const key in p) {
+	console.log(key); // stampa 'greet'
+}
+```
+
+### Strict mode
+
+**Classi**: usano **strict mode** automaticamente. Comportamenti come `this = undefined` in funzioni non legate sono attivi.
+
+**Constructor functions**: non usano strict mode a meno che non sia attivato manualmente con `'use strict'`.
+
+### Sintassi e leggibilità
+
+**Classi**: sintassi più chiara e familiare per chi viene da altri linguaggi OOP.
+
+**Constructor functions**: sintassi più verbosa, richiede comprensione dei prototypes.
+
+---
+
+## Riepilogo
+
+- **Constructor functions**: funzioni chiamate con `new` che creano oggetti; sono ciò che le classi utilizzano dietro le quinte
+- **Prototypes**: oggetti fallback collegati ad altri oggetti; JavaScript cerca proprietà/metodi nel prototype se non li trova sull'oggetto stesso
+- **`__proto__`**: proprietà su ogni oggetto che punta al prototype collegato; usare principalmente per debugging
+- **`prototype`**: proprietà solo su constructor functions che definisce quale prototype assegnare agli oggetti creati
+- **Prototype chain**: catena di prototypes collegati; JavaScript percorre la catena fino a trovare una proprietà o raggiungere `null`
+- **Metodi su prototype**: preferibili per performance e memoria; condivisi tra tutte le istanze
+- **Metodi come proprietà**: utili quando si vuole garantire il binding di `this`; meno efficienti ma accettabili per poche istanze
+- **Ereditarietà**: `extends` configura la prototype chain; `super()` crea un oggetto basato sulla classe base e lo imposta come prototype
+- **Object.create()**: crea oggetti con prototype personalizzato senza constructor function
+- **Object.setPrototypeOf()**: cambia il prototype di un oggetto esistente (uso avanzato)
+- **Differenze classi vs constructor functions**: classi obbligano `new`, metodi non-enumerabili, strict mode automatico; constructor functions sono più flessibili ma meno sicure
