@@ -1,0 +1,1210 @@
+---
+title: "DOM Avanzato e Browser APIs"
+description: "Manipolazione avanzata del DOM: coordinate, dimensioni, scrolling, template, script dinamici, timer e oggetti browser"
+date: 2026-02-04
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 11
+---
+
+## Introduzione
+
+Dopo aver appreso le basi del DOM - creazione, inserimento e query degli elementi - è possibile approfondire funzionalità più avanzate che permettono di controllare posizionamento, dimensioni e comportamento degli elementi nella pagina.
+
+In questo capitolo si esaminano:
+
+- **Data attributes**: come associare dati agli elementi DOM
+- **Coordinate e dimensioni**: ottenere e modificare posizione e dimensioni degli elementi
+- **Scrolling**: controllare lo scroll della pagina e degli elementi
+- **Template tag**: separare HTML da JavaScript per codice più pulito
+- **Script dinamici**: caricare ed eseguire script al volo
+- **Timer**: eseguire codice in modo ritardato o periodico
+- **Browser APIs**: oggetti `location`, `history`, `navigator` per interagire con il browser
+- **Date e Error**: oggetti built-in per gestire date ed errori
+
+---
+
+## Data Attributes
+
+### Cos'è un Data Attribute
+
+I **data attributes** sono attributi HTML speciali che permettono di associare dati personalizzati agli elementi DOM senza dover gestire questi dati nel codice JavaScript.
+
+La sintassi prevede il prefisso `data-` seguito da un nome personalizzato:
+
+```html
+<li id="project-1" data-extrainfo="Informazioni aggiuntive sul progetto">
+  Progetto 1
+</li>
+```
+
+È possibile aggiungere più data attributes allo stesso elemento:
+
+```html
+<div 
+  data-id="123" 
+  data-category="electronics" 
+  data-price="99.99"
+>
+  Prodotto
+</div>
+```
+
+### Perché usare Data Attributes
+
+I data attributes sono utili quando:
+
+- Il contenuto HTML viene generato lato server e non si ha accesso completo ai dati in JavaScript
+- Si vuole mantenere una separazione tra markup e logica
+- Si devono associare metadati agli elementi senza renderli visibili
+
+### Leggere Data Attributes in JavaScript
+
+Per accedere ai data attributes, si usa la proprietà **`dataset`** dell'elemento DOM. Questa proprietà contiene un oggetto `DOMStringMap` con tutti i data attributes dell'elemento.
+
+```javascript
+const projectElement = document.getElementById('project-1');
+
+// Accedere al dataset
+console.log(projectElement.dataset);
+// Output: { extrainfo: "Informazioni aggiuntive sul progetto" }
+
+// Accedere a un attributo specifico
+const extraInfo = projectElement.dataset.extrainfo;
+console.log(extraInfo); // "Informazioni aggiuntive sul progetto"
+```
+
+**Nota importante**: i nomi degli attributi vengono convertiti automaticamente da kebab-case a camelCase:
+
+- `data-extra-info` diventa `dataset.extraInfo`
+- `data-user-id` diventa `dataset.userId`
+- `data-extrainfo` diventa `dataset.extrainfo`
+
+### Scrivere Data Attributes in JavaScript
+
+È possibile aggiungere o modificare data attributes dinamicamente:
+
+```javascript
+const element = document.getElementById('project-1');
+
+// Aggiungere un nuovo data attribute
+element.dataset.someInfo = 'test';
+
+// Modificare un data attribute esistente
+element.dataset.extrainfo = 'Nuovo valore';
+```
+
+Quando si assegna un valore a `dataset`, il browser aggiunge automaticamente l'attributo corrispondente all'elemento HTML:
+
+```html
+<!-- Dopo l'assegnazione in JavaScript -->
+<li 
+  id="project-1" 
+  data-extrainfo="Nuovo valore"
+  data-some-info="test"
+>
+  Progetto 1
+</li>
+```
+
+### Esempio Pratico: Tooltip con Data Attributes
+
+```javascript
+class Tooltip {
+  constructor(text, hostElementId) {
+    this.text = text;
+    this.hostElementId = hostElementId;
+  }
+
+  create() {
+    const tooltipElement = document.createElement('div');
+    tooltipElement.className = 'tooltip';
+    tooltipElement.textContent = this.text;
+    
+    // Posizionamento (vedremo dopo come calcolarlo)
+    tooltipElement.style.position = 'absolute';
+    
+    return tooltipElement;
+  }
+}
+
+// Utilizzo con data attribute
+const showMoreInfoHandler = function() {
+  const projectElement = document.getElementById(this.id);
+  
+  // Leggere il testo dal data attribute
+  const tooltipText = projectElement.dataset.extrainfo;
+  
+  // Creare il tooltip con il testo estratto
+  const tooltip = new Tooltip(tooltipText, this.id);
+  const tooltipElement = tooltip.create();
+  
+  document.body.appendChild(tooltipElement);
+};
+```
+
+---
+
+## Coordinate e Dimensioni degli Elementi
+
+### Sistema di Coordinate del Browser
+
+Il browser utilizza un sistema di coordinate bidimensionale per posizionare gli elementi:
+
+- **Origine**: angolo superiore sinistro della pagina (0, 0)
+- **Asse X**: da sinistra a destra (cresce verso destra)
+- **Asse Y**: da alto a basso (cresce verso il basso)
+
+Questo sistema è diverso dai sistemi matematici tradizionali dove l'asse Y cresce verso l'alto. La scelta riflette come il browser renderizza le pagine: dall'alto verso il basso.
+
+### getBoundingClientRect()
+
+Il metodo **`getBoundingClientRect()`** restituisce un oggetto `DOMRect` con informazioni complete sulla posizione e dimensioni di un elemento.
+
+```javascript
+const element = document.getElementById('my-box');
+const rect = element.getBoundingClientRect();
+
+console.log(rect);
+// {
+//   x: 100,
+//   y: 100,
+//   left: 100,
+//   top: 100,
+//   right: 400,
+//   bottom: 300,
+//   width: 300,
+//   height: 200
+// }
+```
+
+**Proprietà dell'oggetto DOMRect**:
+
+| Proprietà | Descrizione |
+|-----------|-------------|
+| `x`, `y` | Coordinate dell'angolo superiore sinistro (solitamente uguali a `left` e `top`) |
+| `left`, `top` | Coordinate del punto più a sinistra e più in alto dell'elemento |
+| `right`, `bottom` | Coordinate del punto più a destra e più in basso dell'elemento |
+| `width`, `height` | Larghezza e altezza totale dell'elemento |
+
+**Nota**: `left` e `top` sono generalmente uguali a `x` e `y`, ma possono differire in casi particolari con CSS che crea trasformazioni o elementi con larghezza/altezza negative.
+
+### Proprietà Offset
+
+Le proprietà **offset** forniscono informazioni sulla posizione esterna dell'elemento:
+
+```javascript
+const element = document.getElementById('my-box');
+
+console.log(element.offsetTop);  // Distanza dal top del documento
+console.log(element.offsetLeft); // Distanza dal left del documento
+console.log(element.offsetWidth); // Larghezza totale (inclusi border e scrollbar)
+console.log(element.offsetHeight); // Altezza totale (inclusi border e scrollbar)
+```
+
+### Proprietà Client
+
+Le proprietà **client** forniscono informazioni sulla parte interna dell'elemento (senza border e scrollbar):
+
+```javascript
+const element = document.getElementById('my-box');
+
+console.log(element.clientTop);  // Spessore del border superiore
+console.log(element.clientLeft); // Spessore del border sinistro
+console.log(element.clientWidth); // Larghezza del contenuto (senza border e scrollbar)
+console.log(element.clientHeight); // Altezza del contenuto (senza border e scrollbar)
+```
+
+**Differenza tra offset e client**:
+
+- **offset**: include border e scrollbar
+- **client**: esclude border e scrollbar
+
+### Proprietà Scroll
+
+Le proprietà **scroll** forniscono informazioni sul contenuto scrollabile:
+
+```javascript
+const element = document.getElementById('scrollable-box');
+
+console.log(element.scrollHeight); // Altezza totale del contenuto (inclusa parte non visibile)
+console.log(element.scrollWidth); // Larghezza totale del contenuto (inclusa parte non visibile)
+console.log(element.scrollTop); // Quanto è stato scrollato verticalmente
+console.log(element.scrollLeft); // Quanto è stato scrollato orizzontalmente
+```
+
+**Esempio pratico**:
+
+```javascript
+const box = document.getElementById('scrollable-box');
+
+// Verificare se c'è contenuto scrollabile
+const hasVerticalScroll = box.scrollHeight > box.clientHeight;
+const hasHorizontalScroll = box.scrollWidth > box.clientWidth;
+
+// Verificare se si è arrivati in fondo
+const isAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight;
+```
+
+### Dimensioni della Finestra
+
+Per ottenere le dimensioni della finestra del browser, esistono due approcci:
+
+**Approccio 1: `window.innerWidth` e `window.innerHeight`**
+
+```javascript
+const windowWidth = window.innerWidth;
+const windowHeight = window.innerHeight;
+```
+
+**Problema**: su alcuni browser (specialmente Internet Explorer e Windows con scrollbar visibili), questi valori includono la scrollbar, dando dimensioni leggermente maggiori dello spazio disponibile.
+
+**Approccio 2: `document.documentElement.clientWidth` e `clientHeight` (consigliato)**
+
+```javascript
+const availableWidth = document.documentElement.clientWidth;
+const availableHeight = document.documentElement.clientHeight;
+```
+
+Questo approccio è più affidabile perché esclude automaticamente le scrollbar visibili, restituendo le dimensioni reali disponibili per il contenuto.
+
+---
+
+## Posizionamento Dinamico degli Elementi
+
+### Impostare Posizione con JavaScript
+
+Per posizionare un elemento dinamicamente, è necessario:
+
+1. Impostare `position: absolute` o `position: fixed` tramite CSS
+2. Assegnare valori a `left` e `top` tramite la proprietà `style`
+
+```javascript
+const tooltip = document.createElement('div');
+tooltip.className = 'tooltip';
+
+// Impostare position absolute
+tooltip.style.position = 'absolute';
+
+// Calcolare le coordinate
+const hostElement = document.getElementById('project-1');
+const x = hostElement.offsetLeft + 20;
+const y = hostElement.offsetTop + hostElement.offsetHeight - 10;
+
+// IMPORTANTE: aggiungere 'px' ai valori numerici
+tooltip.style.left = x + 'px';
+tooltip.style.top = y + 'px';
+```
+
+**Nota critica**: quando si assegna un valore a `style.left` o `style.top`, è necessario aggiungere l'unità `px` alla fine del numero. JavaScript non converte automaticamente i numeri in stringhe CSS valide.
+
+### Gestire lo Scroll nei Contenitori
+
+Quando un elemento si trova all'interno di un contenitore scrollabile, le coordinate `offsetTop` e `offsetLeft` non tengono conto dello scroll del contenitore.
+
+Per correggere questo, è necessario sottrarre il valore di `scrollTop` del contenitore padre:
+
+```javascript
+const hostElement = document.getElementById('project-1');
+const parentElement = hostElement.parentElement;
+
+// Calcolare la posizione considerando lo scroll
+const x = hostElement.offsetLeft + 20;
+const y = hostElement.offsetTop + hostElement.offsetHeight - parentElement.scrollTop - 10;
+
+tooltip.style.left = x + 'px';
+tooltip.style.top = y + 'px';
+```
+
+### Esempio Completo: Posizionamento Tooltip
+
+```javascript
+class Tooltip {
+  constructor(text, hostElementId) {
+    this.text = text;
+    this.hostElementId = hostElementId;
+    this.hostElement = document.getElementById(hostElementId);
+  }
+
+  create() {
+    const tooltipElement = document.createElement('div');
+    tooltipElement.className = 'tooltip';
+    tooltipElement.textContent = this.text;
+    
+    // Impostare position absolute
+    tooltipElement.style.position = 'absolute';
+    
+    // Calcolare posizione
+    const parentElement = this.hostElement.parentElement;
+    const scrollTop = parentElement ? parentElement.scrollTop : 0;
+    
+    const x = this.hostElement.offsetLeft + 20;
+    const y = this.hostElement.offsetTop + 
+              this.hostElement.offsetHeight - 
+              scrollTop - 10;
+    
+    tooltipElement.style.left = x + 'px';
+    tooltipElement.style.top = y + 'px';
+    
+    return tooltipElement;
+  }
+}
+```
+
+---
+
+## Controllo dello Scroll
+
+### scrollTo()
+
+Il metodo **`scrollTo()`** permette di scrollare a una posizione assoluta:
+
+```javascript
+const scrollableElement = document.getElementById('scrollable-list');
+
+// Scroll a coordinate specifiche (x, y)
+scrollableElement.scrollTo(0, 100); // Scroll a 100px dal top
+
+// Oppure con oggetto di configurazione
+scrollableElement.scrollTo({
+  top: 100,
+  left: 0,
+  behavior: 'smooth' // animazione fluida
+});
+```
+
+### scrollBy()
+
+Il metodo **`scrollBy()`** permette di scrollare relativamente alla posizione corrente:
+
+```javascript
+const scrollableElement = document.getElementById('scrollable-list');
+
+// Scroll di 50px verso il basso
+scrollableElement.scrollBy(0, 50);
+
+// Con animazione
+scrollableElement.scrollBy({
+  top: 50,
+  behavior: 'smooth'
+});
+```
+
+**Differenza tra scrollTo e scrollBy**:
+
+- **scrollTo**: scrolla a una posizione assoluta (es. sempre a 100px dal top)
+- **scrollBy**: scrolla di una quantità relativa (es. 50px in più rispetto alla posizione corrente)
+
+### scrollIntoView()
+
+Il metodo **`scrollIntoView()`** è il modo più semplice per rendere visibile un elemento:
+
+```javascript
+const element = document.getElementById('project-10');
+
+// Scroll per rendere l'elemento visibile
+element.scrollIntoView();
+
+// Con opzioni
+element.scrollIntoView({
+  behavior: 'smooth', // 'auto' (default) o 'smooth'
+  block: 'start',     // 'start', 'center', 'end', 'nearest'
+  inline: 'nearest'   // 'start', 'center', 'end', 'nearest'
+});
+```
+
+**Comportamento di `scrollIntoView`**:
+
+- Se l'elemento è già visibile, non fa nulla
+- Se l'elemento è parzialmente visibile, scrolla il minimo necessario
+- Se l'elemento è completamente fuori vista, scrolla per renderlo completamente visibile
+
+**Nota sul supporto browser**: l'opzione `behavior: 'smooth'` è supportata in Chrome e Firefox, ma non in Internet Explorer e Safari. Su browser non supportanti, viene semplicemente ignorata e lo scroll avviene istantaneamente.
+
+### Esempio Pratico: Scroll Automatico
+
+```javascript
+class ProjectList {
+  addProject(projectId) {
+    const projectElement = document.createElement('li');
+    projectElement.id = projectId;
+    projectElement.textContent = projectId;
+    
+    this.listElement.appendChild(projectElement);
+    
+    // Scroll automatico per rendere visibile il nuovo elemento
+    projectElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end'
+    });
+  }
+}
+```
+
+---
+
+## Template Tag
+
+### Cos'è il Template Tag
+
+Il tag **`<template>`** è un elemento HTML speciale che permette di definire markup HTML che non viene renderizzato immediatamente, ma può essere clonato e utilizzato in JavaScript.
+
+```html
+<template id="tooltip-template">
+  <div class="tooltip">
+    <h2>More Info</h2>
+    <p></p>
+  </div>
+</template>
+```
+
+**Caratteristiche del template tag**:
+
+- Il contenuto non viene renderizzato nel DOM iniziale
+- Il contenuto è accessibile tramite JavaScript
+- Può essere clonato e riutilizzato più volte
+- Mantiene la separazione tra HTML e JavaScript
+
+### Utilizzare un Template
+
+Per utilizzare un template, si usa il metodo **`document.importNode()`**:
+
+```javascript
+// Ottenere il template
+const tooltipTemplate = document.getElementById('tooltip-template');
+
+// Clonare il contenuto del template
+const tooltipBody = document.importNode(tooltipTemplate.content, true);
+
+// Modificare il contenuto clonato
+const paragraph = tooltipBody.querySelector('p');
+paragraph.textContent = 'Testo dinamico del tooltip';
+
+// Aggiungere al DOM
+const container = document.getElementById('container');
+container.appendChild(tooltipBody);
+```
+
+**Parametri di `importNode()`**:
+
+- **Primo parametro**: il contenuto da clonare (`template.content`)
+- **Secondo parametro**: `true` per deep clone (clona anche i nodi figli), `false` per shallow clone
+
+### Vantaggi dei Template
+
+I template offrono diversi vantaggi rispetto a creare HTML direttamente in JavaScript:
+
+1. **Separazione delle responsabilità**: HTML rimane in HTML, JavaScript gestisce solo la logica
+2. **Autocompletamento**: gli editor forniscono migliore supporto per HTML nei file HTML
+3. **Manutenibilità**: più facile modificare il markup senza toccare JavaScript
+4. **Collaborazione**: designer e sviluppatori possono lavorare su file separati
+
+### Esempio Completo: Tooltip con Template
+
+```html
+<!-- HTML -->
+<template id="tooltip-template">
+  <div class="tooltip">
+    <h2>More Info</h2>
+    <p class="tooltip-text"></p>
+  </div>
+</template>
+```
+
+```javascript
+// JavaScript
+class Tooltip {
+  constructor(text, hostElementId) {
+    this.text = text;
+    this.hostElementId = hostElementId;
+  }
+
+  create() {
+    // Ottenere il template
+    const tooltipTemplate = document.getElementById('tooltip-template');
+    
+    // Clonare il contenuto
+    const tooltipBody = document.importNode(tooltipTemplate.content, true);
+    
+    // Inserire il testo dinamico
+    const textElement = tooltipBody.querySelector('.tooltip-text');
+    textElement.textContent = this.text;
+    
+    // Creare un contenitore per il tooltip
+    const tooltipElement = document.createElement('div');
+    tooltipElement.appendChild(tooltipBody);
+    
+    // Posizionamento (come visto prima)
+    tooltipElement.style.position = 'absolute';
+    // ... calcolo coordinate ...
+    
+    return tooltipElement;
+  }
+}
+```
+
+---
+
+## Script Dinamici
+
+### Creare Script Dinamicamente
+
+JavaScript permette di creare ed eseguire script dinamicamente. Questo è utile quando si vuole controllare quando un script viene caricato ed eseguito.
+
+**Creare uno script inline**:
+
+```javascript
+// Creare un elemento script
+const script = document.createElement('script');
+
+// Aggiungere codice JavaScript come testo
+script.textContent = 'alert("Hi there!");';
+
+// Aggiungere al DOM
+document.head.appendChild(script);
+// Lo script viene eseguito immediatamente
+```
+
+### Caricare Script Esterni Dinamicamente
+
+Per caricare uno script esterno, si imposta la proprietà `src`:
+
+```javascript
+function loadAnalytics() {
+  const analyticsScript = document.createElement('script');
+  
+  // Impostare il percorso dello script (relativo all'HTML, non al file JS)
+  analyticsScript.src = 'assets/scripts/analytics.js';
+  
+  // Opzionale: aggiungere attributi
+  analyticsScript.defer = true;
+  
+  // Aggiungere al DOM
+  document.head.appendChild(analyticsScript);
+  // Lo script viene scaricato ed eseguito
+}
+
+// Caricare lo script quando necessario
+loadAnalytics();
+```
+
+**Percorsi degli script**: quando si imposta `src`, il percorso deve essere relativo al file HTML, non al file JavaScript che esegue il codice.
+
+### Controllare il Caricamento
+
+È possibile aggiungere event listener per sapere quando lo script è stato caricato:
+
+```javascript
+function loadAnalytics() {
+  const analyticsScript = document.createElement('script');
+  analyticsScript.src = 'assets/scripts/analytics.js';
+  
+  // Evento quando lo script è stato caricato ed eseguito
+  analyticsScript.onload = function() {
+    console.log('Analytics script loaded');
+  };
+  
+  // Evento in caso di errore
+  analyticsScript.onerror = function() {
+    console.error('Failed to load analytics script');
+  };
+  
+  document.head.appendChild(analyticsScript);
+}
+```
+
+### Evitare Caricamenti Duplicati
+
+Per evitare di caricare lo stesso script più volte:
+
+```javascript
+let analyticsLoaded = false;
+
+function loadAnalytics() {
+  if (analyticsLoaded) {
+    console.log('Analytics already loaded');
+    return;
+  }
+  
+  const analyticsScript = document.createElement('script');
+  analyticsScript.src = 'assets/scripts/analytics.js';
+  
+  analyticsScript.onload = function() {
+    analyticsLoaded = true;
+  };
+  
+  document.head.appendChild(analyticsScript);
+}
+```
+
+### Sicurezza: Cross-Site Scripting (XSS)
+
+**Attenzione**: caricare script dinamicamente basati su input dell'utente può esporre a attacchi XSS (Cross-Site Scripting).
+
+**Non fare mai**:
+
+```javascript
+// PERICOLOSO: input utente non validato
+const userInput = getUserInput();
+const script = document.createElement('script');
+script.textContent = userInput; // Può contenere codice malevolo
+document.head.appendChild(script);
+```
+
+**Sempre validare e sanitizzare** qualsiasi input prima di usarlo per creare script. Questo argomento verrà approfondito nei moduli sulla sicurezza.
+
+---
+
+## Timer
+
+### setTimeout()
+
+Il metodo **`setTimeout()`** esegue una funzione dopo un determinato ritardo:
+
+```javascript
+// Eseguire una funzione dopo 3 secondi
+setTimeout(function() {
+  console.log('Eseguito dopo 3 secondi');
+}, 3000);
+
+// Con arrow function
+setTimeout(() => {
+  console.log('Eseguito dopo 2 secondi');
+}, 2000);
+
+// Passare una funzione esistente
+function startAnalytics() {
+  console.log('Analytics started');
+}
+
+setTimeout(startAnalytics, 3000);
+```
+
+**Parametri di `setTimeout()`**:
+
+- **Primo parametro**: funzione da eseguire (può essere una funzione anonima, arrow function o riferimento a funzione)
+- **Secondo parametro**: ritardo in millisecondi (1000 = 1 secondo)
+- **Terzo parametro (opzionale)**: array di argomenti da passare alla funzione
+
+**Esempio con argomenti**:
+
+```javascript
+function greet(name, message) {
+  console.log(`${message}, ${name}!`);
+}
+
+setTimeout(greet, 2000, 'Mario', 'Ciao');
+// Esegue greet('Mario', 'Ciao') dopo 2 secondi
+```
+
+### Esecuzione Asincrona
+
+**Importante**: `setTimeout()` non blocca l'esecuzione del codice. Il browser gestisce il timer in background e continua a eseguire il resto del codice.
+
+```javascript
+console.log('Prima');
+
+setTimeout(() => {
+  console.log('Dopo 2 secondi');
+}, 2000);
+
+console.log('Dopo');
+// Output:
+// Prima
+// Dopo
+// Dopo 2 secondi (dopo 2 secondi)
+```
+
+Il codice non si ferma in attesa del timer: il browser registra la funzione da eseguire e continua l'esecuzione normale.
+
+### clearTimeout()
+
+Per annullare un timer prima che scada, si usa **`clearTimeout()`**:
+
+```javascript
+// Creare un timer e salvare l'ID
+const timerId = setTimeout(() => {
+  console.log('Questo non verrà eseguito');
+}, 5000);
+
+// Annullare il timer
+clearTimeout(timerId);
+```
+
+**Importante**: `setTimeout()` restituisce un ID numerico che identifica il timer. Questo ID è necessario per annullarlo.
+
+### setInterval()
+
+Il metodo **`setInterval()`** esegue una funzione ripetutamente a intervalli regolari:
+
+```javascript
+// Eseguire una funzione ogni 2 secondi
+setInterval(() => {
+  console.log('Eseguito ogni 2 secondi');
+}, 2000);
+
+// Con funzione separata
+function sendAnalytics() {
+  console.log('Sending analytics data');
+}
+
+setInterval(sendAnalytics, 2000);
+```
+
+**Parametri**: identici a `setTimeout()` (funzione, intervallo in millisecondi, argomenti opzionali)
+
+### clearInterval()
+
+Per fermare un intervallo, si usa **`clearInterval()`**:
+
+```javascript
+// Creare un intervallo
+const intervalId = setInterval(() => {
+  console.log('Eseguito ogni secondo');
+}, 1000);
+
+// Fermare l'intervallo dopo 5 secondi
+setTimeout(() => {
+  clearInterval(intervalId);
+  console.log('Intervallo fermato');
+}, 5000);
+```
+
+**Nota**: tecnicamente `clearTimeout()` funziona anche con gli intervalli, ma è meglio usare `clearInterval()` per chiarezza del codice.
+
+### Esempio Pratico: Timer con Controllo
+
+```javascript
+let analyticsIntervalId = null;
+
+function startAnalytics() {
+  // Evitare di avviare più intervalli
+  if (analyticsIntervalId) {
+    return;
+  }
+  
+  analyticsIntervalId = setInterval(() => {
+    console.log('Sending analytics data');
+  }, 2000);
+}
+
+function stopAnalytics() {
+  if (analyticsIntervalId) {
+    clearInterval(analyticsIntervalId);
+    analyticsIntervalId = null;
+  }
+}
+
+// Utilizzo
+startAnalytics();
+
+// Fermare dopo 10 secondi
+setTimeout(stopAnalytics, 10000);
+```
+
+---
+
+## Location Object
+
+L'oggetto **`location`** (accessibile come `window.location` o semplicemente `location`) fornisce informazioni sull'URL corrente e permette di navigare verso nuove pagine.
+
+### Proprietà di Location
+
+```javascript
+console.log(location.href);      // URL completo
+console.log(location.protocol);  // Protocollo (http:, https:)
+console.log(location.host);      // Hostname e porta (es. "example.com:8080")
+console.log(location.hostname);  // Solo hostname (es. "example.com")
+console.log(location.port);      // Porta (se specificata)
+console.log(location.pathname);  // Percorso dopo il dominio (es. "/courses/javascript")
+console.log(location.search);    // Query string (es. "?id=123&name=test")
+console.log(location.hash);      // Hash/fragment (es. "#section1")
+console.log(location.origin);    // Origine completa (protocollo + host)
+```
+
+### Navigare con Location
+
+**Metodo 1: Impostare `location.href`**
+
+```javascript
+// Navigare a una nuova pagina
+location.href = 'https://example.com';
+```
+
+**Metodo 2: Usare `location.assign()`**
+
+```javascript
+// Equivalente a location.href
+location.assign('https://example.com');
+```
+
+**Metodo 3: Usare `location.replace()`**
+
+```javascript
+// Navigare senza aggiungere alla cronologia
+location.replace('https://example.com');
+```
+
+**Differenza tra `assign()` e `replace()`**:
+
+- **`assign()`**: aggiunge la nuova pagina alla cronologia (l'utente può tornare indietro)
+- **`replace()`**: sostituisce la pagina corrente nella cronologia (l'utente non può tornare indietro)
+
+### Esempio Pratico: Redirect Condizionale
+
+```javascript
+// Verificare se l'utente è su una pagina specifica
+if (location.pathname === '/old-page') {
+  location.replace('/new-page');
+}
+
+// Redirect basato su query string
+const params = new URLSearchParams(location.search);
+if (params.get('redirect') === 'true') {
+  location.href = '/dashboard';
+}
+```
+
+---
+
+## History Object
+
+L'oggetto **`history`** (accessibile come `window.history` o semplicemente `history`) permette di interagire con la cronologia del browser.
+
+### Metodi di History
+
+**`history.back()`**: torna alla pagina precedente
+
+```javascript
+history.back();
+```
+
+**`history.forward()`**: va alla pagina successiva (se disponibile)
+
+```javascript
+history.forward();
+```
+
+**`history.go(n)`**: naviga di `n` passi nella cronologia
+
+```javascript
+history.go(-2); // Torna indietro di 2 pagine
+history.go(1);  // Va avanti di 1 pagina
+history.go(0);  // Ricarica la pagina corrente
+```
+
+### Proprietà di History
+
+**`history.length`**: numero di voci nella cronologia
+
+```javascript
+console.log(history.length); // Numero di pagine visitate in questa tab
+```
+
+### Esempio Pratico: Pulsante Indietro Personalizzato
+
+```javascript
+// Verificare se c'è una pagina precedente
+if (history.length > 1) {
+  const backButton = document.getElementById('back-button');
+  backButton.addEventListener('click', () => {
+    history.back();
+  });
+}
+```
+
+**Nota**: per motivi di sicurezza, non è possibile leggere gli URL delle pagine nella cronologia, solo navigare tra di esse.
+
+---
+
+## Navigator Object
+
+L'oggetto **`navigator`** fornisce informazioni sul browser e sul sistema operativo dell'utente.
+
+### Proprietà Comuni
+
+```javascript
+console.log(navigator.userAgent);     // Stringa user agent
+console.log(navigator.language);      // Lingua preferita (es. "it-IT")
+console.log(navigator.platform);      // Piattaforma (es. "Win32", "MacIntel")
+console.log(navigator.cookieEnabled); // Se i cookie sono abilitati
+console.log(navigator.onLine);        // Se il browser è online
+```
+
+### User Agent: Limitazioni
+
+La proprietà **`userAgent`** contiene informazioni sul browser, ma non è affidabile per identificare il browser reale:
+
+```javascript
+console.log(navigator.userAgent);
+// Output tipico: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36..."
+```
+
+**Problema**: per ragioni storiche, i browser includono nomi di altri browser nella stringa user agent per garantire compatibilità. Questo rende difficile identificare il browser reale.
+
+**Soluzione migliore**: invece di affidarsi a `userAgent`, verificare la disponibilità delle feature:
+
+```javascript
+// Meglio: verificare se una feature è disponibile
+if ('geolocation' in navigator) {
+  // Usare geolocation
+} else {
+  // Fallback per browser senza supporto
+}
+```
+
+### API del Navigator
+
+Il navigator espone diverse API utili:
+
+**Clipboard API**:
+
+```javascript
+// Copiare testo negli appunti
+navigator.clipboard.writeText('Testo da copiare').then(() => {
+  console.log('Testo copiato');
+});
+
+// Leggere testo dagli appunti
+navigator.clipboard.readText().then(text => {
+  console.log('Testo letto:', text);
+});
+```
+
+**Geolocation API**:
+
+```javascript
+// Ottenere la posizione corrente
+navigator.geolocation.getCurrentPosition(
+  (position) => {
+    console.log('Latitudine:', position.coords.latitude);
+    console.log('Longitudine:', position.coords.longitude);
+  },
+  (error) => {
+    console.error('Errore geolocalizzazione:', error);
+  }
+);
+```
+
+**Nota**: queste API richiedono permessi dell'utente e potrebbero non essere disponibili in tutti i browser o contesti (ad esempio, richiedono HTTPS in produzione).
+
+---
+
+## Date Object
+
+L'oggetto **`Date`** è un costruttore built-in che permette di lavorare con date e orari.
+
+### Creare un Oggetto Date
+
+**Data corrente**:
+
+```javascript
+const now = new Date();
+console.log(now); // Data e ora correnti
+```
+
+**Data specifica**:
+
+```javascript
+// Da stringa
+const date1 = new Date('2024-07-11');
+const date2 = new Date('07/11/2024'); // Formato MM/DD/YYYY
+
+// Da numeri (anno, mese (0-11), giorno)
+const date3 = new Date(2024, 6, 11); // 11 luglio 2024 (mese è 0-indexed)
+
+// Da timestamp (millisecondi dal 1 gennaio 1970)
+const date4 = new Date(1720656000000);
+```
+
+**Nota**: i mesi sono 0-indexed (0 = gennaio, 11 = dicembre).
+
+### Metodi per Leggere Date
+
+```javascript
+const date = new Date();
+
+console.log(date.getFullYear());  // Anno (4 cifre)
+console.log(date.getMonth());     // Mese (0-11)
+console.log(date.getDate());      // Giorno del mese (1-31)
+console.log(date.getDay());       // Giorno della settimana (0=domenica, 6=sabato)
+console.log(date.getHours());     // Ore (0-23)
+console.log(date.getMinutes());   // Minuti (0-59)
+console.log(date.getSeconds());   // Secondi (0-59)
+console.log(date.getMilliseconds()); // Millisecondi (0-999)
+console.log(date.getTime());      // Timestamp (millisecondi dal 1/1/1970)
+```
+
+### Metodi per Modificare Date
+
+```javascript
+const date = new Date();
+
+date.setFullYear(2025);
+date.setMonth(0);      // Gennaio
+date.setDate(15);
+date.setHours(14);
+date.setMinutes(30);
+date.setSeconds(0);
+```
+
+### Calcolare Differenze tra Date
+
+Le date possono essere sottratte per ottenere la differenza in millisecondi:
+
+```javascript
+const today = new Date();
+const pastDate = new Date('2024-07-11');
+
+const differenceMs = today - pastDate;
+const differenceSeconds = differenceMs / 1000;
+const differenceMinutes = differenceSeconds / 60;
+const differenceHours = differenceMinutes / 60;
+const differenceDays = differenceHours / 24;
+
+console.log(`Giorni trascorsi: ${Math.floor(differenceDays)}`);
+```
+
+### Formattare Date
+
+```javascript
+const date = new Date();
+
+console.log(date.toString());        // Stringa completa
+console.log(date.toDateString());    // Solo data
+console.log(date.toTimeString());    // Solo ora
+console.log(date.toISOString());     // Formato ISO (YYYY-MM-DDTHH:mm:ss.sssZ)
+console.log(date.toLocaleDateString()); // Data localizzata
+console.log(date.toLocaleTimeString()); // Ora localizzata
+```
+
+**Risorse**: per formati più complessi e localizzazione avanzata, consultare la documentazione MDN o utilizzare librerie come `date-fns` o `moment.js`.
+
+---
+
+## Error Object
+
+L'oggetto **`Error`** è un costruttore built-in per creare oggetti di errore personalizzati.
+
+### Creare un Errore
+
+```javascript
+// Creare un errore con messaggio
+const error = new Error('Qualcosa è andato storto');
+
+// Lanciare l'errore
+throw error;
+```
+
+### Proprietà dell'Error Object
+
+```javascript
+const error = new Error('Messaggio di errore');
+
+console.log(error.message); // "Messaggio di errore"
+console.log(error.name);    // "Error" (tipo di errore)
+console.log(error.stack);   // Stack trace (dove è stato lanciato)
+```
+
+### Aggiungere Proprietà Personalizzate
+
+```javascript
+const error = new Error('Errore di validazione');
+error.code = 'VALIDATION_ERROR';
+error.field = 'email';
+error.timestamp = new Date().toISOString();
+
+console.log(error.code);      // "VALIDATION_ERROR"
+console.log(error.field);     // "email"
+console.log(error.timestamp);  // Timestamp ISO
+```
+
+### Visualizzare Errori
+
+**`console.log()`**: mostra solo il messaggio
+
+```javascript
+const error = new Error('Test error');
+console.log(error); // Output: Error: Test error
+```
+
+**`console.dir()`**: mostra l'oggetto completo con tutte le proprietà
+
+```javascript
+const error = new Error('Test error');
+error.code = 'TEST';
+console.dir(error); // Mostra tutte le proprietà dell'oggetto
+```
+
+### Tipi di Errore Predefiniti
+
+JavaScript fornisce diversi tipi di errore predefiniti:
+
+```javascript
+// TypeError: quando un valore non è del tipo atteso
+throw new TypeError('Valore non valido');
+
+// ReferenceError: quando si riferisce a una variabile inesistente
+throw new ReferenceError('Variabile non definita');
+
+// SyntaxError: quando c'è un errore di sintassi
+throw new SyntaxError('Sintassi non valida');
+
+// RangeError: quando un valore è fuori dal range accettato
+throw new RangeError('Valore fuori range');
+```
+
+### Esempio Pratico: Validazione con Errori Personalizzati
+
+```javascript
+function validateEmail(email) {
+  if (!email) {
+    const error = new Error('Email richiesta');
+    error.code = 'EMAIL_REQUIRED';
+    throw error;
+  }
+  
+  if (!email.includes('@')) {
+    const error = new Error('Email non valida');
+    error.code = 'EMAIL_INVALID';
+    error.field = 'email';
+    throw error;
+  }
+  
+  return true;
+}
+
+// Utilizzo con try-catch
+try {
+  validateEmail('invalid-email');
+} catch (error) {
+  console.error('Codice errore:', error.code);
+  console.error('Messaggio:', error.message);
+  if (error.field) {
+    console.error('Campo:', error.field);
+  }
+}
+```
+
+---
+
+## Riepilogo
+
+In questo capitolo sono stati approfonditi aspetti avanzati del DOM e delle API del browser:
+
+- **Data attributes**: associare dati agli elementi DOM tramite attributi `data-*` e accedervi con `dataset`
+- **Coordinate e dimensioni**: utilizzare `getBoundingClientRect()`, proprietà `offset`, `client` e `scroll` per ottenere informazioni su posizione e dimensioni
+- **Posizionamento dinamico**: impostare `position: absolute` e assegnare `left`/`top` con unità `px` per posizionare elementi
+- **Scrolling**: controllare lo scroll con `scrollTo()`, `scrollBy()` e `scrollIntoView()` con supporto per animazioni smooth
+- **Template tag**: separare HTML da JavaScript usando il tag `<template>` e `document.importNode()`
+- **Script dinamici**: creare e caricare script al volo con `createElement('script')` e proprietà `src`
+- **Timer**: utilizzare `setTimeout()` e `setInterval()` per eseguire codice in modo ritardato o periodico, con `clearTimeout()` e `clearInterval()` per controllarli
+- **Location**: navigare e ottenere informazioni sull'URL con l'oggetto `location`
+- **History**: interagire con la cronologia del browser tramite `history.back()`, `forward()` e `go()`
+- **Navigator**: accedere a informazioni sul browser e utilizzare API come Clipboard e Geolocation
+- **Date**: lavorare con date e orari usando il costruttore `Date` e i suoi metodi
+- **Error**: creare e lanciare errori personalizzati con il costruttore `Error` e proprietà aggiuntive
+
+Queste funzionalità permettono di creare applicazioni web più interattive e dinamiche, con controllo completo su posizionamento, timing e comportamento degli elementi nella pagina.
+
+
