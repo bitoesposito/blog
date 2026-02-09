@@ -1,0 +1,1214 @@
+---
+title: "Eventi Avanzati in JavaScript"
+description: "Gestione avanzata degli eventi: propagation, delegation, controllo del comportamento e implementazione drag and drop"
+date: 2026-02-09
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 12
+---
+
+## Introduzione
+
+Gli **eventi** sono meccanismi fondamentali in JavaScript che permettono di eseguire codice quando si verificano determinate azioni. Nel contesto del browser, gli eventi possono essere generati dall'utente (click, movimento del mouse, digitazione) o dal browser stesso (caricamento della pagina, scroll, resize).
+
+Questo capitolo approfondisce:
+
+- **Metodi per registrare eventi**: diversi approcci per aggiungere listener agli elementi
+- **Oggetto Event**: proprietà e metodi disponibili per interagire con gli eventi
+- **Event propagation**: come gli eventi si propagano attraverso il DOM (bubbling e capturing)
+- **Controllo del comportamento**: `preventDefault()` e `stopPropagation()`
+- **Event delegation**: pattern per gestire eventi su elementi dinamici
+- **Trigger programmatico**: generare eventi tramite codice
+- **Drag and Drop**: implementazione completa di operazioni di trascinamento
+
+---
+
+## Cosa sono gli Eventi
+
+Gli **eventi** rappresentano azioni o occorrenze che accadono nel browser o nell'applicazione. Quando un utente clicca un pulsante, muove il mouse o digita sulla tastiera, il browser genera un evento che può essere intercettato e gestito tramite JavaScript.
+
+Il concetto di eventi non è esclusivo di JavaScript nel browser. La maggior parte dei linguaggi di programmazione implementa architetture basate su eventi perché permettono di eseguire codice in risposta a occorrenze specifiche, rendendo le applicazioni reattive e interattive.
+
+### Eventi nel Browser
+
+Nel contesto del browser, gli eventi possono essere:
+
+- **Eventi dell'utente**: click, movimento del mouse, digitazione sulla tastiera
+- **Eventi del browser**: caricamento della pagina, scroll, resize della finestra
+- **Eventi di form**: submit, change, focus, blur
+- **Eventi personalizzati**: eventi creati programmaticamente dallo sviluppatore
+
+Ogni evento trasporta **dati** che descrivono l'occorrenza. Questi dati sono contenuti in un oggetto **Event** che viene passato automaticamente alla funzione listener quando l'evento viene generato.
+
+### Tipi di Eventi
+
+Il browser espone diversi tipi di eventi, organizzati in una gerarchia basata su prototipi:
+
+- **Event**: oggetto base che contiene proprietà e metodi comuni a tutti gli eventi
+- **MouseEvent**: eventi del mouse con coordinate e informazioni sul pulsante premuto
+- **KeyboardEvent**: eventi della tastiera con informazioni sui tasti premuti
+- **DragEvent**: eventi di drag and drop con dati trasferiti
+- **FocusEvent**: eventi di focus e blur
+
+Tutti gli eventi condividono proprietà comuni come **target** (l'elemento che ha generato l'evento), ma ogni tipo specializzato aggiunge proprietà specifiche. Ad esempio, `MouseEvent` include le coordinate del mouse, mentre `DragEvent` contiene i dati trasferiti durante l'operazione di trascinamento.
+
+---
+
+## Metodi per Registrare Eventi
+
+Esistono tre modi principali per registrare event listener sugli elementi DOM. Vediamo i pro e i contro di ciascun approccio.
+
+### Approccio HTML (Sconsigliato)
+
+Il primo metodo consiste nell'aggiungere attributi HTML direttamente nel markup:
+
+```html
+<button onclick="alert('Hello there')">Click me</button>
+```
+
+Ogni elemento HTML supporta attributi `on*` per diversi eventi: `onclick`, `ondblclick`, `oncontextmenu`, `ondrag`, e molti altri.
+
+**Problemi di questo approccio**:
+
+- Mescola HTML e JavaScript, rendendo il codice difficile da mantenere
+- Non permette di aggiungere più listener per lo stesso evento
+- Rende difficile il debugging e la manutenzione
+- Non segue le best practice di separazione delle responsabilità
+
+Questo approccio è **fortemente sconsigliato** e dovrebbe essere evitato in progetti moderni.
+
+### Proprietà on* (Limitato)
+
+Un secondo metodo consiste nell'assegnare una funzione alla proprietà `onclick` dell'elemento:
+
+```javascript
+const button = document.querySelector('button');
+
+// Usando una funzione anonima
+button.onclick = function() {
+  alert('Button was clicked');
+};
+
+// Oppure usando una funzione nominata
+const buttonClickHandler = () => {
+  alert('Button was clicked');
+};
+
+button.onclick = buttonClickHandler;
+```
+
+**Vantaggi**:
+
+- Mantiene il codice JavaScript separato dall'HTML
+- Sintassi semplice e diretta
+
+**Svantaggi**:
+
+- Permette di aggiungere **un solo listener** per evento
+- Se si assegna una nuova funzione, quella precedente viene sovrascritta
+- Non permette rimozione granulare dei listener
+
+```javascript
+// Questo sovrascrive il listener precedente
+button.onclick = () => {
+  console.log('This was clicked');
+};
+// Il primo alert non verrà mai eseguito
+```
+
+### addEventListener (Consigliato)
+
+Il metodo **`addEventListener()`** è l'approccio moderno e consigliato per registrare event listener:
+
+```javascript
+const button = document.querySelector('button');
+
+const buttonClickHandler = () => {
+  alert('Button was clicked');
+};
+
+button.addEventListener('click', buttonClickHandler);
+```
+
+**Vantaggi**:
+
+- Permette di aggiungere **più listener** allo stesso elemento per lo stesso evento
+- Fornisce `removeEventListener()` per rimuovere listener specifici
+- Maggiore controllo e flessibilità
+- Supporta opzioni avanzate (capturing phase, once, passive)
+
+**Sintassi**:
+
+```javascript
+element.addEventListener(eventType, handlerFunction, options);
+```
+
+- `eventType`: stringa con il nome dell'evento (es. `'click'`, `'mouseenter'`, `'submit'`)
+- `handlerFunction`: funzione da eseguire quando l'evento si verifica
+- `options`: oggetto opzionale con configurazioni aggiuntive
+
+### Rimuovere Event Listener
+
+Per rimuovere un listener registrato con `addEventListener()`, si usa **`removeEventListener()`**:
+
+```javascript
+button.addEventListener('click', buttonClickHandler);
+
+// Rimuovere dopo 2 secondi
+setTimeout(() => {
+  button.removeEventListener('click', buttonClickHandler);
+}, 2000);
+```
+
+**Importante**: `removeEventListener()` richiede la **stessa funzione** passata a `addEventListener()`. Non funziona con funzioni anonime perché ogni funzione anonima è un oggetto diverso:
+
+```javascript
+// ❌ Non funziona - funzioni anonime diverse
+button.addEventListener('click', () => console.log('clicked'));
+button.removeEventListener('click', () => console.log('clicked')); // Non rimuove nulla
+
+// ✅ Funziona - stessa funzione
+const handler = () => console.log('clicked');
+button.addEventListener('click', handler);
+button.removeEventListener('click', handler); // Rimuove correttamente
+```
+
+Lo stesso principio si applica quando si usa `.bind()`:
+
+```javascript
+// ❌ Non funziona - bind crea nuove funzioni
+button.addEventListener('click', handler.bind(this));
+button.removeEventListener('click', handler.bind(this)); // Non rimuove nulla
+
+// ✅ Funziona - salvare la funzione bound
+const boundHandler = handler.bind(this);
+button.addEventListener('click', boundHandler);
+button.removeEventListener('click', boundHandler); // Rimuove correttamente
+```
+
+---
+
+## L'Oggetto Event
+
+Quando un evento viene generato, il browser crea automaticamente un oggetto **Event** che contiene informazioni sull'evento stesso. Questo oggetto viene passato come primo argomento alla funzione listener.
+
+### Accedere all'Oggetto Event
+
+La funzione listener riceve automaticamente l'oggetto event come primo parametro:
+
+```javascript
+const button = document.querySelector('button');
+
+button.addEventListener('click', function(event) {
+  console.log(event);
+  // Event object con tutte le proprietà e metodi
+});
+```
+
+Il parametro può essere nominato in qualsiasi modo (`event`, `ev`, `e`), ma `event` è la convenzione più comune.
+
+### Proprietà Comuni dell'Event Object
+
+Tutti gli eventi condividono alcune proprietà fondamentali:
+
+#### target
+
+La proprietà **`target`** rappresenta l'elemento DOM su cui è stato generato l'evento:
+
+```javascript
+button.addEventListener('click', function(event) {
+  console.log(event.target); // L'elemento button stesso
+  console.log(event.target === button); // true
+});
+```
+
+`target` è particolarmente utile quando si usa **event delegation**, perché permette di identificare quale elemento specifico ha generato l'evento anche se il listener è registrato su un elemento padre.
+
+#### currentTarget
+
+La proprietà **`currentTarget`** rappresenta l'elemento su cui è registrato il listener:
+
+```javascript
+const div = document.querySelector('div');
+const button = document.querySelector('button');
+
+div.addEventListener('click', function(event) {
+  console.log(event.target);      // button (elemento cliccato)
+  console.log(event.currentTarget); // div (elemento con listener)
+});
+```
+
+Mentre `target` è sempre l'elemento che ha generato l'evento, `currentTarget` è l'elemento su cui è registrato il listener corrente.
+
+#### type
+
+La proprietà **`type`** contiene il nome dell'evento come stringa:
+
+```javascript
+button.addEventListener('click', function(event) {
+  console.log(event.type); // "click"
+});
+```
+
+### Proprietà Specifiche di MouseEvent
+
+Gli eventi del mouse (`click`, `mouseenter`, `mousemove`, ecc.) espongono proprietà aggiuntive:
+
+#### Coordinate del Mouse
+
+```javascript
+button.addEventListener('click', function(event) {
+  // Coordinate relative alla finestra del browser
+  console.log(event.clientX, event.clientY);
+  
+  // Coordinate relative all'elemento stesso
+  console.log(event.offsetX, event.offsetY);
+});
+```
+
+- **`clientX` / `clientY`**: coordinate relative al viewport del browser
+- **`offsetX` / `offsetY`**: coordinate relative all'elemento su cui è avvenuto l'evento
+
+#### Tasti Modificatori
+
+```javascript
+button.addEventListener('click', function(event) {
+  console.log(event.altKey);   // true se Alt era premuto
+  console.log(event.ctrlKey);  // true se Ctrl era premuto
+  console.log(event.shiftKey); // true se Shift era premuto
+  console.log(event.metaKey);  // true se Cmd (Mac) o Win (Windows) era premuto
+});
+```
+
+Queste proprietà permettono di implementare scorciatoie da tastiera o comportamenti diversi quando l'utente tiene premuti tasti modificatori.
+
+#### Pulsante del Mouse
+
+```javascript
+button.addEventListener('click', function(event) {
+  console.log(event.button); 
+  // 0 = sinistro, 1 = centrale, 2 = destro
+});
+```
+
+#### relatedTarget
+
+Per eventi come `mouseenter` e `mouseleave`, la proprietà **`relatedTarget`** indica l'elemento da cui proviene o verso cui va il mouse:
+
+```javascript
+const div = document.querySelector('div');
+const button = document.querySelector('button');
+
+div.addEventListener('mouseenter', function(event) {
+  console.log(event.relatedTarget); // Elemento da cui proviene il mouse
+});
+```
+
+### Utilizzare le Proprietà dell'Event
+
+Un esempio pratico di utilizzo delle proprietà dell'event object:
+
+```javascript
+const buttons = document.querySelectorAll('button');
+
+buttons.forEach(button => {
+  button.addEventListener('click', function(event) {
+    // Disabilitare il pulsante cliccato
+    event.target.disabled = true;
+    
+    console.log(`Clicked at coordinates: ${event.clientX}, ${event.clientY}`);
+    console.log(`Alt key pressed: ${event.altKey}`);
+  });
+});
+```
+
+In questo esempio, `event.target` permette di identificare quale pulsante è stato cliccato senza dover creare listener separati per ciascun pulsante.
+
+---
+
+## Event Propagation
+
+Gli eventi in JavaScript seguono un meccanismo di **propagazione** che determina l'ordine in cui i listener vengono eseguiti quando un evento si verifica su un elemento annidato.
+
+### Le Due Fasi: Capturing e Bubbling
+
+Quando si clicca su un elemento annidato (ad esempio, un pulsante dentro un div), il browser attraversa due fasi:
+
+1. **Capturing Phase** (fase di cattura): dall'esterno verso l'interno
+2. **Bubbling Phase** (fase di risalita): dall'interno verso l'esterno
+
+```html
+<section>
+  <div>
+    <button>Click me</button>
+  </div>
+</section>
+```
+
+Quando si clicca il pulsante:
+
+1. **Capturing**: il browser controlla se ci sono listener nella fase di cattura partendo da `document` → `section` → `div` → `button`
+2. **Bubbling**: il browser controlla se ci sono listener nella fase di bubbling partendo da `button` → `div` → `section` → `document`
+
+### Bubbling Phase (Default)
+
+Per default, tutti i listener registrati con `addEventListener()` sono nella **bubbling phase**:
+
+```javascript
+const button = document.querySelector('button');
+const div = document.querySelector('div');
+
+button.addEventListener('click', function() {
+  console.log('Clicked button');
+});
+
+div.addEventListener('click', function() {
+  console.log('Clicked div');
+});
+
+// Output quando si clicca il pulsante:
+// "Clicked button" (prima)
+// "Clicked div" (dopo)
+```
+
+L'evento "risale" dall'elemento cliccato verso i suoi antenati, eseguendo i listener nell'ordine: elemento → parent → grandparent → ...
+
+### Capturing Phase
+
+Per registrare un listener nella **capturing phase**, si passa `true` come terzo argomento a `addEventListener()`:
+
+```javascript
+const button = document.querySelector('button');
+const div = document.querySelector('div');
+
+button.addEventListener('click', function() {
+  console.log('Clicked button');
+});
+
+div.addEventListener('click', function() {
+  console.log('Clicked div');
+}, true); // true = capturing phase
+
+// Output quando si clicca il pulsante:
+// "Clicked div" (prima - capturing)
+// "Clicked button" (dopo - bubbling)
+```
+
+La capturing phase viene eseguita **prima** della bubbling phase, quindi i listener in capturing hanno la priorità.
+
+### Quando Usare la Capturing Phase
+
+La capturing phase è utile quando si vuole intercettare un evento **prima** che raggiunga l'elemento target:
+
+```javascript
+// Intercettare tutti i click nella pagina prima che raggiungano gli elementi
+document.addEventListener('click', function(event) {
+  console.log('Click intercepted in capturing phase');
+}, true);
+```
+
+Nella maggior parte dei casi, la bubbling phase è sufficiente e più intuitiva.
+
+---
+
+## Controllo del Comportamento degli Eventi
+
+L'oggetto Event fornisce metodi per controllare come l'evento si comporta: `preventDefault()` per bloccare il comportamento di default del browser e `stopPropagation()` per fermare la propagazione dell'evento.
+
+### preventDefault()
+
+Il metodo **`preventDefault()`** impedisce il comportamento di default del browser per un evento specifico:
+
+```javascript
+const form = document.querySelector('form');
+
+form.addEventListener('submit', function(event) {
+  event.preventDefault(); // Impedisce l'invio del form
+  console.log('Form submission prevented');
+});
+```
+
+**Comportamenti di default comuni**:
+
+- **Form submit**: invio del form al server e ricaricamento della pagina
+- **Link click**: navigazione verso l'URL del link
+- **Context menu** (click destro): apertura del menu contestuale
+- **Drag and drop**: comportamento di default del browser
+
+**Esempio con link**:
+
+```javascript
+const link = document.querySelector('a');
+
+link.addEventListener('click', function(event) {
+  event.preventDefault(); // Impedisce la navigazione
+  console.log('Link click prevented');
+  // Ora si può implementare una navigazione personalizzata
+});
+```
+
+### stopPropagation()
+
+Il metodo **`stopPropagation()`** ferma la propagazione dell'evento agli elementi padre:
+
+```javascript
+const button = document.querySelector('button');
+const div = document.querySelector('div');
+
+button.addEventListener('click', function(event) {
+  event.stopPropagation(); // Ferma la propagazione
+  console.log('Clicked button');
+});
+
+div.addEventListener('click', function() {
+  console.log('Clicked div'); // Non verrà eseguito
+});
+```
+
+Quando si clicca il pulsante, solo il listener del pulsante viene eseguito. L'evento non "risale" al div.
+
+**Quando usare stopPropagation()**:
+
+- Si vuole che un click su un elemento interno non attivi listener sugli elementi padre
+- Si implementa un sistema di modali o dropdown dove i click interni non devono chiudere il componente
+
+### stopImmediatePropagation()
+
+Il metodo **`stopImmediatePropagation()`** ferma la propagazione **e** impedisce l'esecuzione di altri listener sullo stesso elemento:
+
+```javascript
+const button = document.querySelector('button');
+
+button.addEventListener('click', function(event) {
+  event.stopImmediatePropagation();
+  console.log('First listener');
+});
+
+button.addEventListener('click', function() {
+  console.log('Second listener'); // Non verrà eseguito
+});
+```
+
+Con `stopPropagation()`, tutti i listener sul pulsante verrebbero eseguiti, ma la propagazione si fermerebbe. Con `stopImmediatePropagation()`, anche gli altri listener sullo stesso elemento vengono ignorati.
+
+### Differenza tra preventDefault() e stopPropagation()
+
+È importante comprendere la differenza:
+
+- **`preventDefault()`**: blocca il comportamento di default del browser, ma l'evento continua a propagarsi
+- **`stopPropagation()`**: ferma la propagazione, ma il comportamento di default può ancora verificarsi
+
+```javascript
+// preventDefault() - blocca il comportamento ma l'evento propaga
+link.addEventListener('click', function(event) {
+  event.preventDefault(); // Non naviga, ma l'evento risale al parent
+});
+
+// stopPropagation() - ferma la propagazione ma il comportamento può verificarsi
+button.addEventListener('click', function(event) {
+  event.stopPropagation(); // Non risale, ma il comportamento di default può verificarsi
+});
+```
+
+### Eventi che Non Propagano
+
+Non tutti gli eventi propagano. Alcuni eventi hanno la proprietà **`bubbles`** impostata su `false`:
+
+```javascript
+button.addEventListener('mouseenter', function(event) {
+  console.log(event.bubbles); // false - non propaga
+});
+```
+
+Eventi che tipicamente non propagano:
+
+- `mouseenter` / `mouseleave`
+- `focus` / `blur`
+- Alcuni eventi di drag and drop
+
+Per verificare se un evento propaga, si può controllare la proprietà `bubbles`:
+
+```javascript
+button.addEventListener('click', function(event) {
+  if (event.bubbles) {
+    console.log('Questo evento propaga');
+  }
+});
+```
+
+---
+
+## Event Delegation
+
+L'**event delegation** è un pattern che sfrutta la propagazione degli eventi per gestire eventi su elementi dinamici o su liste di elementi usando un singolo listener registrato su un elemento padre.
+
+### Il Problema con Listener Multipli
+
+Supponiamo di avere una lista di elementi su cui si vuole reagire ai click:
+
+```html
+<ul>
+  <li>Item 1</li>
+  <li>Item 2</li>
+  <li>Item 3</li>
+  <li>Item 4</li>
+  <li>Item 5</li>
+</ul>
+```
+
+Un approccio ingenuo sarebbe aggiungere un listener a ciascun elemento:
+
+```javascript
+const listItems = document.querySelectorAll('li');
+
+listItems.forEach(item => {
+  item.addEventListener('click', function() {
+    item.classList.toggle('highlight');
+  });
+});
+```
+
+**Problemi di questo approccio**:
+
+- Richiede di registrare molti listener (uno per elemento)
+- Non funziona per elementi aggiunti dinamicamente dopo il caricamento della pagina
+- Consumo maggiore di memoria e performance
+
+### Soluzione con Event Delegation
+
+Con l'event delegation, si registra un **singolo listener** sull'elemento padre:
+
+```javascript
+const list = document.querySelector('ul');
+
+list.addEventListener('click', function(event) {
+  // event.target è l'elemento effettivamente cliccato
+  event.target.classList.toggle('highlight');
+});
+```
+
+**Vantaggi**:
+
+- Un solo listener invece di molti
+- Funziona automaticamente per elementi aggiunti dinamicamente
+- Migliore performance e consumo di memoria
+- Codice più semplice e manutenibile
+
+### Gestire Elementi Annidati
+
+Quando gli elementi della lista contengono elementi annidati, `event.target` potrebbe riferirsi a un elemento interno:
+
+```html
+<ul>
+  <li>
+    <h2>Item 1</h2>
+    <p>Description</p>
+  </li>
+</ul>
+```
+
+In questo caso, cliccando su `<h2>` o `<p>`, `event.target` sarà quell'elemento, non il `<li>`. Per risolvere, si usa **`closest()`** per trovare l'elemento padre desiderato:
+
+```javascript
+const list = document.querySelector('ul');
+
+list.addEventListener('click', function(event) {
+  // Trova il <li> più vicino, anche se si è cliccato su un elemento interno
+  const listItem = event.target.closest('li');
+  
+  if (listItem) {
+    listItem.classList.toggle('highlight');
+  }
+});
+```
+
+**`closest()`** risale l'albero DOM partendo dall'elemento corrente e restituisce il primo elemento che corrisponde al selettore CSS fornito. Include anche l'elemento stesso se corrisponde al selettore.
+
+### Esempio Completo di Event Delegation
+
+```javascript
+const list = document.querySelector('ul');
+
+list.addEventListener('click', function(event) {
+  const listItem = event.target.closest('li');
+  
+  if (listItem) {
+    // Evidenzia l'intero elemento <li>, non solo la parte cliccata
+    listItem.classList.toggle('highlight');
+    
+    // Si può anche accedere a dati specifici dell'elemento
+    const itemId = listItem.dataset.id;
+    console.log(`Clicked item with ID: ${itemId}`);
+  }
+});
+```
+
+Questo pattern è particolarmente utile quando:
+
+- Si hanno liste dinamiche che cambiano nel tempo
+- Si vogliono migliorare le performance riducendo il numero di listener
+- Si vuole semplificare la gestione degli eventi
+
+---
+
+## Trigger Programmatico di Eventi
+
+A volte è necessario **generare eventi programmaticamente** invece di aspettare che l'utente interagisca con l'interfaccia. JavaScript permette di simulare eventi chiamando metodi specifici sugli elementi DOM.
+
+### Metodi per Triggerare Eventi
+
+Molti elementi DOM espongono metodi che simulano interazioni dell'utente:
+
+```javascript
+const button = document.querySelector('button');
+const form = document.querySelector('form');
+
+// Simulare un click sul pulsante
+button.click();
+
+// Simulare la submission di un form
+form.submit();
+```
+
+### Quando Usare il Trigger Programmatico
+
+Esempi di casi d'uso:
+
+**1. Submit di form da codice**:
+
+```javascript
+const form = document.querySelector('form');
+const submitButton = document.querySelector('button[type="submit"]');
+
+// Submit programmatico quando si clicca un elemento esterno
+document.querySelector('.external-trigger').addEventListener('click', function() {
+  submitButton.click(); // Simula il click sul pulsante submit
+});
+```
+
+**2. Trigger di eventi dopo operazioni asincrone**:
+
+```javascript
+button.addEventListener('click', async function() {
+  await someAsyncOperation();
+  
+  // Trigger di un altro evento dopo il completamento
+  anotherButton.click();
+});
+```
+
+### Limitazioni del Trigger Programmatico
+
+È importante notare che il trigger programmatico **non è identico** all'interazione dell'utente:
+
+```javascript
+const form = document.querySelector('form');
+
+form.addEventListener('submit', function(event) {
+  event.preventDefault();
+  console.log('Form submitted');
+});
+
+// Questo NON triggera il listener sopra
+form.submit();
+
+// Questo SÌ triggera il listener
+const submitButton = form.querySelector('button[type="submit"]');
+submitButton.click();
+```
+
+Quando si chiama `form.submit()` direttamente, il listener `submit` non viene eseguito. Per triggerare il listener, si deve simulare il click sul pulsante submit.
+
+### Eventi Generati Programmaticamente
+
+Gli eventi generati programmaticamente hanno alcune caratteristiche:
+
+```javascript
+button.addEventListener('click', function(event) {
+  console.log(event.clientX, event.clientY); 
+  // 0, 0 quando generato programmaticamente
+  // Coordinate reali quando generato dall'utente
+});
+```
+
+Le coordinate del mouse saranno `0, 0` quando l'evento è generato programmaticamente, mentre conterranno le coordinate reali quando generato dall'utente.
+
+---
+
+## Il Keyword `this` negli Event Listener
+
+Quando si usa una **funzione normale** (non arrow function) come event listener, il browser imposta automaticamente `this` per riferirsi all'elemento su cui è registrato il listener.
+
+### Comportamento con Funzioni Normali
+
+```javascript
+const button = document.querySelector('button');
+
+button.addEventListener('click', function() {
+  console.log(this); // button element
+  console.log(this === button); // true
+});
+```
+
+Con funzioni normali, `this` punta a **`event.currentTarget`**, cioè l'elemento su cui è registrato il listener.
+
+### Comportamento con Arrow Functions
+
+```javascript
+const button = document.querySelector('button');
+
+button.addEventListener('click', () => {
+  console.log(this); // window (o undefined in strict mode)
+});
+```
+
+Le **arrow functions** non hanno un proprio `this` e non possono essere riassegnate. In questo contesto, `this` manterrà il valore del contesto esterno (tipicamente `window` o `undefined` in strict mode).
+
+### Quando Usare Funzioni Normali vs Arrow Functions
+
+**Usa funzioni normali quando**:
+
+- Hai bisogno di accedere all'elemento tramite `this`
+- Vuoi che il comportamento sia coerente con le convenzioni JavaScript
+
+**Usa arrow functions quando**:
+
+- Vuoi preservare il `this` del contesto esterno
+- Preferisci una sintassi più concisa
+- Non hai bisogno di accedere all'elemento tramite `this` (puoi usare `event.currentTarget`)
+
+```javascript
+class MyComponent {
+  constructor() {
+    this.value = 42;
+    this.button = document.querySelector('button');
+    
+    // Arrow function preserva 'this' del componente
+    this.button.addEventListener('click', () => {
+      console.log(this.value); // 42 - funziona!
+    });
+    
+    // Funzione normale richiederebbe .bind()
+    this.button.addEventListener('click', function() {
+      console.log(this.value); // undefined - non funziona
+    }.bind(this));
+  }
+}
+```
+
+---
+
+## Scroll Events
+
+L'evento **`scroll`** viene generato quando l'utente scorre la pagina o un elemento scrollabile. È un evento che viene generato molto frequentemente e richiede attenzione per le performance.
+
+### Ascoltare Scroll Events
+
+```javascript
+window.addEventListener('scroll', function(event) {
+  console.log('Scrolling...');
+});
+```
+
+L'evento `scroll` può essere registrato su `window` (per lo scroll della pagina) o su elementi scrollabili:
+
+```javascript
+const scrollableDiv = document.querySelector('.scrollable');
+
+scrollableDiv.addEventListener('scroll', function(event) {
+  console.log('Div scrolled');
+});
+```
+
+### Performance e Throttling
+
+L'evento `scroll` viene generato **molto frequentemente** durante lo scroll. Se si eseguono operazioni pesanti nel listener, si può rallentare la pagina:
+
+```javascript
+// ❌ Operazione pesante ad ogni evento scroll
+window.addEventListener('scroll', function() {
+  // Operazione costosa che viene eseguita troppe volte
+  heavyCalculation();
+});
+```
+
+**Soluzione: throttling o debouncing**:
+
+```javascript
+let ticking = false;
+
+window.addEventListener('scroll', function() {
+  if (!ticking) {
+    window.requestAnimationFrame(function() {
+      // Operazione eseguita solo quando necessario
+      handleScroll();
+      ticking = false;
+    });
+    ticking = true;
+  }
+});
+```
+
+### Esempio: Infinite Scroll
+
+Un caso d'uso comune è implementare lo **infinite scroll**, caricando contenuti quando l'utente si avvicina alla fine della pagina:
+
+```javascript
+let curElementNumber = 0;
+
+function scrollHandler() {
+  // Distanza dal fondo del contenuto
+  const distanceToBottom = document.body.getBoundingClientRect().bottom;
+  
+  // Altezza del viewport
+  const viewportHeight = document.documentElement.clientHeight;
+  
+  // Se siamo a meno di 150px dal fondo, carica più contenuti
+  if (distanceToBottom < viewportHeight + 150) {
+    const newDataElement = document.createElement('div');
+    curElementNumber++;
+    newDataElement.innerHTML = `<p>Element ${curElementNumber}</p>`;
+    document.body.append(newDataElement);
+  }
+}
+
+window.addEventListener('scroll', scrollHandler);
+```
+
+Questo esempio crea nuovi elementi quando l'utente si avvicina al fondo della pagina, creando un effetto di scroll infinito.
+
+---
+
+## Form Events
+
+I form HTML espongono eventi specifici per gestire la submission e la validazione. L'evento più importante è **`submit`**, che viene generato quando l'utente invia il form.
+
+### Submit Event
+
+L'evento `submit` viene generato quando:
+
+- L'utente clicca un pulsante con `type="submit"` dentro un form
+- L'utente preme Enter in un campo input del form
+- Si chiama `form.submit()` programmaticamente (ma senza triggerare il listener)
+
+```html
+<form id="myForm">
+  <input type="text" name="title" id="title" />
+  <button type="submit">Submit</button>
+</form>
+```
+
+```javascript
+const form = document.querySelector('#myForm');
+
+form.addEventListener('submit', function(event) {
+  event.preventDefault(); // Impedisce l'invio al server
+  
+  // Validazione o elaborazione personalizzata
+  const title = document.getElementById('title').value;
+  console.log('Form submitted with title:', title);
+  
+  // Inviare dati via JavaScript (fetch API, XMLHttpRequest, ecc.)
+});
+```
+
+### Comportamento di Default
+
+Per default, quando un form viene inviato:
+
+1. I dati vengono inviati al server tramite HTTP POST o GET
+2. La pagina viene ricaricata
+3. I dati vengono persi se non gestiti correttamente
+
+Usando `preventDefault()`, si può:
+
+- Validare i dati prima dell'invio
+- Inviare i dati via JavaScript (AJAX/fetch)
+- Mostrare messaggi di errore senza ricaricare la pagina
+- Implementare submission asincrona
+
+### Altri Eventi di Form
+
+Altri eventi utili per i form:
+
+- **`change`**: quando il valore di un input cambia e perde il focus
+- **`input`**: quando il valore di un input cambia (in tempo reale)
+- **`focus`**: quando un input riceve il focus
+- **`blur`**: quando un input perde il focus
+
+```javascript
+const input = document.querySelector('input');
+
+input.addEventListener('input', function(event) {
+  console.log('Valore cambiato:', event.target.value);
+});
+
+input.addEventListener('focus', function() {
+  console.log('Input ha ricevuto il focus');
+});
+
+input.addEventListener('blur', function() {
+  console.log('Input ha perso il focus');
+});
+```
+
+---
+
+## Drag and Drop
+
+Il **drag and drop** è un'interfaccia utente che permette di trascinare elementi e rilasciarli in aree specifiche. In JavaScript, questa funzionalità è implementata attraverso una serie di eventi coordinati.
+
+### Panoramica degli Eventi Drag and Drop
+
+Un'operazione di drag and drop coinvolge diversi eventi:
+
+1. **`dragstart`**: quando inizia il trascinamento (sull'elemento trascinato)
+2. **`dragenter`**: quando l'elemento entra in un'area di drop
+3. **`dragover`**: quando l'elemento è sopra un'area di drop (generato continuamente)
+4. **`dragleave`**: quando l'elemento esce da un'area di drop
+5. **`drop`**: quando l'elemento viene rilasciato sull'area di drop
+6. **`dragend`**: quando termina l'operazione di drag (sull'elemento trascinato)
+
+### Passo 1: Rendere un Elemento Draggable
+
+Per rendere un elemento trascinabile, si imposta l'attributo **`draggable`** a `true`:
+
+```html
+<li draggable="true">Item 1</li>
+```
+
+Oppure programmaticamente:
+
+```javascript
+const item = document.querySelector('li');
+item.draggable = true;
+```
+
+**Nota importante**: `draggable="true"` è necessario. Solo aggiungere l'attributo senza valore non è sufficiente.
+
+### Passo 2: Gestire dragstart
+
+Quando l'utente inizia a trascinare, si deve configurare l'evento `dragstart`:
+
+```javascript
+const item = document.querySelector('li');
+
+item.addEventListener('dragstart', function(event) {
+  // Impostare i dati da trasferire
+  event.dataTransfer.setData('text/plain', item.id);
+  
+  // Impostare l'effetto del drag (move, copy, link, ecc.)
+  event.dataTransfer.effectAllowed = 'move';
+});
+```
+
+**`dataTransfer.setData()`**: permette di associare dati all'operazione di drag. Questi dati saranno disponibili nell'evento `drop`.
+
+**Tipi di dati supportati**:
+- `'text/plain'`: testo semplice
+- `'text/html'`: contenuto HTML
+- `'text/uri-list'`: URL
+
+**`effectAllowed`**: determina quale tipo di operazione è permessa (`'move'`, `'copy'`, `'link'`, `'all'`, `'none'`). Questo influisce sull'aspetto del cursore durante il drag.
+
+### Passo 3: Creare Zone di Drop
+
+Per permettere il drop di un elemento, si devono gestire gli eventi `dragenter` e `dragover` sulla zona di drop:
+
+```javascript
+const dropZone = document.querySelector('.drop-zone');
+
+dropZone.addEventListener('dragenter', function(event) {
+  // Verificare il tipo di dati
+  if (event.dataTransfer.types[0] === 'text/plain') {
+    event.preventDefault(); // Necessario per permettere il drop
+    dropZone.classList.add('droppable');
+  }
+});
+
+dropZone.addEventListener('dragover', function(event) {
+  if (event.dataTransfer.types[0] === 'text/plain') {
+    event.preventDefault(); // Necessario per permettere il drop
+  }
+});
+```
+
+**Importante**: `preventDefault()` è **obbligatorio** in `dragover` per permettere il drop. Senza di esso, il browser impedirà il drop per default.
+
+**`dataTransfer.types`**: array che contiene i tipi di dati disponibili. Permette di verificare se i dati trascinati sono del tipo atteso.
+
+### Passo 4: Feedback Visivo
+
+Si può aggiungere feedback visivo quando l'elemento entra o esce dalla zona di drop:
+
+```javascript
+dropZone.addEventListener('dragenter', function(event) {
+  if (event.dataTransfer.types[0] === 'text/plain') {
+    event.preventDefault();
+    dropZone.classList.add('droppable');
+  }
+});
+
+dropZone.addEventListener('dragleave', function(event) {
+  // Verificare che si stia realmente uscendo dalla zona
+  if (!event.relatedTarget.closest('.drop-zone')) {
+    dropZone.classList.remove('droppable');
+  }
+});
+```
+
+**Nota su `dragleave`**: questo evento viene generato anche quando si entra in un elemento figlio della zona di drop. Per gestirlo correttamente, si usa `closest()` per verificare se si è ancora dentro la zona.
+
+### Passo 5: Gestire il Drop
+
+Quando l'elemento viene rilasciato, si gestisce l'evento `drop`:
+
+```javascript
+dropZone.addEventListener('drop', function(event) {
+  event.preventDefault();
+  
+  // Recuperare i dati impostati in dragstart
+  const itemId = event.dataTransfer.getData('text/plain');
+  
+  // Eseguire l'operazione desiderata
+  moveItemToDropZone(itemId, dropZone);
+  
+  // Rimuovere il feedback visivo
+  dropZone.classList.remove('droppable');
+});
+```
+
+**`dataTransfer.getData()`**: recupera i dati impostati in `dragstart`. Il tipo deve corrispondere a quello usato in `setData()`.
+
+### Passo 6: Gestire dragend
+
+L'evento `dragend` viene generato quando termina l'operazione di drag, indipendentemente dal successo del drop:
+
+```javascript
+item.addEventListener('dragend', function(event) {
+  // Verificare se il drop è riuscito
+  if (event.dataTransfer.dropEffect === 'move') {
+    console.log('Drop successful');
+  } else {
+    console.log('Drop cancelled');
+  }
+});
+```
+
+**`dataTransfer.dropEffect`**: indica il risultato dell'operazione (`'move'`, `'copy'`, `'link'`, `'none'`). Se è `'none'`, il drop non è riuscito.
+
+### Esempio Completo: Drag and Drop tra Liste
+
+```javascript
+class ProjectItem {
+  constructor(id) {
+    this.id = id;
+    this.connectDrag();
+  }
+  
+  connectDrag() {
+    const item = document.getElementById(this.id);
+    
+    item.addEventListener('dragstart', (event) => {
+      event.dataTransfer.setData('text/plain', this.id);
+      event.dataTransfer.effectAllowed = 'move';
+    });
+    
+    item.addEventListener('dragend', (event) => {
+      if (event.dataTransfer.dropEffect === 'none') {
+        console.log('Drop cancelled');
+      }
+    });
+  }
+}
+
+class ProjectList {
+  constructor(type) {
+    this.type = type;
+    this.connectDroppable();
+  }
+  
+  connectDroppable() {
+    const list = document.querySelector(`#${this.type}-projects ul`);
+    
+    list.addEventListener('dragenter', (event) => {
+      if (event.dataTransfer.types[0] === 'text/plain') {
+        event.preventDefault();
+        list.parentElement.classList.add('droppable');
+      }
+    });
+    
+    list.addEventListener('dragover', (event) => {
+      if (event.dataTransfer.types[0] === 'text/plain') {
+        event.preventDefault();
+      }
+    });
+    
+    list.addEventListener('dragleave', (event) => {
+      if (event.relatedTarget.closest(`#${this.type}-projects ul`) !== list) {
+        list.parentElement.classList.remove('droppable');
+      }
+    });
+    
+    list.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const projectId = event.dataTransfer.getData('text/plain');
+      
+      // Verificare che il progetto non sia già in questa lista
+      if (!this.projects.find(p => p.id === projectId)) {
+        // Spostare il progetto
+        this.moveProject(projectId);
+      }
+      
+      list.parentElement.classList.remove('droppable');
+    });
+  }
+}
+```
+
+### Note Importanti sul Drag and Drop
+
+1. **L'elemento non si muove automaticamente**: quando si trascina un elemento, viene mostrata solo un'anteprima. L'elemento originale rimane nella sua posizione fino a quando non si aggiorna il DOM programmaticamente.
+
+2. **`preventDefault()` è obbligatorio**: senza chiamare `preventDefault()` in `dragover`, il drop non funzionerà.
+
+3. **Gestione di `dragleave`**: questo evento può essere problematico perché viene generato anche quando si entra in elementi figli. Usare `closest()` per verificare se si è ancora nella zona di drop.
+
+4. **Compatibilità browser**: il drag and drop è supportato nei browser moderni, ma può richiedere piccoli aggiustamenti per Firefox (vedi sezione seguente).
+
+### Aggiustamenti per Firefox
+
+Firefox può richiedere alcuni aggiustamenti:
+
+```javascript
+// Nel listener drop, assicurarsi di chiamare preventDefault all'inizio
+list.addEventListener('drop', (event) => {
+  event.preventDefault(); // All'inizio della funzione
+  
+  // resto del codice...
+});
+
+// Nel listener dragleave, verificare che closest esista
+list.addEventListener('dragleave', (event) => {
+  if (event.relatedTarget.closest && 
+      event.relatedTarget.closest('.drop-zone') !== list) {
+    list.classList.remove('droppable');
+  }
+});
+```
+
+---
+
+## Riepilogo
+
+In questo capitolo si è esplorato il sistema di eventi di JavaScript nel browser:
+
+- **Metodi di registrazione**: `addEventListener()` è l'approccio moderno e consigliato
+- **Oggetto Event**: contiene informazioni sull'evento e metodi per controllarne il comportamento
+- **Propagation**: gli eventi si propagano attraverso il DOM in due fasi (capturing e bubbling)
+- **Controllo**: `preventDefault()` e `stopPropagation()` permettono di controllare il comportamento degli eventi
+- **Event delegation**: pattern efficace per gestire eventi su elementi dinamici
+- **Trigger programmatico**: possibilità di generare eventi tramite codice
+- **Drag and Drop**: implementazione completa di operazioni di trascinamento
+
+Gli eventi sono fondamentali per creare interfacce interattive e reattive. Comprendere come funzionano e come controllarli è essenziale per lo sviluppo web moderno.
