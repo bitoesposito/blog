@@ -1,0 +1,762 @@
+---
+title: "Numeri e Stringhe Avanzati"
+description: "Approfondimento su numeri e stringhe: rappresentazione interna, precisione, BigInt, tagged templates e regular expressions"
+date: 2026-02-11
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 13
+---
+
+## Introduzione
+
+Numeri e stringhe sono tipi primitivi fondamentali in JavaScript che vengono utilizzati costantemente nello sviluppo. Questo capitolo approfondisce aspetti avanzati di entrambi, esplorando come funzionano internamente e quali funzionalità avanzate offrono.
+
+In questo capitolo si esaminano:
+
+- **Rappresentazione interna dei numeri**: come JavaScript memorizza i numeri e perché si verificano problemi di precisione
+- **Limiti numerici**: valori massimi e minimi rappresentabili in JavaScript
+- **Precisione floating point**: perché `0.2 + 0.4 !== 0.6` e come gestire questi problemi
+- **BigInt**: tipo per rappresentare numeri interi arbitrariamente grandi
+- **Number e Math objects**: metodi e proprietà utili per operazioni matematiche
+- **Tagged templates**: funzionalità avanzata dei template literals per trasformare stringhe
+- **Regular expressions**: pattern matching per validare e cercare pattern nelle stringhe
+
+---
+
+## Rappresentazione Interna dei Numeri
+
+In JavaScript, **ogni numero è un floating point** (numero a virgola mobile). Non esiste un tipo intero separato: anche numeri come `5` o `10` sono tecnicamente numeri floating point con parte decimale zero.
+
+### Architettura a 64 Bit
+
+Internamente, JavaScript rappresenta i numeri usando **64 bit** secondo lo standard IEEE 754:
+
+- **1 bit** per il segno (positivo o negativo)
+- **11 bit** per l'esponente
+- **52 bit** per la mantissa (le cifre significative)
+
+Questa rappresentazione permette di descrivere numeri entro certi limiti, ma introduce vincoli di precisione e range.
+
+### Limiti Numerici
+
+A causa della rappresentazione a 64 bit, JavaScript ha limiti precisi sui numeri che può rappresentare:
+
+```javascript
+// Numero intero massimo sicuro
+console.log(Number.MAX_SAFE_INTEGER);
+// 9007199254740991 (circa 9 quadrilioni)
+
+// Numero intero minimo sicuro
+console.log(Number.MIN_SAFE_INTEGER);
+// -9007199254740991
+
+// Valore massimo rappresentabile (può includere decimali)
+console.log(Number.MAX_VALUE);
+// 1.7976931348623157e+308
+
+// Valore minimo rappresentabile
+console.log(Number.MIN_VALUE);
+// 5e-324
+```
+
+**`MAX_SAFE_INTEGER`** rappresenta il più grande intero che può essere rappresentato con precisione. Questo valore corrisponde a `2^53 - 1`.
+
+**`MAX_VALUE`** è il più grande numero rappresentabile in generale, che può includere decimali. Questo valore è molto più grande di `MAX_SAFE_INTEGER`.
+
+### Oltre i Limiti
+
+Quando si superano questi limiti, JavaScript non genera un errore ma produce risultati imprecisi:
+
+```javascript
+const maxSafe = Number.MAX_SAFE_INTEGER;
+console.log(maxSafe); // 9007199254740991
+
+// Aggiungere 1 non cambia il risultato
+console.log(maxSafe + 1); // 9007199254740992 (stesso valore)
+
+// Aggiungere 10 produce un risultato impreciso
+console.log(maxSafe + 10); // 9007199254741000 (impreciso)
+```
+
+Quando si supera il range disponibile, JavaScript "taglia" i bit in eccesso e converte il risultato binario in un numero decimale, producendo valori imprecisi.
+
+### Perché Questi Limiti?
+
+I limiti derivano dalla rappresentazione binaria dei numeri. JavaScript converte internamente i numeri decimali in binario per i calcoli, poi riconverte il risultato in decimale per la visualizzazione. Questo processo introduce limitazioni:
+
+- **Sistema decimale** (base 10): quello che usiamo normalmente
+- **Sistema binario** (base 2): quello che usa JavaScript internamente (solo 0 e 1)
+
+La conversione tra questi due sistemi può introdurre imprecisioni, specialmente con numeri decimali.
+
+---
+
+## Problemi di Precisione con Floating Point
+
+Uno dei problemi più comuni quando si lavora con numeri decimali in JavaScript è la **perdita di precisione** dovuta alla conversione tra sistema decimale e binario.
+
+### Il Problema Classico
+
+```javascript
+console.log(0.2 + 0.4); // 0.6000000000000001
+console.log(0.2 + 0.4 === 0.6); // false
+```
+
+Questo risultato può sembrare strano: `0.2 + 0.4` dovrebbe essere `0.6`, ma JavaScript restituisce un valore leggermente diverso.
+
+### Perché Succede?
+
+Il problema deriva dal fatto che alcuni numeri decimali non possono essere rappresentati perfettamente in binario:
+
+```javascript
+// Convertire 0.2 in binario
+console.log((0.2).toString(2));
+// "0.001100110011001100110011001100110011001100110011001101"
+
+// Convertire 0.4 in binario
+console.log((0.4).toString(2));
+// "0.01100110011001100110011001100110011001100110011001101"
+```
+
+Come si può vedere, questi numeri hanno una rappresentazione binaria infinita e periodica. Quando JavaScript li converte, deve troncare a un certo punto, introducendo imprecisioni.
+
+È simile a come `1/3` non può essere rappresentato perfettamente in decimale (`0.333333...`), ma in binario succede con numeri diversi come `1/5` (che è `0.2`).
+
+### Verificare l'Imprecisione
+
+Per vedere l'imprecisione nascosta, si può usare il metodo **`toFixed()`**:
+
+```javascript
+console.log((0.2).toFixed(20));
+// "0.20000000000000001110"
+
+console.log((0.1 + 0.2).toFixed(20));
+// "0.30000000000000004441"
+```
+
+`toFixed()` forza JavaScript a mostrare un numero specifico di cifre decimali, rivelando l'imprecisione che normalmente viene nascosta dal rounding automatico.
+
+### Soluzioni Pratiche
+
+**1. Usare `toFixed()` per l'output all'utente**:
+
+```javascript
+const result = 0.2 + 0.4;
+console.log(result.toFixed(2)); // "0.60"
+```
+
+**2. Lavorare con interi quando possibile**:
+
+```javascript
+// Invece di lavorare con euro
+const price1 = 20.2;
+const price2 = 10.4;
+
+// Lavorare con centesimi (interi)
+const price1Cents = 2020; // 20.20 euro
+const price2Cents = 1040; // 10.40 euro
+const totalCents = price1Cents + price2Cents; // 3060 centesimi
+const totalEuros = totalCents / 100; // 30.60 euro (preciso)
+```
+
+Lavorare con interi elimina i problemi di precisione perché gli interi possono essere rappresentati perfettamente in binario.
+
+**3. Usare librerie specializzate**:
+
+Per calcoli finanziari o scientifici che richiedono precisione assoluta, esistono librerie JavaScript che gestiscono la precisione arbitraria (come `decimal.js` o `big.js`).
+
+### Quando è un Problema?
+
+L'imprecisione floating point è generalmente **non un problema** per:
+
+- Visualizzazione di risultati all'utente (usando `toFixed()`)
+- Calcoli scientifici generali
+- Operazioni matematiche comuni
+
+Diventa un problema quando:
+
+- Si lavora con denaro e transazioni finanziarie
+- Si devono fare confronti esatti tra numeri decimali
+- Si accumulano molti calcoli che amplificano l'errore
+
+---
+
+## BigInt
+
+Per rappresentare numeri interi **arbitrariamente grandi** oltre `MAX_SAFE_INTEGER`, JavaScript introduce il tipo **`BigInt`**.
+
+### Creare un BigInt
+
+Un `BigInt` si crea aggiungendo `n` alla fine di un numero:
+
+```javascript
+const bigNumber = 9007199254740992n;
+console.log(bigNumber); // 9007199254740992n
+```
+
+Oppure usando il costruttore `BigInt()`:
+
+```javascript
+const bigNumber = BigInt(9007199254740992);
+console.log(bigNumber); // 9007199254740992n
+```
+
+### Caratteristiche di BigInt
+
+**1. Numeri arbitrariamente grandi**:
+
+```javascript
+const hugeNumber = 999999999999999999999999999999999999999n;
+console.log(hugeNumber); // Funziona perfettamente
+```
+
+**2. Solo interi, nessun decimale**:
+
+```javascript
+// ❌ Errore: BigInt non supporta decimali
+const invalid = 10.5n; // SyntaxError
+
+// ✅ Funziona: solo interi
+const valid = 10n;
+```
+
+**3. Non si possono mescolare con numeri normali**:
+
+```javascript
+// ❌ Errore: non si possono mescolare tipi
+const result = 10n + 5; // TypeError
+
+// ✅ Conversione esplicita necessaria
+const result1 = 10n + BigInt(5); // 15n
+const result2 = Number(10n) + 5; // 15
+```
+
+**4. Divisione tronca i decimali**:
+
+```javascript
+console.log(5n / 2n); // 2n (non 2.5n)
+console.log(10n / 3n); // 3n (non 3.333...n)
+```
+
+Quando si divide un `BigInt`, JavaScript tronca automaticamente la parte decimale perché i decimali non possono essere rappresentati.
+
+### Quando Usare BigInt
+
+`BigInt` è utile quando:
+
+- Si lavora con numeri molto grandi (ID di database, timestamp con nanosecondi)
+- Si devono fare calcoli precisi con interi grandi
+- Si implementano algoritmi crittografici o matematici avanzati
+
+Per la maggior parte delle applicazioni web comuni, il tipo `Number` standard è sufficiente.
+
+---
+
+## Number Object
+
+L'oggetto globale **`Number`** fornisce proprietà e metodi utili per lavorare con i numeri.
+
+### Proprietà Utili
+
+```javascript
+// Valori limite
+console.log(Number.MAX_SAFE_INTEGER);
+console.log(Number.MIN_SAFE_INTEGER);
+console.log(Number.MAX_VALUE);
+console.log(Number.MIN_VALUE);
+
+// Valori speciali
+console.log(Number.POSITIVE_INFINITY); // Infinity
+console.log(Number.NEGATIVE_INFINITY); // -Infinity
+```
+
+**Infinity** è un valore speciale che si ottiene quando si divide per zero:
+
+```javascript
+console.log(10 / 0); // Infinity
+console.log(-10 / 0); // -Infinity
+```
+
+### Metodi Utili
+
+**`Number.isFinite()`**: verifica se un valore è un numero finito:
+
+```javascript
+console.log(Number.isFinite(10)); // true
+console.log(Number.isFinite(Infinity)); // false
+console.log(Number.isFinite(NaN)); // false
+```
+
+**`Number.isNaN()`**: verifica se un valore è `NaN`:
+
+```javascript
+console.log(Number.isNaN(NaN)); // true
+console.log(Number.isNaN('test')); // false
+```
+
+**`Number.parseInt()`** e **`Number.parseFloat()`**: convertono stringhe in numeri:
+
+```javascript
+console.log(Number.parseInt('123')); // 123
+console.log(Number.parseInt('123.45')); // 123
+console.log(Number.parseFloat('123.45')); // 123.45
+```
+
+Questi metodi esistono anche come funzioni globali (`parseInt()`, `parseFloat()`), quindi non è necessario usare il prefisso `Number.`.
+
+---
+
+## Math Object
+
+L'oggetto globale **`Math`** fornisce costanti matematiche e metodi per operazioni matematiche comuni.
+
+### Costanti
+
+```javascript
+console.log(Math.PI); // 3.141592653589793
+console.log(Math.E); // 2.718281828459045
+```
+
+### Metodi Comuni
+
+**Operazioni di base**:
+
+```javascript
+// Valore assoluto
+console.log(Math.abs(-5)); // 5
+
+// Potenza
+console.log(Math.pow(2, 3)); // 8
+console.log(2 ** 3); // 8 (sintassi alternativa)
+
+// Radice quadrata
+console.log(Math.sqrt(16)); // 4
+
+// Arrotondamento
+console.log(Math.round(4.7)); // 5
+console.log(Math.floor(4.7)); // 4 (arrotonda per difetto)
+console.log(Math.ceil(4.2)); // 5 (arrotonda per eccesso)
+```
+
+**Funzioni trigonometriche**:
+
+```javascript
+console.log(Math.sin(Math.PI / 2)); // 1
+console.log(Math.cos(0)); // 1
+console.log(Math.tan(Math.PI / 4)); // ~1
+```
+
+**Minimo e massimo**:
+
+```javascript
+console.log(Math.min(5, 10, 2, 8)); // 2
+console.log(Math.max(5, 10, 2, 8)); // 10
+```
+
+**Numero casuale**:
+
+```javascript
+console.log(Math.random()); // Numero tra 0 (incluso) e 1 (escluso)
+```
+
+### Esempio: Generare Numeri Casuali in un Range
+
+`Math.random()` genera un numero tra `0` (incluso) e `1` (escluso). Per generare numeri casuali in un range specifico:
+
+```javascript
+function randomIntBetween(min, max) {
+  // Math.random() genera un numero tra 0 e 1 (escluso)
+  // Moltiplichiamo per (max - min + 1) per ottenere il range
+  // Aggiungiamo min per rispettare il limite inferiore
+  // Usiamo Math.floor() per arrotondare per difetto
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+console.log(randomIntBetween(1, 10)); // Numero tra 1 e 10 (inclusi)
+```
+
+**Spiegazione del calcolo**:
+
+1. `Math.random()` genera un numero tra `0` e `0.999...`
+2. Moltiplicando per `(max - min + 1)` otteniamo un numero tra `0` e `(max - min)`
+3. Aggiungendo `min` spostiamo il range a `[min, max + 1)`
+4. `Math.floor()` arrotonda per difetto, ottenendo un intero tra `min` e `max` (inclusi)
+
+**Esempio con valori concreti**:
+
+```javascript
+// Se min = 5, max = 10
+// Math.random() potrebbe essere 0.8
+// 0.8 * (10 - 5 + 1) = 0.8 * 6 = 4.8
+// Math.floor(4.8) = 4
+// 4 + 5 = 9 (risultato finale)
+```
+
+---
+
+## Stringhe: Metodi e Proprietà
+
+Le stringhe in JavaScript possono essere create in tre modi:
+
+```javascript
+const str1 = "Doppie virgolette";
+const str2 = 'Virgolette singole';
+const str3 = `Template literal`;
+```
+
+Tutte e tre le sintassi creano stringhe equivalenti. I template literals permettono di interpolare valori:
+
+```javascript
+const name = "Mario";
+const greeting = `Ciao, ${name}!`; // "Ciao, Mario!"
+```
+
+### Proprietà e Metodi Comuni
+
+**`length`**: lunghezza della stringa:
+
+```javascript
+console.log("Hello".length); // 5
+```
+
+**Trasformazione**:
+
+```javascript
+console.log("hello".toUpperCase()); // "HELLO"
+console.log("HELLO".toLowerCase()); // "hello"
+```
+
+**Ricerca e sostituzione**:
+
+```javascript
+const text = "Hello World";
+
+console.log(text.includes("World")); // true
+console.log(text.startsWith("Hello")); // true
+console.log(text.endsWith("World")); // true
+console.log(text.indexOf("o")); // 4
+console.log(text.replace("World", "JavaScript")); // "Hello JavaScript"
+```
+
+**Estrazione**:
+
+```javascript
+const text = "Hello World";
+
+console.log(text.substring(0, 5)); // "Hello"
+console.log(text.slice(0, 5)); // "Hello"
+console.log(text.slice(-5)); // "World" (dalla fine)
+```
+
+**Rimozione spazi**:
+
+```javascript
+console.log("  hello  ".trim()); // "hello"
+console.log("  hello  ".trimStart()); // "hello  "
+console.log("  hello  ".trimEnd()); // "  hello"
+```
+
+La documentazione MDN fornisce una lista completa di tutti i metodi disponibili sulle stringhe.
+
+---
+
+## Tagged Templates
+
+I **tagged templates** sono una funzionalità avanzata dei template literals che permette di processare le stringhe template attraverso una funzione personalizzata.
+
+### Sintassi Base
+
+Un tagged template si crea chiamando una funzione direttamente prima di un template literal, senza parentesi:
+
+```javascript
+function productDescription(strings, productName, productPrice) {
+  return `This is a product`;
+}
+
+const productOutput = productDescription`Product (${prodName}) is ${prodPrice}.`;
+```
+
+La funzione viene chiamata automaticamente da JavaScript, che passa:
+
+1. **Primo argomento**: array di stringhe statiche (le parti tra le interpolazioni)
+2. **Argomenti successivi**: i valori interpolati nell'ordine in cui appaiono
+
+### Come Funziona
+
+```javascript
+const prodName = "JavaScript Course";
+const prodPrice = 29.99;
+
+function productDescription(strings, productName, productPrice) {
+  console.log(strings);
+  // ["Product (", ") is ", "."]
+  
+  console.log(productName); // "JavaScript Course"
+  console.log(productPrice); // 29.99
+  
+  return `This is a product`;
+}
+
+const output = productDescription`Product (${prodName}) is ${prodPrice}.`;
+```
+
+L'array `strings` contiene tutte le parti statiche del template, separate dalle interpolazioni. I valori interpolati vengono passati come argomenti separati.
+
+### Caso d'Uso: Trasformare Valori
+
+Un caso d'uso comune è trasformare valori prima di inserirli nella stringa:
+
+```javascript
+function productDescription(strings, productName, productPrice) {
+  let priceCategory;
+  
+  if (productPrice <= 20) {
+    priceCategory = "cheap";
+  } else {
+    priceCategory = "fair";
+  }
+  
+  // Ricostruire la stringa con il valore trasformato
+  return strings[0] + 
+         productName + 
+         strings[1] + 
+         priceCategory + 
+         strings[2];
+}
+
+const prodName = "JavaScript Course";
+const prodPrice = 29.99;
+
+const output = productDescription`Product (${prodName}) is ${priceCategory}.`;
+console.log(output); // "Product (JavaScript Course) is fair."
+```
+
+Questo approccio è utile quando la logica di trasformazione è complessa e renderebbe il template literal difficile da leggere se fosse tutto inline.
+
+### Restituire Tipi Diversi
+
+La funzione tag non è obbligata a restituire una stringa:
+
+```javascript
+function extractData(strings, productName, productPrice) {
+  // Restituire un oggetto invece di una stringa
+  return {
+    name: productName,
+    price: productPrice
+  };
+}
+
+const prodName = "JavaScript Course";
+const prodPrice = 29.99;
+
+const data = extractData`Product (${prodName}) is ${prodPrice}.`;
+console.log(data); // { name: "JavaScript Course", price: 29.99 }
+```
+
+Questo permette di usare i tagged templates per estrarre e strutturare dati da stringhe template.
+
+### Quando Usare Tagged Templates
+
+I tagged templates sono utili quando:
+
+- Si deve applicare logica complessa per trasformare valori prima dell'interpolazione
+- Si vuole validare o sanitizzare i valori interpolati
+- Si vuole estrarre dati strutturati da template stringhe
+- Si implementano librerie di templating personalizzate
+
+Per casi semplici, i template literals normali sono più leggibili e appropriati.
+
+---
+
+## Regular Expressions
+
+Le **regular expressions** (regex) sono pattern che permettono di cercare e validare sequenze di caratteri nelle stringhe. Sono supportate in molti linguaggi di programmazione, non solo JavaScript.
+
+### Creare una Regular Expression
+
+Ci sono due modi per creare una regex:
+
+**1. Costruttore `RegExp`**:
+
+```javascript
+const regex = new RegExp('hello');
+```
+
+**2. Letterale con forward slash**:
+
+```javascript
+const regex = /hello/;
+```
+
+Il secondo metodo è più comune e conciso.
+
+### Validare Pattern
+
+Il metodo **`test()`** verifica se una stringa corrisponde al pattern:
+
+```javascript
+const regex = /hello/;
+
+console.log(regex.test('hello')); // true
+console.log(regex.test('hi there, hello')); // true
+console.log(regex.test('Hello')); // false (case-sensitive)
+```
+
+### Pattern Base
+
+**Caratteri letterali**: cercano esattamente quei caratteri:
+
+```javascript
+const regex = /hello/;
+console.log(regex.test('hello')); // true
+```
+
+**Case sensitivity**: le regex sono case-sensitive per default:
+
+```javascript
+const regex = /hello/;
+console.log(regex.test('Hello')); // false
+```
+
+**Alternativa con pipe (`|`)**:
+
+```javascript
+const regex = /(h|H)ello/;
+console.log(regex.test('hello')); // true
+console.log(regex.test('Hello')); // true
+```
+
+**Wildcard con punto (`.`)**:
+
+```javascript
+const regex = /.ello/; // Qualsiasi carattere seguito da "ello"
+console.log(regex.test('hello')); // true
+console.log(regex.test('jello')); // true
+console.log(regex.test('ello')); // false (manca un carattere)
+```
+
+Il punto `.` corrisponde a qualsiasi carattere tranne il newline.
+
+### Escape di Caratteri Speciali
+
+Alcuni caratteri hanno significato speciale nelle regex. Per cercare il carattere letterale, si usa il backslash `\`:
+
+```javascript
+// Cercare un punto letterale (non wildcard)
+const regex = /\./;
+console.log(regex.test('test.com')); // true
+
+// Cercare una parentesi
+const regex2 = /\(/;
+console.log(regex2.test('(test)')); // true
+```
+
+### Pattern Avanzati
+
+**`\S+`**: uno o più caratteri non-spazio:
+
+```javascript
+const regex = /\S+/;
+console.log(regex.test('hello')); // true
+console.log(regex.test('hello world')); // true
+```
+
+**`^`**: inizio della stringa:
+
+```javascript
+const regex = /^hello/;
+console.log(regex.test('hello world')); // true
+console.log(regex.test('world hello')); // false
+```
+
+**`$`**: fine della stringa:
+
+```javascript
+const regex = /world$/;
+console.log(regex.test('hello world')); // true
+console.log(regex.test('world hello')); // false
+```
+
+### Esempio: Validazione Email
+
+Un pattern semplice per validare email:
+
+```javascript
+const emailRegex = /^\S+@\S+\.\S+$/;
+
+console.log(emailRegex.test('test@test.com')); // true
+console.log(emailRegex.test('test@test')); // false (manca il dominio)
+console.log(emailRegex.test('testtest.com')); // false (manca @)
+```
+
+**Spiegazione del pattern**:
+
+- `^` inizio stringa
+- `\S+` uno o più caratteri non-spazio (nome utente)
+- `@` simbolo @ letterale
+- `\S+` uno o più caratteri non-spazio (dominio)
+- `\.` punto letterale
+- `\S+` uno o più caratteri non-spazio (estensione)
+- `$` fine stringa
+
+### Metodi per Regex
+
+**`test()`**: verifica se il pattern corrisponde:
+
+```javascript
+const regex = /hello/;
+console.log(regex.test('hello world')); // true
+```
+
+**`exec()`**: trova la corrispondenza e restituisce informazioni:
+
+```javascript
+const regex = /jello/;
+const result = regex.exec('hi jello');
+console.log(result);
+// ["jello", index: 3, input: "hi jello", groups: undefined]
+```
+
+**`match()`** (metodo delle stringhe): simile a `exec()` ma chiamato sulla stringa:
+
+```javascript
+const text = 'hi jello';
+const result = text.match(/jello/);
+console.log(result);
+// ["jello", index: 3, input: "hi jello", groups: undefined]
+```
+
+### Trovare Pattern Esistenti
+
+Quando si ha bisogno di una regex per un caso specifico, spesso è meglio cercare pattern già testati:
+
+- **Email**: cercare "javascript email regex" su Stack Overflow
+- **URL**: cercare "javascript url regex"
+- **Telefono**: cercare "javascript phone regex"
+
+Le regex possono diventare molto complesse, e usare pattern già validati da altri sviluppatori è spesso più sicuro che crearne di nuovi.
+
+### Risorse per Imparare Regex
+
+Le regular expressions hanno una sintassi ricca che richiede tempo per padroneggiare. Risorse utili:
+
+- **MDN**: documentazione completa su regex in JavaScript
+- **Regex101**: tool online per testare e debuggare regex
+- **Stack Overflow**: pattern comuni per casi d'uso specifici
+
+Per la maggior parte degli sviluppatori, è normale cercare pattern esistenti piuttosto che scriverli da zero ogni volta.
+
+---
+
+## Riepilogo
+
+In questo capitolo si sono esplorati aspetti avanzati di numeri e stringhe in JavaScript:
+
+- **Rappresentazione interna**: i numeri sono floating point a 64 bit con limiti di precisione e range
+- **Problemi di precisione**: la conversione tra sistema decimale e binario può introdurre imprecisioni
+- **BigInt**: tipo per rappresentare interi arbitrariamente grandi
+- **Number e Math objects**: metodi e proprietà utili per operazioni matematiche
+- **Tagged templates**: funzionalità avanzata per processare template literals con funzioni personalizzate
+- **Regular expressions**: pattern matching per validare e cercare pattern nelle stringhe
+
+Comprendere questi concetti aiuta a scrivere codice più robusto e a evitare bug comuni legati alla precisione numerica e alla manipolazione delle stringhe.

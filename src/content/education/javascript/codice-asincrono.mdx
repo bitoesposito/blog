@@ -1,0 +1,750 @@
+---
+title: "Codice Asincrono in JavaScript"
+description: "Gestione di operazioni asincrone: callbacks, promises, async/await, event loop e orchestrazione di operazioni multiple"
+date: 2026-02-11
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 14
+---
+
+## Introduzione
+
+La programmazione asincrona è un concetto fondamentale in JavaScript che permette di gestire operazioni che richiedono tempo senza bloccare l'esecuzione del codice. A differenza del codice sincrono che esegue istruzioni sequenzialmente, il codice asincrono permette di avviare operazioni e continuare l'esecuzione mentre si attende il loro completamento.
+
+Questo capitolo approfondisce:
+
+- **Codice sincrono vs asincrono**: differenze e quando usare ciascun approccio
+- **Single-threading**: come JavaScript gestisce l'esecuzione del codice
+- **Event loop e message queue**: meccanismo interno per gestire operazioni asincrone
+- **Callbacks**: funzioni passate come argomenti per gestire operazioni asincrone
+- **Promises**: oggetti che rappresentano il completamento futuro di un'operazione
+- **Async/await**: sintassi alternativa per lavorare con promises
+- **Orchestrazione**: metodi per coordinare multiple operazioni asincrone
+
+---
+
+## Codice Sincrono
+
+Il **codice sincrono** è quello che viene eseguito sequenzialmente, una riga dopo l'altra, in ordine. Ogni operazione deve completarsi prima che la successiva possa iniziare.
+
+### Esecuzione Sequenziale
+
+```javascript
+console.log('Prima operazione');
+const button = document.querySelector('button');
+button.disabled = true;
+console.log('Dopo la disabilitazione');
+```
+
+In questo esempio, ogni riga viene eseguita solo dopo che la precedente è completata. JavaScript è **single-threaded**, il che significa che può eseguire solo un'operazione alla volta.
+
+### Single-Threading
+
+Il fatto che JavaScript sia single-threaded significa che:
+
+- Solo un'operazione può essere eseguita alla volta
+- Le operazioni vengono eseguite in sequenza, non in parallelo
+- L'ordine di esecuzione è garantito e prevedibile
+
+```javascript
+// Queste operazioni vengono eseguite nell'ordine scritto
+const element = document.querySelector('.my-element');
+element.classList.add('active');
+console.log('Elemento attivato');
+```
+
+Se JavaScript fosse multi-threaded, potrebbe eseguire più operazioni simultaneamente, ma questo introdurrebbe problemi di race conditions e renderebbe difficile garantire l'ordine di esecuzione.
+
+### Quando il Codice Sincrono è un Problema
+
+Il codice sincrono diventa problematico quando si hanno operazioni che richiedono tempo:
+
+```javascript
+console.log('Inizio');
+setTimeout(() => {
+  console.log('Timer completato');
+}, 2000);
+console.log('Fine');
+```
+
+Se `setTimeout` fosse sincrono, il codice si bloccherebbe per 2 secondi prima di eseguire la riga successiva, impedendo qualsiasi altra operazione.
+
+**Altri esempi di operazioni che richiedono tempo**:
+
+- **HTTP requests**: richieste al server che possono richiedere secondi
+- **Geolocation**: ottenere la posizione dell'utente può richiedere tempo
+- **File operations**: leggere/scrivere file può essere lento
+- **Database queries**: interrogazioni al database possono richiedere tempo
+
+Se queste operazioni fossero sincrone, bloccherebbero completamente l'esecuzione del codice, rendendo l'applicazione non responsiva.
+
+---
+
+## Codice Asincrono
+
+Il **codice asincrono** permette di avviare operazioni che richiedono tempo senza bloccare l'esecuzione del resto del codice. Quando si avvia un'operazione asincrona, il codice continua a eseguire le righe successive mentre l'operazione viene gestita dal browser.
+
+### Come Funziona
+
+Quando si chiama una funzione asincrona come `setTimeout`, succede quanto segue:
+
+1. La funzione viene eseguita e delega l'operazione al **browser**
+2. Il browser gestisce l'operazione in un thread separato
+3. Il codice JavaScript continua immediatamente con le righe successive
+4. Quando l'operazione è completata, il browser comunica il risultato a JavaScript
+
+```javascript
+console.log('Prima del timer');
+setTimeout(() => {
+  console.log('Timer completato');
+}, 2000);
+console.log('Dopo il timer');
+// Output:
+// "Prima del timer"
+// "Dopo il timer" (immediatamente)
+// "Timer completato" (dopo 2 secondi)
+```
+
+### Callback Functions
+
+Per permettere al browser di comunicare quando un'operazione asincrona è completata, si usano **callback functions** (funzioni di callback):
+
+```javascript
+setTimeout(() => {
+  console.log('Timer completato');
+}, 2000);
+```
+
+La funzione passata a `setTimeout` è una callback che viene eseguita quando il timer scade. Lo stesso principio si applica agli event listener:
+
+```javascript
+button.addEventListener('click', function() {
+  console.log('Button clicked');
+});
+```
+
+Quando si registra un event listener, si delega al browser il compito di monitorare i click. Il codice JavaScript continua l'esecuzione, e quando l'utente clicca, il browser esegue la callback.
+
+### Operazioni che Bloccano
+
+Non tutte le operazioni possono essere delegate al browser. Un loop lungo, ad esempio, deve essere eseguito completamente prima che altre operazioni possano procedere:
+
+```javascript
+let result = 0;
+for (let i = 0; i < 100000000; i++) {
+  result += i;
+}
+console.log(result);
+```
+
+Durante l'esecuzione di questo loop, anche le callback in attesa (come quelle di event listener o timer) devono aspettare che il loop finisca. Questo dimostra il single-threading di JavaScript: quando il call stack è occupato, nulla altro può essere eseguito.
+
+---
+
+## Event Loop e Message Queue
+
+Per gestire il codice asincrono, JavaScript e il browser utilizzano un meccanismo chiamato **event loop** insieme a una **message queue**.
+
+### Componenti del Sistema
+
+**1. Call Stack**: dove vengono eseguite le funzioni JavaScript
+
+**2. Browser APIs**: funzionalità del browser (timer, HTTP requests, geolocation) che possono essere chiamate da JavaScript
+
+**3. Message Queue**: coda di callback in attesa di essere eseguite
+
+**4. Event Loop**: meccanismo che controlla se il call stack è vuoto e sposta callback dalla message queue al call stack
+
+### Come Funziona l'Event Loop
+
+```javascript
+function greet() {
+  console.log('Hello');
+}
+
+function showAlert() {
+  alert('Timer done!');
+}
+
+setTimeout(showAlert, 2000);
+greet();
+```
+
+**Sequenza di esecuzione**:
+
+1. `setTimeout` viene chiamato e delega il timer al browser
+2. `setTimeout` termina immediatamente (non blocca)
+3. `greet()` viene eseguita e stampa "Hello"
+4. Il call stack è vuoto
+5. Dopo 2 secondi, il browser aggiunge `showAlert` alla message queue
+6. L'event loop vede che il call stack è vuoto e sposta `showAlert` dal message queue al call stack
+7. `showAlert` viene eseguita e mostra l'alert
+
+### Importanza dell'Event Loop
+
+L'event loop garantisce che:
+
+- Le callback asincrone vengano eseguite solo quando il call stack è vuoto
+- Il codice sincrono abbia sempre priorità
+- Le operazioni asincrone non blocchino l'esecuzione del codice principale
+
+```javascript
+setTimeout(() => {
+  console.log('Timer');
+}, 0);
+
+console.log('Sync code');
+// Output:
+// "Sync code" (prima)
+// "Timer" (dopo)
+```
+
+Anche con un timer di `0` millisecondi, la callback viene eseguita dopo il codice sincrono perché deve passare attraverso la message queue e l'event loop.
+
+---
+
+## Callbacks
+
+Le **callback functions** sono funzioni passate come argomenti ad altre funzioni, che vengono eseguite quando un'operazione è completata. Sono il metodo tradizionale per gestire codice asincrono.
+
+### Esempio con Geolocation
+
+```javascript
+navigator.geolocation.getCurrentPosition(
+  function(positionData) {
+    console.log(positionData);
+  },
+  function(error) {
+    console.log(error);
+  }
+);
+```
+
+`getCurrentPosition` accetta due callback:
+- **Success callback**: eseguita quando la posizione viene ottenuta con successo
+- **Error callback**: eseguita se si verifica un errore
+
+### Callback Hell
+
+Quando si hanno multiple operazioni asincrone dipendenti, si può finire in una situazione chiamata **callback hell**:
+
+```javascript
+getCurrentPosition((position) => {
+  setTimeout(() => {
+    console.log(position);
+    anotherAsyncOperation((result) => {
+      yetAnotherAsyncOperation((finalResult) => {
+        console.log(finalResult);
+      });
+    });
+  }, 2000);
+});
+```
+
+**Problemi del callback hell**:
+
+- Codice difficile da leggere e mantenere
+- Difficile tracciare il flusso di esecuzione
+- Gestione degli errori complessa
+- Variabili accessibili attraverso closure possono creare confusione
+
+Questo pattern diventa rapidamente ingestibile quando si hanno più di 2-3 livelli di nesting.
+
+---
+
+## Promises
+
+Le **Promises** sono oggetti che rappresentano il completamento (o il fallimento) futuro di un'operazione asincrona. Permettono di scrivere codice asincrono in modo più leggibile e gestibile rispetto ai callback.
+
+### Cos'è una Promise
+
+Una Promise è un oggetto che può trovarsi in uno di questi stati:
+
+- **Pending**: l'operazione è in corso
+- **Resolved/Fulfilled**: l'operazione è completata con successo
+- **Rejected**: l'operazione è fallita
+
+### Creare una Promise
+
+```javascript
+function setTimer(duration) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve('Timer done!');
+    }, duration);
+  });
+}
+```
+
+Il costruttore `Promise` accetta una funzione che riceve due parametri:
+- **`resolve`**: funzione da chiamare quando l'operazione ha successo
+- **`reject`**: funzione da chiamare quando l'operazione fallisce
+
+### Usare una Promise
+
+```javascript
+setTimer(2000)
+  .then((data) => {
+    console.log(data); // "Timer done!"
+  });
+```
+
+Il metodo **`then()`** viene chiamato quando la Promise viene risolta. Riceve come argomento il valore passato a `resolve()`.
+
+### Promisificare API Esistenti
+
+Molte API del browser usano ancora callbacks. Si possono "promisificare" wrappandole in una Promise:
+
+```javascript
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (positionData) => resolve(positionData),
+      (error) => reject(error)
+    );
+  });
+}
+```
+
+Ora si può usare `getPosition()` con la sintassi delle Promise invece dei callback.
+
+---
+
+## Promise Chaining
+
+Il **promise chaining** permette di concatenare multiple operazioni asincrone in sequenza, evitando il callback hell.
+
+### Sintassi Base
+
+```javascript
+getPosition()
+  .then((positionData) => {
+    console.log(positionData);
+    return setTimer(2000);
+  })
+  .then((timerData) => {
+    console.log(timerData);
+  });
+```
+
+Ogni `then()` restituisce una nuova Promise. Se si restituisce un valore nel `then()`, viene automaticamente wrappato in una Promise risolta.
+
+### Passare Dati tra Step
+
+```javascript
+let positionData;
+
+getPosition()
+  .then((posData) => {
+    positionData = posData;
+    return setTimer(2000);
+  })
+  .then((timerData) => {
+    console.log(positionData); // Disponibile grazie alla closure
+    console.log(timerData);
+  });
+```
+
+Si può anche restituire una Promise nel `then()`:
+
+```javascript
+getPosition()
+  .then((positionData) => {
+    return setTimer(2000); // Restituisce una Promise
+  })
+  .then((timerData) => {
+    // Eseguito quando setTimer completa
+    console.log(timerData);
+  });
+```
+
+Quando si restituisce una Promise, il prossimo `then()` aspetta che quella Promise si risolva prima di eseguire.
+
+### Vantaggi del Chaining
+
+- **Leggibilità**: codice lineare invece di nesting profondo
+- **Manutenibilità**: più facile aggiungere o rimuovere step
+- **Gestione errori**: errori possono essere gestiti centralmente
+
+---
+
+## Gestione Errori con Promises
+
+Le Promise forniscono diversi modi per gestire gli errori quando un'operazione asincrona fallisce.
+
+### Usare `reject`
+
+Quando si crea una Promise, si può chiamare `reject()` per indicare un errore:
+
+```javascript
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (positionData) => resolve(positionData),
+      (error) => reject(error) // Chiamare reject in caso di errore
+    );
+  });
+}
+```
+
+### Gestire Errori con `then`
+
+Il metodo `then()` accetta un secondo argomento per gestire gli errori:
+
+```javascript
+getPosition()
+  .then(
+    (positionData) => {
+      console.log(positionData);
+    },
+    (error) => {
+      console.log('Errore:', error);
+    }
+  );
+```
+
+### Usare `catch`
+
+Un modo più pulito è usare il metodo **`catch()`**:
+
+```javascript
+getPosition()
+  .then((positionData) => {
+    console.log(positionData);
+  })
+  .catch((error) => {
+    console.log('Errore:', error);
+  });
+```
+
+`catch()` cattura qualsiasi errore o rejection che si verifica nella catena di Promise prima di esso.
+
+### Comportamento degli Errori
+
+Quando una Promise viene rifiutata:
+
+- Tutti i `then()` successivi vengono saltati
+- Si passa direttamente al `catch()` più vicino
+- Dopo il `catch()`, la catena può continuare se il `catch()` restituisce un valore
+
+```javascript
+getPosition()
+  .then((positionData) => {
+    // Saltato se getPosition fallisce
+    return setTimer(2000);
+  })
+  .catch((error) => {
+    // Eseguito se getPosition fallisce
+    return 'Fallback value';
+  })
+  .then((data) => {
+    // Eseguito dopo il catch (con 'Fallback value')
+    console.log(data);
+  });
+```
+
+### Stati delle Promise
+
+Una Promise può essere in uno di questi stati:
+
+- **PENDING**: l'operazione è in corso, né `then()` né `catch()` vengono eseguiti
+- **RESOLVED**: la Promise è risolta, `then()` viene eseguito
+- **REJECTED**: la Promise è stata rifiutata, `catch()` viene eseguito
+- **SETTLED**: la Promise è completata (risolta o rifiutata), si può usare `finally()`
+
+### Metodo `finally`
+
+Il metodo **`finally()`** viene eseguito sempre, sia che la Promise sia risolta o rifiutata:
+
+```javascript
+getPosition()
+  .then((positionData) => {
+    console.log(positionData);
+  })
+  .catch((error) => {
+    console.log('Errore:', error);
+  })
+  .finally(() => {
+    // Eseguito sempre, per cleanup o operazioni finali
+    console.log('Operazione completata');
+  });
+```
+
+`finally()` non restituisce una nuova Promise e viene raggiunto solo quando la Promise è completamente settled.
+
+---
+
+## Async/Await
+
+**Async/await** è una sintassi alternativa per lavorare con le Promise che rende il codice asincrono simile al codice sincrono, migliorando la leggibilità.
+
+### Funzioni Async
+
+Una funzione marcata con **`async`** restituisce automaticamente una Promise:
+
+```javascript
+async function trackUser() {
+  // Questa funzione restituisce una Promise
+}
+```
+
+Anche se non si restituisce esplicitamente una Promise, la funzione viene wrappata automaticamente in una Promise.
+
+### Keyword `await`
+
+La keyword **`await`** può essere usata solo dentro funzioni `async`. Fa "aspettare" che una Promise si risolva prima di continuare:
+
+```javascript
+async function trackUser() {
+  const positionData = await getPosition();
+  console.log(positionData);
+  // Questa riga viene eseguita solo dopo che getPosition() è completato
+}
+```
+
+### Trasformazione Dietro le Quinte
+
+`async/await` non cambia il modo in cui JavaScript funziona. Il codice viene trasformato dietro le quinte in una catena di `then()`:
+
+```javascript
+// Codice con async/await
+async function example() {
+  const data = await somePromise();
+  console.log(data);
+}
+
+// Equivalente a:
+function example() {
+  return somePromise()
+    .then((data) => {
+      console.log(data);
+    });
+}
+```
+
+### Gestione Errori con try/catch
+
+Con `async/await`, si può usare `try/catch` per gestire gli errori:
+
+```javascript
+async function trackUser() {
+  try {
+    const positionData = await getPosition();
+    const timerData = await setTimer(2000);
+    console.log(positionData, timerData);
+  } catch (error) {
+    console.log('Errore:', error);
+  }
+}
+```
+
+Se una Promise viene rifiutata, viene lanciata un'eccezione che può essere catturata dal `catch`.
+
+### Variabili e Scope
+
+Con `async/await`, le variabili sono disponibili nello scope della funzione:
+
+```javascript
+async function trackUser() {
+  let positionData;
+  let timerData;
+  
+  try {
+    positionData = await getPosition();
+    timerData = await setTimer(2000);
+  } catch (error) {
+    console.log('Errore:', error);
+  }
+  
+  // Le variabili sono disponibili qui
+  console.log(positionData, timerData);
+}
+```
+
+### Limitazioni di async/await
+
+**1. Esecuzione sequenziale**: tutto il codice nella funzione viene eseguito sequenzialmente:
+
+```javascript
+async function example() {
+  await getPosition(); // Aspetta
+  setTimer(1000); // Eseguito solo dopo getPosition
+  console.log('Done'); // Eseguito solo dopo setTimer
+}
+```
+
+Se si vuole eseguire operazioni in parallelo, bisogna usare `Promise.all()` o chiamare le funzioni senza `await`.
+
+**2. Solo in funzioni**: `await` può essere usato solo dentro funzioni `async`:
+
+```javascript
+// ❌ Non funziona
+const data = await getPosition();
+
+// ✅ Funziona
+(async () => {
+  const data = await getPosition();
+})();
+```
+
+### Quando Usare async/await vs Promises
+
+**Usa `async/await` quando**:
+- Si hanno operazioni sequenziali dipendenti
+- Si vuole codice più leggibile simile al codice sincrono
+- Si preferisce `try/catch` per la gestione errori
+
+**Usa Promises con `then/catch` quando**:
+- Si vogliono eseguire operazioni in parallelo nella stessa funzione
+- Si preferisce la sintassi esplicita delle Promise
+- Si lavora con codice che non è dentro una funzione
+
+Entrambi gli approcci sono validi e la scelta dipende dalle preferenze personali e dal contesto.
+
+---
+
+## Orchestrazione di Multiple Promises
+
+JavaScript fornisce metodi statici sulla classe `Promise` per coordinare multiple operazioni asincrone.
+
+### Promise.race()
+
+**`Promise.race()`** restituisce una Promise che si risolve o rifiuta non appena una delle Promise nell'array si risolve o rifiuta:
+
+```javascript
+Promise.race([
+  getPosition(),
+  setTimer(1000)
+])
+  .then((data) => {
+    console.log(data); // Risultato della Promise più veloce
+  });
+```
+
+**Caso d'uso**: quando si vuole eseguire un'operazione con un timeout:
+
+```javascript
+Promise.race([
+  getPosition(),
+  setTimer(5000) // Timeout di 5 secondi
+])
+  .then((data) => {
+    if (data.coords) {
+      // Posizione ottenuta
+    } else {
+      // Timeout scaduto
+    }
+  });
+```
+
+**Nota importante**: le altre Promise continuano a eseguire, ma i loro risultati vengono ignorati.
+
+### Promise.all()
+
+**`Promise.all()`** restituisce una Promise che si risolve quando **tutte** le Promise nell'array si risolvono:
+
+```javascript
+Promise.all([
+  getPosition(),
+  setTimer(1000)
+])
+  .then((results) => {
+    console.log(results);
+    // Array con i risultati di tutte le Promise
+    // results[0] = risultato di getPosition()
+    // results[1] = risultato di setTimer(1000)
+  });
+```
+
+**Comportamento con errori**: se una Promise viene rifiutata, `Promise.all()` viene immediatamente rifiutata:
+
+```javascript
+Promise.all([
+  getPosition(), // Se questa fallisce...
+  setTimer(1000) // ...questa viene comunque eseguita ma il risultato è ignorato
+])
+  .catch((error) => {
+    // Gestisce l'errore della prima Promise che fallisce
+  });
+```
+
+**Caso d'uso**: quando si devono attendere tutti i risultati prima di procedere:
+
+```javascript
+Promise.all([
+  fetchUserData(),
+  fetchUserSettings(),
+  fetchUserPreferences()
+])
+  .then(([userData, settings, preferences]) => {
+    // Usa tutti i dati insieme
+    renderUserProfile(userData, settings, preferences);
+  });
+```
+
+### Promise.allSettled()
+
+**`Promise.allSettled()`** attende che **tutte** le Promise si completino (sia risolte che rifiutate):
+
+```javascript
+Promise.allSettled([
+  getPosition(),
+  setTimer(1000)
+])
+  .then((results) => {
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        console.log(`Promise ${index} risolta:`, result.value);
+      } else {
+        console.log(`Promise ${index} rifiutata:`, result.reason);
+      }
+    });
+  });
+```
+
+**Differenza con `Promise.all()`**:
+- `Promise.all()` si rifiuta immediatamente se una Promise fallisce
+- `Promise.allSettled()` attende sempre tutte le Promise, indipendentemente dal risultato
+
+**Caso d'uso**: quando si vogliono conoscere i risultati di tutte le operazioni, anche se alcune falliscono:
+
+```javascript
+Promise.allSettled([
+  saveToDatabase(),
+  sendEmail(),
+  updateCache()
+])
+  .then((results) => {
+    // Analizza quali operazioni sono riuscite e quali no
+    const successful = results.filter(r => r.status === 'fulfilled');
+    const failed = results.filter(r => r.status === 'rejected');
+    
+    console.log(`${successful.length} operazioni completate`);
+    console.log(`${failed.length} operazioni fallite`);
+  });
+```
+
+### Confronto dei Metodi
+
+| Metodo | Comportamento | Quando Usare |
+|--------|---------------|--------------|
+| `Promise.race()` | Risolve quando la prima Promise completa | Timeout, prima risposta valida |
+| `Promise.all()` | Risolve quando tutte le Promise si risolvono | Operazioni dipendenti, tutti i risultati necessari |
+| `Promise.allSettled()` | Risolve quando tutte le Promise completano | Analisi completa dei risultati, gestione errori parziali |
+
+---
+
+## Riepilogo
+
+In questo capitolo si è esplorato il codice asincrono in JavaScript:
+
+- **Codice sincrono vs asincrono**: JavaScript è single-threaded e esegue codice sequenzialmente, ma può delegare operazioni lunghe al browser
+- **Event loop**: meccanismo che gestisce l'esecuzione di callback asincrone quando il call stack è vuoto
+- **Callbacks**: metodo tradizionale per gestire operazioni asincrone, ma può portare a callback hell
+- **Promises**: oggetti che rappresentano operazioni asincrone future, permettendo codice più leggibile
+- **Promise chaining**: concatenare operazioni asincrone sequenziali senza nesting profondo
+- **Gestione errori**: `catch()` e `finally()` per gestire errori nelle catene di Promise
+- **Async/await**: sintassi alternativa che rende il codice asincrono simile al codice sincrono
+- **Orchestrazione**: `Promise.race()`, `Promise.all()`, e `Promise.allSettled()` per coordinare multiple operazioni
+
+Comprendere il codice asincrono è fondamentale per lo sviluppo JavaScript moderno, specialmente quando si lavora con API del browser, richieste HTTP e operazioni che richiedono tempo.
