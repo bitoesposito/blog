@@ -1,0 +1,637 @@
+---
+title: "Funzioni: Concetti Avanzati"
+description: "Pure functions, side effects, factory functions, closures e recursion in JavaScript"
+date: 2026-02-10
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 13
+---
+
+## Introduzione
+
+Le funzioni in JavaScript possono essere utilizzate in modi avanzati che vanno oltre la semplice esecuzione di codice. Comprendere questi concetti permette di scrivere codice più prevedibile, modulare e potente.
+
+In questo capitolo si approfondiscono:
+
+- **Pure functions e side effects**: funzioni prevedibili che non modificano lo stato esterno
+- **Factory functions**: funzioni che producono altre funzioni preconfigurate
+- **Closures**: come le funzioni "ricordano" le variabili dell'ambiente circostante
+- **Recursion**: funzioni che chiamano se stesse per risolvere problemi complessi
+
+---
+
+## Pure Functions e Side Effects
+
+### Cos'è una Pure Function
+
+Una **pure function** è una funzione che:
+
+1. **Sempre produce lo stesso output per lo stesso input**: dati gli stessi argomenti, restituisce sempre lo stesso risultato
+2. **Non introduce side effects**: non modifica nulla al di fuori della funzione stessa
+
+### Esempio di Pure Function
+
+```javascript
+function add(num1, num2) {
+	return num1 + num2;
+}
+
+console.log(add(1, 5));   // 6
+console.log(add(12, 15));  // 27
+```
+
+Questa funzione è pura perché:
+
+- Per gli stessi argomenti (`1` e `5`), restituisce sempre `6`
+- Non modifica variabili esterne
+- Non esegue operazioni imprevedibili (come chiamate di rete o generazione di numeri casuali)
+
+### Esempio di Impure Function
+
+Una funzione che non è pura può violare entrambi i principi:
+
+```javascript
+function addRandom(num1) {
+	return num1 + Math.random();
+}
+
+console.log(addRandom(5));  // Risultato diverso ad ogni esecuzione
+```
+
+Questa funzione non è pura perché il risultato non è prevedibile: anche con lo stesso input (`5`), l'output varia ad ogni chiamata.
+
+### Side Effects
+
+Un **side effect** (effetto collaterale) è qualsiasi modifica che una funzione apporta all'ambiente esterno. Questo include:
+
+- Modificare variabili globali
+- Eseguire richieste HTTP
+- Scrivere nel database
+- Modificare oggetti o array passati come argomenti
+
+```javascript
+let previousResult = 0;
+
+function addWithSideEffect(num1, num2) {
+	const sum = num1 + num2;
+	previousResult = sum;  // Side effect: modifica variabile esterna
+	return sum;
+}
+
+console.log(addWithSideEffect(5, 3));  // 8
+console.log(previousResult);            // 8 (variabile modificata)
+```
+
+La funzione `addWithSideEffect` non è pura perché modifica `previousResult`, una variabile definita al di fuori della funzione.
+
+### Side Effects con Oggetti e Array
+
+Quando si passano oggetti o array come argomenti, bisogna fare attenzione: se vengono modificati all'interno della funzione, si modifica anche l'originale perché gli oggetti sono passati per riferimento.
+
+```javascript
+const hobbies = ['sports', 'cooking'];
+
+function printHobbies(h) {
+	console.log(h);
+	h.push('new hobby');  // Side effect: modifica l'array originale
+}
+
+printHobbies(hobbies);
+console.log(hobbies);  // ['sports', 'cooking', 'new hobby']
+```
+
+L'array `hobbies` viene modificato perché quando si passa un oggetto o un array, si passa un riferimento alla stessa struttura in memoria, non una copia.
+
+### Quando Usare Pure Functions
+
+In generale, è buona pratica **preferire funzioni pure** quando possibile perché:
+
+- Sono **prevedibili**: il comportamento è sempre lo stesso
+- Sono **facili da testare**: non dipendono da stato esterno
+- Sono **facili da comprendere**: non nascondono comportamenti inattesi
+
+Tuttavia, in un'applicazione reale è impossibile evitare completamente i side effects. Funzioni che:
+
+- Configurano event listener
+- Inviano dati a un server
+- Aggiornano il DOM
+
+necessariamente introducono side effects, ed è accettabile.
+
+L'obiettivo è **minimizzare** il numero di funzioni impure e rendere esplicito quando una funzione introduce side effects attraverso un nome descrittivo:
+
+```javascript
+// Nome chiaro: si capisce che invia dati (side effect)
+function sendDataToServer(data) {
+	// Invia HTTP request
+}
+
+// Nome che suggerisce una funzione pura
+function add(a, b) {
+	return a + b;  // Non dovrebbe avere side effects
+}
+```
+
+---
+
+## Factory Functions
+
+### Cos'è una Factory Function
+
+Una **factory function** è una funzione che **produce e restituisce un'altra funzione**. L'idea è creare funzioni preconfigurate che possono essere riutilizzate senza dover ripetere parametri comuni.
+
+### Problema: Ripetizione di Parametri
+
+Immagina di avere una funzione che calcola le tasse:
+
+```javascript
+function calculateTax(taxRate, amount) {
+	return amount * taxRate;
+}
+
+// Devo sempre passare il taxRate ogni volta
+const vatAmount = calculateTax(0.19, 100);      // IVA al 19%
+const incomeTax = calculateTax(0.25, 100);      // Imposta sul reddito al 25%
+```
+
+Se in diverse parti dell'applicazione si calcola sempre la stessa tassa (ad esempio l'IVA al 19%), bisogna ripetere `0.19` ogni volta.
+
+### Soluzione: Factory Function
+
+Una factory function permette di creare funzioni preconfigurate:
+
+```javascript
+function createTaxCalculator(tax) {
+	// Funzione interna che usa il parametro 'tax' della funzione esterna
+	function calculateTax(amount) {
+		return amount * tax;
+	}
+	
+	// Restituisce la funzione, non il risultato della chiamata
+	return calculateTax;
+}
+
+// Creo funzioni preconfigurate
+const calculateVatAmount = createTaxCalculator(0.19);
+const calculateIncomeTaxAmount = createTaxCalculator(0.25);
+
+// Ora posso usarle senza ripetere il taxRate
+console.log(calculateVatAmount(100));   // 19
+console.log(calculateVatAmount(200));   // 38
+console.log(calculateIncomeTaxAmount(100));  // 25
+```
+
+### Come Funziona
+
+1. `createTaxCalculator` viene chiamata con un valore per `tax` (ad esempio `0.19`)
+2. All'interno viene creata una funzione `calculateTax` che può accedere a `tax` grazie allo scope
+3. La funzione interna viene **restituita** (non eseguita)
+4. La funzione restituita "ricorda" il valore di `tax` con cui è stata creata
+
+Ogni chiamata a `createTaxCalculator` crea una nuova funzione indipendente con il proprio valore di `tax` memorizzato.
+
+### Vantaggi delle Factory Functions
+
+- **Riduzione della ripetizione**: parametri comuni vengono configurati una sola volta
+- **Codice più pulito**: le chiamate successive sono più semplici
+- **Maggiore flessibilità**: si possono creare diverse varianti della stessa funzione
+
+---
+
+## Closures
+
+### Cos'è una Closure
+
+In JavaScript, **ogni funzione è una closure**. Una closure è una funzione che "chiude" (memorizza) l'ambiente lessicale circostante, inclusi tutte le variabili e costanti accessibili nel momento in cui la funzione viene creata.
+
+### Scope e Lexical Environment
+
+Il concetto di closure è strettamente legato a quello di **scope** (ambito) e **lexical environment** (ambiente lessicale).
+
+Ogni funzione ha il proprio **lexical environment** che contiene:
+
+- Le variabili e i parametri definiti nella funzione stessa
+- Un riferimento all'ambiente lessicale esterno (funzione contenitore o globale)
+
+```javascript
+const userName = 'Max';
+
+function greetUser() {
+	console.log('Hi ' + userName);
+}
+
+greetUser();  // "Hi Max"
+```
+
+La funzione `greetUser` può accedere a `userName` perché ha un riferimento all'ambiente lessicale globale dove `userName` è definito.
+
+### Comportamento con Variabili Modificate
+
+Quando una funzione accede a una variabile esterna, non ne fa una copia del valore, ma mantiene un riferimento alla variabile stessa:
+
+```javascript
+let userName = 'Max';
+
+function greetUser() {
+	console.log('Hi ' + userName);
+}
+
+userName = 'Manuel';  // Modifico la variabile dopo la creazione della funzione
+greetUser();          // "Hi Manuel" (usa il valore aggiornato)
+```
+
+La funzione usa il valore **corrente** della variabile quando viene eseguita, non il valore che aveva quando la funzione è stata creata.
+
+### Shadowing: Variabili con lo Stesso Nome
+
+Se una variabile viene definita sia all'interno che all'esterno di una funzione con lo stesso nome, la variabile interna "nasconde" quella esterna (shadowing):
+
+```javascript
+const name = 'Maximilian';
+
+function greetUser() {
+	const name = 'Anna';  // Variabile locale con lo stesso nome
+	console.log('Hi ' + name);
+}
+
+greetUser();  // "Hi Anna" (usa la variabile interna)
+```
+
+Quando la funzione viene eseguita, JavaScript:
+
+1. Cerca la variabile nel proprio ambiente lessicale
+2. Se non la trova, cerca nell'ambiente esterno
+3. Continua fino all'ambiente globale
+
+In questo caso, trova `name` nell'ambiente interno e non cerca oltre.
+
+### Closure nelle Factory Functions
+
+Le factory functions sfruttano le closure per "memorizzare" i parametri della funzione esterna:
+
+```javascript
+function createTaxCalculator(tax) {
+	// La funzione interna "chiude" sul parametro 'tax'
+	function calculateTax(amount) {
+		return amount * tax;  // 'tax' viene dall'ambiente esterno
+	}
+	
+	return calculateTax;
+}
+
+const calculateVat = createTaxCalculator(0.19);
+```
+
+Quando `createTaxCalculator(0.19)` viene eseguita:
+
+1. Viene creato un nuovo ambiente lessicale con `tax = 0.19`
+2. La funzione `calculateTax` viene creata e registra questo ambiente
+3. Anche dopo che `createTaxCalculator` termina, `calculateTax` mantiene accesso a `tax`
+
+Questo comportamento non è scontato: in alcuni linguaggi, le variabili locali vengono eliminate quando la funzione termina. In JavaScript, le closure garantiscono che le variabili necessarie vengano mantenute in memoria.
+
+### Variabili Globali vs Parametri
+
+C'è una differenza importante tra variabili globali e parametri di funzioni esterne:
+
+```javascript
+let multiplier = 1.1;
+
+function createTaxCalculator(tax) {
+	function calculateTax(amount) {
+		return amount * tax * multiplier;  // 'tax' è parametro, 'multiplier' è globale
+	}
+	return calculateTax;
+}
+
+const calc = createTaxCalculator(0.19);
+multiplier = 1.2;  // Modifico la variabile globale
+console.log(calc(100));  // Usa multiplier = 1.2 (valore corrente)
+```
+
+- `tax` viene "memorizzato" quando la funzione viene creata perché è parte dell'ambiente della funzione esterna
+- `multiplier` viene letto dal valore corrente quando la funzione viene eseguita perché è nell'ambiente globale
+
+### Memoria e Ottimizzazioni
+
+Potrebbe sembrare che le closure consumino molta memoria: ogni funzione potrebbe memorizzare tutte le variabili dell'ambiente circostante.
+
+In realtà, i motori JavaScript moderni sono ottimizzati:
+
+- Tracciano quali variabili vengono effettivamente utilizzate
+- Eliminano le variabili non utilizzate quando è sicuro farlo
+- Mantengono solo ciò che è necessario per le funzioni che potrebbero essere chiamate
+
+Non è necessario gestire manualmente la memoria: JavaScript lo fa in modo intelligente.
+
+### Scope vs Lexical Environment
+
+I termini **scope** e **lexical environment** sono spesso usati in modo intercambiabile:
+
+- **Scope**: concetto più generale che descrive dove una variabile è accessibile
+- **Lexical environment**: implementazione tecnica dello scope in JavaScript
+
+Non solo le funzioni creano ambienti lessicali, ma anche:
+
+- Blocchi `{}`
+- Istruzioni `if`
+- Cicli `for`
+
+Tutti questi creano un proprio ambiente con le proprie variabili.
+
+---
+
+## IIFE (Immediately Invoked Function Expression)
+
+### Pattern IIFE
+
+Un **IIFE** (Immediately Invoked Function Expression) è una funzione che viene definita e eseguita immediatamente:
+
+```javascript
+(function() {
+	const age = 30;
+	console.log(age);  // 30
+})();
+
+console.log(age);  // Error: "age is not defined"
+```
+
+La funzione è racchiusa tra parentesi `()` e viene immediatamente chiamata con `()` alla fine.
+
+### Perché Esiste Questo Pattern
+
+Questo pattern era comune quando si usava `var`, che non ha block scope ma solo function scope e global scope:
+
+```javascript
+// Con var, le variabili erano globali se non dentro una funzione
+var age = 30;  // Globale
+
+// IIFE creava uno scope isolato
+(function() {
+	var age = 30;  // Locale alla funzione
+})();
+```
+
+### Pattern Moderno
+
+Con `let` e `const`, che hanno block scope, non è più necessario usare IIFE. Si può semplicemente usare un blocco:
+
+```javascript
+{
+	const age = 30;
+	console.log(age);  // 30
+}
+
+console.log(age);  // Error: "age is not defined"
+```
+
+Gli IIFE sono ancora validi ma meno comuni nel codice moderno.
+
+---
+
+## Recursion
+
+### Cos'è la Recursion
+
+La **recursion** (ricorsione) è un pattern in cui una funzione **chiama se stessa**. Questo approccio può semplificare la soluzione di problemi complessi e rendere il codice più conciso.
+
+### Esempio Base: Calcolo della Potenza
+
+Immagina di voler calcolare `x` elevato a `n` (ad esempio, `2³ = 8`).
+
+**Implementazione con ciclo for**:
+
+```javascript
+function powerOf(x, n) {
+	let result = 1;
+	for (let i = 0; i < n; i++) {
+		result *= x;
+	}
+	return result;
+}
+
+console.log(powerOf(2, 3));  // 8
+```
+
+**Implementazione ricorsiva**:
+
+```javascript
+function powerOf(x, n) {
+	if (n === 1) {
+		return x;  // Condizione di uscita
+	}
+	return x * powerOf(x, n - 1);  // Chiamata ricorsiva
+}
+
+console.log(powerOf(2, 3));  // 8
+```
+
+### Come Funziona la Recursion
+
+Quando si chiama `powerOf(2, 3)`:
+
+1. **Prima chiamata**: `n = 3`, non è `1`, quindi calcola `2 * powerOf(2, 2)`
+2. **Seconda chiamata**: `n = 2`, non è `1`, quindi calcola `2 * powerOf(2, 1)`
+3. **Terza chiamata**: `n = 1`, restituisce `2`
+4. **Ritorno**: `2 * 2 = 4`, poi `2 * 4 = 8`
+
+Ogni chiamata crea un nuovo frame nello **stack delle chiamate** (call stack). La funzione attende che la chiamata ricorsiva completi prima di restituire il risultato.
+
+### Condizione di Uscita
+
+È **fondamentale** avere una condizione di uscita (base case) che ferma la ricorsione. Senza di essa, la funzione chiamerebbe se stessa all'infinito, causando un errore di stack overflow:
+
+```javascript
+function infiniteRecursion() {
+	infiniteRecursion();  // Chiama se stessa senza mai fermarsi
+}
+```
+
+### Sintassi Compatta
+
+La funzione ricorsiva può essere scritta in modo ancora più compatto usando un operatore ternario:
+
+```javascript
+function powerOf(x, n) {
+	return n === 1 ? x : x * powerOf(x, n - 1);
+}
+```
+
+### Quando Usare la Recursion
+
+La recursion è particolarmente utile quando:
+
+- Si lavora con **strutture dati annidate** di profondità sconosciuta
+- Il problema può essere **scomposto** in sottoproblemi identici
+- Una soluzione iterativa richiederebbe **molti loop annidati**
+
+---
+
+## Recursion con Strutture Dati Annidate
+
+### Problema: Strutture Annidate Sconosciute
+
+Immagina di avere una struttura dati che rappresenta persone e i loro amici, dove ogni amico può avere altri amici, e così via:
+
+```javascript
+const myself = {
+	name: 'Max',
+	friends: [
+		{
+			name: 'Manuel',
+			friends: [
+				{
+					name: 'Chris',
+					friends: []
+				}
+			]
+		},
+		{
+			name: 'Julia',
+			friends: []
+		}
+	]
+};
+```
+
+Questa struttura potrebbe essere profonda quanto necessario. Non si conosce a priori quanti livelli di annidamento ci sono.
+
+### Problema con i Loop
+
+Con un approccio iterativo, servirebbero loop annidati:
+
+```javascript
+function printFriendNames(person) {
+	const collectedNames = [];
+	
+	// Primo livello
+	for (const friend of person.friends) {
+		collectedNames.push(friend.name);
+		
+		// Secondo livello (ma quanti livelli servono?)
+		if (friend.friends) {
+			for (const friendOfFriend of friend.friends) {
+				collectedNames.push(friendOfFriend.name);
+				// E così via...
+			}
+		}
+	}
+	
+	return collectedNames;
+}
+```
+
+Questo approccio:
+
+- Richiede di conoscere la profondità massima
+- Diventa difficile da leggere con molti livelli
+- Non funziona se la profondità è variabile o sconosciuta
+
+### Soluzione con Recursion
+
+La recursion risolve elegantemente questo problema:
+
+```javascript
+function getFriendNames(person) {
+	// Condizione di uscita: se non ci sono amici, restituisci array vuoto
+	if (!person.friends || person.friends.length === 0) {
+		return [];
+	}
+	
+	const collectedNames = [];
+	
+	// Itera attraverso gli amici diretti
+	for (const friend of person.friends) {
+		collectedNames.push(friend.name);
+		
+		// Chiamata ricorsiva: ottieni gli amici degli amici
+		const nestedFriends = getFriendNames(friend);
+		
+		// Aggiungi gli amici annidati usando lo spread operator
+		collectedNames.push(...nestedFriends);
+	}
+	
+	return collectedNames;
+}
+
+console.log(getFriendNames(myself));
+// ['Manuel', 'Chris', 'Julia']
+```
+
+### Come Funziona
+
+1. La funzione controlla se la persona ha amici
+2. Se non ne ha, restituisce un array vuoto (condizione di uscita)
+3. Per ogni amico diretto:
+   - Aggiunge il nome alla lista
+   - Chiama ricorsivamente se stessa per ottenere gli amici di quell'amico
+   - Aggiunge i risultati alla lista usando lo spread operator
+
+Ogni chiamata ricorsiva gestisce un livello di profondità, e la funzione si ferma automaticamente quando non ci sono più amici da esplorare.
+
+### Esempio con Più Livelli
+
+```javascript
+const myself = {
+	name: 'Max',
+	friends: [
+		{
+			name: 'Manuel',
+			friends: [
+				{
+					name: 'Chris',
+					friends: [
+						{ name: 'Harry', friends: [] },
+						{ name: 'Amelia', friends: [] }
+					]
+				}
+			]
+		},
+		{
+			name: 'Julia',
+			friends: []
+		}
+	]
+};
+
+console.log(getFriendNames(myself));
+// ['Manuel', 'Chris', 'Harry', 'Amelia', 'Julia']
+```
+
+La funzione gestisce automaticamente qualsiasi livello di annidamento senza modifiche al codice.
+
+### Vantaggi della Recursion
+
+- **Flessibilità**: gestisce strutture di profondità variabile
+- **Codice più pulito**: una singola funzione invece di molti loop annidati
+- **Manutenibilità**: più facile da modificare e comprendere
+
+### Debugging della Recursion
+
+La recursion può essere difficile da seguire mentalmente. Gli strumenti di sviluppo del browser aiutano:
+
+1. Imposta un **breakpoint** nella funzione ricorsiva
+2. Usa il **call stack** per vedere tutte le chiamate attive
+3. **Step through** l'esecuzione per capire il flusso
+
+Questo aiuta a visualizzare come ogni chiamata si aggiunge allo stack e come i valori vengono restituiti.
+
+---
+
+## Riepilogo
+
+- **Pure functions**: funzioni che producono sempre lo stesso output per lo stesso input e non introducono side effects. Preferibili quando possibile per maggiore prevedibilità e testabilità.
+
+- **Side effects**: modifiche all'ambiente esterno (variabili globali, oggetti passati per riferimento, richieste HTTP). Da minimizzare ma necessari in applicazioni reali.
+
+- **Factory functions**: funzioni che producono altre funzioni preconfigurate. Utili per ridurre la ripetizione di parametri comuni.
+
+- **Closures**: ogni funzione in JavaScript è una closure che memorizza l'ambiente lessicale circostante. Permette alle funzioni di accedere a variabili esterne anche dopo che la funzione contenitore è terminata.
+
+- **Lexical environment**: ambiente che contiene variabili e riferimenti agli ambienti esterni. Creato da funzioni, blocchi, `if`, `for`, ecc.
+
+- **Shadowing**: quando una variabile interna nasconde una variabile esterna con lo stesso nome. La ricerca delle variabili parte dall'ambiente interno verso quello esterno.
+
+- **Recursion**: pattern in cui una funzione chiama se stessa. Richiede una condizione di uscita per evitare loop infiniti. Particolarmente utile per strutture dati annidate di profondità sconosciuta.
+
+- **Call stack**: stack che tiene traccia delle chiamate di funzione attive. Durante la recursion, ogni chiamata aggiunge un frame allo stack fino alla condizione di uscita.
