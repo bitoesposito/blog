@@ -56,7 +56,7 @@ Tutto ciò che non è un valore primitivo è un oggetto. Questo include:
 
 ```javascript
 const complexPerson = {
-	name: 'Max', // stringa => valore primitivo
+	name: 'Vito', // stringa => valore primitivo
 	hobbies: ['Sports', 'Cooking'], // array di stringhe => valori primitivi
 	address: {
 		street: 'Some Street 5', // stringa => valore primitivo
@@ -82,8 +82,8 @@ Il modo più comune per creare un oggetto è utilizzare la **notazione letterale
 
 ```javascript
 const person = {
-	name: 'Max',
-	age: 30,
+	name: 'Vito',
+	age: 25,
 	hobbies: ['Sports', 'Cooking'],
 	greet: function() {
 		console.log('Hi there!');
@@ -101,7 +101,7 @@ Puoi creare un oggetto e memorizzarlo in una costante o in una variabile. All'in
 Puoi accedere alle proprietà e ai metodi utilizzando la **notazione a punto**:
 
 ```javascript
-console.log(person.name); // 'Max'
+console.log(person.name); // 'Vito'
 console.log(person.age); // 30
 person.greet(); // 'Hi there!'
 ```
@@ -116,14 +116,14 @@ Dopo aver creato un oggetto, puoi aggiungere nuove proprietà dinamicamente:
 
 ```javascript
 const person = {
-	name: 'Max',
-	age: 30
+	name: 'Vito',
+	age: 25
 };
 
 // Aggiungere una nuova proprietà
 person.isAdmin = true;
 
-console.log(person); // { name: 'Max', age: 30, isAdmin: true }
+console.log(person); // { name: 'Vito', age: 25, isAdmin: true }
 ```
 
 Se accedi a una proprietà che non esiste, otterrai `undefined` senza errori. Puoi semplicemente assegnare un valore a quella proprietà per aggiungerla all'oggetto.
@@ -142,7 +142,7 @@ Per rimuovere completamente una proprietà da un oggetto, puoi utilizzare l'oper
 delete person.age;
 
 console.log(person.age); // undefined
-console.log(person); // { name: 'Max' } - age non è più presente
+console.log(person); // { name: 'Vito' } - age non è più presente
 ```
 
 **Nota importante**: dopo aver eliminato una proprietà, accedervi restituirà `undefined`, ma questo è diverso da avere una proprietà con valore `undefined`.
@@ -187,9 +187,9 @@ Se vuoi utilizzare nomi di proprietà con spazi o caratteri speciali, devi racch
 
 ```javascript
 const person = {
-	'first name': 'Max', // chiave con spazio
+	'first name': 'Vito', // chiave con spazio
 	'last-name': 'Miller', // chiave con trattino
-	age: 30
+	age: 25
 };
 ```
 
@@ -204,7 +204,7 @@ Per accedere a proprietà con spazi o caratteri speciali, devi utilizzare la **n
 // person.first name ❌
 
 // Questo funziona:
-console.log(person['first name']); // 'Max'
+console.log(person['first name']); // 'Vito'
 ```
 
 ### Chiavi Numeriche
@@ -213,7 +213,7 @@ Puoi anche utilizzare numeri come chiavi:
 
 ```javascript
 const person = {
-	name: 'Max',
+	name: 'Vito',
 	1.5: 'hello' // chiave numerica
 };
 
@@ -236,8 +236,8 @@ L'ordine delle proprietà in un oggetto JavaScript segue queste regole:
 
 ```javascript
 const obj1 = {
-	name: 'Max',
-	age: 30,
+	name: 'Vito',
+	age: 25,
 	hobby: 'Sports'
 };
 // Ordine: name, age, hobby (ordine di inserimento)
@@ -260,11 +260,11 @@ La notazione a punto è la più comune e leggibile:
 
 ```javascript
 const person = {
-	name: 'Max',
-	age: 30
+	name: 'Vito',
+	age: 25
 };
 
-console.log(person.name); // 'Max'
+console.log(person.name); // 'Vito'
 console.log(person.age); // 30
 ```
 
@@ -276,11 +276,11 @@ La notazione con parentesi quadre è più flessibile:
 
 ```javascript
 const person = {
-	'first name': 'Max',
-	age: 30
+	'first name': 'Vito',
+	age: 25
 };
 
-console.log(person['first name']); // 'Max'
+console.log(person['first name']); // 'Vito'
 console.log(person['age']); // 30
 ```
 
@@ -295,12 +295,12 @@ La vera potenza delle parentesi quadre risiede nell'accesso dinamico:
 
 ```javascript
 const person = {
-	name: 'Max',
-	age: 30
+	name: 'Vito',
+	age: 25
 };
 
 const keyName = 'name';
-console.log(person[keyName]); // 'Max' - usa il valore della variabile
+console.log(person[keyName]); // 'Vito' - usa il valore della variabile
 
 // Questo NON funzionerebbe con la notazione a punto:
 // person.keyName cercherebbe una proprietà chiamata "keyName"
@@ -310,7 +310,7 @@ Puoi anche utilizzare qualsiasi espressione che restituisca un valore:
 
 ```javascript
 const key = 'na' + 'me';
-console.log(person[key]); // 'Max'
+console.log(person[key]); // 'Vito'
 
 // Con una funzione
 function getKey() {
@@ -327,11 +327,11 @@ Puoi anche impostare proprietà dinamicamente utilizzando le parentesi quadre ne
 const userChosenKeyName = 'level'; // valore da input utente
 
 const person = {
-	name: 'Max',
+	name: 'Vito',
 	[userChosenKeyName]: 5 // usa il valore della variabile come chiave
 };
 
-console.log(person); // { name: 'Max', level: 5 }
+console.log(person); // { name: 'Vito', level: 5 }
 ```
 
 Questo è estremamente utile quando non conosci il nome della proprietà in anticipo, ad esempio quando proviene da input dell'utente.
@@ -385,7 +385,7 @@ Il **spread operator** (`...`) può essere utilizzato anche con gli oggetti per 
 
 ```javascript
 const person = {
-	name: 'Max',
+	name: 'Vito',
 	hobbies: ['Sports', 'Cooking']
 };
 
@@ -405,7 +405,7 @@ Il spread operator crea una **copia superficiale** (shallow copy). Questo signif
 
 ```javascript
 const person = {
-	name: 'Max',
+	name: 'Vito',
 	hobbies: ['Sports', 'Cooking']
 };
 
@@ -422,9 +422,9 @@ Se vuoi copiare anche gli array o gli oggetti annidati, devi farlo manualmente:
 
 ```javascript
 const person = {
-	name: 'Max',
+	name: 'Vito',
 	hobbies: ['Sports', 'Cooking'],
-	age: 30
+	age: 25
 };
 
 const person3 = {
@@ -466,14 +466,14 @@ Un metodo alternativo per copiare o unire oggetti è `Object.assign()`:
 
 ```javascript
 const person = {
-	name: 'Max',
-	age: 30
+	name: 'Vito',
+	age: 25
 };
 
 const person2 = Object.assign({}, person);
 
 person.name = 'Maximilian';
-console.log(person2.name); // 'Max' - person2 è una copia indipendente
+console.log(person2.name); // 'Vito' - person2 è una copia indipendente
 ```
 
 ### Sintassi
@@ -567,7 +567,7 @@ Importante: nel destructuring di oggetti, l'**ordine non conta**, conta solo il 
 const [first, second] = ['a', 'b'];
 
 // Object destructuring - solo il nome della chiave conta
-const { age, name } = { name: 'Max', age: 30 };
+const { age, name } = { name: 'Vito', age: 25 };
 // Funziona indipendentemente dall'ordine
 ```
 
@@ -698,7 +698,7 @@ Le **arrow functions** hanno un comportamento speciale: **non legano `this`**. I
 
 ```javascript
 const person = {
-	name: 'Max',
+	name: 'Vito',
 	greet: () => {
 		console.log(this.name); // undefined o nome globale
 		// 'this' si riferisce al contesto globale, non a 'person'
@@ -713,7 +713,7 @@ person.greet(); // non funziona come previsto
 ```javascript
 const members = {
 	teamName: 'Blue Rockets',
-	people: ['Max', 'Manuel'],
+	people: ['Vito', 'Manuel'],
 	getTeamMembers() {
 		// Arrow function - mantiene 'this' del contesto esterno
 		this.people.forEach(person => {
@@ -790,7 +790,7 @@ function greet(greeting, punctuation) {
 	return greeting + ' ' + this.name + punctuation;
 }
 
-const person = { name: 'Max' };
+const person = { name: 'Vito' };
 
 greet.apply(person, ['Hello', '!']); // 'Hello Max!'
 greet.call(person, 'Hello', '!'); // 'Hello Max!' (stesso risultato)

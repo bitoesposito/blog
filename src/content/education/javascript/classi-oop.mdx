@@ -516,7 +516,7 @@ Ogni proprietà di un oggetto ha un **descriptor** che contiene metadati che inf
 
 ```javascript
 const person = {
-	name: 'Max',
+	name: 'Vito',
 	greet() {
 		console.log(this.name);
 	}
@@ -524,7 +524,7 @@ const person = {
 
 const descriptor = Object.getOwnPropertyDescriptor(person, 'name');
 console.log(descriptor);
-// { value: 'Max', writable: true, enumerable: true, configurable: true }
+// { value: 'Vito', writable: true, enumerable: true, configurable: true }
 ```
 
 ### Proprietà del descriptor
@@ -540,14 +540,14 @@ console.log(descriptor);
 
 ```javascript
 const person = {
-	name: 'Max'
+	name: 'Vito'
 };
 
 Object.defineProperty(person, 'name', {
 	writable: false,    // non modificabile
 	configurable: false, // non eliminabile
 	enumerable: true,
-	value: 'Max'
+	value: 'Vito'
 });
 
 person.name = 'Maximilian'; // non ha effetto (writable: false)
@@ -597,7 +597,7 @@ class Person {
 	}
 }
 
-const p = new Person('Max');
+const p = new Person('Vito');
 console.log(p instanceof Person);  // true
 console.log(p instanceof Object);  // true (tutte le classi ereditano da Object)
 console.log(p instanceof Array);  // false

@@ -136,7 +136,7 @@ Queste convenzioni rendono le API più prevedibili e facili da comprendere.
 **1. Struttura simile a JavaScript**
 ```json
 {
-  "name": "Max",
+  "name": "Vito",
   "age": 30,
   "hobbies": [
     { "id": "h1", "title": "Sports" },
@@ -157,12 +157,12 @@ JSON è essenzialmente una stringa che contiene dati formattati in modo specific
 
 ```javascript
 const person = {
-  name: 'Max',
-  age: 30
+  name: 'Vito',
+  age: 25
 };
 
 const jsonData = JSON.stringify(person);
-console.log(jsonData);        // '{"name":"Max","age":30}'
+console.log(jsonData);        // '{"name":"Vito","age":30}'
 console.log(typeof jsonData); // "string"
 ```
 
@@ -170,16 +170,16 @@ console.log(typeof jsonData); // "string"
 
 **Da JavaScript a JSON**: `JSON.stringify()`
 ```javascript
-const data = { name: 'Max', age: 30 };
+const data = { name: 'Vito', age: 25 };
 const jsonString = JSON.stringify(data);
-// Risultato: '{"name":"Max","age":30}'
+// Risultato: '{"name":"Vito","age":30}'
 ```
 
 **Da JSON a JavaScript**: `JSON.parse()`
 ```javascript
-const jsonString = '{"name":"Max","age":30}';
+const jsonString = '{"name":"Vito","age":30}';
 const data = JSON.parse(jsonString);
-// Risultato: { name: 'Max', age: 30 }
+// Risultato: { name: 'Vito', age: 25 }
 ```
 
 ### Quando Usare JSON

@@ -214,13 +214,13 @@ Ogni funzione ha il proprio **lexical environment** che contiene:
 - Un riferimento all'ambiente lessicale esterno (funzione contenitore o globale)
 
 ```javascript
-const userName = 'Max';
+const userName = 'Vito';
 
 function greetUser() {
 	console.log('Hi ' + userName);
 }
 
-greetUser();  // "Hi Max"
+greetUser();  // "Hi Vito"
 ```
 
 La funzione `greetUser` può accedere a `userName` perché ha un riferimento all'ambiente lessicale globale dove `userName` è definito.
@@ -230,7 +230,7 @@ La funzione `greetUser` può accedere a `userName` perché ha un riferimento all
 Quando una funzione accede a una variabile esterna, non ne fa una copia del valore, ma mantiene un riferimento alla variabile stessa:
 
 ```javascript
-let userName = 'Max';
+let userName = 'Vito';
 
 function greetUser() {
 	console.log('Hi ' + userName);
@@ -475,7 +475,7 @@ Immagina di avere una struttura dati che rappresenta persone e i loro amici, dov
 
 ```javascript
 const myself = {
-	name: 'Max',
+	name: 'Vito',
 	friends: [
 		{
 			name: 'Manuel',
@@ -573,7 +573,7 @@ Ogni chiamata ricorsiva gestisce un livello di profondità, e la funzione si fer
 
 ```javascript
 const myself = {
-	name: 'Max',
+	name: 'Vito',
 	friends: [
 		{
 			name: 'Manuel',

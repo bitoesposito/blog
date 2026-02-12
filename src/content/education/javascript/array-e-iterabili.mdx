@@ -162,7 +162,7 @@ Gli array possono contenere qualsiasi tipo di dato:
 const mixed = [
 	10, // numero
 	'hello', // stringa
-	{ name: 'Max' }, // oggetto
+	{ name: 'Vito' }, // oggetto
 	true, // booleano
 ];
 ```
@@ -178,8 +178,8 @@ const hobbies = ['sports', 'cooking', 'reading'];
 // Array misto
 const personalData = [
 	30, // numero
-	'Max', // stringa
-	{ age: 30, name: 'Max' }, // oggetto
+	'Vito', // stringa
+	{ age: 25, name: 'Vito' }, // oggetto
 ];
 ```
 
@@ -209,10 +209,10 @@ Puoi avere array annidati a qualsiasi livello di profondità e mescolare array c
 Gli array sono **basati su indice**, con indici che iniziano da **0**:
 
 ```javascript
-const personalData = [30, 'Max', { age: 30 }];
+const personalData = [25, 'Vito', { age: 25 }];
 
 console.log(personalData[0]); // 30 (primo elemento)
-console.log(personalData[1]); // 'Max' (secondo elemento)
+console.log(personalData[1]); // 'Vito' (secondo elemento)
 console.log(personalData.length); // 3
 // L'indice massimo è length - 1
 ```
@@ -488,7 +488,7 @@ Per oggetti o valori complessi, usa `find()` e `findIndex()`:
 
 ```javascript
 const personData = [
-	{ name: 'Max', age: 30 },
+	{ name: 'Vito', age: 25 },
 	{ name: 'Manuel', age: 31 },
 ];
 
@@ -765,7 +765,7 @@ const firstTwo = text.split(',', 2); // ['a', 'b']
 `join()` unisce gli elementi di un array in una stringa:
 
 ```javascript
-const nameFragments = ['Max', 'Schwarz'];
+const nameFragments = ['Vito', 'Schwarz'];
 const fullName = nameFragments.join(' '); // 'Max Schwarz'
 const withComma = nameFragments.join(); // 'Max,Schwarz' (virgola di default)
 ```
@@ -787,7 +787,7 @@ Questi metodi sono utili per:
 Lo **spread operator** (`...`) estrae tutti gli elementi da un array:
 
 ```javascript
-const nameFragments = ['Max', 'Schwarz'];
+const nameFragments = ['Vito', 'Schwarz'];
 const copiedFragments = [...nameFragments];
 console.log(copiedFragments); // nuovo array indipendente
 ```
@@ -820,7 +820,7 @@ Lo spread operator crea una **copia superficiale**. Per array di oggetti, gli og
 
 ```javascript
 const persons = [
-	{ name: 'Max', age: 30 },
+	{ name: 'Vito', age: 25 },
 	{ name: 'Manuel', age: 31 },
 ];
 
@@ -847,9 +847,9 @@ const copiedPersons = persons.map(person => ({
 La **destructuring** permette di estrarre elementi da un array in variabili separate:
 
 ```javascript
-const nameData = ['Max', 'Schwarz'];
+const nameData = ['Vito', 'Schwarz'];
 const [firstName, lastName] = nameData;
-console.log(firstName); // 'Max'
+console.log(firstName); // 'Vito'
 console.log(lastName); // 'Schwarz'
 ```
 
@@ -873,7 +873,7 @@ const [firstName, lastName] = nameData;
 Puoi raccogliere gli elementi rimanenti con il **rest operator**:
 
 ```javascript
-const nameData = ['Max', 'Schwarz', 'Mr', 30];
+const nameData = ['Vito', 'Schwarz', 'Mr', 30];
 const [firstName, lastName, ...otherInfo] = nameData;
 console.log(otherInfo); // ['Mr', 30]
 ```
@@ -1048,7 +1048,7 @@ Usa Map quando:
 
 ```javascript
 const persons = new WeakSet();
-const person = { name: 'Max' };
+const person = { name: 'Vito' };
 
 persons.add(person);
 persons.has(person); // true
@@ -1077,7 +1077,7 @@ Usa WeakSet quando:
 
 ```javascript
 const personData = new WeakMap();
-const person = { name: 'Max' };
+const person = { name: 'Vito' };
 
 personData.set(person, [{ date: 'yesterday', price: 10 }]);
 const purchases = personData.get(person);

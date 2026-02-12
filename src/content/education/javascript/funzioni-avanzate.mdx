@@ -46,7 +46,7 @@ Le funzioni possono essere memorizzate come proprietà di oggetti. Quando una fu
 
 ```javascript
 const person = {
-	name: 'Max',
+	name: 'Vito',
 	greet: function() {
 		console.log('Hello there');
 	}
@@ -450,8 +450,8 @@ const greet = (greeting, name) => {
 };
 
 const greetHello = greet.bind(null, 'Hello');
-greetHello('Max'); // "Hello, Max"
-// 'Hello' è preconfigurato, 'Max' viene passato alla chiamata
+greetHello('Vito'); // "Hello, Vito"
+// 'Hello' è preconfigurato, 'Vito' viene passato alla chiamata
 ```
 
 ### Quando usare bind
@@ -483,8 +483,8 @@ const greet = (greeting, name) => {
 	console.log(`${greeting}, ${name}`);
 };
 
-greet.call(null, 'Hello', 'Max');  // esegue immediatamente
-greet.apply(null, ['Hello', 'Max']); // stessa cosa, argomenti in array
+greet.call(null, 'Hello', 'Vito');  // esegue immediatamente
+greet.apply(null, ['Hello', 'Vito']); // stessa cosa, argomenti in array
 ```
 
 La differenza tra `call` e `apply` è che `apply` accetta gli argomenti come **array**, mentre `call` li accetta separatamente.

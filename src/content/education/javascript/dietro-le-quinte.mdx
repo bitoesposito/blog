@@ -126,9 +126,9 @@ I blocchi sono creati da:
 - Qualsiasi coppia di parentesi graffe `{}` (quando non usate per creare oggetti)
 
 ```javascript
-const name = 'Max';
+const name = 'Vito';
 
-if (name === 'Max') {
+if (name === 'Vito') {
 	const hobbies = ['sports', 'cooking']; // block scope
 	console.log(hobbies); // funziona
 }
@@ -185,7 +185,7 @@ Con `var`, la dichiarazione viene spostata all'inizio del file e la variabile vi
 
 ```javascript
 console.log(userName); // undefined (non errore!)
-var userName = 'Max';
+var userName = 'Vito';
 ```
 
 Comportamento equivalente a:
@@ -193,7 +193,7 @@ Comportamento equivalente a:
 ```javascript
 var userName = undefined; // hoisting
 console.log(userName); // undefined
-userName = 'Max';
+userName = 'Vito';
 ```
 
 ### Hoisting con let e const
@@ -202,7 +202,7 @@ Con `let` e `const`, l'hoisting avviene ancora, ma la variabile non viene inizia
 
 ```javascript
 console.log(userName); // errore: Cannot access 'userName' before initialization
-let userName = 'Max';
+let userName = 'Vito';
 ```
 
 ### Perché l'hoisting con var è problematico
@@ -212,12 +212,12 @@ L'hoisting con `var` può portare a codice confuso e difficile da capire:
 ```javascript
 // Codice scritto così
 console.log(userName);
-var userName = 'Max';
+var userName = 'Vito';
 
 // Comportamento equivalente
 var userName = undefined;
 console.log(userName); // undefined invece di errore
-userName = 'Max';
+userName = 'Vito';
 ```
 
 Se un altro sviluppatore legge il codice e vede `console.log(userName)` prima della dichiarazione, potrebbe confondersi cercando dove `userName` è definito.
@@ -229,7 +229,7 @@ Con `let` e `const`, sei **forzato** a dichiarare la variabile prima di usarla, 
 Un altro comportamento problematico di `var` è che permette la ri-dichiarazione della stessa variabile nello stesso scope:
 
 ```javascript
-var name = 'Max';
+var name = 'Vito';
 var name = 'Manuel'; // funziona senza errore
 console.log(name); // 'Manuel'
 ```
@@ -237,7 +237,7 @@ console.log(name); // 'Manuel'
 Con `let` e `const`, questo genera un errore:
 
 ```javascript
-let name = 'Max';
+let name = 'Vito';
 let name = 'Manuel'; // errore: Identifier 'name' has already been declared
 ```
 
@@ -248,8 +248,8 @@ La ri-dichiarazione di una variabile non è mai necessaria: se vuoi cambiare il 
 JavaScript è un linguaggio permissivo. Se crei una variabile senza `var`, `let` o `const`, JavaScript aggiunge implicitamente `var`:
 
 ```javascript
-userName = 'Max'; // JavaScript aggiunge implicitamente var
-console.log(userName); // 'Max'
+userName = 'Vito'; // JavaScript aggiunge implicitamente var
+console.log(userName); // 'Vito'
 ```
 
 Questo comportamento è **sconsigliato** perché:
@@ -274,7 +274,7 @@ Per abilitare lo strict mode, aggiungi la stringa `'use strict';` all'inizio del
 'use strict';
 
 // Tutto il codice in questo file è in strict mode
-let userName = 'Max';
+let userName = 'Vito';
 ```
 
 ```javascript
@@ -295,7 +295,7 @@ Lo strict mode disabilita vari comportamenti problematici:
 ```javascript
 'use strict';
 
-userName = 'Max'; // errore: userName is not defined
+userName = 'Vito'; // errore: userName is not defined
 ```
 
 ### Strict mode e sintassi moderna
@@ -480,11 +480,11 @@ I primitive values sono tipicamente memorizzati nello **stack** perché:
 Quando copi un valore primitivo (assegnandolo a una nuova variabile), il **valore viene effettivamente copiato**:
 
 ```javascript
-let name = 'Max';
+let name = 'Vito';
 let anotherUser = name; // copia il valore
 
 name = 'Manuel';
-console.log(anotherUser); // 'Max' (non è cambiato)
+console.log(anotherUser); // 'Vito' (non è cambiato)
 ```
 
 Questo comportamento è quello che ci aspettiamo: ogni variabile ha la propria copia del valore.
@@ -525,7 +525,7 @@ Entrambe le variabili puntano allo stesso oggetto in memoria. Modificare una mod
 ### Stesso comportamento con oggetti
 
 ```javascript
-const person = { age: 30 };
+const person = { age: 25 };
 const anotherPerson = person; // copia solo il puntatore
 
 anotherPerson.age = 32;
@@ -538,7 +538,7 @@ Per creare una copia reale di un oggetto o array, puoi usare lo **spread operato
 
 ```javascript
 // Copia di un oggetto
-const person = { age: 30 };
+const person = { age: 25 };
 const anotherPerson = { ...person }; // nuova copia
 
 anotherPerson.age = 32;
@@ -559,8 +559,8 @@ Approfondiremo lo spread operator nei moduli su array e oggetti.
 Quando confronti due oggetti o array, JavaScript confronta i **puntatori**, non i contenuti:
 
 ```javascript
-const person1 = { age: 30 };
-const person2 = { age: 30 };
+const person1 = { age: 25 };
+const person2 = { age: 25 };
 
 console.log(person1 === person2); // false!
 ```
@@ -612,12 +612,12 @@ La garbage collection viene eseguita automaticamente dal JavaScript engine secon
 ### Esempio di garbage collection
 
 ```javascript
-let person = { name: 'Max' };
+let person = { name: 'Vito' };
 
 // ... usa person ...
 
 person = null; // rimuove il riferimento all'oggetto
-// L'oggetto { name: 'Max' } può ora essere garbage collected
+// L'oggetto { name: 'Vito' } può ora essere garbage collected
 ```
 
 Quando imposti `person = null`, rimuovi il riferimento all'oggetto. Se non ci sono altri riferimenti a quell'oggetto, il garbage collector lo rimuoverà dalla memoria.

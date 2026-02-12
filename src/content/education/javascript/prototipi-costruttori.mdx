@@ -39,7 +39,7 @@ Una **constructor function** è una funzione speciale che agisce come blueprint 
 
 ```javascript
 function Person() {
-	this.name = 'Max';
+	this.name = 'Vito';
 	this.age = 30;
 	this.greet = function() {
 		console.log(`Hi, I am ${this.name} and I am ${this.age} years old`);
@@ -76,7 +76,7 @@ Le classi sono essenzialmente **syntactic sugar** per constructor functions:
 // Con classe
 class Person {
 	constructor() {
-		this.name = 'Max';
+		this.name = 'Vito';
 		this.age = 30;
 	}
 	greet() {
@@ -86,7 +86,7 @@ class Person {
 
 // Equivalente con constructor function
 function Person() {
-	this.name = 'Max';
+	this.name = 'Vito';
 	this.age = 30;
 }
 Person.prototype.greet = function() {
@@ -180,7 +180,7 @@ p.toString(); // cerca in: p → Person.prototype → Object.prototype → null
 
 ```javascript
 function Person() {
-	this.name = 'Max';
+	this.name = 'Vito';
 }
 
 Person.prototype.greet = function() {
@@ -189,7 +189,7 @@ Person.prototype.greet = function() {
 
 const p = new Person();
 
-// p ha: { name: 'Max' }
+// p ha: { name: 'Vito' }
 // p.__proto__ ha: { greet: function, constructor: Person }
 // p.__proto__.__proto__ ha: { toString: function, valueOf: function, ... }
 // p.__proto__.__proto__.__proto__ è null
@@ -264,7 +264,7 @@ console.log(p1.greet === p2.greet); // false
 ```javascript
 // Metodo su prototype (preferibile)
 function Person() {
-	this.name = 'Max';
+	this.name = 'Vito';
 }
 Person.prototype.greet = function() {
 	console.log('Hello');
@@ -272,7 +272,7 @@ Person.prototype.greet = function() {
 
 // Metodo come proprietà (meno efficiente)
 function Person() {
-	this.name = 'Max';
+	this.name = 'Vito';
 	this.greet = function() {
 		console.log('Hello');
 	};
@@ -301,7 +301,7 @@ class AgedPerson {
 class Person extends AgedPerson {
 	constructor() {
 		super();
-		this.name = 'Max';
+		this.name = 'Vito';
 		this.age = 30;
 	}
 	greet() {
@@ -320,7 +320,7 @@ AgedPerson.prototype.printAge = function() {
 
 function Person() {
 	AgedPerson.call(this); // equivalente a super()
-	this.name = 'Max';
+	this.name = 'Vito';
 	this.age = 30;
 }
 
@@ -353,7 +353,7 @@ Invece di sostituire l'intero prototype, è meglio **aggiungere** metodi al prot
 
 ```javascript
 function Person() {
-	this.name = 'Max';
+	this.name = 'Vito';
 }
 
 // ❌ Sostituisce l'intero prototype (perde constructor)
@@ -428,7 +428,7 @@ const studentPrototype = {
 };
 
 const student = Object.create(studentPrototype);
-student.name = 'Max';
+student.name = 'Vito';
 student.progress = 0.8;
 student.printProgress(); // "0.8"
 ```
@@ -448,7 +448,7 @@ const student = Object.create(studentPrototype, {
 	name: {
 		configurable: true,
 		enumerable: true,
-		value: 'Max',
+		value: 'Vito',
 		writable: true
 	},
 	progress: {
@@ -483,7 +483,7 @@ const p = Person(); // TypeError: Class constructor Person cannot be invoked wit
 
 ```javascript
 function Person() {
-	this.name = 'Max';
+	this.name = 'Vito';
 }
 const p = Person(); // undefined (non restituisce un oggetto)
 ```
