@@ -1,0 +1,858 @@
+---
+title: "Richieste HTTP in JavaScript"
+description: "XMLHttpRequest, Fetch API, JSON, FormData e gestione delle comunicazioni client-server"
+date: 2026-02-12
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 15
+---
+
+## Introduzione
+
+Le applicazioni web moderne spesso necessitano di comunicare con server per recuperare dati, inviare informazioni o sincronizzare lo stato. JavaScript permette di inviare richieste HTTP direttamente dal browser senza ricaricare la pagina, creando esperienze utente più fluide e interattive.
+
+In questo capitolo si approfondiscono:
+
+- **Architettura client-server**: come frontend e backend comunicano
+- **XMLHttpRequest**: API tradizionale per inviare richieste HTTP
+- **Fetch API**: alternativa moderna basata su promises
+- **Formati di dati**: JSON e FormData per trasferire informazioni
+- **Metodi HTTP**: GET, POST, DELETE e altri
+- **Gestione errori**: come gestire richieste fallite e risposte di errore
+- **Headers**: metadati aggiuntivi per le richieste
+
+---
+
+## Architettura Client-Server
+
+### Frontend e Backend
+
+Nelle applicazioni web moderne, il codice viene tipicamente diviso in due parti:
+
+- **Frontend (client-side)**: codice JavaScript che gira nel browser dell'utente, responsabile dell'interfaccia utente e dell'interazione
+- **Backend (server-side)**: codice che gira su un server, responsabile della logica di business, dell'accesso ai database e della gestione dei dati
+
+Queste due parti possono essere ospitate su domini completamente diversi:
+
+```javascript
+// Frontend potrebbe essere su mypage.com
+// Backend potrebbe essere su mybackend.com
+```
+
+### Perché Non Collegare Direttamente al Database
+
+Il codice client-side **non può** connettersi direttamente a un database per motivi di sicurezza:
+
+- Le credenziali del database sarebbero esposte nel codice JavaScript visibile a chiunque
+- Non ci sarebbe controllo su quali operazioni possono essere eseguite
+- Non ci sarebbe validazione o sanitizzazione dei dati
+
+Il pattern corretto è:
+
+1. Il client invia richieste HTTP al server
+2. Il server valida e processa le richieste
+3. Il server comunica con il database se necessario
+4. Il server risponde al client con i dati richiesti
+
+### API e Endpoints
+
+Un **API** (Application Programming Interface) è un server web che espone diversi **endpoints** (URL specifici) ai quali è possibile inviare richieste. Ogni endpoint supporta determinate operazioni basate sul metodo HTTP e sul percorso.
+
+Gli sviluppatori del server decidono quali endpoint sono disponibili e quali operazioni supportano. Il client può solo inviare richieste a questi endpoint configurati.
+
+### Comunicazione Senza Ricaricare la Pagina
+
+Tradizionalmente, quando un form viene inviato, il browser ricarica l'intera pagina. Con JavaScript è possibile:
+
+- Intercettare l'invio del form con `preventDefault()`
+- Validare i dati lato client
+- Inviare una richiesta HTTP personalizzata senza ricaricare la pagina
+- Aggiornare solo le parti necessarie dell'interfaccia
+
+Questo approccio migliora l'esperienza utente eliminando flickering e tempi di attesa per il ricaricamento completo della pagina.
+
+---
+
+## Struttura delle Richieste HTTP
+
+### Componenti di una Richiesta HTTP
+
+Una richiesta HTTP è composta da diversi elementi:
+
+**1. URL (Uniform Resource Locator)**
+- **Dominio**: l'indirizzo del server (es. `jsonplaceholder.typicode.com`)
+- **Path**: il percorso specifico dell'endpoint (es. `/posts`)
+
+```javascript
+// URL completo: https://jsonplaceholder.typicode.com/posts
+// Dominio: jsonplaceholder.typicode.com
+// Path: /posts
+```
+
+**2. Metodo HTTP**
+Descrive il tipo di operazione che si vuole eseguire. I metodi più comuni sono:
+
+- **GET**: recuperare dati dal server
+- **POST**: creare nuove risorse sul server
+- **PATCH**: aggiornare parzialmente una risorsa esistente
+- **PUT**: sostituire completamente una risorsa esistente
+- **DELETE**: eliminare una risorsa dal server
+
+**Importante**: il server decide quali combinazioni metodo-URL sono supportate. Il client può solo inviare richieste a endpoint configurati.
+
+**3. Headers**
+Metadati aggiuntivi allegati alla richiesta. Possono includere:
+- Tipo di contenuto inviato (`Content-Type`)
+- Informazioni di autenticazione
+- Informazioni sul client
+
+**4. Body (opzionale)**
+Dati aggiuntivi inviati con la richiesta. Tipicamente usato con POST, PATCH, PUT. Non presente nelle richieste GET.
+
+### Convenzioni sui Metodi HTTP
+
+Sebbene il server possa implementare qualsiasi logica, esistono convenzioni comuni:
+
+| Metodo | Scopo Tipico |
+|--------|--------------|
+| GET | Recuperare dati |
+| POST | Creare nuove risorse |
+| PATCH | Aggiornare dati esistenti (parziale) |
+| PUT | Sostituire risorsa esistente (completo) |
+| DELETE | Eliminare risorse |
+
+Queste convenzioni rendono le API più prevedibili e facili da comprendere.
+
+---
+
+## JSON: Formato di Dati Standard
+
+### Cos'è JSON
+
+**JSON** (JavaScript Object Notation) è un formato di dati leggibile sia da macchine che da esseri umani, derivato dalla sintassi di oggetti e array JavaScript.
+
+### Caratteristiche di JSON
+
+**1. Struttura simile a JavaScript**
+```json
+{
+  "name": "Max",
+  "age": 30,
+  "hobbies": [
+    { "id": "h1", "title": "Sports" },
+    { "id": "h2", "title": "Cooking" }
+  ],
+  "isInstructor": true
+}
+```
+
+**2. Regole stringenti**
+- Le chiavi degli oggetti **devono** essere racchiuse tra **doppie virgolette**
+- I valori stringa **devono** usare doppie virgolette (non singole)
+- Non sono ammessi metodi o funzioni
+- Supportati: oggetti, array, stringhe, numeri, booleani, `null`
+
+**3. JSON è una stringa**
+JSON è essenzialmente una stringa che contiene dati formattati in modo specifico:
+
+```javascript
+const person = {
+  name: 'Max',
+  age: 30
+};
+
+const jsonData = JSON.stringify(person);
+console.log(jsonData);        // '{"name":"Max","age":30}'
+console.log(typeof jsonData); // "string"
+```
+
+### Conversione: JavaScript ↔ JSON
+
+**Da JavaScript a JSON**: `JSON.stringify()`
+```javascript
+const data = { name: 'Max', age: 30 };
+const jsonString = JSON.stringify(data);
+// Risultato: '{"name":"Max","age":30}'
+```
+
+**Da JSON a JavaScript**: `JSON.parse()`
+```javascript
+const jsonString = '{"name":"Max","age":30}';
+const data = JSON.parse(jsonString);
+// Risultato: { name: 'Max', age: 30 }
+```
+
+### Quando Usare JSON
+
+JSON è il formato più comune per lo scambio di dati tra client e server perché:
+
+- È leggibile e facile da debuggare
+- È facile da parsare per le macchine
+- È supportato nativamente da JavaScript
+- È standardizzato e ampiamente supportato
+
+---
+
+## XMLHttpRequest
+
+### Introduzione
+
+**XMLHttpRequest** è l'API tradizionale per inviare richieste HTTP dal browser. Nonostante il nome, funziona perfettamente con JSON e altri formati di dati, non solo XML.
+
+### Creare e Configurare una Richiesta
+
+**1. Creare l'oggetto**
+```javascript
+const xhr = new XMLHttpRequest();
+```
+
+**2. Configurare la richiesta con `open()`**
+```javascript
+xhr.open('GET', 'https://jsonplaceholder.typicode.com/posts');
+```
+
+Il metodo `open()` non invia ancora la richiesta, la configura solo:
+- **Primo argomento**: metodo HTTP (es. `'GET'`, `'POST'`)
+- **Secondo argomento**: URL della richiesta
+
+**3. Impostare il tipo di risposta (opzionale)**
+```javascript
+xhr.responseType = 'json';
+```
+
+Questo dice a XMLHttpRequest di parsare automaticamente la risposta JSON.
+
+**4. Inviare la richiesta**
+```javascript
+xhr.send();
+```
+
+### Gestire la Risposta
+
+Le richieste HTTP sono asincrone. Per gestire la risposta, si usa l'event handler `onload`:
+
+```javascript
+xhr.onload = function() {
+  if (xhr.status >= 200 && xhr.status < 300) {
+    // Richiesta riuscita
+    const data = xhr.response; // Già parsato se responseType = 'json'
+    console.log(data);
+  } else {
+    // Errore lato server (es. 404, 500)
+    console.error('Errore:', xhr.status);
+  }
+};
+```
+
+**Nota**: `onload` viene chiamato anche quando il server restituisce un errore (es. 404). Bisogna sempre controllare `xhr.status` per verificare il successo.
+
+### Parsing Manuale della Risposta
+
+Se non si imposta `responseType = 'json'`, bisogna parsare manualmente:
+
+```javascript
+xhr.onload = function() {
+  const jsonData = xhr.response; // Stringa JSON
+  const data = JSON.parse(jsonData); // Oggetto JavaScript
+  console.log(data);
+};
+```
+
+### Esempio Completo: Recuperare Dati
+
+```javascript
+function fetchPosts() {
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', 'https://jsonplaceholder.typicode.com/posts');
+  xhr.responseType = 'json';
+  
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      const posts = xhr.response;
+      // Usa i dati recuperati
+      console.log(posts);
+    } else {
+      console.error('Errore nel recupero dei dati');
+    }
+  };
+  
+  xhr.send();
+}
+```
+
+### Promisificare XMLHttpRequest
+
+Per usare XMLHttpRequest con async/await o promise chains, si può wrappare in una Promise:
+
+```javascript
+function sendHttpRequest(method, url, data = null) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    xhr.responseType = 'json';
+    
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(xhr.response);
+      } else {
+        reject(new Error('Qualcosa è andato storto'));
+      }
+    };
+    
+    xhr.onerror = function() {
+      reject(new Error('Richiesta fallita'));
+    };
+    
+    if (data) {
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify(data));
+    } else {
+      xhr.send();
+    }
+  });
+}
+
+// Uso con async/await
+async function fetchPosts() {
+  try {
+    const posts = await sendHttpRequest('GET', 'https://jsonplaceholder.typicode.com/posts');
+    console.log(posts);
+  } catch (error) {
+    console.error('Errore:', error);
+  }
+}
+```
+
+### Gestione Errori
+
+XMLHttpRequest distingue tra due tipi di errori:
+
+**1. Errori di rete** (`onerror`)
+Si verificano quando la richiesta non può essere inviata (nessuna connessione, timeout):
+
+```javascript
+xhr.onerror = function() {
+  console.error('Errore di rete');
+};
+```
+
+**2. Errori lato server** (`onload` con status code di errore)
+Si verificano quando il server risponde ma con un codice di errore (404, 500, ecc.):
+
+```javascript
+xhr.onload = function() {
+  if (xhr.status >= 200 && xhr.status < 300) {
+    // Successo
+  } else {
+    // Errore lato server
+    console.error('Errore:', xhr.status);
+  }
+};
+```
+
+---
+
+## Fetch API
+
+### Introduzione
+
+La **Fetch API** è un'alternativa moderna a XMLHttpRequest, introdotta per semplificare l'invio di richieste HTTP. È basata su Promise e offre un'API più pulita e moderna.
+
+### Vantaggi della Fetch API
+
+- **Nativa Promise**: non serve wrappare in una Promise
+- **Sintassi più pulita**: meno verbosa di XMLHttpRequest
+- **Più moderna**: progettata per il JavaScript moderno
+
+### Svantaggi
+
+- **Supporto browser**: non supportata in browser molto vecchi (es. Internet Explorer)
+- **Gestione errori**: può essere più complessa per alcuni casi d'uso
+
+### Richiesta GET Base
+
+```javascript
+fetch('https://jsonplaceholder.typicode.com/posts')
+  .then(response => response.json())
+  .then(data => {
+    console.log(data);
+  });
+```
+
+### Come Funziona
+
+**1. `fetch()` restituisce una Promise**
+```javascript
+const promise = fetch(url);
+```
+
+**2. La risposta è "streamed"**
+A differenza di XMLHttpRequest, la risposta non è immediatamente disponibile. Bisogna chiamare `.json()` per convertirla:
+
+```javascript
+fetch(url)
+  .then(response => {
+    // response non contiene ancora i dati parsati
+    return response.json(); // Restituisce una nuova Promise
+  })
+  .then(data => {
+    // Ora data contiene i dati parsati
+  });
+```
+
+**3. Metodi di conversione della risposta**
+- `response.json()`: parsare come JSON
+- `response.text()`: ottenere come testo
+- `response.blob()`: ottenere come file binario
+
+### Richiesta POST
+
+Per inviare dati con POST, si passa un secondo argomento con la configurazione:
+
+```javascript
+function createPost(title, content) {
+  const postData = {
+    title: title,
+    body: content,
+    userId: 1
+  };
+  
+  fetch('https://jsonplaceholder.typicode.com/posts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(postData)
+  })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Post creato:', data);
+    });
+}
+```
+
+### Configurazione della Richiesta
+
+Il secondo argomento di `fetch()` è un oggetto di configurazione:
+
+```javascript
+fetch(url, {
+  method: 'POST',        // Metodo HTTP
+  headers: {            // Headers della richiesta
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(data)  // Corpo della richiesta
+});
+```
+
+### Funzione Riusabile con Fetch
+
+```javascript
+async function sendHttpRequest(method, url, data = null) {
+  const config = {
+    method: method,
+    headers: {}
+  };
+  
+  if (data) {
+    config.headers['Content-Type'] = 'application/json';
+    config.body = JSON.stringify(data);
+  }
+  
+  const response = await fetch(url, config);
+  
+  if (response.status >= 200 && response.status < 300) {
+    return await response.json();
+  } else {
+    throw new Error('Qualcosa è andato storto');
+  }
+}
+
+// Uso
+async function fetchPosts() {
+  try {
+    const posts = await sendHttpRequest('GET', 'https://jsonplaceholder.typicode.com/posts');
+    console.log(posts);
+  } catch (error) {
+    console.error('Errore:', error);
+  }
+}
+```
+
+### Gestione Errori con Fetch
+
+La gestione degli errori con Fetch può essere più complessa perché:
+
+1. Errori di rete vengono rifiutati dalla Promise
+2. Errori lato server (404, 500) **non** rifiutano la Promise automaticamente
+
+**Soluzione corretta**:
+
+```javascript
+async function sendHttpRequest(method, url, data = null) {
+  const config = {
+    method: method,
+    headers: {}
+  };
+  
+  if (data) {
+    config.headers['Content-Type'] = 'application/json';
+    config.body = JSON.stringify(data);
+  }
+  
+  const response = await fetch(url, config);
+  
+  // Controlla lo status code
+  if (response.status >= 200 && response.status < 300) {
+    return await response.json();
+  } else {
+    // Per errori lato server, parsare il body per ottenere dettagli
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Qualcosa è andato storto');
+  }
+}
+```
+
+**Gestione errori di rete**:
+
+```javascript
+try {
+  const data = await sendHttpRequest('GET', url);
+} catch (error) {
+  // Cattura sia errori di rete che errori lato server
+  console.error('Errore:', error);
+}
+```
+
+### Accesso al Body negli Errori
+
+Quando si verifica un errore lato server, il server potrebbe includere informazioni utili nel body della risposta. Per accedervi:
+
+```javascript
+const response = await fetch(url, config);
+
+if (response.status >= 200 && response.status < 300) {
+  return await response.json();
+} else {
+  // Parsare il body anche in caso di errore
+  const errorData = await response.json();
+  throw new Error(errorData.message || 'Errore sconosciuto');
+}
+```
+
+---
+
+## Headers
+
+### Cos'è un Header
+
+Gli **headers** sono metadati aggiuntivi allegati alle richieste HTTP. Forniscono informazioni aggiuntive al server su come interpretare la richiesta.
+
+### Headers Comuni
+
+**Content-Type**
+Indica il formato dei dati inviati:
+
+```javascript
+headers: {
+  'Content-Type': 'application/json'
+}
+```
+
+**Authorization**
+Per autenticazione (token, API key, ecc.):
+
+```javascript
+headers: {
+  'Authorization': 'Bearer token123'
+}
+```
+
+### Aggiungere Headers con Fetch
+
+```javascript
+fetch(url, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer token123'
+  },
+  body: JSON.stringify(data)
+});
+```
+
+### Aggiungere Headers con XMLHttpRequest
+
+```javascript
+xhr.setRequestHeader('Content-Type', 'application/json');
+xhr.setRequestHeader('Authorization', 'Bearer token123');
+```
+
+**Nota**: con XMLHttpRequest, una volta impostato un header, non può essere eliminato. Con Fetch, si può modificare l'oggetto headers prima di inviare la richiesta.
+
+### Headers Automatici
+
+Il browser aggiunge automaticamente alcuni headers di default:
+- `User-Agent`: informazioni sul browser
+- `Accept`: tipi di contenuto accettati
+- Altri headers tecnici
+
+Questi headers vengono aggiunti automaticamente e generalmente non è necessario modificarli.
+
+---
+
+## FormData
+
+### Cos'è FormData
+
+**FormData** è un'interfaccia JavaScript che permette di costruire facilmente dati in formato form, simili a quelli che un form HTML invierebbe normalmente.
+
+### Quando Usare FormData
+
+FormData è utile quando:
+- Si vuole inviare file insieme a dati testuali
+- L'API supporta FormData invece di JSON
+- Si vuole replicare il comportamento di un form HTML standard
+
+### Creare FormData Manualmente
+
+```javascript
+const formData = new FormData();
+formData.append('title', 'My Post');
+formData.append('body', 'Post content');
+formData.append('userId', '1');
+```
+
+### Creare FormData da un Form HTML
+
+Se si ha un form HTML, si può creare FormData automaticamente:
+
+```html
+<form id="post-form">
+  <input type="text" name="title" />
+  <textarea name="body"></textarea>
+</form>
+```
+
+```javascript
+const form = document.querySelector('#post-form');
+const formData = new FormData(form);
+
+// FormData contiene automaticamente i valori dei campi con attributo 'name'
+```
+
+**Importante**: gli input devono avere l'attributo `name` per essere inclusi in FormData.
+
+### Inviare FormData con Fetch
+
+```javascript
+const formData = new FormData();
+formData.append('title', title);
+formData.append('body', content);
+
+fetch(url, {
+  method: 'POST',
+  body: formData  // Non serve JSON.stringify() o Content-Type header
+});
+```
+
+**Nota**: quando si usa FormData, Fetch imposta automaticamente il `Content-Type` corretto. Non bisogna impostarlo manualmente.
+
+### Aggiungere File a FormData
+
+```javascript
+const formData = new FormData();
+formData.append('title', 'My Post');
+formData.append('image', fileInput.files[0], 'photo.png');
+```
+
+Il terzo argomento è il nome del file che il server può usare.
+
+### Vantaggi di FormData
+
+- **Facile da usare**: simile a un oggetto JavaScript
+- **Supporto file**: può includere file binari facilmente
+- **Parsing automatico**: il server può parsare automaticamente
+- **Compatibilità**: funziona con form HTML esistenti
+
+### Limitazioni
+
+- Non tutti i server supportano FormData
+- Se il server richiede JSON, non si può usare FormData
+- Meno flessibile di JSON per strutture dati complesse
+
+---
+
+## Esempio Pratico Completo
+
+### Setup Iniziale
+
+```javascript
+// Funzione riusabile per inviare richieste
+async function sendHttpRequest(method, url, data = null) {
+  const config = {
+    method: method,
+    headers: {}
+  };
+  
+  if (data) {
+    config.headers['Content-Type'] = 'application/json';
+    config.body = JSON.stringify(data);
+  }
+  
+  const response = await fetch(url, config);
+  
+  if (response.status >= 200 && response.status < 300) {
+    return await response.json();
+  } else {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Qualcosa è andato storto');
+  }
+}
+```
+
+### Recuperare Dati (GET)
+
+```javascript
+async function fetchPosts() {
+  try {
+    const posts = await sendHttpRequest('GET', 'https://jsonplaceholder.typicode.com/posts');
+    
+    const listElement = document.querySelector('.posts');
+    const template = document.getElementById('post-template');
+    
+    posts.forEach(post => {
+      const postElement = document.importNode(template.content, true);
+      postElement.querySelector('h2').textContent = post.title.toUpperCase();
+      postElement.querySelector('p').textContent = post.body;
+      postElement.querySelector('li').id = post.id;
+      listElement.appendChild(postElement);
+    });
+  } catch (error) {
+    alert('Errore nel recupero dei post: ' + error.message);
+  }
+}
+```
+
+### Creare un Post (POST)
+
+```javascript
+async function createPost(title, content) {
+  try {
+    const postData = {
+      title: title,
+      body: content,
+      userId: 1
+    };
+    
+    const result = await sendHttpRequest(
+      'POST',
+      'https://jsonplaceholder.typicode.com/posts',
+      postData
+    );
+    
+    console.log('Post creato:', result);
+    return result;
+  } catch (error) {
+    alert('Errore nella creazione del post: ' + error.message);
+    throw error;
+  }
+}
+```
+
+### Eliminare un Post (DELETE)
+
+```javascript
+async function deletePost(postId) {
+  try {
+    await sendHttpRequest(
+      'DELETE',
+      `https://jsonplaceholder.typicode.com/posts/${postId}`
+    );
+    console.log('Post eliminato');
+  } catch (error) {
+    alert('Errore nell\'eliminazione del post: ' + error.message);
+  }
+}
+```
+
+### Collegare all'Interfaccia Utente
+
+```javascript
+// Elementi del DOM
+const form = document.querySelector('#new-post form');
+const fetchButton = document.querySelector('#available-posts button');
+const postList = document.querySelector('ul.posts');
+
+// Fetch posts al click del pulsante
+fetchButton.addEventListener('click', fetchPosts);
+
+// Gestione submit del form
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  
+  const title = event.currentTarget.querySelector('#title').value;
+  const content = event.currentTarget.querySelector('#content').value;
+  
+  await createPost(title, content);
+  event.currentTarget.reset();
+});
+
+// Event delegation per i pulsanti delete
+postList.addEventListener('click', async (event) => {
+  if (event.target.tagName === 'BUTTON') {
+    const listItem = event.target.closest('li');
+    const postId = listItem.id;
+    await deletePost(postId);
+  }
+});
+```
+
+---
+
+## Confronto: XMLHttpRequest vs Fetch API
+
+### Quando Usare XMLHttpRequest
+
+- Supporto per browser molto vecchi è necessario
+- Si preferisce un controllo più granulare sulla richiesta
+- Si lavora con codice legacy che già usa XMLHttpRequest
+
+### Quando Usare Fetch API
+
+- Si sviluppa per browser moderni
+- Si preferisce un'API più pulita e moderna
+- Si vuole usare Promise nativamente senza wrappare
+
+### Tabella di Confronto
+
+| Caratteristica | XMLHttpRequest | Fetch API |
+|----------------|----------------|-----------|
+| Supporto browser | Ottimo (anche IE) | Buono (no IE) |
+| API Promise | Richiede wrapping | Nativa |
+| Sintassi | Più verbosa | Più concisa |
+| Gestione errori | Più diretta | Richiede controllo status |
+| Streaming response | No | Sì |
+| Headers | `setRequestHeader()` | Oggetto `headers` |
+
+---
+
+## Riepilogo
+
+- **Architettura client-server**: frontend e backend comunicano tramite richieste HTTP. Il client non si connette direttamente al database per motivi di sicurezza.
+
+- **Metodi HTTP**: GET (recuperare), POST (creare), PATCH/PUT (aggiornare), DELETE (eliminare). Il server decide quali combinazioni metodo-URL sono supportate.
+
+- **JSON**: formato standard per lo scambio di dati. Usa `JSON.stringify()` per convertire JavaScript in JSON e `JSON.parse()` per il contrario.
+
+- **XMLHttpRequest**: API tradizionale per richieste HTTP. Richiede configurazione manuale e wrapping in Promise per uso moderno.
+
+- **Fetch API**: alternativa moderna basata su Promise. Più pulita ma richiede controllo manuale degli status code per la gestione errori.
+
+- **Gestione errori**: distinguere tra errori di rete (richiesta non inviata) e errori lato server (risposta con status code di errore). Con Fetch, controllare sempre `response.status`.
+
+- **Headers**: metadati aggiuntivi per le richieste. `Content-Type` indica il formato dei dati inviati.
+
+- **FormData**: interfaccia per costruire dati in formato form, utile per inviare file insieme a dati testuali. Può essere creato manualmente o da un form HTML.
+
+- **Best practices**: wrappare la logica di richiesta in funzioni riusabili, gestire sempre gli errori, validare i dati prima di inviarli, usare async/await per codice più leggibile.
