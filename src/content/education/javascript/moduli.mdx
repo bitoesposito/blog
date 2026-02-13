@@ -1,0 +1,638 @@
+---
+title: "Moduli JavaScript"
+description: "Organizzazione del codice in file multipli: export, import, named exports, default exports e import dinamici"
+date: 2026-02-13
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 16
+---
+
+## Introduzione
+
+I moduli JavaScript sono una funzionalità fondamentale che permette di organizzare il codice in file multipli, definendo dipendenze esplicite tra i file e mantenendo uno scope isolato per ogni modulo. Questa caratteristica cambia radicalmente il modo in cui si struttura un progetto JavaScript.
+
+In questo capitolo si approfondiscono:
+
+- **Problema dei file singoli**: perché dividere il codice in più file
+- **Export e import**: come condividere codice tra file
+- **Named exports vs default exports**: due modi di esportare funzionalità
+- **Import dinamici**: caricare moduli solo quando necessario
+- **Scope dei moduli**: come funziona l'isolamento tra file
+- **Setup del progetto**: necessità di un web server per usare i moduli
+
+---
+
+## Il Problema: Codice in un Unico File
+
+### Limiti di un File Singolo
+
+Quando tutto il codice di un'applicazione risiede in un unico file JavaScript, si presentano diversi problemi:
+
+**1. Manutenibilità**
+- File molto lunghi diventano difficili da navigare
+- Trovare una classe o una funzione specifica richiede molto scrolling
+- Modifiche a una parte del codice possono influenzare altre parti in modo imprevisto
+
+**2. Collaborazione**
+- In un team, più sviluppatori che lavorano sullo stesso file possono creare conflitti
+- È facile cancellare accidentalmente codice scritto da altri
+- La gestione delle versioni diventa più complessa
+
+**3. Organizzazione**
+- Non c'è una struttura chiara che separa le responsabilità
+- Codice correlato non è raggruppato logicamente
+- Difficile capire quali parti del codice dipendono da altre
+
+### Soluzione Tradizionale: Import Manuali
+
+Una prima soluzione è dividere il codice in più file e importarli manualmente nell'HTML:
+
+```html
+<script src="utility/DOMHelper.js"></script>
+<script src="app/Component.js"></script>
+<script src="app/Tooltip.js"></script>
+<script src="app/ProjectItem.js"></script>
+<script src="app/ProjectList.js"></script>
+<script src="app.js"></script>
+```
+
+**Problemi di questo approccio**:
+
+- **Ordine critico**: i file devono essere caricati nell'ordine corretto
+- **Gestione manuale**: ogni nuovo file deve essere aggiunto manualmente
+- **Dipendenze implicite**: non è chiaro quale file dipende da quale altro
+- **Scalabilità**: con molti file, diventa difficile gestire l'elenco
+
+Se l'ordine è sbagliato, il codice può fallire silenziosamente o generare errori difficili da debuggare.
+
+---
+
+## Moduli JavaScript: La Soluzione
+
+### Cos'è un Modulo
+
+Un **modulo JavaScript** è un file che ha il proprio scope isolato. Per default, tutto ciò che è definito in un modulo è privato e non accessibile da altri file. Per condividere funzionalità, bisogna esplicitamente esportarle.
+
+### Vantaggi dei Moduli
+
+- **Scope isolato**: ogni file ha il proprio ambiente, evitando conflitti di nomi
+- **Dipendenze esplicite**: ogni file dichiara chiaramente di cosa ha bisogno
+- **Ordine automatico**: il browser risolve automaticamente l'ordine di caricamento
+- **Manutenibilità**: codice organizzato in file logici e gestibili
+
+### Attivare i Moduli
+
+Per usare i moduli, bisogna aggiungere `type="module"` al tag script principale:
+
+```html
+<script type="module" src="app.js"></script>
+```
+
+Questo dice al browser che il file e tutti i file che importa useranno la sintassi dei moduli.
+
+**Importante**: quando si usa `type="module"`, il file viene eseguito in **strict mode** automaticamente, anche senza dichiararlo esplicitamente.
+
+---
+
+## Export: Condividere Codice
+
+### Export di Base
+
+Per rendere disponibile una classe, funzione o variabile ad altri file, si usa la parola chiave `export`:
+
+```javascript
+// DOMHelper.js
+export class DOMHelper {
+  static moveElement(elementId, newDestinationSelector) {
+    const element = document.getElementById(elementId);
+    const destinationElement = document.querySelector(newDestinationSelector);
+    destinationElement.append(element);
+  }
+}
+```
+
+Ora questa classe può essere importata in altri file.
+
+### Named Exports
+
+Quando si esporta qualcosa con un nome specifico, si chiama **named export**. Si possono esportare più elementi dallo stesso file:
+
+```javascript
+// DOMHelper.js
+export class DOMHelper {
+  // ...
+}
+
+export function moveElement(elementId, newDestinationSelector) {
+  // ...
+}
+
+export function clearEventListeners(element) {
+  // ...
+}
+```
+
+Ogni elemento esportato mantiene il suo nome originale e può essere importato selettivamente.
+
+### Default Export
+
+Quando un file esporta principalmente un singolo elemento, si può usare **default export**:
+
+```javascript
+// Component.js
+export default class Component {
+  constructor(hostElementId, insertBefore = false) {
+    // ...
+  }
+}
+```
+
+Il `default export` permette di importare l'elemento con qualsiasi nome si preferisca.
+
+**Regole del default export**:
+
+- Solo **un** default export per file
+- Non è necessario specificare un nome quando si esporta (ma è consigliato)
+- Può essere combinato con named exports nello stesso file
+
+### Combinare Default e Named Exports
+
+È possibile avere sia un default export che named exports nello stesso file:
+
+```javascript
+// Component.js
+export default class Component {
+  // ...
+}
+
+export function doSomething() {
+  // ...
+}
+```
+
+---
+
+## Import: Usare Codice da Altri File
+
+### Import di Named Exports
+
+Per importare named exports, si usa la sintassi con le parentesi graffe:
+
+```javascript
+// Tooltip.js
+import { Component } from './Component.js';
+```
+
+**Punti importanti**:
+
+- Il percorso deve includere l'**estensione del file** (`.js` o `.mjs`)
+- Si usano **percorsi relativi** (con `./` per la stessa cartella, `../` per salire di livello)
+- Si specifica esattamente cosa si vuole importare tra le parentesi graffe
+
+### Import di Default Exports
+
+Per importare un default export, non si usano le parentesi graffe:
+
+```javascript
+// Tooltip.js
+import Component from './Component.js';
+```
+
+Il nome `Component` qui è arbitrario: si può chiamare come si preferisce perché è un default export.
+
+### Import Multipli
+
+Si possono importare più elementi da un singolo file:
+
+```javascript
+// ProjectList.js
+import { DOMHelper, moveElement } from '../utility/DOMHelper.js';
+```
+
+Oppure importare sia default che named exports:
+
+```javascript
+import Component, { doSomething } from './Component.js';
+```
+
+### Alias con `as`
+
+Se si vuole importare qualcosa con un nome diverso (per evitare conflitti o per chiarezza), si usa `as`:
+
+```javascript
+import { ProjectItem as ProjItem } from './ProjectItem.js';
+```
+
+L'alias è valido solo nel file corrente e non modifica il nome originale nel file esportato.
+
+### Import di Tutto con `*`
+
+Se si vuole importare tutti gli export di un file in un unico oggetto:
+
+```javascript
+import * as DOMHelper from '../utility/DOMHelper.js';
+
+// Uso
+DOMHelper.moveElement(elementId, destination);
+DOMHelper.DOMHelper.someMethod();
+```
+
+Questo crea un oggetto che contiene tutte le esportazioni del file, accessibili tramite dot notation.
+
+---
+
+## Percorsi e Estensioni
+
+### Percorsi Relativi
+
+I moduli usano percorsi relativi per specificare la posizione dei file:
+
+```javascript
+// Stessa cartella
+import { Something } from './Something.js';
+
+// Cartella padre
+import { Something } from '../Something.js';
+
+// Sottocartella
+import { Something } from './utils/Something.js';
+```
+
+### Estensioni Obbligatorie
+
+A differenza degli script tradizionali, con i moduli **bisogna sempre specificare l'estensione**:
+
+```javascript
+// ✅ Corretto
+import { Component } from './Component.js';
+
+// ❌ Errore
+import { Component } from './Component';
+```
+
+Alcuni sviluppatori usano `.mjs` per indicare esplicitamente che un file è un modulo, ma `.js` funziona altrettanto bene.
+
+---
+
+## Setup: Web Server Necessario
+
+### Perché Serve un Web Server
+
+I moduli JavaScript richiedono che i file siano serviti tramite un **web server** a causa delle politiche di sicurezza del browser (CORS - Cross-Origin Resource Sharing). Il protocollo `file://` non è sufficiente.
+
+### Soluzione: Serve
+
+Per lo sviluppo locale, si può usare `serve`, un semplice web server che si può installare globalmente.
+
+**1. Installare Node.js**
+- Scaricare da [nodejs.org](https://nodejs.org)
+- Installare la versione LTS (Long Term Support)
+
+**2. Installare serve globalmente**
+```bash
+npm install -g serve
+```
+
+Su Linux e macOS potrebbe essere necessario `sudo`:
+```bash
+sudo npm install -g serve
+```
+
+**3. Avviare il server**
+Navigare nella cartella del progetto e eseguire:
+```bash
+serve
+```
+
+Il server avvierà un server locale (tipicamente su `localhost:5000`) e servirà i file del progetto.
+
+**4. Accedere all'applicazione**
+Aprire il browser e navigare all'indirizzo mostrato (es. `http://localhost:5000`).
+
+**Nota importante**: il server deve rimanere in esecuzione mentre si lavora sul progetto. Per fermarlo, premere `Ctrl+C` nel terminale.
+
+---
+
+## Import Dinamici
+
+### Quando Usare Import Dinamici
+
+Gli import visti finora sono **statici**: vengono risolti quando il file viene caricato. Gli **import dinamici** permettono di caricare moduli solo quando sono effettivamente necessari.
+
+**Casi d'uso**:
+
+- Codice usato solo in risposta a un'azione dell'utente (es. click su un pulsante)
+- Moduli pesanti che rallenterebbero il caricamento iniziale
+- Funzionalità opzionali che potrebbero non essere mai usate
+
+### Sintassi degli Import Dinamici
+
+Gli import dinamici usano `import()` come funzione:
+
+```javascript
+// ProjectItem.js
+async function showMoreInfoHandler() {
+  const module = await import('./Tooltip.js');
+  const tooltip = new module.Tooltip(() => {
+    // ...
+  });
+  tooltip.attach();
+}
+```
+
+`import()` restituisce una **Promise** che risolve con un oggetto contenente tutti gli export del modulo.
+
+### Vantaggi degli Import Dinamici
+
+- **Caricamento lazy**: i file vengono scaricati solo quando necessari
+- **Migliori performance iniziali**: meno file da scaricare all'avvio
+- **Riduzione della memoria**: codice non usato non viene caricato
+
+### Esempio Pratico
+
+```javascript
+// Carica il modulo solo quando il pulsante viene cliccato
+button.addEventListener('click', async () => {
+  const { Tooltip } = await import('./Tooltip.js');
+  const tooltip = new Tooltip(/* ... */);
+  tooltip.attach();
+});
+```
+
+---
+
+## Scope e Esecuzione dei Moduli
+
+### Scope Isolato
+
+Ogni modulo ha il proprio scope. Variabili, funzioni e classi definite in un modulo non sono accessibili da altri moduli a meno che non siano esportate:
+
+```javascript
+// File1.js
+const privateVariable = 'Sono privata';
+
+export function publicFunction() {
+  console.log(privateVariable); // Funziona: stesso scope
+}
+
+// File2.js
+import { publicFunction } from './File1.js';
+
+console.log(privateVariable); // ❌ Errore: non definita
+publicFunction(); // ✅ Funziona: è esportata
+```
+
+### Esecuzione del Codice
+
+Il codice a livello di modulo viene eseguito **una sola volta** quando il modulo viene importato per la prima volta:
+
+```javascript
+// DOMHelper.js
+console.log('DOMHelper caricato');
+
+export class DOMHelper {
+  // ...
+}
+```
+
+Se `DOMHelper.js` viene importato in più file, il `console.log` viene eseguito solo una volta.
+
+### Strict Mode Automatico
+
+I moduli vengono sempre eseguiti in **strict mode**, anche senza dichiararlo:
+
+```javascript
+// Questo codice è automaticamente in strict mode
+function test() {
+  console.log(this); // undefined (non window)
+}
+```
+
+---
+
+## Global Object e Window
+
+### Nessun Global Object Implicito
+
+Nei moduli, le variabili definite a livello di modulo non vengono aggiunte automaticamente al `window`:
+
+```javascript
+// app.js
+const defaultValue = 'Max';
+
+// projectList.js
+console.log(defaultValue); // ❌ Errore: non definita
+```
+
+### Accesso Esplicito a Window
+
+Se si vuole condividere dati globalmente, bisogna aggiungerli esplicitamente a `window`:
+
+```javascript
+// app.js
+window.defaultValue = 'Max';
+
+// projectList.js
+console.log(window.defaultValue); // ✅ Funziona
+```
+
+**Nota**: questo approccio è generalmente sconsigliato. È meglio usare export/import per condividere dati.
+
+### `globalThis`
+
+`globalThis` è un identificatore che punta all'oggetto globale sia nel browser (`window`) che in Node.js (`global`):
+
+```javascript
+// Funziona sia nel browser che in Node.js
+globalThis.myGlobal = 'Valore globale';
+```
+
+Nei moduli, `this` a livello di modulo è `undefined`, ma `globalThis` punta sempre all'oggetto globale corretto.
+
+---
+
+## Best Practices
+
+### Organizzazione dei File
+
+**Struttura consigliata**:
+
+```
+project/
+├── index.html
+├── app.js (entry point)
+├── utility/
+│   ├── DOMHelper.js
+│   └── Analytics.js
+└── app/
+    ├── Component.js
+    ├── Tooltip.js
+    ├── ProjectItem.js
+    └── ProjectList.js
+```
+
+**Principi**:
+
+- Un file per classe/funzione principale
+- Raggruppare file correlati in cartelle
+- Usare nomi descrittivi e consistenti
+- Mantenere l'entry point (`app.js`) semplice
+
+### Convenzioni di Naming
+
+**File**:
+- PascalCase per classi: `ProjectItem.js`
+- camelCase per utility: `domHelper.js` o `DOMHelper.js`
+- Scegliere uno stile e mantenerlo consistente
+
+**Export**:
+- Usare default export quando un file esporta principalmente un singolo elemento
+- Usare named exports quando un file esporta multiple funzionalità correlate
+
+### Gestione delle Dipendenze
+
+**Buone pratiche**:
+
+- Mantenere le dipendenze esplicite e chiare
+- Evitare dipendenze circolari (A importa B, B importa A)
+- Usare import dinamici per codice non critico
+- Documentare dipendenze complesse
+
+### Performance
+
+**Considerazioni**:
+
+- Troppi moduli statici possono rallentare il caricamento iniziale
+- Usare import dinamici per codice non essenziale
+- Considerare il bundling per progetti grandi (argomento del prossimo modulo)
+
+---
+
+## Esempio Completo: Refactoring con Moduli
+
+### Prima: File Singolo
+
+```javascript
+// app.js (tutto in un file)
+class DOMHelper {
+  // ...
+}
+
+class Component {
+  // ...
+}
+
+class Tooltip extends Component {
+  // ...
+}
+
+class ProjectItem {
+  // ...
+}
+
+class ProjectList {
+  // ...
+}
+
+class App {
+  // ...
+}
+```
+
+### Dopo: Moduli Organizzati
+
+**utility/DOMHelper.js**
+```javascript
+export class DOMHelper {
+  static moveElement(elementId, newDestinationSelector) {
+    // ...
+  }
+}
+```
+
+**app/Component.js**
+```javascript
+export default class Component {
+  constructor(hostElementId, insertBefore = false) {
+    // ...
+  }
+}
+```
+
+**app/Tooltip.js**
+```javascript
+import Component from './Component.js';
+
+export class Tooltip extends Component {
+  // ...
+}
+```
+
+**app/ProjectItem.js**
+```javascript
+import { DOMHelper } from '../utility/DOMHelper.js';
+import { Tooltip } from './Tooltip.js';
+
+export class ProjectItem {
+  // ...
+}
+```
+
+**app/ProjectList.js**
+```javascript
+import { DOMHelper } from '../utility/DOMHelper.js';
+import { ProjectItem } from './ProjectItem.js';
+
+export class ProjectList {
+  // ...
+}
+```
+
+**app.js**
+```javascript
+import { ProjectList } from './app/ProjectList.js';
+
+class App {
+  init() {
+    const activeProjectList = new ProjectList('active-projects-list');
+    const finishedProjectList = new ProjectList('finished-projects-list');
+  }
+}
+
+const app = new App();
+app.init();
+```
+
+**index.html**
+```html
+<script type="module" src="app.js"></script>
+```
+
+### Vantaggi Ottenuti
+
+- **Manutenibilità**: ogni classe è in un file dedicato
+- **Chiarezza**: le dipendenze sono esplicite
+- **Scalabilità**: facile aggiungere nuovi moduli
+- **Collaborazione**: meno conflitti in team
+
+---
+
+## Riepilogo
+
+- **Moduli JavaScript**: permettono di organizzare il codice in file multipli con scope isolato. Ogni file è un modulo che può esportare e importare funzionalità.
+
+- **Export**: la parola chiave `export` rende disponibile codice ad altri file. Si possono avere named exports (multiple esportazioni) e default exports (una principale per file).
+
+- **Import**: la parola chiave `import` permette di usare codice da altri moduli. Si specifica cosa importare e da quale file, usando percorsi relativi con estensioni obbligatorie.
+
+- **Web server necessario**: i moduli richiedono che i file siano serviti tramite HTTP, non tramite il protocollo `file://`. Per lo sviluppo locale, si può usare `serve`.
+
+- **Import dinamici**: `import()` come funzione permette di caricare moduli solo quando necessari, migliorando le performance iniziali dell'applicazione.
+
+- **Scope isolato**: ogni modulo ha il proprio scope. Variabili e funzioni non esportate non sono accessibili da altri moduli. Il codice a livello di modulo viene eseguito una sola volta.
+
+- **Strict mode**: i moduli vengono sempre eseguiti in strict mode automaticamente. `this` a livello di modulo è `undefined`, non punta a `window`.
+
+- **Best practices**: organizzare il codice in file logici, mantenere dipendenze esplicite, usare import dinamici per codice non critico, seguire convenzioni di naming consistenti.
+
+- **Vantaggi**: migliore manutenibilità, collaborazione più semplice, codice più organizzato, dipendenze chiare, possibilità di ottimizzare il caricamento con import dinamici.

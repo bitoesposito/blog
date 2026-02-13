@@ -1,0 +1,754 @@
+---
+title: "Tooling JavaScript"
+description: "Webpack, bundling, ottimizzazione del codice, webpack-dev-server, ESLint e gestione delle dipendenze con npm"
+date: 2026-02-13
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 17
+---
+
+## Introduzione
+
+Man mano che i progetti JavaScript crescono in complessità, diventa essenziale utilizzare strumenti che automatizzano attività comuni, ottimizzano il codice e migliorano l'esperienza di sviluppo. Il tooling JavaScript comprende una serie di strumenti che gestiscono il progetto, combinano i file, ottimizzano l'output e facilitano il lavoro quotidiano.
+
+In questo capitolo si approfondiscono:
+
+- **Problemi del codice non ottimizzato**: perché serve il tooling
+- **npm e package.json**: gestione delle dipendenze del progetto
+- **ESLint**: controllo della qualità del codice
+- **Webpack**: bundling e ottimizzazione del codice
+- **Webpack Dev Server**: server di sviluppo con auto-reload
+- **Workflow di sviluppo e produzione**: configurazioni separate per ambienti diversi
+- **Ottimizzazioni avanzate**: pulizia automatica, cache busting
+
+---
+
+## Perché Serve il Tooling
+
+### Problemi dei Progetti JavaScript Base
+
+Quando si lavora con JavaScript senza strumenti di build, si incontrano diverse limitazioni:
+
+**1. Troppe Richieste HTTP**
+Con i moduli JavaScript, ogni file viene scaricato separatamente. In progetti grandi con decine o centinaia di file, questo significa:
+- Dozzine o centinaia di richieste HTTP separate
+- Overhead di rete per ogni richiesta
+- Tempi di caricamento più lunghi
+
+**2. Codice Non Ottimizzato**
+Il codice scritto per essere leggibile dagli sviluppatori contiene:
+- Nomi di variabili e funzioni descrittivi (ma lunghi)
+- Spazi bianchi e formattazione
+- Commenti esplicativi
+
+Questi elementi migliorano la leggibilità ma aumentano la dimensione del file. Per la produzione, sarebbe meglio avere codice più compatto.
+
+**3. Supporto Browser**
+Le funzionalità JavaScript moderne potrebbero non essere supportate da tutti i browser. Servirebbe un modo per tradurre automaticamente il codice moderno in codice compatibile con browser più vecchi.
+
+**4. Ricaricamento Manuale**
+Durante lo sviluppo, ogni modifica richiede un ricaricamento manuale della pagina nel browser, rallentando il flusso di lavoro.
+
+**5. Qualità del Codice**
+Non c'è un controllo automatico che verifichi se il codice segue convenzioni e best practices.
+
+### Soluzione: Tooling
+
+Il tooling JavaScript risolve questi problemi con strumenti che:
+- **Bundling**: combinano più file in bundle più grandi
+- **Ottimizzazione**: minimizzano e comprimono il codice per la produzione
+- **Transpilazione**: convertono codice moderno in codice compatibile
+- **Auto-reload**: ricaricano automaticamente la pagina quando il codice cambia
+- **Linting**: verificano la qualità e la consistenza del codice
+
+---
+
+## npm e Gestione delle Dipendenze
+
+### Cos'è npm
+
+**npm** (Node Package Manager) è il gestore di pacchetti per Node.js. Permette di:
+- Installare strumenti e librerie per il progetto
+- Gestire le versioni delle dipendenze
+- Eseguire script di build e sviluppo
+
+### Inizializzare un Progetto npm
+
+Per iniziare a usare npm in un progetto, bisogna creare un file `package.json`:
+
+```bash
+npm init
+```
+
+Questo comando chiede alcune informazioni:
+- **Nome del pacchetto**: nome del progetto
+- **Versione**: versione iniziale (tipicamente `1.0.0`)
+- **Descrizione**: breve descrizione del progetto
+- **Entry point**: file principale (per tooling, spesso non rilevante)
+- **Test command**: comandi per i test (opzionale)
+- **Git repository**: repository Git (opzionale)
+- **Keywords**: parole chiave (opzionale)
+- **Autore**: nome dell'autore
+- **Licenza**: licenza del progetto
+
+Dopo aver risposto alle domande, viene creato un file `package.json` che contiene la configurazione del progetto.
+
+### Struttura di package.json
+
+```json
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "description": "Descrizione del progetto",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
+```
+
+### Dipendenze: Dependencies vs DevDependencies
+
+Nel `package.json` ci sono due tipi di dipendenze:
+
+**dependencies**: pacchetti necessari per l'applicazione in produzione
+```json
+{
+  "dependencies": {
+    "lodash": "^4.17.21"
+  }
+}
+```
+
+**devDependencies**: pacchetti necessari solo durante lo sviluppo
+```json
+{
+  "devDependencies": {
+    "webpack": "^5.0.0",
+    "eslint": "^8.0.0"
+  }
+}
+```
+
+### Installare Pacchetti
+
+**Installazione globale** (disponibile su tutto il sistema):
+```bash
+npm install -g package-name
+```
+
+**Installazione locale** (solo per il progetto):
+```bash
+npm install --save package-name        # dependency
+npm install --save-dev package-name    # devDependency
+```
+
+Dopo l'installazione:
+- Il pacchetto viene aggiunto a `package.json`
+- Viene creato/aggiornato `package-lock.json` (blocca le versioni esatte)
+- Il codice viene scaricato nella cartella `node_modules/`
+
+**Nota importante**: la cartella `node_modules/` non va mai committata nel repository Git. Va aggiunta a `.gitignore`. Si può sempre ricreare con `npm install`.
+
+### Scripts in package.json
+
+Gli script permettono di eseguire comandi complessi con nomi semplici:
+
+```json
+{
+  "scripts": {
+    "build": "webpack",
+    "build:dev": "webpack-dev-server",
+    "build:prod": "webpack --config webpack.config.prod.js"
+  }
+}
+```
+
+Eseguire uno script:
+```bash
+npm run build
+npm run build:dev
+```
+
+---
+
+## ESLint: Controllo Qualità del Codice
+
+### Cos'è ESLint
+
+**ESLint** è uno strumento che analizza il codice JavaScript per trovare problemi e verificare che segua convenzioni di stile definite.
+
+### Installazione
+
+**1. Installare l'estensione per Visual Studio Code**
+- Aprire Extensions (View → Extensions)
+- Cercare "ESLint"
+- Installare l'estensione ufficiale
+
+**2. Installare ESLint nel progetto**
+```bash
+npm install --save-dev eslint
+```
+
+**3. Creare la configurazione**
+Aprire il Command Palette (Cmd+Shift+P su Mac, Ctrl+Shift+P su Windows/Linux) e cercare "ESLint: Create ESLint configuration".
+
+Durante la configurazione iniziale, si sceglie:
+- Livello di controllo (solo sintassi, problemi, o anche stile)
+- Tipo di moduli (ES6 modules)
+- Framework utilizzato (React, Vue, nessuno)
+- Ambiente di esecuzione (browser, Node.js)
+- Stile guide da usare (preset o personalizzato)
+
+### File di Configurazione: .eslintrc.json
+
+Dopo la configurazione iniziale, viene creato un file `.eslintrc.json`:
+
+```json
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "quotes": ["error", "single"],
+    "semi": ["error", "always"]
+  }
+}
+```
+
+### Regole Personalizzate
+
+Le regole possono essere configurate in tre modi:
+
+**1. Error**: il problema viene segnalato come errore
+```json
+{
+  "rules": {
+    "quotes": ["error", "single"]
+  }
+}
+```
+
+**2. Warning**: il problema viene segnalato come avviso
+```json
+{
+  "rules": {
+    "no-console": "warn"
+  }
+}
+```
+
+**3. Off**: la regola è disabilitata
+```json
+{
+  "rules": {
+    "no-console": "off"
+  }
+}
+```
+
+### Esempi di Regole Comuni
+
+```json
+{
+  "rules": {
+    "quotes": ["error", "single"],           // Forza virgolette singole
+    "semi": ["error", "always"],             // Richiede punto e virgola
+    "no-console": "warn",                    // Avvisa su console.log
+    "no-unused-vars": "error",               // Errore per variabili non usate
+    "indent": ["error", 2]                   // Indentazione di 2 spazi
+  }
+}
+```
+
+### Usare ESLint
+
+Con l'estensione installata, ESLint mostra automaticamente errori e avvisi nell'editor. È possibile:
+- Vedere problemi evidenziati nel codice
+- Usare "Quick Fix" per correggere automaticamente alcuni problemi
+. Eseguire "Fix all auto-fixable problems" dal Command Palette
+
+### Best Practices per ESLint
+
+- Non abilitare tutte le regole possibili: scegliere solo quelle rilevanti
+- Partire con preset come `eslint:recommended` e aggiungere regole gradualmente
+- Mantenere la configurazione semplice e comprensibile
+- Documentare regole personalizzate non standard
+
+---
+
+## Webpack: Bundling del Codice
+
+### Cos'è Webpack
+
+**Webpack** è un module bundler che:
+- Analizza le dipendenze tra i file (import/export)
+- Combina più file JavaScript in bundle più grandi
+- Ottimizza il codice per la produzione
+- Gestisce asset come CSS, immagini, font
+
+### Installazione
+
+```bash
+npm install --save-dev webpack webpack-cli
+```
+
+- **webpack**: il bundler principale
+- **webpack-cli**: interfaccia a riga di comando per webpack
+
+### Configurazione Base: webpack.config.js
+
+Webpack usa un file di configurazione JavaScript:
+
+```javascript
+const path = require('path');
+
+module.exports = {
+  entry: './src/app.js',
+  output: {
+    filename: 'app.js',
+    path: path.resolve(__dirname, 'assets/scripts')
+  },
+  mode: 'development'
+};
+```
+
+**Spiegazione**:
+- **entry**: punto di ingresso dell'applicazione (file principale)
+- **output**: dove scrivere i file generati
+  - **filename**: nome del file di output
+  - **path**: percorso assoluto della cartella di output
+- **mode**: ambiente di build (`development` o `production`)
+
+### Struttura del Progetto
+
+Con webpack, è comune organizzare il progetto così:
+
+```
+project/
+├── src/              # File sorgente (input)
+│   ├── app.js       # Entry point
+│   ├── app/
+│   └── utility/
+├── assets/
+│   └── scripts/     # File generati (output)
+├── webpack.config.js
+└── package.json
+```
+
+### Eseguire Webpack
+
+Aggiungere uno script in `package.json`:
+
+```json
+{
+  "scripts": {
+    "build": "webpack"
+  }
+}
+```
+
+Eseguire:
+```bash
+npm run build
+```
+
+Webpack:
+1. Legge `webpack.config.js`
+2. Analizza il file entry (`app.js`)
+3. Risolve tutte le dipendenze (import)
+4. Combina tutto in un bundle
+5. Scrive l'output nella cartella specificata
+
+### Import Senza Estensioni
+
+Con webpack, non è necessario specificare le estensioni negli import:
+
+```javascript
+// ✅ Con webpack
+import { Component } from './Component';
+
+// ❌ Senza webpack (necessario .js)
+import { Component } from './Component.js';
+```
+
+Webpack risolve automaticamente le estensioni `.js` e `.mjs`.
+
+### Code Splitting
+
+Webpack supporta il code splitting automatico per import dinamici:
+
+```javascript
+// Import dinamico crea un bundle separato
+async function loadTooltip() {
+  const module = await import('./Tooltip.js');
+  // ...
+}
+```
+
+Webpack crea bundle separati:
+- `app.js`: codice principale
+- `0.app.js`: codice caricato dinamicamente
+
+Questo permette di caricare codice solo quando necessario, mantenendo il bundle iniziale più piccolo.
+
+### Public Path
+
+Quando si usa code splitting, bisogna configurare `publicPath` per indicare dove si trovano i bundle:
+
+```javascript
+module.exports = {
+  output: {
+    filename: 'app.js',
+    path: path.resolve(__dirname, 'assets/scripts'),
+    publicPath: 'assets/scripts/'  // Percorso pubblico dei bundle
+  }
+};
+```
+
+---
+
+## Webpack Dev Server: Sviluppo con Auto-Reload
+
+### Cos'è Webpack Dev Server
+
+**Webpack Dev Server** è un server di sviluppo che:
+- Serve l'applicazione durante lo sviluppo
+- Ricarica automaticamente la pagina quando il codice cambia
+- Mantiene i bundle in memoria (non li scrive su disco)
+
+### Installazione
+
+```bash
+npm install --save-dev webpack-dev-server
+```
+
+### Configurazione
+
+Aggiungere la configurazione del dev server in `webpack.config.js`:
+
+```javascript
+module.exports = {
+  // ... altre configurazioni
+  devServer: {
+    contentBase: './',  // Cartella root (opzionale, default è .)
+    open: true          // Apre il browser automaticamente (opzionale)
+  }
+};
+```
+
+### Script di Sviluppo
+
+Aggiungere uno script in `package.json`:
+
+```json
+{
+  "scripts": {
+    "build:dev": "webpack-dev-server"
+  }
+}
+```
+
+Eseguire:
+```bash
+npm run build:dev
+```
+
+Il server si avvia (tipicamente su `http://localhost:8080`) e:
+- Compila il codice
+- Serve l'applicazione
+- Monitora i file per cambiamenti
+- Ricompila e ricarica automaticamente quando si salva
+
+### Vantaggi del Dev Server
+
+- **Hot reload**: modifiche visibili immediatamente
+- **Build in memoria**: più veloce (non scrive su disco)
+- **Sviluppo più rapido**: nessun ricaricamento manuale
+
+---
+
+## Source Maps per il Debugging
+
+### Il Problema
+
+Con webpack, il codice viene trasformato e combinato, rendendo difficile il debugging perché:
+- Il codice nel browser non corrisponde al codice sorgente
+- I breakpoint non funzionano correttamente
+- Gli stack trace sono poco chiari
+
+### Soluzione: Source Maps
+
+Le **source maps** collegano il codice trasformato al codice sorgente originale, permettendo di:
+- Vedere il codice originale nel browser
+- Impostare breakpoint sul codice sorgente
+- Avere stack trace chiari
+
+### Configurazione
+
+Aggiungere `devtool` in `webpack.config.js`:
+
+```javascript
+module.exports = {
+  // ... altre configurazioni
+  devtool: 'cheap-module-eval-source-map'  // Per sviluppo
+};
+```
+
+**Opzioni comuni**:
+
+- **`cheap-module-eval-source-map`**: buono per sviluppo (veloce, buona qualità)
+- **`source-map`**: migliore qualità, più lento
+- **`cheap-source-map`**: veloce ma qualità inferiore
+- **`none`**: nessuna source map (produzione)
+
+### Usare le Source Maps
+
+Con le source maps configurate:
+1. Aprire DevTools nel browser
+2. Andare alla tab "Sources"
+3. Trovare la cartella `webpack://`
+4. Navigare ai file sorgente originali
+5. Impostare breakpoint sul codice originale
+
+---
+
+## Workflow: Sviluppo vs Produzione
+
+### Due Configurazioni Separate
+
+È comune avere due configurazioni webpack separate:
+
+**1. Sviluppo** (`webpack.config.js`)
+- Mode: `development`
+- Source maps dettagliate
+- Nessuna ottimizzazione
+- Dev server con auto-reload
+
+**2. Produzione** (`webpack.config.prod.js`)
+- Mode: `production`
+- Source maps minime o assenti
+- Ottimizzazioni attive
+- Output minimizzato
+
+### Configurazione di Produzione
+
+```javascript
+// webpack.config.prod.js
+const path = require('path');
+
+module.exports = {
+  entry: './src/app.js',
+  output: {
+    filename: '[contenthash].app.js',
+    path: path.resolve(__dirname, 'assets/scripts')
+  },
+  mode: 'production',
+  devtool: 'cheap-source-map'  // Source map minimale per produzione
+};
+```
+
+### Script Separati
+
+```json
+{
+  "scripts": {
+    "build": "webpack",
+    "build:dev": "webpack-dev-server",
+    "build:prod": "webpack --config webpack.config.prod.js"
+  }
+}
+```
+
+### Quando Usare Quale
+
+- **Sviluppo**: usare `build:dev` durante la scrittura del codice
+- **Produzione**: usare `build:prod` prima di deployare l'applicazione
+
+---
+
+## Ottimizzazioni Avanzate
+
+### Clean Webpack Plugin
+
+Il plugin **clean-webpack-plugin** pulisce automaticamente la cartella di output prima di ogni build, rimuovendo file vecchi e non più necessari.
+
+**Installazione**:
+```bash
+npm install --save-dev clean-webpack-plugin
+```
+
+**Configurazione**:
+```javascript
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+
+module.exports = {
+  // ... altre configurazioni
+  plugins: [
+    new CleanWebpackPlugin()
+  ]
+};
+```
+
+### Content Hash per Cache Busting
+
+Per forzare i browser a scaricare nuove versioni dei file quando il contenuto cambia, si usa un **content hash** nel nome del file:
+
+```javascript
+module.exports = {
+  output: {
+    filename: '[contenthash].app.js',  // Hash basato sul contenuto
+    path: path.resolve(__dirname, 'assets/scripts')
+  }
+};
+```
+
+**Come funziona**:
+- Se il contenuto cambia, l'hash cambia
+- Il nome del file cambia
+- Il browser vede un file "nuovo" e lo scarica
+- Se il contenuto non cambia, l'hash rimane uguale
+- Il browser può usare la versione cached
+
+**Nota**: quando si usa content hash, bisogna aggiornare manualmente i riferimenti nel file HTML per puntare al nuovo nome del file.
+
+### Ottimizzazioni Automatiche in Production Mode
+
+Quando `mode: 'production'`, webpack applica automaticamente:
+- **Minificazione**: rimozione di spazi bianchi e commenti
+- **Tree shaking**: rimozione di codice non utilizzato
+- **Uglification**: rinomina variabili con nomi corti
+- **Dead code elimination**: rimozione di codice irraggiungibile
+
+---
+
+## Importare Librerie Third-Party
+
+### Tre Modi di Aggiungere Librerie
+
+**1. Download manuale**
+- Scaricare il file JavaScript
+- Aggiungere `<script>` tag nell'HTML
+
+**2. CDN**
+- Usare un link CDN nell'HTML
+- La libreria viene caricata da un server esterno
+
+**3. npm + Webpack** (consigliato per progetti con tooling)
+- Installare con npm
+- Importare nel codice JavaScript
+- Webpack la include nel bundle
+
+### Esempio: Aggiungere Lodash
+
+**1. Installare**:
+```bash
+npm install --save lodash
+```
+
+**2. Importare nel codice**:
+```javascript
+import _ from 'lodash';
+
+// Oppure import selettivo (più efficiente)
+import { difference } from 'lodash/array';
+```
+
+**3. Usare**:
+```javascript
+const result = _.difference([0, 1], [1, 2]);
+console.log(result); // [0]
+```
+
+### Vantaggi dell'Approccio npm
+
+- **Gestione versioni**: versioni bloccate in `package.json`
+- **Bundle ottimizzato**: webpack può fare tree shaking
+- **Import selettivi**: importare solo le funzioni necessarie
+- **Dipendenze esplicite**: chiaro quali librerie usa il progetto
+
+---
+
+## Best Practices
+
+### Organizzazione del Progetto
+
+```
+project/
+├── src/                    # Codice sorgente
+│   ├── app.js             # Entry point
+│   ├── app/               # Moduli dell'applicazione
+│   └── utility/           # Utility functions
+├── assets/
+│   └── scripts/           # Output di webpack
+├── node_modules/          # Dipendenze (non committare)
+├── .eslintrc.json         # Configurazione ESLint
+├── webpack.config.js       # Config webpack sviluppo
+├── webpack.config.prod.js  # Config webpack produzione
+├── package.json            # Configurazione npm
+└── package-lock.json      # Lock delle versioni
+```
+
+### File da Ignorare in Git
+
+Creare un file `.gitignore`:
+
+```
+node_modules/
+dist/
+*.log
+.DS_Store
+```
+
+### Workflow Consigliato
+
+**Durante lo sviluppo**:
+1. Avviare `npm run build:dev`
+2. Scrivere codice
+3. Vedere cambiamenti automaticamente nel browser
+4. ESLint segnala problemi in tempo reale
+
+**Prima del deploy**:
+1. Eseguire `npm run build:prod`
+2. Verificare i file generati
+3. Aggiornare riferimenti nel HTML se necessario
+4. Deployare i file ottimizzati
+
+### Performance
+
+- Usare import dinamici per codice non critico
+- Importare solo le parti necessarie delle librerie
+- Monitorare la dimensione dei bundle
+- Usare code splitting per applicazioni grandi
+
+---
+
+## Riepilogo
+
+- **Tooling JavaScript**: strumenti che automatizzano build, ottimizzazione e gestione del progetto. Essenziali per progetti di medie/grandi dimensioni.
+
+- **npm**: gestore di pacchetti per Node.js. Permette di installare dipendenze, gestire versioni ed eseguire script. Usa `package.json` per configurare il progetto.
+
+- **ESLint**: strumento di linting che verifica qualità e consistenza del codice. Configurabile tramite `.eslintrc.json` con regole personalizzabili.
+
+- **Webpack**: module bundler che combina più file JavaScript in bundle ottimizzati. Analizza le dipendenze e genera output ottimizzato per sviluppo o produzione.
+
+- **Webpack Dev Server**: server di sviluppo con hot reload automatico. Monitora i file e ricompila automaticamente quando cambiano, migliorando l'esperienza di sviluppo.
+
+- **Source Maps**: collegano il codice trasformato al codice sorgente originale, permettendo debugging efficace anche con codice bundlato e ottimizzato.
+
+- **Workflow separati**: configurazioni diverse per sviluppo (veloce, debuggabile) e produzione (ottimizzata, minimizzata). Usare `mode: 'development'` o `mode: 'production'`.
+
+- **Ottimizzazioni**: clean-webpack-plugin per pulire output, content hash per cache busting, ottimizzazioni automatiche in production mode (minificazione, tree shaking).
+
+- **Import librerie**: con npm e webpack, le librerie third-party vengono installate con npm e importate nel codice. Webpack le include nel bundle finale.
+
+- **Best practices**: organizzare codice in `src/`, output in cartella separata, ignorare `node_modules/` in Git, usare script npm per automatizzare workflow, monitorare dimensioni dei bundle.
