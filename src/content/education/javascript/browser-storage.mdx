@@ -1,0 +1,1534 @@
+---
+title: "Browser Storage"
+description: "localStorage, sessionStorage, cookies e IndexedDB per memorizzare dati direttamente nel browser"
+date: 2026-02-16
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 18
+---
+
+## Introduzione
+
+Le applicazioni web moderne spesso necessitano di memorizzare dati direttamente nel browser dell'utente. Mentre i dati critici vengono tipicamente salvati su server e database, esistono scenari in cui è utile conservare informazioni localmente per migliorare l'esperienza utente o gestire dati temporanei.
+
+In questo capitolo si approfondiscono:
+
+- **Architettura browser-server**: quando usare storage locale vs server-side
+- **localStorage**: storage persistente chiave-valore
+- **sessionStorage**: storage temporaneo per la sessione
+- **Cookies**: storage con invio automatico al server
+- **IndexedDB**: database client-side per dati complessi
+- **Casi d'uso**: quando utilizzare ciascun tipo di storage
+
+---
+
+## Architettura Browser-Server
+
+### Due Livelli di Storage
+
+Nelle applicazioni web, i dati possono essere memorizzati in due luoghi principali:
+
+**Server-side storage**
+- Database centralizzato sul server
+- Dati condivisi tra tutti gli utenti
+- Dati critici e sensibili
+- Accesso controllato e validato
+- Persistenza garantita
+
+**Browser-side storage**
+- Memorizzazione locale sul dispositivo dell'utente
+- Dati specifici per quel browser/utente
+- Dati temporanei o di convenienza
+- Accessibile solo quando l'utente visita la pagina
+- Può essere cancellato dall'utente o dal browser
+
+### Quando Usare Browser Storage
+
+Il browser storage è adatto per:
+
+- **Preferenze utente**: tema scuro/chiaro, lingua, impostazioni di visualizzazione
+- **Dati temporanei**: carrello della spesa, bozze di form, stato dell'applicazione
+- **Token di autenticazione**: session ID, token JWT per richieste successive
+- **Cache locale**: dati già scaricati per ridurre richieste al server
+- **Dati offline**: informazioni necessarie quando l'applicazione funziona senza connessione
+
+Il browser storage **non è adatto** per:
+
+- Dati condivisi tra utenti (prodotti, contenuti pubblici)
+- Dati critici per il business (ordini completati, transazioni)
+- Informazioni sensibili che richiedono sicurezza elevata
+- Dati che devono essere sempre accessibili dal server
+
+### Limitazioni del Browser Storage
+
+È importante comprendere che:
+
+- I dati possono essere **visualizzati e modificati** dall'utente tramite DevTools
+- I dati possono essere **cancellati** dall'utente in qualsiasi momento
+- Il browser può **eliminare automaticamente** i dati se lo spazio è limitato
+- I dati sono **specifici del browser** e non sincronizzati tra dispositivi
+- Non si può fare affidamento sulla persistenza per dati critici
+
+---
+
+## localStorage
+
+### Cos'è localStorage
+
+**localStorage** è un meccanismo di storage persistente che memorizza dati come coppie chiave-valore. I dati persistono anche dopo la chiusura del browser e rimangono disponibili finché non vengono eliminati manualmente o dal browser stesso.
+
+È ideale per:
+- Preferenze utente che devono persistere tra sessioni
+- Dati di configurazione dell'applicazione
+- Token di autenticazione
+- Cache di dati che non cambiano frequentemente
+
+### API di localStorage
+
+localStorage fornisce un'API semplice e sincrona:
+
+```javascript
+// Memorizzare un valore
+localStorage.setItem('chiave', 'valore')
+
+// Recuperare un valore
+const valore = localStorage.getItem('chiave')
+
+// Rimuovere un valore specifico
+localStorage.removeItem('chiave')
+
+// Cancellare tutti i dati
+localStorage.clear()
+
+// Ottenere il numero di elementi memorizzati
+const numeroElementi = localStorage.length
+
+// Ottenere il nome della chiave all'indice specificato
+const nomeChiave = localStorage.key(0)
+```
+
+### Esempio Pratico: Memorizzare User ID
+
+Supponiamo di voler memorizzare l'ID utente per identificarlo nelle richieste successive:
+
+```javascript
+// Memorizzare l'ID utente
+const userId = 'u123'
+localStorage.setItem('uid', userId)
+
+// Recuperare l'ID utente
+const extractedId = localStorage.getItem('uid')
+
+if (extractedId) {
+	console.log('ID trovato:', extractedId)
+} else {
+	console.log('ID non trovato')
+}
+```
+
+### Memorizzare Oggetti Complessi
+
+localStorage può memorizzare solo stringhe. Per memorizzare oggetti JavaScript, è necessario convertirli in JSON:
+
+```javascript
+// Oggetto da memorizzare
+const user = {
+	name: 'Mario',
+	age: 30,
+	hobbies: ['sport', 'cucina']
+}
+
+// Convertire in JSON e memorizzare
+localStorage.setItem('user', JSON.stringify(user))
+
+// Recuperare e convertire da JSON
+const storedUserJson = localStorage.getItem('user')
+if (storedUserJson) {
+	const extractedUser = JSON.parse(storedUserJson)
+	console.log('Utente recuperato:', extractedUser)
+}
+```
+
+**Nota importante**: quando si converte un oggetto in JSON, i metodi vengono persi. Solo le proprietà vengono memorizzate.
+
+### Visualizzare i Dati in DevTools
+
+Per ispezionare i dati memorizzati in localStorage:
+
+1. Aprire Chrome DevTools (F12)
+2. Andare alla tab **Application**
+3. Espandere **Local Storage** nel menu laterale
+4. Selezionare il dominio del sito
+5. Visualizzare tutte le coppie chiave-valore memorizzate
+
+Gli utenti possono modificare o eliminare questi dati direttamente da DevTools, quindi non si deve mai fare affidamento su localStorage come unica fonte di verità.
+
+### Esempio Completo: Gestione Preferenze Utente
+
+```javascript
+// Servizio per gestire le preferenze utente
+const UserPreferencesService = {
+	// Memorizzare una preferenza
+	setPreference(key, value) {
+		try {
+			const preferences = this.getAllPreferences()
+			preferences[key] = value
+			localStorage.setItem('userPreferences', JSON.stringify(preferences))
+			return true
+		} catch (error) {
+			console.error('Errore nel salvataggio delle preferenze:', error)
+			return false
+		}
+	},
+
+	// Recuperare una preferenza specifica
+	getPreference(key, defaultValue = null) {
+		try {
+			const preferences = this.getAllPreferences()
+			return preferences[key] !== undefined ? preferences[key] : defaultValue
+		} catch (error) {
+			console.error('Errore nel recupero delle preferenze:', error)
+			return defaultValue
+		}
+	},
+
+	// Recuperare tutte le preferenze
+	getAllPreferences() {
+		try {
+			const stored = localStorage.getItem('userPreferences')
+			return stored ? JSON.parse(stored) : {}
+		} catch (error) {
+			console.error('Errore nel parsing delle preferenze:', error)
+			return {}
+		}
+	},
+
+	// Eliminare una preferenza
+	removePreference(key) {
+		try {
+			const preferences = this.getAllPreferences()
+			delete preferences[key]
+			localStorage.setItem('userPreferences', JSON.stringify(preferences))
+			return true
+		} catch (error) {
+			console.error('Errore nell\'eliminazione della preferenza:', error)
+			return false
+		}
+	},
+
+	// Cancellare tutte le preferenze
+	clearAll() {
+		try {
+			localStorage.removeItem('userPreferences')
+			return true
+		} catch (error) {
+			console.error('Errore nella cancellazione delle preferenze:', error)
+			return false
+		}
+	}
+}
+
+// Utilizzo
+UserPreferencesService.setPreference('theme', 'dark')
+UserPreferencesService.setPreference('language', 'it')
+UserPreferencesService.setPreference('notifications', true)
+
+const theme = UserPreferencesService.getPreference('theme', 'light')
+console.log('Tema corrente:', theme)
+```
+
+---
+
+## sessionStorage
+
+### Differenza tra localStorage e sessionStorage
+
+**sessionStorage** funziona esattamente come localStorage ma con una differenza fondamentale nella persistenza:
+
+- **localStorage**: i dati persistono anche dopo la chiusura del browser
+- **sessionStorage**: i dati vengono eliminati quando si chiude la tab o il browser
+
+### Quando Usare sessionStorage
+
+sessionStorage è ideale per:
+
+- Dati temporanei che devono essere disponibili solo durante la sessione corrente
+- Stato dell'applicazione che non deve persistere tra sessioni
+- Dati sensibili che devono essere eliminati automaticamente alla chiusura
+- Informazioni di navigazione che sono rilevanti solo per la sessione corrente
+
+### API di sessionStorage
+
+L'API è identica a localStorage:
+
+```javascript
+// Memorizzare un valore
+sessionStorage.setItem('chiave', 'valore')
+
+// Recuperare un valore
+const valore = sessionStorage.getItem('chiave')
+
+// Rimuovere un valore
+sessionStorage.removeItem('chiave')
+
+// Cancellare tutti i dati
+sessionStorage.clear()
+```
+
+### Esempio: Gestione Stato Temporaneo
+
+```javascript
+// Memorizzare lo stato corrente del form
+const formState = {
+	name: 'Mario',
+	email: 'mario@example.com',
+	message: 'Messaggio in bozza...'
+}
+
+sessionStorage.setItem('formDraft', JSON.stringify(formState))
+
+// Recuperare lo stato quando l'utente torna alla pagina
+const savedDraft = sessionStorage.getItem('formDraft')
+if (savedDraft) {
+	const draft = JSON.parse(savedDraft)
+	// Ripristinare i valori del form
+	console.log('Bozza recuperata:', draft)
+}
+
+// Eliminare quando il form viene inviato con successo
+sessionStorage.removeItem('formDraft')
+```
+
+### Comportamento alla Chiusura
+
+```javascript
+// Memorizzare in sessionStorage
+sessionStorage.setItem('sessionId', 'sess_12345')
+
+// Se si ricarica la pagina, il dato è ancora presente
+console.log(sessionStorage.getItem('sessionId')) // 'sess_12345'
+
+// Se si chiude la tab e si riapre, il dato è perso
+// Se si chiude il browser e si riapre, il dato è perso
+```
+
+---
+
+## Cookies
+
+### Cos'è un Cookie
+
+I **cookies** sono un meccanismo di storage che memorizza dati come coppie chiave-valore, simile a localStorage, ma con caratteristiche uniche:
+
+- Possono essere configurati con una data di scadenza
+- Vengono automaticamente inviati al server con ogni richiesta HTTP
+- Possono essere impostati sia dal client che dal server
+- Hanno limitazioni di dimensione (circa 4KB per cookie)
+
+### Quando Usare i Cookies
+
+I cookies sono particolarmente utili per:
+
+- **Autenticazione**: token di sessione che devono essere inviati al server
+- **Tracking**: identificatori per analytics che devono essere condivisi con il server
+- **Preferenze**: impostazioni che il server deve conoscere
+- **Personalizzazione**: dati che devono essere disponibili sia lato client che server
+
+### API dei Cookies
+
+A differenza di localStorage, l'API dei cookies è meno intuitiva:
+
+```javascript
+// Impostare un cookie
+document.cookie = 'chiave=valore'
+
+// Leggere tutti i cookies
+const tuttiCookies = document.cookie
+console.log(tuttiCookies) // "chiave1=valore1; chiave2=valore2"
+
+// Impostare un cookie con scadenza
+document.cookie = 'chiave=valore; max-age=3600' // Scade dopo 1 ora
+
+// Impostare un cookie con data di scadenza specifica
+const expiryDate = new Date('2026-12-31').toUTCString()
+document.cookie = `chiave=valore; expires=${expiryDate}`
+```
+
+### Impostare Cookies
+
+Quando si assegna un valore a `document.cookie`, il cookie viene **aggiunto** alla lista esistente, non sostituito:
+
+```javascript
+// Impostare un cookie
+const userId = 'u123'
+document.cookie = `uid=${userId}`
+
+// Aggiungere un altro cookie (non sostituisce il primo)
+const userName = 'Mario'
+document.cookie = `userName=${userName}`
+```
+
+### Leggere Cookies
+
+`document.cookie` restituisce una stringa con tutti i cookies separati da punto e virgola:
+
+```javascript
+// Leggere tutti i cookies
+console.log(document.cookie)
+// Output: "uid=u123; userName=Mario"
+
+// Parsing manuale per ottenere un valore specifico
+function getCookie(name) {
+	const cookies = document.cookie.split(';')
+	
+	for (let cookie of cookies) {
+		const [key, value] = cookie.trim().split('=')
+		if (key === name) {
+			return value
+		}
+	}
+	
+	return null
+}
+
+// Utilizzo
+const uid = getCookie('uid')
+console.log('User ID:', uid) // 'u123'
+```
+
+### Memorizzare Oggetti nei Cookies
+
+Come per localStorage, è necessario convertire gli oggetti in JSON:
+
+```javascript
+const user = {
+	name: 'Mario',
+	age: 30,
+	hobbies: ['sport', 'cucina']
+}
+
+// Convertire in JSON e memorizzare
+document.cookie = `user=${JSON.stringify(user)}`
+
+// Recuperare e parsare
+const userCookie = getCookie('user')
+if (userCookie) {
+	const userObject = JSON.parse(userCookie)
+	console.log('Utente recuperato:', userObject)
+}
+```
+
+### Scadenza dei Cookies
+
+I cookies possono essere configurati con due tipi di scadenza:
+
+**1. max-age (in secondi)**
+```javascript
+// Cookie che scade dopo 1 ora (3600 secondi)
+document.cookie = `sessionId=sess_123; max-age=3600`
+
+// Cookie che scade dopo 1 giorno (86400 secondi)
+document.cookie = `preference=dark; max-age=86400`
+```
+
+**2. expires (data specifica)**
+```javascript
+// Cookie che scade il 31 dicembre 2026
+const expiryDate = new Date('2026-12-31T23:59:59').toUTCString()
+document.cookie = `token=abc123; expires=${expiryDate}`
+```
+
+Se non si specifica una scadenza, il cookie viene eliminato quando si chiude il browser (cookie di sessione).
+
+### Flag dei Cookies
+
+I cookies supportano diversi flag di configurazione:
+
+```javascript
+// Secure: inviato solo su connessioni HTTPS
+document.cookie = 'token=abc123; secure'
+
+// SameSite: controllo della politica di invio cross-site
+document.cookie = 'sessionId=sess_123; SameSite=Strict'
+
+// Path: il cookie è disponibile solo per percorsi specifici
+document.cookie = 'preference=dark; path=/admin'
+
+// Domain: il cookie è disponibile per sottodomini
+document.cookie = 'userId=u123; domain=.example.com'
+```
+
+### HTTP-Only Cookies
+
+I cookies con il flag `HttpOnly` possono essere impostati solo dal server e non sono accessibili da JavaScript. Questo è un meccanismo di sicurezza importante per proteggere token di autenticazione sensibili.
+
+```javascript
+// Questo NON funziona lato client
+// HttpOnly può essere impostato solo dal server tramite header HTTP
+// Set-Cookie: sessionId=abc123; HttpOnly
+```
+
+### Esempio Completo: Gestione Cookies
+
+```javascript
+const CookieService = {
+	// Impostare un cookie
+	set(name, value, options = {}) {
+		let cookieString = `${name}=${encodeURIComponent(value)}`
+		
+		if (options.maxAge) {
+			cookieString += `; max-age=${options.maxAge}`
+		}
+		
+		if (options.expires) {
+			cookieString += `; expires=${options.expires.toUTCString()}`
+		}
+		
+		if (options.path) {
+			cookieString += `; path=${options.path}`
+		}
+		
+		if (options.domain) {
+			cookieString += `; domain=${options.domain}`
+		}
+		
+		if (options.secure) {
+			cookieString += '; secure'
+		}
+		
+		if (options.sameSite) {
+			cookieString += `; SameSite=${options.sameSite}`
+		}
+		
+		document.cookie = cookieString
+	},
+
+	// Recuperare un cookie
+	get(name) {
+		const cookies = document.cookie.split(';')
+		
+		for (let cookie of cookies) {
+			const [key, value] = cookie.trim().split('=')
+			if (key === name) {
+				return decodeURIComponent(value)
+			}
+		}
+		
+		return null
+	},
+
+	// Eliminare un cookie
+	remove(name, options = {}) {
+		// Per eliminare, impostiamo max-age a 0 o expires nel passato
+		this.set(name, '', {
+			...options,
+			maxAge: 0
+		})
+	},
+
+	// Recuperare tutti i cookies come oggetto
+	getAll() {
+		const cookies = {}
+		const cookieArray = document.cookie.split(';')
+		
+		for (let cookie of cookieArray) {
+			const [key, value] = cookie.trim().split('=')
+			if (key && value) {
+				cookies[key] = decodeURIComponent(value)
+			}
+		}
+		
+		return cookies
+	}
+}
+
+// Utilizzo
+CookieService.set('userId', 'u123', {
+	maxAge: 86400, // 1 giorno
+	path: '/'
+})
+
+CookieService.set('theme', 'dark', {
+	expires: new Date('2026-12-31'),
+	secure: true
+})
+
+const userId = CookieService.get('userId')
+console.log('User ID:', userId)
+
+CookieService.remove('userId')
+```
+
+---
+
+## IndexedDB
+
+### Cos'è IndexedDB
+
+**IndexedDB** è un database NoSQL integrato nel browser che permette di memorizzare grandi quantità di dati strutturati. A differenza di localStorage e cookies, IndexedDB supporta:
+
+- **Dati complessi**: oggetti JavaScript completi senza bisogno di serializzazione JSON manuale
+- **Query avanzate**: ricerca e filtraggio basati su indici
+- **Transazioni**: operazioni atomiche che garantiscono consistenza
+- **Grandi volumi**: può gestire centinaia di megabyte di dati
+- **Performance**: accesso asincrono e indicizzazione per ricerche veloci
+
+### Quando Usare IndexedDB
+
+IndexedDB è ideale per:
+
+- **Applicazioni offline-first**: app che devono funzionare senza connessione
+- **Cache di grandi dimensioni**: memorizzare grandi quantità di dati scaricati dal server
+- **Applicazioni ricche**: app simili a desktop che gestiscono molti dati lato client
+- **File binari**: memorizzare immagini, video o altri file binari
+- **Dati relazionali**: dati con relazioni complesse che richiedono query strutturate
+
+**Non usare IndexedDB per**:
+- Dati semplici che possono essere gestiti con localStorage
+- Dati che devono essere sempre sincronizzati con il server
+- Dati critici che non possono essere persi
+
+### Architettura di IndexedDB
+
+IndexedDB utilizza una struttura gerarchica:
+
+```
+Database
+  └── Object Store (come una tabella)
+       └── Record (oggetti JavaScript)
+            └── Index (per ricerche veloci)
+```
+
+**Database**: contenitore principale che può contenere più object store.
+
+**Object Store**: simile a una tabella in un database relazionale, contiene record dello stesso tipo.
+
+**Record**: oggetti JavaScript memorizzati nell'object store, identificati da una chiave primaria.
+
+**Index**: struttura di ricerca secondaria che permette query veloci su proprietà diverse dalla chiave primaria.
+
+### Aprire o Creare un Database
+
+Il primo passo è aprire una connessione al database:
+
+```javascript
+// Richiesta di apertura del database
+const request = indexedDB.open('nomeDatabase', 1)
+
+// Gestione del successo
+request.onsuccess = (event) => {
+	const db = event.target.result
+	console.log('Database aperto con successo:', db)
+	// Qui si può utilizzare il database
+}
+
+// Gestione degli errori
+request.onerror = (event) => {
+	console.error('Errore nell\'apertura del database:', event.target.error)
+}
+
+// Gestione dell'upgrade (creazione o modifica struttura)
+request.onupgradeneeded = (event) => {
+	const db = event.target.result
+	console.log('Database in fase di upgrade')
+	// Qui si creano o modificano gli object store
+}
+```
+
+### Creare un Object Store
+
+Gli object store vengono creati durante l'upgrade del database:
+
+```javascript
+let db
+
+const request = indexedDB.open('myAppDB', 1)
+
+request.onupgradeneeded = (event) => {
+	db = event.target.result
+	
+	// Creare un object store per i prodotti
+	if (!db.objectStoreNames.contains('products')) {
+		const productStore = db.createObjectStore('products', {
+			keyPath: 'id' // La proprietà 'id' sarà la chiave primaria
+		})
+		
+		// Creare un indice per ricerche per nome
+		productStore.createIndex('name', 'name', { unique: false })
+		
+		// Creare un indice per ricerche per categoria
+		productStore.createIndex('category', 'category', { unique: false })
+	}
+}
+
+request.onsuccess = (event) => {
+	db = event.target.result
+	console.log('Database pronto')
+}
+```
+
+### Aggiungere Dati
+
+Per aggiungere dati, è necessario creare una transazione:
+
+```javascript
+// Funzione helper per aggiungere un prodotto
+function addProduct(product) {
+	// Creare una transazione in modalità readwrite
+	const transaction = db.transaction(['products'], 'readwrite')
+	
+	// Ottenere l'object store
+	const store = transaction.objectStore('products')
+	
+	// Aggiungere il prodotto
+	const request = store.add(product)
+	
+	request.onsuccess = () => {
+		console.log('Prodotto aggiunto con successo')
+	}
+	
+	request.onerror = () => {
+		console.error('Errore nell\'aggiunta del prodotto:', request.error)
+	}
+}
+
+// Utilizzo
+const product = {
+	id: 'p1',
+	name: 'Laptop',
+	category: 'Elettronica',
+	price: 999.99,
+	stock: 15
+}
+
+addProduct(product)
+```
+
+### Recuperare Dati
+
+Esistono diversi modi per recuperare dati:
+
+**1. Recuperare per chiave primaria**
+```javascript
+function getProductById(id) {
+	const transaction = db.transaction(['products'], 'readonly')
+	const store = transaction.objectStore('products')
+	const request = store.get(id)
+	
+	request.onsuccess = () => {
+		const product = request.result
+		if (product) {
+			console.log('Prodotto trovato:', product)
+		} else {
+			console.log('Prodotto non trovato')
+		}
+	}
+	
+	request.onerror = () => {
+		console.error('Errore nel recupero:', request.error)
+	}
+}
+
+getProductById('p1')
+```
+
+**2. Recuperare tutti i record**
+```javascript
+function getAllProducts() {
+	const transaction = db.transaction(['products'], 'readonly')
+	const store = transaction.objectStore('products')
+	const request = store.getAll()
+	
+	request.onsuccess = () => {
+		const products = request.result
+		console.log('Tutti i prodotti:', products)
+	}
+	
+	request.onerror = () => {
+		console.error('Errore nel recupero:', request.error)
+	}
+}
+
+getAllProducts()
+```
+
+**3. Recuperare usando un indice**
+```javascript
+function getProductsByCategory(category) {
+	const transaction = db.transaction(['products'], 'readonly')
+	const store = transaction.objectStore('products')
+	const index = store.index('category')
+	const request = index.getAll(category)
+	
+	request.onsuccess = () => {
+		const products = request.result
+		console.log(`Prodotti nella categoria ${category}:`, products)
+	}
+	
+	request.onerror = () => {
+		console.error('Errore nel recupero:', request.error)
+	}
+}
+
+getProductsByCategory('Elettronica')
+```
+
+### Iterare sui Dati
+
+Per scorrere tutti i record o un subset:
+
+```javascript
+function iterateProducts() {
+	const transaction = db.transaction(['products'], 'readonly')
+	const store = transaction.objectStore('products')
+	const request = store.openCursor()
+	
+	request.onsuccess = (event) => {
+		const cursor = event.target.result
+		if (cursor) {
+			console.log('Prodotto:', cursor.value)
+			cursor.continue() // Passa al prossimo record
+		} else {
+			console.log('Iterazione completata')
+		}
+	}
+}
+
+// Iterare con filtro
+function iterateProductsWithFilter(minPrice) {
+	const transaction = db.transaction(['products'], 'readonly')
+	const store = transaction.objectStore('products')
+	const index = store.index('price')
+	const range = IDBKeyRange.lowerBound(minPrice)
+	const request = index.openCursor(range)
+	
+	request.onsuccess = (event) => {
+		const cursor = event.target.result
+		if (cursor) {
+			const product = cursor.value
+			if (product.price >= minPrice) {
+				console.log('Prodotto trovato:', product)
+			}
+			cursor.continue()
+		}
+	}
+}
+```
+
+### Aggiornare Dati
+
+Per aggiornare un record esistente:
+
+```javascript
+function updateProduct(product) {
+	const transaction = db.transaction(['products'], 'readwrite')
+	const store = transaction.objectStore('products')
+	const request = store.put(product) // put aggiorna se esiste, crea se non esiste
+	
+	request.onsuccess = () => {
+		console.log('Prodotto aggiornato con successo')
+	}
+	
+	request.onerror = () => {
+		console.error('Errore nell\'aggiornamento:', request.error)
+	}
+}
+
+// Utilizzo
+const updatedProduct = {
+	id: 'p1',
+	name: 'Laptop Pro',
+	category: 'Elettronica',
+	price: 1299.99,
+	stock: 10
+}
+
+updateProduct(updatedProduct)
+```
+
+### Eliminare Dati
+
+Per eliminare un record:
+
+```javascript
+function deleteProduct(id) {
+	const transaction = db.transaction(['products'], 'readwrite')
+	const store = transaction.objectStore('products')
+	const request = store.delete(id)
+	
+	request.onsuccess = () => {
+		console.log('Prodotto eliminato con successo')
+	}
+	
+	request.onerror = () => {
+		console.error('Errore nell\'eliminazione:', request.error)
+	}
+}
+
+deleteProduct('p1')
+```
+
+### Gestione delle Versioni
+
+Quando si modifica la struttura del database, è necessario incrementare la versione:
+
+```javascript
+// Versione 1: creazione iniziale
+const request1 = indexedDB.open('myAppDB', 1)
+request1.onupgradeneeded = (event) => {
+	const db = event.target.result
+	if (!db.objectStoreNames.contains('products')) {
+		db.createObjectStore('products', { keyPath: 'id' })
+	}
+}
+
+// Versione 2: aggiunta di un nuovo object store
+const request2 = indexedDB.open('myAppDB', 2)
+request2.onupgradeneeded = (event) => {
+	const db = event.target.result
+	
+	// Creare 'orders' se non esiste
+	if (!db.objectStoreNames.contains('orders')) {
+		const orderStore = db.createObjectStore('orders', { keyPath: 'id' })
+		orderStore.createIndex('userId', 'userId', { unique: false })
+		orderStore.createIndex('date', 'date', { unique: false })
+	}
+}
+
+// Versione 3: aggiunta di un indice a 'products'
+const request3 = indexedDB.open('myAppDB', 3)
+request3.onupgradeneeded = (event) => {
+	const db = event.target.result
+	
+	// Ottenere l'object store esistente
+	const transaction = event.target.transaction
+	const productStore = transaction.objectStore('products')
+	
+	// Aggiungere un nuovo indice se non esiste
+	if (!productStore.indexNames.contains('price')) {
+		productStore.createIndex('price', 'price', { unique: false })
+	}
+}
+```
+
+### Esempio Completo: Gestione Database Prodotti
+
+```javascript
+class ProductDB {
+	constructor(dbName, version) {
+		this.dbName = dbName
+		this.version = version
+		this.db = null
+	}
+
+	// Inizializzare il database
+	async init() {
+		return new Promise((resolve, reject) => {
+			const request = indexedDB.open(this.dbName, this.version)
+
+			request.onerror = () => {
+				reject(request.error)
+			}
+
+			request.onsuccess = () => {
+				this.db = request.result
+				resolve(this.db)
+			}
+
+			request.onupgradeneeded = (event) => {
+				const db = event.target.result
+
+				// Creare object store per prodotti
+				if (!db.objectStoreNames.contains('products')) {
+					const productStore = db.createObjectStore('products', {
+						keyPath: 'id',
+						autoIncrement: false
+					})
+
+					// Creare indici
+					productStore.createIndex('name', 'name', { unique: false })
+					productStore.createIndex('category', 'category', { unique: false })
+					productStore.createIndex('price', 'price', { unique: false })
+					productStore.createIndex('inStock', 'inStock', { unique: false })
+				}
+			}
+		})
+	}
+
+	// Aggiungere un prodotto
+	async addProduct(product) {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readwrite')
+			const store = transaction.objectStore('products')
+			const request = store.add(product)
+
+			request.onsuccess = () => resolve(request.result)
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	// Recuperare un prodotto per ID
+	async getProduct(id) {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readonly')
+			const store = transaction.objectStore('products')
+			const request = store.get(id)
+
+			request.onsuccess = () => resolve(request.result)
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	// Recuperare tutti i prodotti
+	async getAllProducts() {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readonly')
+			const store = transaction.objectStore('products')
+			const request = store.getAll()
+
+			request.onsuccess = () => resolve(request.result)
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	// Recuperare prodotti per categoria
+	async getProductsByCategory(category) {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readonly')
+			const store = transaction.objectStore('products')
+			const index = store.index('category')
+			const request = index.getAll(category)
+
+			request.onsuccess = () => resolve(request.result)
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	// Recuperare prodotti in stock
+	async getProductsInStock() {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readonly')
+			const store = transaction.objectStore('products')
+			const index = store.index('inStock')
+			const request = index.getAll(true)
+
+			request.onsuccess = () => resolve(request.result)
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	// Cercare prodotti per prezzo minimo
+	async getProductsByMinPrice(minPrice) {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readonly')
+			const store = transaction.objectStore('products')
+			const index = store.index('price')
+			const range = IDBKeyRange.lowerBound(minPrice)
+			const request = index.openCursor(range)
+
+			const products = []
+			request.onsuccess = (event) => {
+				const cursor = event.target.result
+				if (cursor) {
+					products.push(cursor.value)
+					cursor.continue()
+				} else {
+					resolve(products)
+				}
+			}
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	// Aggiornare un prodotto
+	async updateProduct(product) {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readwrite')
+			const store = transaction.objectStore('products')
+			const request = store.put(product)
+
+			request.onsuccess = () => resolve(request.result)
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	// Eliminare un prodotto
+	async deleteProduct(id) {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readwrite')
+			const store = transaction.objectStore('products')
+			const request = store.delete(id)
+
+			request.onsuccess = () => resolve()
+			request.onerror = () => reject(request.error)
+		})
+	}
+
+	// Eliminare tutti i prodotti
+	async clearAll() {
+		return new Promise((resolve, reject) => {
+			const transaction = this.db.transaction(['products'], 'readwrite')
+			const store = transaction.objectStore('products')
+			const request = store.clear()
+
+			request.onsuccess = () => resolve()
+			request.onerror = () => reject(request.error)
+		})
+	}
+}
+
+// Utilizzo
+async function esempioUtilizzo() {
+	const productDB = new ProductDB('myAppDB', 1)
+	
+	try {
+		// Inizializzare il database
+		await productDB.init()
+		console.log('Database inizializzato')
+
+		// Aggiungere prodotti
+		await productDB.addProduct({
+			id: 'p1',
+			name: 'Laptop',
+			category: 'Elettronica',
+			price: 999.99,
+			inStock: true
+		})
+
+		await productDB.addProduct({
+			id: 'p2',
+			name: 'Mouse',
+			category: 'Accessori',
+			price: 29.99,
+			inStock: true
+		})
+
+		await productDB.addProduct({
+			id: 'p3',
+			name: 'Tastiera',
+			category: 'Accessori',
+			price: 79.99,
+			inStock: false
+		})
+
+		// Recuperare un prodotto
+		const product = await productDB.getProduct('p1')
+		console.log('Prodotto recuperato:', product)
+
+		// Recuperare tutti i prodotti
+		const allProducts = await productDB.getAllProducts()
+		console.log('Tutti i prodotti:', allProducts)
+
+		// Recuperare prodotti per categoria
+		const accessories = await productDB.getProductsByCategory('Accessori')
+		console.log('Accessori:', accessories)
+
+		// Recuperare prodotti in stock
+		const inStock = await productDB.getProductsInStock()
+		console.log('Prodotti in stock:', inStock)
+
+		// Cercare prodotti con prezzo minimo
+		const expensive = await productDB.getProductsByMinPrice(500)
+		console.log('Prodotti costosi:', expensive)
+
+		// Aggiornare un prodotto
+		await productDB.updateProduct({
+			id: 'p1',
+			name: 'Laptop Pro',
+			category: 'Elettronica',
+			price: 1299.99,
+			inStock: true
+		})
+
+		// Eliminare un prodotto
+		await productDB.deleteProduct('p3')
+
+	} catch (error) {
+		console.error('Errore:', error)
+	}
+}
+
+esempioUtilizzo()
+```
+
+### Query Avanzate con IDBKeyRange
+
+IndexedDB supporta query complesse usando `IDBKeyRange`:
+
+```javascript
+// Range di chiavi
+const range = IDBKeyRange.bound('p1', 'p5') // Da p1 a p5 inclusi
+const range = IDBKeyRange.bound('p1', 'p5', false, true) // Da p1 a p5, escludendo p5
+const range = IDBKeyRange.lowerBound('p3') // Da p3 in poi
+const range = IDBKeyRange.upperBound('p5') // Fino a p5
+const range = IDBKeyRange.only('p2') // Solo p2
+
+// Utilizzo con cursor
+function queryProductsInRange(minId, maxId) {
+	const transaction = db.transaction(['products'], 'readonly')
+	const store = transaction.objectStore('products')
+	const range = IDBKeyRange.bound(minId, maxId)
+	const request = store.openCursor(range)
+
+	request.onsuccess = (event) => {
+		const cursor = event.target.result
+		if (cursor) {
+			console.log('Prodotto nel range:', cursor.value)
+			cursor.continue()
+		}
+	}
+}
+```
+
+### Gestione degli Errori
+
+È importante gestire correttamente gli errori:
+
+```javascript
+function safeAddProduct(product) {
+	return new Promise((resolve, reject) => {
+		if (!this.db) {
+			reject(new Error('Database non inizializzato'))
+			return
+		}
+
+		const transaction = this.db.transaction(['products'], 'readwrite')
+		
+		transaction.onerror = () => {
+			reject(transaction.error)
+		}
+
+		transaction.oncomplete = () => {
+			resolve()
+		}
+
+		const store = transaction.objectStore('products')
+		const request = store.add(product)
+
+		request.onsuccess = () => {
+			// La transazione potrebbe ancora fallire
+		}
+
+		request.onerror = () => {
+			reject(request.error)
+		}
+	})
+}
+```
+
+### Best Practices per IndexedDB
+
+**1. Gestire le transazioni correttamente**
+```javascript
+// ✅ Corretto: completare la transazione prima di usare i dati
+const transaction = db.transaction(['products'], 'readonly')
+const store = transaction.objectStore('products')
+const request = store.getAll()
+
+request.onsuccess = () => {
+	// I dati sono disponibili qui
+	const products = request.result
+	processProducts(products)
+}
+
+// ❌ Sbagliato: usare i dati prima che la transazione sia completata
+const products = await getProducts() // Non attendere correttamente
+```
+
+**2. Usare Promise per semplificare il codice**
+```javascript
+// Wrapper Promise per semplificare l'uso
+function promisifyRequest(request) {
+	return new Promise((resolve, reject) => {
+		request.onsuccess = () => resolve(request.result)
+		request.onerror = () => reject(request.error)
+	})
+}
+
+// Utilizzo
+async function getProductAsync(id) {
+	const transaction = db.transaction(['products'], 'readonly')
+	const store = transaction.objectStore('products')
+	const request = store.get(id)
+	return promisifyRequest(request)
+}
+```
+
+**3. Chiudere le connessioni quando non servono**
+```javascript
+function closeDatabase() {
+	if (db) {
+		db.close()
+		db = null
+	}
+}
+
+// Chiamare quando l'applicazione viene chiusa o non serve più
+window.addEventListener('beforeunload', () => {
+	closeDatabase()
+})
+```
+
+**4. Gestire la migrazione dei dati**
+```javascript
+request.onupgradeneeded = (event) => {
+	const db = event.target.result
+	const oldVersion = event.oldVersion
+	const newVersion = event.newVersion
+
+	// Migrazione da versione 1 a 2
+	if (oldVersion < 2) {
+		// Aggiungere nuovo object store
+		if (!db.objectStoreNames.contains('orders')) {
+			db.createObjectStore('orders', { keyPath: 'id' })
+		}
+	}
+
+	// Migrazione da versione 2 a 3
+	if (oldVersion < 3) {
+		// Aggiungere nuovo indice
+		const transaction = event.target.transaction
+		const productStore = transaction.objectStore('products')
+		if (!productStore.indexNames.contains('createdAt')) {
+			productStore.createIndex('createdAt', 'createdAt', { unique: false })
+		}
+	}
+}
+```
+
+### Librerie per IndexedDB
+
+L'API nativa di IndexedDB può essere verbosa. Esistono librerie che semplificano l'uso:
+
+**idb.js**: wrapper Promise-based che rende IndexedDB più facile da usare
+```javascript
+import { openDB } from 'idb'
+
+const db = await openDB('myAppDB', 1, {
+	upgrade(db) {
+		db.createObjectStore('products', { keyPath: 'id' })
+	}
+})
+
+await db.put('products', { id: 'p1', name: 'Laptop' })
+const product = await db.get('products', 'p1')
+```
+
+**Dexie.js**: ORM per IndexedDB con API più intuitiva
+```javascript
+import Dexie from 'dexie'
+
+const db = new Dexie('myAppDB')
+db.version(1).stores({
+	products: 'id, name, category, price'
+})
+
+await db.products.add({ id: 'p1', name: 'Laptop', category: 'Elettronica', price: 999.99 })
+const products = await db.products.where('category').equals('Elettronica').toArray()
+```
+
+---
+
+## Confronto tra le Tecnologie
+
+### Tabella Comparativa
+
+| Caratteristica | localStorage | sessionStorage | Cookies | IndexedDB |
+|----------------|--------------|----------------|---------|-----------|
+| **Persistenza** | Persiste dopo chiusura browser | Eliminato alla chiusura tab | Configurabile (scadenza) | Persiste dopo chiusura browser |
+| **Dimensione massima** | ~5-10 MB | ~5-10 MB | ~4 KB per cookie | Centinaia di MB |
+| **Formato dati** | Solo stringhe (JSON necessario) | Solo stringhe (JSON necessario) | Solo stringhe (JSON necessario) | Oggetti JavaScript nativi |
+| **API** | Semplice e sincrona | Semplice e sincrona | Meno intuitiva | Complessa, asincrona |
+| **Query** | Nessuna | Nessuna | Nessuna | Query avanzate con indici |
+| **Invio al server** | No | No | Sì (automatico) | No |
+| **Performance** | Molto veloce | Molto veloce | Veloce | Veloce per grandi volumi |
+| **Casi d'uso** | Preferenze, cache semplice | Dati temporanei di sessione | Autenticazione, tracking | App offline, dati complessi |
+
+### Quando Usare Ciascuna Tecnologia
+
+**localStorage**
+- Preferenze utente che devono persistere
+- Token di autenticazione
+- Cache di dati semplici
+- Stato dell'applicazione che deve sopravvivere al reload
+
+**sessionStorage**
+- Dati temporanei della sessione corrente
+- Bozze di form che non devono persistere
+- Stato di navigazione temporaneo
+- Dati sensibili che devono essere eliminati alla chiusura
+
+**Cookies**
+- Token di autenticazione che devono essere inviati al server
+- Dati che il server deve leggere
+- Tracking e analytics
+- Preferenze che devono essere condivise con il server
+
+**IndexedDB**
+- Applicazioni offline-first
+- Cache di grandi quantità di dati
+- Dati strutturati con relazioni complesse
+- File binari (immagini, video)
+- Applicazioni ricche simili a desktop
+
+---
+
+## Sicurezza e Best Practices
+
+### Considerazioni di Sicurezza
+
+**1. Non memorizzare dati sensibili**
+```javascript
+// ❌ Sbagliato
+localStorage.setItem('password', userPassword)
+localStorage.setItem('creditCard', cardNumber)
+
+// ✅ Corretto
+localStorage.setItem('userId', userId) // Solo identificatori non sensibili
+localStorage.setItem('theme', 'dark') // Solo preferenze
+```
+
+**2. Validare i dati recuperati**
+```javascript
+function getUserId() {
+	const userId = localStorage.getItem('userId')
+	
+	// Validare il formato
+	if (!userId || typeof userId !== 'string' || userId.length === 0) {
+		return null
+	}
+	
+	// Validare il contenuto se necessario
+	if (!/^u\d+$/.test(userId)) {
+		console.warn('Formato userId non valido')
+		return null
+	}
+	
+	return userId
+}
+```
+
+**3. Gestire errori di storage**
+```javascript
+function safeSetItem(key, value) {
+	try {
+		localStorage.setItem(key, value)
+		return true
+	} catch (error) {
+		if (error.name === 'QuotaExceededError') {
+			console.error('Spazio storage esaurito')
+			// Implementare logica di cleanup
+		} else {
+			console.error('Errore nello storage:', error)
+		}
+		return false
+	}
+}
+```
+
+**4. Crittografare dati sensibili se necessario**
+```javascript
+// Per dati che devono essere memorizzati ma protetti
+function encryptData(data, key) {
+	// Usare una libreria di crittografia (es. crypto-js)
+	// Non implementare crittografia personalizzata
+}
+
+function decryptData(encryptedData, key) {
+	// Decrittografare i dati
+}
+```
+
+### Best Practices Generali
+
+**1. Usare nomi di chiave consistenti**
+```javascript
+// ✅ Buono: prefisso per organizzare
+const STORAGE_KEYS = {
+	USER_ID: 'app.userId',
+	THEME: 'app.theme',
+	LANGUAGE: 'app.language'
+}
+
+localStorage.setItem(STORAGE_KEYS.USER_ID, userId)
+```
+
+**2. Implementare fallback per browser vecchi**
+```javascript
+function isStorageAvailable(type) {
+	try {
+		const storage = window[type]
+		const testKey = '__storage_test__'
+		storage.setItem(testKey, 'test')
+		storage.removeItem(testKey)
+		return true
+	} catch (e) {
+		return false
+	}
+}
+
+if (isStorageAvailable('localStorage')) {
+	// Usare localStorage
+} else {
+	// Fallback a cookies o altro
+}
+```
+
+**3. Pulire dati vecchi periodicamente**
+```javascript
+function cleanupOldData() {
+	const keys = Object.keys(localStorage)
+	const now = Date.now()
+	const maxAge = 30 * 24 * 60 * 60 * 1000 // 30 giorni
+
+	keys.forEach(key => {
+		if (key.startsWith('cache.')) {
+			const item = localStorage.getItem(key)
+			const data = JSON.parse(item)
+			if (data.timestamp && (now - data.timestamp) > maxAge) {
+				localStorage.removeItem(key)
+			}
+		}
+	})
+}
+```
+
+**4. Monitorare l'uso dello storage**
+```javascript
+function getStorageUsage() {
+	let total = 0
+	for (let key in localStorage) {
+		if (localStorage.hasOwnProperty(key)) {
+			total += localStorage[key].length + key.length
+		}
+	}
+	return total
+}
+
+console.log('Storage utilizzato:', getStorageUsage(), 'bytes')
+```
+
+---
+
+## Risorse Aggiuntive
+
+Per approfondire ulteriormente le tecnologie di browser storage:
+
+- **localStorage/sessionStorage**: [MDN - Window.localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)
+- **Cookies**: [MDN - Document.cookie](https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie)
+- **IndexedDB**: [MDN - Using IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB)
+- **idb.js**: Libreria Promise-based per IndexedDB
+- **Dexie.js**: ORM per IndexedDB con API semplificata
+
+---
+
+## Conclusione
+
+Il browser storage offre diverse opzioni per memorizzare dati lato client, ognuna con caratteristiche e casi d'uso specifici. La scelta della tecnologia corretta dipende dai requisiti dell'applicazione:
+
+- **localStorage** per dati semplici che devono persistere
+- **sessionStorage** per dati temporanei della sessione
+- **Cookies** per dati che devono essere condivisi con il server
+- **IndexedDB** per applicazioni complesse con grandi volumi di dati
+
+È importante ricordare che nessuna di queste tecnologie può sostituire un database server-side per dati critici, ma possono migliorare significativamente l'esperienza utente quando utilizzate correttamente.
