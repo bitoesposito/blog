@@ -1,0 +1,1177 @@
+---
+title: "Browser Support"
+description: "Feature detection, polyfills, transpilation con Babel e strategie per garantire compatibilità cross-browser"
+date: 2026-02-16
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 19
+---
+
+## Introduzione
+
+Quando si sviluppa codice JavaScript per il browser, non si ha controllo diretto sull'ambiente di esecuzione. Gli utenti possono utilizzare browser diversi, versioni diverse e configurazioni diverse. Garantire che l'applicazione funzioni correttamente per tutti gli utenti target richiede una comprensione approfondita del browser support e delle strategie per gestirlo.
+
+In questo capitolo si approfondiscono:
+
+- **Cos'è il browser support**: differenza tra browser APIs e JavaScript syntax
+- **Risorse per verificare il supporto**: MDN, caniuse.com, ES6 compat table
+- **Feature detection**: rilevare funzionalità disponibili e fornire fallback
+- **Polyfills**: librerie che aggiungono funzionalità mancanti
+- **Transpilation**: trasformare codice moderno in codice compatibile con browser più vecchi
+- **Babel e configurazione**: setup completo per transpilation e auto-polyfilling
+- **Strategie di supporto**: come decidere quali browser supportare
+
+---
+
+## Cos'è il Browser Support
+
+### Il Problema del Controllo Limitato
+
+Quando si scrive codice JavaScript per il browser, si incontra una limitazione fondamentale: **non si può controllare quale browser gli utenti utilizzeranno**. Non si sa se gli utenti useranno Internet Explorer, Firefox, Chrome, Safari o altre varianti, né quale versione di questi browser stanno utilizzando.
+
+Questa mancanza di controllo crea una sfida: una funzionalità potrebbe funzionare perfettamente nel browser di sviluppo ma fallire completamente in altri browser o versioni.
+
+### Esempio Pratico: Fetch API
+
+Consideriamo l'uso della **Fetch API** per inviare richieste HTTP:
+
+```javascript
+fetch('https://api.example.com/data')
+	.then(response => response.json())
+	.then(data => console.log(data))
+```
+
+Il supporto per fetch varia significativamente tra i browser:
+
+- **Chrome**: supportato dalla versione 42+ (2015)
+- **Firefox**: supportato dalla versione 39+ (2015)
+- **Safari**: supportato dalla versione 10.1+ (2017)
+- **Edge**: supportato dalla versione 14+ (2016)
+- **Internet Explorer**: **non supportato** in nessuna versione
+
+Se un utente visita l'applicazione con Internet Explorer, il codice che utilizza fetch genererà un errore e l'applicazione potrebbe non funzionare correttamente.
+
+### Browser APIs vs JavaScript Syntax
+
+È importante distinguere tra due categorie di funzionalità:
+
+**Browser APIs (Application Programming Interfaces)**
+- Funzionalità esposte dal browser attraverso oggetti JavaScript
+- Esempi: `fetch`, `navigator.geolocation`, `document.querySelector`, `localStorage`
+- Il browser decide quali API offrire
+- Implementate individualmente, una alla volta
+- Non possono essere replicate con codice JavaScript se il browser non le supporta
+
+**JavaScript Syntax (Sintassi del linguaggio)**
+- Funzionalità integrate nel motore JavaScript
+- Esempi: `let`, `const`, `async/await`, `arrow functions`, `promises`
+- Definite dalle specifiche del linguaggio (ECMAScript)
+- Spesso implementate in blocchi (es. ES6)
+- Possono essere transpilate in codice compatibile con versioni più vecchie
+
+### Perché Questa Distinzione è Importante
+
+**Per le Browser APIs:**
+- Ogni browser implementa le funzionalità indipendentemente
+- Una nuova API potrebbe essere disponibile solo in alcuni browser
+- Non è possibile "magicamente" far funzionare un'API in un browser che non la supporta
+- Si può solo rilevare se è disponibile e fornire un fallback
+
+**Per la JavaScript Syntax:**
+- Le funzionalità sono parte del linguaggio stesso
+- Esistono strumenti di transpilation che possono convertire codice moderno in codice compatibile
+- È più sicuro assumere che le funzionalità di sintassi saranno supportate in futuro
+- Gli strumenti come Babel possono trasformare `const` in `var`, `arrow functions` in `function` normali, ecc.
+
+### Browser Evergreen vs Legacy
+
+**Browser Evergreen (sempre aggiornati)**
+- Si aggiornano automaticamente in background
+- Esempi: Chrome, Firefox, Edge moderno
+- Gli utenti tipicamente utilizzano versioni recenti o molto recenti
+- Supportano le funzionalità più moderne
+
+**Browser Legacy (obsoleti)**
+- Non si aggiornano automaticamente
+- Esempi: Internet Explorer 8, 9, 10, 11
+- Gli utenti devono aggiornare manualmente
+- Non ricevono nuove funzionalità
+
+Questa distinzione influisce sulle strategie di supporto: per browser evergreen, si può assumere supporto per funzionalità moderne, mentre per browser legacy potrebbe essere necessario transpilation o polyfills.
+
+---
+
+## Risorse per Verificare il Browser Support
+
+### MDN (Mozilla Developer Network)
+
+**MDN** è una risorsa completa per la documentazione web, inclusa la compatibilità dei browser. Ogni articolo su una funzionalità include una tabella di compatibilità browser.
+
+**Come utilizzare MDN:**
+1. Cercare la funzionalità su MDN (es. "fetch MDN")
+2. Scorrere fino alla sezione "Browser compatibility"
+3. Verificare quali browser e versioni supportano la funzionalità
+4. Leggere le note aggiuntive su limitazioni o workaround
+
+**Vantaggi:**
+- Informazioni dettagliate e aggiornate
+- Note su limitazioni specifiche
+- Esempi di codice e best practices
+- Distinzione tra desktop e mobile
+
+### caniuse.com
+
+**caniuse.com** è una risorsa dedicata esclusivamente alla compatibilità dei browser. Fornisce informazioni dettagliate sul supporto delle funzionalità con statistiche di market share.
+
+**Caratteristiche principali:**
+- Ricerca per nome funzionalità
+- Tabelle di compatibilità dettagliate
+- **Market share**: mostra quanti utenti possono utilizzare una funzionalità
+- Note e workaround
+- Link a polyfills quando disponibili
+- Supporto per sia browser APIs che JavaScript syntax
+
+**Esempio di utilizzo:**
+Cercando "fetch" su caniuse.com si ottiene:
+- Percentuale di utenti che possono utilizzare la funzionalità
+- Versioni specifiche di ogni browser che la supportano
+- Informazioni su funzionalità correlate
+- Link a polyfills disponibili
+
+### ES6 Compatibility Table
+
+Per verificare il supporto delle funzionalità di sintassi JavaScript, la **ES6 Compatibility Table** (compat-table) è una risorsa specializzata.
+
+**Caratteristiche:**
+- Focus su funzionalità di sintassi JavaScript
+- Supporto per ES6, ES2016+, ES2017+, ecc.
+- Informazioni su transpilers e polyfills disponibili
+- Supporto per Node.js
+- Dettagli su implementazioni parziali o bug noti
+
+**Come utilizzarla:**
+1. Visitare il sito della compat table
+2. Selezionare la versione JavaScript di interesse (ES6, ES2016+, ecc.)
+3. Cercare la funzionalità specifica
+4. Verificare il supporto per ogni browser e versione
+5. Controllare se esistono transpilers o polyfills disponibili
+
+### Google e Risorse Aggiuntive
+
+Per funzionalità di nicchia o casi d'uso avanzati, una ricerca su Google può essere utile:
+
+- **Stack Overflow**: discussioni su problemi specifici e workaround
+- **GitHub Issues**: problemi noti e soluzioni della community
+- **Blog tecnici**: articoli su esperienze reali e soluzioni implementate
+
+**Query di ricerca utili:**
+- "[feature name] browser support"
+- "[feature name] compatibility"
+- "[feature name] polyfill"
+
+---
+
+## Strategie di Supporto Browser
+
+### Analisi del Mercato Target
+
+**Non cercare di supportare tutti i browser possibili**. Questo approccio:
+- È tecnicamente impossibile per alcuni browser molto vecchi
+- Richiede di rinunciare a funzionalità moderne per una piccola percentuale di utenti
+- Aumenta significativamente la complessità del codice
+- Non è economicamente sostenibile
+
+**Invece, analizzare il mercato target:**
+
+**1. Applicazioni interne aziendali**
+- Il browser è spesso definito dalla policy aziendale
+- Si conosce esattamente quale browser supportare
+- Non è necessario supportare altri browser
+
+**2. Siti per utenti tech-savvy**
+- Blog tecnologici, piattaforme di apprendimento online
+- Gli utenti tendono a utilizzare browser moderni e aggiornati
+- Si può assumere supporto per funzionalità moderne
+- Potrebbe essere accettabile non supportare browser molto vecchi
+
+**3. Siti per pubblico generale**
+- Utenti meno tecnici potrebbero utilizzare browser più vecchi
+- Necessario essere più cauti nelle scelte delle funzionalità
+- Potrebbe essere necessario supportare browser legacy
+- Testare su una varietà più ampia di browser
+
+### Definire i Browser Target
+
+Una volta analizzato il mercato, definire chiaramente:
+
+- **Browser minimi supportati**: Chrome X+, Firefox Y+, Safari Z+, Edge W+
+- **Browser esclusi**: Internet Explorer (se non necessario), browser molto vecchi
+- **Market share target**: percentuale minima di utenti che devono essere supportati
+- **Dispositivi**: desktop, mobile, o entrambi
+
+Questa definizione guiderà tutte le decisioni tecniche successive.
+
+---
+
+## Feature Detection e Fallback Code
+
+### Cos'è la Feature Detection
+
+La **feature detection** è una tecnica che verifica se una funzionalità è disponibile nel browser corrente prima di utilizzarla. Se la funzionalità non è disponibile, si esegue codice alternativo (fallback).
+
+### Perché Usare Feature Detection
+
+**Problema senza feature detection:**
+```javascript
+// Questo codice crasha in browser che non supportano navigator.clipboard
+navigator.clipboard.writeText('Testo da copiare')
+	.then(() => console.log('Copiato!'))
+	.catch(err => console.error('Errore:', err))
+```
+
+Se `navigator.clipboard` è `undefined` (come in Safari o Edge più vecchi), tentare di chiamare `.writeText()` su `undefined` genera un errore che può far crashare l'applicazione.
+
+**Soluzione con feature detection:**
+```javascript
+if (navigator.clipboard) {
+	// Funzionalità disponibile: usa l'API moderna
+	navigator.clipboard.writeText('Testo da copiare')
+		.then(() => console.log('Copiato!'))
+		.catch(err => console.error('Errore:', err))
+} else {
+	// Funzionalità non disponibile: usa fallback
+	console.warn('Clipboard API non supportata')
+	// Mostra messaggio all'utente o implementa alternativa
+}
+```
+
+### Pattern di Feature Detection
+
+**1. Verifica diretta della proprietà**
+```javascript
+if (navigator.clipboard) {
+	// Usa navigator.clipboard
+}
+```
+
+**2. Verifica del metodo specifico**
+```javascript
+if (typeof navigator.clipboard?.writeText === 'function') {
+	// Il metodo è disponibile
+}
+```
+
+**3. Verifica con operatore in**
+```javascript
+if ('clipboard' in navigator && 'writeText' in navigator.clipboard) {
+	// Entrambe le proprietà esistono
+}
+```
+
+**4. Try-catch per funzionalità che potrebbero lanciare errori**
+```javascript
+try {
+	// Tentativo di utilizzare la funzionalità
+	const result = someModernFeature()
+} catch (error) {
+	// Fallback se la funzionalità non è disponibile
+	console.warn('Funzionalità non supportata:', error)
+}
+```
+
+### Esempio Completo: Clipboard API con Fallback
+
+```javascript
+function copyToClipboard(text) {
+	// Feature detection: verifica se l'API è disponibile
+	if (navigator.clipboard && navigator.clipboard.writeText) {
+		// Browser moderno: usa Clipboard API
+		return navigator.clipboard.writeText(text)
+			.then(() => {
+				console.log('Testo copiato con Clipboard API')
+				return true
+			})
+			.catch(err => {
+				console.error('Errore nella copia:', err)
+				return fallbackCopy(text)
+			})
+	} else {
+		// Browser legacy: usa fallback
+		return fallbackCopy(text)
+	}
+}
+
+function fallbackCopy(text) {
+	// Metodo alternativo per browser più vecchi
+	// Crea un elemento textarea temporaneo
+	const textarea = document.createElement('textarea')
+	textarea.value = text
+	textarea.style.position = 'fixed'
+	textarea.style.opacity = '0'
+	document.body.appendChild(textarea)
+	
+	try {
+		textarea.select()
+		const successful = document.execCommand('copy')
+		document.body.removeChild(textarea)
+		
+		if (successful) {
+			console.log('Testo copiato con metodo legacy')
+			return Promise.resolve(true)
+		} else {
+			throw new Error('execCommand fallito')
+		}
+	} catch (err) {
+		document.body.removeChild(textarea)
+		console.error('Errore nel fallback:', err)
+		return Promise.reject(err)
+	}
+}
+
+// Utilizzo
+const textToCopy = 'Testo da copiare negli appunti'
+copyToClipboard(textToCopy)
+	.then(() => {
+		alert('Testo copiato con successo!')
+	})
+	.catch(() => {
+		alert('Impossibile copiare. Seleziona manualmente il testo.')
+	})
+```
+
+### Quando Usare Feature Detection
+
+**Usa feature detection per:**
+- Funzionalità "nice-to-have" che migliorano l'esperienza ma non sono essenziali
+- Browser APIs che potrebbero non essere supportate universalmente
+- Funzionalità sperimentali o molto recenti
+- Funzionalità critiche dove si può fornire un fallback funzionale
+
+**Anche per funzionalità critiche:**
+Anche se una funzionalità è essenziale e non si può fornire un fallback completo, la feature detection è comunque utile per:
+- Mostrare un messaggio di errore chiaro all'utente
+- Suggerire di utilizzare un browser diverso
+- Evitare che l'applicazione crashi silenziosamente
+- Fornire informazioni utili per il debugging
+
+### Best Practices
+
+**1. Verificare sempre prima di utilizzare**
+```javascript
+// ✅ Corretto
+if (localStorage) {
+	localStorage.setItem('key', 'value')
+}
+
+// ❌ Sbagliato
+localStorage.setItem('key', 'value') // Potrebbe crashare
+```
+
+**2. Fornire sempre un fallback**
+```javascript
+// ✅ Corretto
+if (feature) {
+	useModernFeature()
+} else {
+	useFallback()
+}
+
+// ❌ Meno utile
+if (feature) {
+	useModernFeature()
+} // Nessun fallback = esperienza degradata
+```
+
+**3. Non assumere che una funzionalità sia disponibile**
+```javascript
+// ✅ Corretto
+if (typeof fetch !== 'undefined') {
+	// Usa fetch
+}
+
+// ❌ Sbagliato: assume sempre che fetch esista
+fetch(url) // Potrebbe non esistere
+```
+
+---
+
+## Polyfills
+
+### Cos'è un Polyfill
+
+Un **polyfill** è una libreria JavaScript di terze parti che implementa una funzionalità mancante in un browser più vecchio. Il polyfill "insegna" al browser come utilizzare quella funzionalità utilizzando codice JavaScript compatibile con browser più vecchi.
+
+**Caratteristiche:**
+- Implementa funzionalità mancanti usando codice compatibile
+- Non modifica il codice sorgente del browser
+- Funziona solo per funzionalità che possono essere replicate con JavaScript
+- Non può replicare funzionalità che richiedono supporto nativo del browser
+
+### Quando Usare Polyfills
+
+**Polyfills funzionano per:**
+- **Promises**: possono essere implementate con callback e setTimeout
+- **Fetch API**: può essere implementata usando XMLHttpRequest
+- **Array methods**: `Array.prototype.includes`, `Array.prototype.find`, ecc.
+- **Object methods**: `Object.assign`, `Object.keys`, ecc.
+
+**Polyfills NON funzionano per:**
+- **Geolocation API**: richiede hardware e supporto nativo del browser
+- **WebGL**: richiede supporto grafico nativo
+- **File System API**: richiede accesso al filesystem nativo
+- Funzionalità che dipendono da meccanismi core del browser
+
+### Trovare Polyfills
+
+**1. caniuse.com**
+- Cercare la funzionalità
+- Scorrere fino alla sezione "Resources"
+- Trovare link a polyfills disponibili
+
+**2. GitHub**
+- Cercare "[feature name] polyfill"
+- Verificare stelle, mantenimento attivo, documentazione
+- Controllare compatibilità e limitazioni
+
+**3. npm**
+- Cercare pacchetti polyfill su npm
+- Verificare popolarità e manutenzione
+- Leggere documentazione e esempi
+
+### Esempio: Fetch Polyfill
+
+**Installazione:**
+```bash
+npm install whatwg-fetch
+```
+
+**Utilizzo:**
+```javascript
+// Importare il polyfill prima di utilizzare fetch
+import 'whatwg-fetch'
+
+// Ora fetch è disponibile anche in browser che non lo supportano nativamente
+fetch('https://api.example.com/data')
+	.then(response => response.json())
+	.then(data => console.log(data))
+```
+
+**Nota importante:** molti polyfills richiedono altri polyfills come dipendenze. Ad esempio, un fetch polyfill potrebbe richiedere un promise polyfill.
+
+### Esempio: Promise Polyfill
+
+**Installazione:**
+```bash
+npm install es6-promise
+```
+
+**Utilizzo:**
+```javascript
+// Importare il polyfill
+import 'es6-promise/auto'
+
+// Ora Promise è disponibile
+const promise = new Promise((resolve, reject) => {
+	setTimeout(() => resolve('Completato'), 1000)
+})
+
+promise.then(result => console.log(result))
+```
+
+### Gestione Manuale dei Polyfills
+
+**Vantaggi:**
+- Controllo completo su quali polyfills includere
+- Bundle più piccolo (solo ciò che serve)
+- Nessuna dipendenza aggiuntiva se non necessaria
+
+**Svantaggi:**
+- Richiede ricerca manuale per ogni funzionalità
+- Gestione manuale delle dipendenze tra polyfills
+- Può diventare complesso in progetti grandi
+- Facile dimenticare di aggiungere polyfills necessari
+
+**Esempio di gestione manuale:**
+```javascript
+// app.js
+import 'es6-promise/auto' // Richiesto per fetch polyfill
+import 'whatwg-fetch' // Aggiunge fetch
+
+// Ora si può usare fetch e Promise
+fetch('/api/data')
+	.then(response => response.json())
+	.then(data => {
+		console.log('Dati ricevuti:', data)
+	})
+```
+
+---
+
+## Transpilation con Babel
+
+### Cos'è la Transpilation
+
+La **transpilation** (o **transcompilation**) è il processo di trasformare codice scritto in una versione moderna di JavaScript in codice compatibile con versioni più vecchie del linguaggio.
+
+**Differenza con compilation:**
+- **Compilation**: trasforma codice in un linguaggio diverso (es. C++ in assembly)
+- **Transpilation**: trasforma codice in una versione diversa dello stesso linguaggio (es. ES6 in ES5)
+
+### Perché Usare la Transpilation
+
+**Problema senza transpilation:**
+```javascript
+// Codice moderno che non funziona in IE11
+const getUserData = async (userId) => {
+	const response = await fetch(`/api/users/${userId}`)
+	return response.json()
+}
+```
+
+Questo codice utilizza:
+- `const` e `async/await` (non supportati in IE11)
+- Template literals (supportati parzialmente in IE11)
+- Arrow functions (non supportate in IE11)
+
+**Soluzione con transpilation:**
+Babel trasforma automaticamente questo codice in:
+```javascript
+// Codice transpilato compatibile con IE11
+var getUserData = function(userId) {
+	return fetch('/api/users/' + userId).then(function(response) {
+		return response.json()
+	})
+}
+```
+
+### Babel: Lo Strumento di Transpilation
+
+**Babel** è lo strumento più popolare per la transpilation JavaScript. Trasforma codice moderno in codice compatibile con browser più vecchi.
+
+**Componenti principali:**
+- **@babel/core**: il motore di transpilation
+- **@babel/preset-env**: preset che determina quali trasformazioni applicare
+- **babel-loader**: integrazione con webpack
+
+### Installazione di Babel
+
+```bash
+npm install --save-dev @babel/core @babel/preset-env babel-loader
+```
+
+### Configurazione Base di Babel
+
+**webpack.config.js:**
+```javascript
+module.exports = {
+	module: {
+		rules: [
+			{
+				test: /\.m?js$/,
+				exclude: /node_modules/,
+				use: {
+					loader: 'babel-loader',
+					options: {
+						presets: ['@babel/preset-env']
+					}
+				}
+			}
+		]
+	}
+}
+```
+
+**Spiegazione:**
+- `test: /\.m?js$/`: applica Babel a file `.js` e `.mjs`
+- `exclude: /node_modules/`: non transpilare codice di terze parti
+- `presets: ['@babel/preset-env']`: usa il preset che determina automaticamente le trasformazioni
+
+### Configurazione dei Browser Target
+
+Per ottimizzare la transpilation, è necessario specificare quali browser supportare. Questo si fa con **browserslist**.
+
+**package.json:**
+```json
+{
+	"browserslist": [
+		"> 2%",
+		"not dead",
+		"not IE 11"
+	]
+}
+```
+
+**Opzioni comuni di browserslist:**
+
+**Per market share:**
+- `"> 2%"`: browser con più del 2% di market share
+- `"> 0.5%"`: browser con più dello 0.5% di market share
+- `"> 1% in US"`: browser con più dell'1% di market share negli USA
+
+**Per versioni specifiche:**
+- `"Chrome >= 58"`: Chrome versione 58 o superiore
+- `"Firefox >= 52"`: Firefox versione 52 o superiore
+- `"Safari >= 11"`: Safari versione 11 o superiore
+- `"IE >= 11"`: Internet Explorer versione 11 o superiore
+
+**Per escludere browser:**
+- `"not IE 11"`: escludi Internet Explorer 11
+- `"not dead"`: escludi browser senza supporto ufficiale
+- `"not op_mini all"`: escludi Opera Mini
+
+**Combinazioni:**
+```json
+{
+	"browserslist": [
+		"> 1%",
+		"last 2 versions",
+		"not dead",
+		"not IE 11"
+	]
+}
+```
+
+### Come Funziona la Transpilation
+
+**Input (codice moderno):**
+```javascript
+const users = ['Mario', 'Luigi', 'Peach']
+
+const filtered = users.filter(user => user.length > 4)
+
+const mapped = filtered.map(user => user.toUpperCase())
+
+console.log(mapped)
+```
+
+**Output (codice transpilato per IE11):**
+```javascript
+var users = ['Mario', 'Luigi', 'Peach']
+
+var filtered = users.filter(function(user) {
+	return user.length > 4
+})
+
+var mapped = filtered.map(function(user) {
+	return user.toUpperCase()
+})
+
+console.log(mapped)
+```
+
+**Trasformazioni applicate:**
+- `const` → `var`
+- Arrow functions → `function` normali
+- Template literals → concatenazione di stringhe (se necessario)
+
+### Verificare l'Output della Transpilation
+
+Dopo aver configurato Babel, eseguire il build:
+
+```bash
+npm run build
+```
+
+Controllare il file di output generato per verificare che il codice sia stato correttamente transpilato. Il codice dovrebbe essere compatibile con i browser target specificati in `browserslist`.
+
+---
+
+## Auto-Polyfilling con Babel e core-js
+
+### Il Problema della Gestione Manuale
+
+Gestire manualmente i polyfills può diventare complesso:
+- Deve essere trovato un polyfill per ogni funzionalità
+- Le dipendenze tra polyfills devono essere gestite manualmente
+- Facile dimenticare di aggiungere polyfills necessari
+- Richiede ricerca continua quando si aggiungono nuove funzionalità
+
+### Soluzione: Auto-Polyfilling
+
+Babel può **automaticamente** aggiungere polyfills per le funzionalità utilizzate nel codice, basandosi sulla configurazione `browserslist`.
+
+### core-js: La Libreria di Polyfills
+
+**core-js** è una libreria completa che contiene polyfills per praticamente tutte le funzionalità JavaScript moderne.
+
+**Installazione:**
+```bash
+npm install --save core-js regenerator-runtime
+```
+
+**Nota:** `core-js` va installato come dipendenza normale (`--save`), non come dev dependency, perché viene incluso nel bundle finale.
+
+### Configurazione di Babel per Auto-Polyfilling
+
+**webpack.config.js:**
+```javascript
+module.exports = {
+	module: {
+		rules: [
+			{
+				test: /\.m?js$/,
+				exclude: /node_modules/,
+				use: {
+					loader: 'babel-loader',
+					options: {
+						presets: [
+							[
+								'@babel/preset-env',
+								{
+									useBuiltIns: 'usage',
+									corejs: {
+										version: 3
+									}
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	}
+}
+```
+
+**Opzioni di configurazione:**
+
+**`useBuiltIns: 'usage'`**
+- Babel analizza il codice e aggiunge solo i polyfills necessari
+- Risultato: bundle più piccolo
+- Ideale quando si controlla tutto il codice dell'applicazione
+
+**`useBuiltIns: 'entry'`**
+- Richiede import espliciti di `core-js` e `regenerator-runtime`
+- Babel sostituisce questi import con i polyfills necessari per i browser target
+- Risultato: bundle più grande ma più completo
+- Ideale quando si usano librerie di terze parti che potrebbero utilizzare funzionalità moderne
+
+**`useBuiltIns: false`** (default)
+- Nessun polyfill automatico
+- Deve essere gestito manualmente
+
+### Configurazione con `usage`
+
+**Codice sorgente:**
+```javascript
+// app.js
+const promise = new Promise((resolve) => {
+	setTimeout(() => resolve('Completato'), 1000)
+})
+
+promise.then(result => console.log(result))
+```
+
+**Con `useBuiltIns: 'usage'`:**
+Babel analizza il codice, rileva l'uso di `Promise`, e aggiunge automaticamente solo il polyfill per Promise se necessario per i browser target.
+
+**Output generato:**
+```javascript
+// Babel aggiunge automaticamente:
+import 'core-js/modules/es.promise'
+
+// Il resto del codice transpilato
+var promise = new Promise(function(resolve) {
+	setTimeout(function() {
+		return resolve('Completato')
+	}, 1000)
+})
+
+promise.then(function(result) {
+	return console.log(result)
+})
+```
+
+### Configurazione con `entry`
+
+**Codice sorgente:**
+```javascript
+// app.js
+import 'core-js/stable'
+import 'regenerator-runtime/runtime'
+
+// Il resto del codice
+const promise = new Promise((resolve) => {
+	setTimeout(() => resolve('Completato'), 1000)
+})
+```
+
+**Con `useBuiltIns: 'entry'`:**
+Babel sostituisce gli import generici con import specifici per i polyfills necessari basati su `browserslist`.
+
+**Output generato:**
+```javascript
+// Babel sostituisce gli import con solo ciò che serve:
+import 'core-js/modules/es.promise'
+import 'core-js/modules/es.array.iterator'
+// ... altri polyfills necessari per i browser target
+
+// Il resto del codice transpilato
+```
+
+### Quando Usare `usage` vs `entry`
+
+**Usa `usage` quando:**
+- Si controlla tutto il codice dell'applicazione
+- Si vuole il bundle più piccolo possibile
+- Si conoscono esattamente le funzionalità utilizzate
+
+**Usa `entry` quando:**
+- Si utilizzano molte librerie di terze parti
+- Babel non può analizzare tutto il codice (es. codice dinamico)
+- Si preferisce essere "più sicuri che dispiaciuti"
+- Si vuole garantire che tutte le funzionalità necessarie siano disponibili
+
+### Esempio Completo di Configurazione
+
+**package.json:**
+```json
+{
+	"browserslist": [
+		"> 1%",
+		"last 2 versions",
+		"not dead",
+		"not IE 11"
+	],
+	"dependencies": {
+		"core-js": "^3.25.0",
+		"regenerator-runtime": "^0.14.0"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.23.0",
+		"@babel/preset-env": "^7.23.0",
+		"babel-loader": "^9.1.3",
+		"webpack": "^5.89.0"
+	}
+}
+```
+
+**webpack.config.js:**
+```javascript
+module.exports = {
+	module: {
+		rules: [
+			{
+				test: /\.m?js$/,
+				exclude: /node_modules/,
+				use: {
+					loader: 'babel-loader',
+					options: {
+						presets: [
+							[
+								'@babel/preset-env',
+								{
+									useBuiltIns: 'usage',
+									corejs: {
+										version: 3
+									}
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	}
+}
+```
+
+**app.js:**
+```javascript
+// Nessun import manuale necessario con 'usage'
+const users = ['Mario', 'Luigi']
+
+const promise = Promise.resolve(users)
+
+promise.then(data => {
+	const filtered = data.filter(user => user.length > 4)
+	console.log(filtered)
+})
+```
+
+Babel aggiungerà automaticamente solo i polyfills necessari per `Promise` e `Array.prototype.filter` se i browser target non li supportano nativamente.
+
+---
+
+## Configurazione per Sviluppo e Produzione
+
+### Configurazione Separata
+
+È importante configurare Babel sia per lo sviluppo che per la produzione, ma con considerazioni diverse:
+
+**Sviluppo:**
+- Potrebbe essere testato su browser moderni
+- Ma è comunque utile transpilare per avere la stessa esperienza degli utenti finali
+- Debug più facile con source maps
+
+**Produzione:**
+- Codice ottimizzato e minificato
+- Transpilation essenziale per browser target
+- Polyfills necessari per garantire compatibilità
+
+### webpack.config.js Completo
+
+```javascript
+const path = require('path')
+
+module.exports = (env, argv) => {
+	const isProduction = argv.mode === 'production'
+
+	return {
+		entry: './src/app.js',
+		output: {
+			filename: 'app.js',
+			path: path.resolve(__dirname, 'dist')
+		},
+		module: {
+			rules: [
+				{
+					test: /\.m?js$/,
+					exclude: /node_modules/,
+					use: {
+						loader: 'babel-loader',
+						options: {
+							presets: [
+								[
+									'@babel/preset-env',
+									{
+										useBuiltIns: 'usage',
+										corejs: {
+											version: 3
+										},
+										debug: !isProduction // Mostra info in sviluppo
+									}
+								]
+							]
+						}
+					}
+				}
+			]
+		},
+		devtool: isProduction ? 'source-map' : 'eval-source-map'
+	}
+}
+```
+
+### Verificare la Configurazione
+
+**In sviluppo:**
+```bash
+npm run build:dev
+```
+
+Babel mostrerà informazioni di debug su quali polyfills vengono aggiunti e quali trasformazioni vengono applicate.
+
+**In produzione:**
+```bash
+npm run build:prod
+```
+
+Il codice sarà ottimizzato, minificato e compatibile con i browser target.
+
+---
+
+## Ambienti Controllati: Node.js e Altri Runtime
+
+### Differenza con il Browser
+
+Quando si sviluppa per **Node.js** o altri runtime controllati, la situazione è diversa:
+
+**Browser:**
+- Ambiente non controllato
+- Non si sa quale browser/versione gli utenti utilizzeranno
+- Necessario supportare una varietà di browser
+
+**Node.js:**
+- Ambiente controllato
+- Si sceglie quale versione di Node.js utilizzare
+- Si può utilizzare direttamente le funzionalità supportate da quella versione
+
+### Supporto delle Funzionalità in Node.js
+
+Per verificare il supporto delle funzionalità JavaScript in Node.js:
+
+1. **ES6 Compatibility Table**: include una colonna per Node.js
+2. **Documentazione ufficiale Node.js**: elenca le funzionalità supportate per versione
+3. **node.green**: sito dedicato al supporto ES6+ in Node.js
+
+**Esempio:**
+- Node.js 12+: supporta la maggior parte delle funzionalità ES6
+- Node.js 14+: supporta `optional chaining` e `nullish coalescing`
+- Node.js 18+: supporta le funzionalità più recenti
+
+### Implicazioni per lo Sviluppo
+
+**Per codice server-side:**
+- Non è necessario transpilation se si utilizza una versione moderna di Node.js
+- Si può utilizzare direttamente funzionalità moderne
+- Babel può essere utile solo se si deve supportare versioni molto vecchie di Node.js
+
+**Per codice condiviso:**
+- Se il codice viene utilizzato sia nel browser che in Node.js
+- Potrebbe essere necessario transpilation per la parte browser
+- La parte Node.js può utilizzare funzionalità native
+
+---
+
+## Considerazioni Aggiuntive
+
+### Script Modules e Fallback
+
+Quando si utilizzano **ES6 modules** senza bundler:
+
+**index.html:**
+```html
+<!-- Browser moderni: esegue questo script -->
+<script type="module" src="app.js"></script>
+
+<!-- Browser vecchi: esegue questo script -->
+<script nomodule src="app-legacy.js"></script>
+```
+
+**Come funziona:**
+- Browser moderni: riconoscono `type="module"` ed eseguono `app.js`, riconoscono `nomodule` e ignorano `app-legacy.js`
+- Browser vecchi: non riconoscono `type="module"` e ignorano `app.js`, non riconoscono `nomodule` ma eseguono comunque `app-legacy.js`
+
+**Con webpack/bundler:**
+Non è necessario questo pattern perché il bundler combina tutto in un unico file compatibile.
+
+### Utenti con JavaScript Disabilitato
+
+Alcuni utenti potrebbero avere JavaScript disabilitato nel browser.
+
+**Per applicazioni ricche:**
+- L'applicazione potrebbe non funzionare senza JavaScript
+- Mostrare un messaggio informativo è meglio che una pagina vuota
+
+**Utilizzo di `<noscript>`:**
+```html
+<noscript>
+	<div style="padding: 20px; text-align: center; background: #f0f0f0;">
+		<h2>JavaScript Richiesto</h2>
+		<p>Questa applicazione richiede JavaScript per funzionare correttamente.</p>
+		<p>Per favore, abilita JavaScript nel tuo browser e ricarica la pagina.</p>
+	</div>
+</noscript>
+```
+
+Questo non risolve il problema ma informa l'utente sul perché l'applicazione non funziona.
+
+### Progressive Enhancement
+
+**Progressive Enhancement** è una filosofia di sviluppo che:
+1. Inizia con funzionalità base che funzionano ovunque
+2. Aggiunge miglioramenti progressivi per browser più capaci
+3. Garantisce che l'applicazione funzioni anche senza JavaScript avanzato
+
+**Esempio:**
+```html
+<!-- Form base che funziona senza JavaScript -->
+<form action="/submit" method="POST">
+	<input type="text" name="email" required>
+	<button type="submit">Invia</button>
+</form>
+
+<script>
+	// Miglioramento progressivo: invio AJAX se disponibile
+	if (typeof fetch !== 'undefined') {
+		document.querySelector('form').addEventListener('submit', async (e) => {
+			e.preventDefault()
+			// Invio AJAX moderno
+		})
+	}
+	// Se fetch non è disponibile, il form funziona comunque normalmente
+</script>
+```
+
+---
+
+## Best Practices e Checklist
+
+### Checklist per Browser Support
+
+**Prima di iniziare lo sviluppo:**
+- [ ] Analizzare il mercato target e definire browser supportati
+- [ ] Configurare `browserslist` in `package.json`
+- [ ] Verificare il supporto delle funzionalità principali su MDN/caniuse
+- [ ] Configurare Babel con preset-env e auto-polyfilling
+
+**Durante lo sviluppo:**
+- [ ] Utilizzare feature detection per browser APIs
+- [ ] Fornire sempre fallback per funzionalità non essenziali
+- [ ] Testare su browser target (o utilizzare strumenti di testing automatizzato)
+- [ ] Verificare che la transpilation funzioni correttamente
+
+**Prima del deploy:**
+- [ ] Verificare che il bundle di produzione sia ottimizzato
+- [ ] Controllare che i polyfills necessari siano inclusi
+- [ ] Testare su browser target reali
+- [ ] Verificare che i messaggi di errore siano chiari per utenti con browser non supportati
+
+### Best Practices
+
+**1. Non supportare tutto**
+```javascript
+// ✅ Buono: supporta browser moderni
+browserslist: ["> 1%", "not dead"]
+
+// ❌ Non necessario: supporta tutto incluso IE8
+browserslist: ["> 0%"] // Troppo ampio
+```
+
+**2. Usa feature detection prima di polyfills**
+```javascript
+// ✅ Buono: verifica prima, poi usa polyfill se necessario
+if (typeof Promise === 'undefined') {
+	// Carica polyfill solo se necessario
+	await loadPolyfill('promise')
+}
+
+// ❌ Meno efficiente: carica sempre il polyfill
+import 'es6-promise/auto' // Caricato anche se non necessario
+```
+
+**3. Testa su browser reali**
+- Utilizzare browser reali per i test, non solo strumenti di simulazione
+- Testare su dispositivi reali quando possibile
+- Utilizzare servizi di testing cross-browser (BrowserStack, Sauce Labs)
+
+**4. Monitora gli errori**
+- Implementare error tracking (Sentry, LogRocket)
+- Monitorare quali browser generano più errori
+- Aggiornare la strategia di supporto basandosi sui dati reali
+
+**5. Documenta le decisioni**
+- Documentare quali browser sono supportati
+- Spiegare perché alcuni browser sono esclusi
+- Fornire istruzioni chiare per utenti con browser non supportati
+
+---
+
+## Risorse Aggiuntive
+
+Per approfondire ulteriormente il browser support e le tecnologie correlate:
+
+- **Babel**: [Documentazione ufficiale](https://babeljs.io/docs/en/)
+- **babel-loader**: [GitHub repository](https://github.com/babel/babel-loader)
+- **@babel/preset-env**: [Documentazione](https://babeljs.io/docs/en/babel-preset-env)
+- **core-js**: [GitHub repository](https://github.com/zloirock/core-js)
+- **browserslist**: [Documentazione e opzioni](https://github.com/browserslist/browserslist)
+- **MDN Browser Compatibility**: [Risorse MDN](https://developer.mozilla.org/en-US/docs/Web)
+- **caniuse.com**: [Sito web](https://caniuse.com/)
+- **ES6 Compatibility Table**: [compat-table](https://kangax.github.io/compat-table/es6/)
+
+---
+
+## Conclusione
+
+Il browser support è un aspetto fondamentale dello sviluppo web moderno. Comprendere le differenze tra browser APIs e JavaScript syntax, sapere come verificare il supporto delle funzionalità, e utilizzare le strategie appropriate (feature detection, polyfills, transpilation) permette di creare applicazioni che funzionano correttamente per tutti gli utenti target.
+
+Le strategie principali sono:
+
+- **Feature detection e fallback**: per browser APIs che potrebbero non essere disponibili
+- **Polyfills**: per aggiungere funzionalità mancanti che possono essere replicate
+- **Transpilation con Babel**: per utilizzare sintassi JavaScript moderna mantenendo compatibilità
+- **Auto-polyfilling**: per gestire automaticamente i polyfills necessari
+
+La chiave è trovare il giusto equilibrio tra supportare browser legacy e utilizzare funzionalità moderne, basandosi sull'analisi del mercato target e sulle esigenze specifiche dell'applicazione.
