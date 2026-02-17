@@ -1,0 +1,599 @@
+---
+title: "Deployment di Applicazioni JavaScript"
+description: "Deploy di applicazioni statiche e dinamiche: Firebase Hosting per app statiche, Heroku per Node.js, build per produzione e configurazione"
+date: 2026-02-17
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 23
+---
+
+## Introduzione
+
+Dopo aver sviluppato e testato un'applicazione JavaScript, il passo successivo è renderla disponibile pubblicamente su Internet. Il processo di deployment varia a seconda del tipo di applicazione: applicazioni statiche (solo HTML, CSS, JavaScript) richiedono un hosting statico, mentre applicazioni con codice server-side (Node.js) necessitano di un server che possa eseguire JavaScript.
+
+In questo capitolo si approfondiscono:
+
+- **Tipi di applicazioni web**: statiche vs dinamiche
+- **Processo di deployment**: build, ottimizzazione e pubblicazione
+- **Static Hosting**: deploy di applicazioni client-side con Firebase Hosting
+- **Dynamic Hosting**: deploy di applicazioni Node.js con Heroku
+- **Configurazione**: variabili d'ambiente, porta del server, file di configurazione
+
+---
+
+## Tipi di Applicazioni Web
+
+### Applicazioni Statiche
+
+Un'applicazione **statica** consiste solo di file che vengono serviti così come sono:
+
+- File HTML
+- File CSS
+- File JavaScript
+- Immagini e altri asset
+
+Non c'è codice che viene eseguito sul server. Tutto il codice JavaScript viene eseguito nel browser dell'utente. Il server serve semplicemente i file quando vengono richiesti.
+
+**Caratteristiche**:
+- Nessuna esecuzione di codice sul server
+- File serviti direttamente senza elaborazione
+- Veloce da servire (solo trasferimento file)
+- Limitato nelle funzionalità (nessun accesso a database, file system, ecc.)
+
+**Esempi**: landing page, portfolio, applicazioni single-page che comunicano con API esterne.
+
+### Applicazioni Dinamiche
+
+Un'applicazione **dinamica** include codice che viene eseguito sul server:
+
+- Codice server-side (Node.js, PHP, Python, ecc.)
+- Generazione dinamica di HTML
+- Accesso a database
+- Elaborazione di dati sul server
+
+Il server esegue codice per generare risposte personalizzate per ogni richiesta.
+
+**Caratteristiche**:
+- Codice eseguito sul server
+- Può generare contenuto dinamico
+- Accesso a database e file system
+- Richiede più risorse del server
+
+**Esempi**: applicazioni e-commerce, social network, dashboard con dati personalizzati.
+
+### Single-Page Applications (SPA)
+
+Le **SPA** sono un caso particolare di applicazioni statiche:
+
+- Un solo file HTML servito
+- JavaScript gestisce la navigazione e il rendering
+- Comunicazione con API esterne tramite richieste HTTP
+- Nessun codice eseguito sul server che serve l'applicazione
+
+Anche se tecnicamente statiche, le SPA possono sembrare dinamiche grazie al JavaScript che gestisce tutto lato client.
+
+---
+
+## Processo di Deployment
+
+### Fasi del Deployment
+
+Il processo di deployment segue generalmente queste fasi:
+
+**1. Sviluppo**
+Scrittura del codice, organizzazione in moduli, implementazione delle funzionalità.
+
+**2. Testing**
+Verifica che il codice funzioni correttamente, test di funzionalità, correzione di bug.
+
+**3. Ottimizzazione**
+Preparazione del codice per la produzione:
+- Minificazione del codice
+- Rimozione di codice non utilizzato (tree shaking)
+- Compressione di asset
+- Aggiunta di polyfills per supporto browser
+
+**4. Build per Produzione**
+Generazione dei file ottimizzati pronti per il deployment. Con webpack, questo significa eseguire il build in modalità production.
+
+**5. Deployment**
+Caricamento dei file generati sul server di hosting.
+
+### Build per Produzione: Client-Side
+
+Per applicazioni client-side, il build è cruciale perché il codice viene scaricato dagli utenti:
+
+```bash
+npm run build:prod
+```
+
+Questo comando:
+- Combina tutti i file JavaScript in bundle ottimizzati
+- Minifica il codice (rimuove spazi, accorcia nomi di variabili)
+- Applica tree shaking per rimuovere codice non utilizzato
+- Genera file con content hash per cache busting
+
+**Risultato**: file più piccoli = caricamento più veloce = migliore esperienza utente.
+
+### Build per Produzione: Server-Side
+
+Per applicazioni Node.js, il build è meno critico perché:
+- Il codice non viene scaricato dagli utenti
+- Viene eseguito solo sul server
+- Le dimensioni del codice non influenzano le performance per gli utenti finali
+
+Tuttavia, è comunque buona pratica:
+- Rimuovere codice di sviluppo e commenti
+- Verificare che non ci siano dipendenze di sviluppo incluse
+- Assicurarsi che il codice sia pronto per l'ambiente di produzione
+
+---
+
+## Static Hosting: Firebase Hosting
+
+### Cos'è Firebase Hosting
+
+Firebase Hosting è un servizio di Google che permette di ospitare applicazioni web statiche in modo semplice e veloce. Offre CDN globale, SSL automatico e integrazione con altri servizi Firebase.
+
+### Preparazione del Progetto
+
+Prima di deployare, assicurarsi che il progetto sia buildato per produzione:
+
+```bash
+npm run build:prod
+```
+
+Questo genera i file ottimizzati nella cartella di output (tipicamente `dist/` o `build/`).
+
+**Importante**: aggiornare manualmente i riferimenti ai file JavaScript negli HTML se si usa content hash nei nomi dei file:
+
+```html
+<!-- Prima del build -->
+<script src="assets/scripts/app.js"></script>
+
+<!-- Dopo il build (con content hash) -->
+<script src="assets/scripts/app.a1b2c3d4.js"></script>
+```
+
+### Installazione Firebase CLI
+
+Firebase CLI è lo strumento a riga di comando per interagire con Firebase:
+
+```bash
+npm install -g firebase-tools
+```
+
+Su Linux e macOS potrebbe essere necessario `sudo`:
+```bash
+sudo npm install -g firebase-tools
+```
+
+### Inizializzazione del Progetto
+
+Navigare nella cartella del progetto e inizializzare Firebase:
+
+```bash
+firebase init
+```
+
+Durante l'inizializzazione:
+1. **Login**: accedere con account Google o creare un account Firebase
+2. **Selezionare servizio**: scegliere "Hosting"
+3. **Creare progetto**: creare un nuovo progetto Firebase o selezionarne uno esistente
+4. **Public directory**: specificare la cartella con i file da deployare (es. `dist`)
+5. **Single-page app**: scegliere se configurare come SPA (redirect tutte le route a `index.html`)
+6. **Overwrite index.html**: scegliere se sovrascrivere file esistenti
+
+### File di Configurazione
+
+Dopo l'inizializzazione, Firebase crea due file:
+
+**firebase.json**:
+```json
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
+```
+
+**.firebaserc**:
+```json
+{
+  "projects": {
+    "default": "nome-progetto-firebase"
+  }
+}
+```
+
+### Deploy
+
+Una volta configurato, il deploy è semplice:
+
+```bash
+firebase deploy
+```
+
+Questo comando:
+- Carica tutti i file dalla cartella `public` (configurata in `firebase.json`)
+- Distribuisce i file sulla CDN globale di Firebase
+- Fornisce un URL pubblico per l'applicazione
+
+Dopo il deploy, Firebase fornisce un URL tipo:
+```
+https://nome-progetto.firebaseapp.com
+```
+
+### Aggiornare il Deploy
+
+Per aggiornare l'applicazione dopo modifiche:
+
+1. Eseguire di nuovo il build: `npm run build:prod`
+2. Aggiornare riferimenti HTML se necessario
+3. Eseguire: `firebase deploy`
+
+Firebase sovrascrive i file precedenti con le nuove versioni.
+
+### Configurazioni Avanzate
+
+**Redirect e Rewrites**:
+```json
+{
+  "hosting": {
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "destination": "https://api.example.com/**"
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/old-page",
+        "destination": "/new-page",
+        "type": 301
+      }
+    ]
+  }
+}
+```
+
+**Headers personalizzati**:
+```json
+{
+  "hosting": {
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Dynamic Hosting: Heroku
+
+### Cos'è Heroku
+
+Heroku è una piattaforma cloud che permette di deployare applicazioni con codice server-side senza gestire l'infrastruttura. Supporta Node.js, Python, Ruby, PHP e altri linguaggi.
+
+### Preparazione del Progetto Node.js
+
+Prima di deployare su Heroku, il progetto Node.js deve essere configurato correttamente.
+
+**1. Script di Start in package.json**:
+```json
+{
+  "scripts": {
+    "start": "node app.js"
+  }
+}
+```
+
+Questo script dice a Heroku come avviare l'applicazione.
+
+**2. File Procfile (alternativa)**:
+Creare un file `Procfile` nella root del progetto (senza estensione):
+
+```
+web: node app.js
+```
+
+Il formato è: `tipo-processo: comando`. `web` indica che è un processo web che riceve traffico HTTP.
+
+**3. Porta Dinamica**:
+Heroku assegna una porta dinamica. Il codice deve usare la variabile d'ambiente `PORT`:
+
+```javascript
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+```
+
+Se `process.env.PORT` non è definito (sviluppo locale), usa `3000`. Su Heroku, `process.env.PORT` contiene la porta assegnata.
+
+### Installazione Heroku CLI
+
+Scaricare e installare Heroku CLI dal sito ufficiale o tramite package manager:
+
+```bash
+# macOS con Homebrew
+brew tap heroku/brew && brew install heroku
+
+# Altri sistemi: scaricare installer dal sito Heroku
+```
+
+### Login e Setup
+
+**1. Login**:
+```bash
+heroku login
+```
+
+Aprire il browser per autenticarsi o inserire credenziali nel terminale.
+
+**2. Creare App Heroku**:
+Tramite dashboard web o CLI:
+
+```bash
+heroku create nome-app
+```
+
+Questo crea un'applicazione Heroku e aggiunge un remote Git.
+
+### Deploy con Git
+
+Heroku usa Git per il deployment. Il processo è:
+
+**1. Inizializzare Git** (se non già fatto):
+```bash
+git init
+```
+
+**2. Aggiungere file**:
+```bash
+git add .
+```
+
+**3. Creare commit**:
+```bash
+git commit -m "Initial commit"
+```
+
+**4. Aggiungere remote Heroku**:
+```bash
+heroku git:remote -a nome-app
+```
+
+**5. Push a Heroku**:
+```bash
+git push heroku main
+```
+
+Oppure, se si usa `master`:
+```bash
+git push heroku master
+```
+
+### Processo di Build su Heroku
+
+Quando si fa push a Heroku:
+
+1. Heroku rileva che è un'app Node.js (presenza di `package.json`)
+2. Esegue `npm install` per installare dipendenze
+3. Cerca script `start` in `package.json` o `Procfile`
+4. Avvia l'applicazione usando il comando trovato
+5. Assegna una porta e rende l'app disponibile pubblicamente
+
+### Variabili d'Ambiente
+
+Per configurazioni sensibili (credenziali database, API keys), usare variabili d'ambiente configurate su Heroku:
+
+**Tramite Dashboard**:
+1. Andare su Settings → Config Vars
+2. Aggiungere variabili (es. `DB_PASSWORD`, `API_KEY`)
+
+**Tramite CLI**:
+```bash
+heroku config:set DB_PASSWORD=secret123
+heroku config:set API_KEY=abc123
+```
+
+Nel codice Node.js:
+```javascript
+const dbPassword = process.env.DB_PASSWORD;
+const apiKey = process.env.API_KEY;
+```
+
+### Logs e Monitoring
+
+Visualizzare logs dell'applicazione:
+
+```bash
+heroku logs --tail
+```
+
+Questo mostra i log in tempo reale, utile per debugging dopo il deployment.
+
+### Database e Servizi Esterni
+
+Quando si deploya un'app Node.js che si connette a un database esterno (es. MongoDB Atlas):
+
+**1. Whitelist IP Addresses**:
+Nel pannello di controllo del database, aggiungere gli IP di Heroku o permettere connessioni da qualsiasi IP:
+
+```
+0.0.0.0/0  (permetti tutti gli IP)
+```
+
+**Nota**: Heroku assegna IP dinamici, quindi spesso è necessario permettere tutti gli IP o usare un servizio che supporta connessioni da qualsiasi IP.
+
+**2. Usare Variabili d'Ambiente**:
+Non hardcodare la connection string nel codice:
+
+```javascript
+// ❌ Non fare
+const connectionURL = 'mongodb+srv://user:pass@cluster.mongodb.net/db';
+
+// ✅ Fare
+const connectionURL = process.env.MONGODB_CONNECTION_STRING;
+```
+
+Configurare su Heroku:
+```bash
+heroku config:set MONGODB_CONNECTION_STRING="mongodb+srv://..."
+```
+
+### Restart e Scaling
+
+**Restart dell'applicazione**:
+```bash
+heroku restart
+```
+
+**Scaling** (numero di dyno):
+```bash
+heroku ps:scale web=1
+```
+
+Nel piano gratuito, è disponibile un solo dyno.
+
+---
+
+## Best Practices per il Deployment
+
+### Pre-Deployment Checklist
+
+**Per Applicazioni Statiche**:
+- [ ] Build eseguito in modalità production
+- [ ] File HTML aggiornati con nomi file corretti (se si usa content hash)
+- [ ] Test dell'applicazione con i file buildati localmente
+- [ ] Verifica che tutti gli asset siano inclusi
+- [ ] Controllo delle dimensioni dei bundle
+
+**Per Applicazioni Node.js**:
+- [ ] Script `start` configurato in `package.json` o `Procfile`
+- [ ] Porta configurata per usare `process.env.PORT`
+- [ ] Variabili d'ambiente configurate sul servizio di hosting
+- [ ] Database e servizi esterni configurati (whitelist IP, credenziali)
+- [ ] Gestione errori implementata per evitare crash
+- [ ] Logging configurato per debugging
+
+### Gestione degli Errori
+
+In produzione, è importante gestire gli errori per evitare che l'applicazione crashi:
+
+```javascript
+// Gestione errori base
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // Log su servizio di monitoring
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
+  // Log su servizio di monitoring
+});
+```
+
+### Monitoring e Logging
+
+Dopo il deployment, monitorare l'applicazione:
+
+- **Logs**: verificare regolarmente i log per errori o comportamenti anomali
+- **Performance**: monitorare tempi di risposta e utilizzo risorse
+- **Uptime**: verificare che l'applicazione sia sempre disponibile
+- **Errori**: configurare alert per errori critici
+
+### Aggiornamenti e Rollback
+
+**Deploy di Aggiornamenti**:
+1. Testare le modifiche localmente
+2. Eseguire build (se necessario)
+3. Commit delle modifiche
+4. Push a Heroku/Firebase
+5. Verificare che tutto funzioni
+
+**Rollback** (tornare a versione precedente):
+```bash
+# Heroku
+heroku releases  # Vedi versioni precedenti
+heroku rollback v123  # Torna a versione specifica
+
+# Firebase
+firebase hosting:clone SOURCE_SITE_ID:TARGET_SITE_ID
+```
+
+---
+
+## Confronto: Static vs Dynamic Hosting
+
+### Quando Usare Static Hosting
+
+**Vantaggi**:
+- Più economico (spesso gratuito per progetti piccoli)
+- Più veloce (CDN globale, nessuna elaborazione server)
+- Più semplice da configurare
+- Scalabile automaticamente
+
+**Limiti**:
+- Nessuna esecuzione di codice server-side
+- Nessun accesso diretto a database
+- Dipendenza da API esterne per dati dinamici
+
+**Servizi popolari**: Firebase Hosting, AWS S3, Netlify, Vercel, GitHub Pages.
+
+### Quando Usare Dynamic Hosting
+
+**Vantaggi**:
+- Esecuzione di codice server-side
+- Accesso a database e file system
+- Generazione dinamica di contenuti
+- Maggiore controllo sulle operazioni
+
+**Limiti**:
+- Più costoso (richiede server sempre attivo)
+- Più complesso da configurare
+- Richiede gestione di variabili d'ambiente e sicurezza
+- Performance dipendenti dalle risorse del server
+
+**Servizi popolari**: Heroku, AWS Elastic Beanstalk, DigitalOcean, Railway, Render.
+
+---
+
+## Riepilogo
+
+- **Tipi di applicazioni**: applicazioni statiche (solo HTML/CSS/JS) vs dinamiche (con codice server-side). Le SPA sono statiche ma possono sembrare dinamiche grazie al JavaScript lato client.
+
+- **Processo di deployment**: sviluppo → testing → ottimizzazione → build → deployment. Per applicazioni client-side, il build è cruciale per performance. Per server-side, meno critico ma comunque importante.
+
+- **Static Hosting**: servizi come Firebase Hosting servono solo file statici. Processo: build del progetto, configurazione Firebase, deploy tramite CLI. Veloce, economico, ideale per applicazioni client-side.
+
+- **Dynamic Hosting**: servizi come Heroku eseguono codice server-side. Richiede configurazione di script start, porta dinamica (`process.env.PORT`), variabili d'ambiente per credenziali, whitelist IP per database esterni.
+
+- **Configurazione**: `package.json` con script `start`, `Procfile` per Heroku, variabili d'ambiente per dati sensibili, porta dinamica per adattarsi all'hosting provider.
+
+- **Best practices**: testare prima del deploy, gestire errori per evitare crash, monitorare logs e performance, configurare correttamente database e servizi esterni, usare variabili d'ambiente per configurazioni sensibili.
+
+- **Considerazioni**: scegliere hosting statico per applicazioni client-side semplici, hosting dinamico quando serve codice server-side. Entrambi hanno trade-off tra semplicità, costo e funzionalità.

@@ -1,0 +1,728 @@
+---
+title: "Testing Automatico"
+description: "Introduzione al testing automatico in JavaScript: unit test, integration test, end-to-end test, testing di codice asincrono e mocking"
+date: 2026-02-17
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 25
+---
+
+## Introduzione
+
+Scrivere codice funzionante è solo il primo passo. È altrettanto importante assicurarsi che il codice continui a funzionare correttamente quando viene modificato o quando vengono aggiunte nuove funzionalità.
+
+Il testing automatico permette di scrivere codice che testa altro codice, automatizzando il processo di verifica e permettendo di identificare problemi rapidamente.
+
+In questo capitolo si approfondiscono:
+
+- **Cos'è il testing e perché usarlo**: vantaggi del testing automatico
+- **Tipi di test**: unit test, integration test, end-to-end test
+- **Jest**: setup e utilizzo per unit e integration test
+- **Puppeteer**: testing end-to-end con browser automatizzato
+- **Testing asincrono**: come testare codice che usa promesse e chiamate HTTP
+- **Mocking**: sostituire dipendenze esterne nei test
+
+---
+
+## Cos'è il Testing e Perché Usarlo
+
+### Testing Manuale vs Automatico
+
+Il **testing manuale** consiste nell'aprire il browser, interagire con l'applicazione e verificare che tutto funzioni come previsto. Questo approccio è ancora valido e necessario per vedere l'applicazione in azione.
+
+Il **testing automatico** consiste nello scrivere codice che esegue altri pezzi di codice e verifica i risultati automaticamente. Questo permette di:
+
+- Eseguire test ogni volta che si modifica il codice
+- Identificare problemi in parti diverse dell'applicazione causati da modifiche
+- Risparmiare tempo evitando di testare manualmente tutto ogni volta
+- Integrare i test nel workflow di sviluppo e deployment
+
+### Vantaggi del Testing Automatico
+
+#### Identificazione Immediata di Errori
+
+Con test ben scritti, è possibile vedere immediatamente se una modifica ha rotto qualcosa:
+
+- I test vengono eseguiti automaticamente
+- Gli errori vengono segnalati immediatamente
+- Non è necessario testare manualmente ogni funzionalità dopo ogni modifica
+
+#### Risparmio di Tempo
+
+Testare manualmente ogni funzionalità dopo ogni modifica richiede molto tempo. I test automatici possono essere eseguiti in pochi secondi, permettendo di concentrarsi sullo sviluppo.
+
+#### Forza a Pensare ai Problemi
+
+Scrivere test costringe a pensare:
+
+- Cosa si vuole testare esattamente?
+- Quali sono i casi edge?
+- Cosa potrebbe andare storto?
+
+Questo processo aiuta a identificare potenziali problemi prima che diventino bug.
+
+#### Integrazione nel Workflow
+
+I test possono essere integrati nel workflow di build e deployment:
+
+- Esecuzione automatica dei test su ogni commit
+- Deployment automatico solo se i test passano
+- Prevenzione di codice rotto in produzione
+
+#### Codice Migliore e Più Modulare
+
+Scrivere codice testabile significa scrivere codice:
+
+- Modulare e ben organizzato
+- Con dipendenze chiare e gestibili
+- Più facile da mantenere e modificare
+
+Il testing forza a seguire pattern che migliorano la qualità complessiva del codice.
+
+---
+
+## Tipi di Test
+
+Esistono tre tipi principali di test automatici, ognuno con un livello di complessità diverso.
+
+### Unit Test
+
+Gli **unit test** testano unità isolate di codice, tipicamente funzioni che:
+
+- Ricevono input chiari
+- Restituiscono output chiari
+- Non hanno dipendenze esterne complesse
+
+**Esempio**: una funzione che prende due numeri e restituisce la loro somma.
+
+**Caratteristiche**:
+- Relativamente facili da scrivere
+- Esecuzione veloce
+- Facili da debuggare quando falliscono
+
+**Quando usarli**: per testare funzioni pure, utility, trasformazioni di dati.
+
+### Integration Test
+
+Gli **integration test** testano l'integrazione tra più unità di codice:
+
+- Funzioni che chiamano altre funzioni
+- Combinazioni di funzioni che lavorano insieme
+- Verifica che unità individualmente funzionanti continuino a funzionare quando combinate
+
+**Esempio**: una funzione che valida input e poi genera testo usando un'altra funzione.
+
+**Caratteristiche**:
+- Più complessi degli unit test
+- Richiedono più setup
+- Possono essere più difficili da debuggare (non è immediato capire quale unità causa il problema)
+
+**Quando usarli**: per testare flussi che coinvolgono più funzioni, validazione seguita da trasformazione.
+
+### End-to-End Test (E2E)
+
+Gli **end-to-end test** (anche chiamati **UI test** o **user interface test**) testano il flusso completo dell'applicazione:
+
+- Simulano interazioni utente reali
+- Testano l'interfaccia utente nel browser
+- Verificano che l'intera applicazione funzioni correttamente
+
+**Esempio**: inserire dati in un form, cliccare un bottone, verificare che un elemento venga aggiunto alla lista.
+
+**Caratteristiche**:
+- Più complessi da scrivere
+- Più lenti da eseguire
+- Richiedono browser automatizzato (headless o con interfaccia)
+
+**Quando usarli**: per testare flussi utente critici, interazioni complesse, scenari completi.
+
+### Frequenza dei Test
+
+La frequenza con cui si scrivono i diversi tipi di test segue una piramide:
+
+- **Molti unit test**: testano ogni unità isolata
+- **Alcuni integration test**: verificano che le unità funzionino insieme
+- **Pochi end-to-end test**: testano flussi critici completi
+
+Questa distribuzione permette di avere una copertura completa mantenendo i test veloci e manutenibili.
+
+---
+
+## Setup: Jest
+
+**Jest** è una libreria popolare per il testing JavaScript che combina:
+
+- **Test runner**: esegue i test e riporta i risultati
+- **Assertion library**: fornisce funzioni per definire aspettative e verifiche
+
+Jest è sviluppato da Facebook ed è ampiamente utilizzato nella community JavaScript.
+
+### Installazione
+
+```bash
+npm install --save-dev jest
+```
+
+Jest viene installato come dipendenza di sviluppo perché è necessario solo durante lo sviluppo, non in produzione.
+
+### Configurazione
+
+Nel `package.json`, aggiungere uno script per eseguire i test:
+
+```json
+{
+  "scripts": {
+    "test": "jest"
+  }
+}
+```
+
+Jest automaticamente cerca e esegue file che terminano con `.test.js` o `.spec.js`.
+
+### Sintassi Base
+
+Jest fornisce funzioni globali quando si eseguono i test:
+
+- `test()`: definisce un singolo test
+- `expect()`: definisce un'aspettativa da verificare
+
+---
+
+## Unit Test con Jest
+
+### Struttura di un Unit Test
+
+Un unit test tipicamente segue questa struttura:
+
+```javascript
+const { functionToTest } = require('./file-to-test');
+
+test('descrizione di cosa viene testato', () => {
+  // Arrange: prepara i dati di test
+  const input = 'valore di test';
+  
+  // Act: esegue la funzione da testare
+  const result = functionToTest(input);
+  
+  // Assert: verifica il risultato
+  expect(result).toBe('risultato atteso');
+});
+```
+
+### Esempio Pratico
+
+Testare una funzione che genera testo:
+
+```javascript
+// util.js
+function generateText(name, age) {
+  return `${name} (${age} years old)`;
+}
+
+module.exports = { generateText };
+```
+
+```javascript
+// util.test.js
+const { generateText } = require('./util');
+
+test('should output name and age', () => {
+  const text = generateText('Max', 29);
+  expect(text).toBe('Max (29 years old)');
+});
+```
+
+**Esecuzione**:
+```bash
+npm test
+```
+
+**Output**:
+```
+PASS  ./util.test.js
+  ✓ should output name and age
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+```
+
+### Verifiche Multiple nello Stesso Test
+
+È possibile avere più `expect` nello stesso test:
+
+```javascript
+test('should handle different inputs', () => {
+  const text1 = generateText('Max', 29);
+  const text2 = generateText('Anna', 28);
+  
+  expect(text1).toBe('Max (29 years old)');
+  expect(text2).toBe('Anna (28 years old)');
+});
+```
+
+### Test per Evitare False Positivi
+
+È importante testare anche casi edge e scenari negativi:
+
+```javascript
+test('should output dataless text if empty input', () => {
+  const text = generateText('', null);
+  expect(text).toBe(' (null years old)');
+});
+```
+
+Questo tipo di test aiuta a identificare funzioni che potrebbero restituire sempre lo stesso valore invece di usare gli input forniti.
+
+### Matchers Comuni
+
+Jest fornisce molti **matchers** (funzioni di verifica):
+
+```javascript
+// Uguaglianza
+expect(value).toBe(4);
+expect(value).toEqual({ name: 'Max' });
+
+// Verità/Falsità
+expect(value).toBeTruthy();
+expect(value).toBeFalsy();
+expect(value).toBeNull();
+expect(value).toBeUndefined();
+
+// Numeri
+expect(value).toBeGreaterThan(3);
+expect(value).toBeLessThan(5);
+expect(value).toBeGreaterThanOrEqual(3.5);
+
+// Stringhe
+expect(value).toMatch(/pattern/);
+expect(value).toContain('substring');
+
+// Array
+expect(array).toContain('item');
+
+// Eccezioni
+expect(() => functionThatThrows()).toThrow();
+expect(() => functionThatThrows()).toThrow('error message');
+```
+
+### Watch Mode
+
+Jest può essere eseguito in modalità watch per rieseguire automaticamente i test quando i file cambiano:
+
+```bash
+npm test -- --watch
+```
+
+In watch mode, Jest monitora i file e riesegue i test quando vengono salvate modifiche, permettendo di vedere immediatamente se le modifiche hanno rotto qualcosa.
+
+---
+
+## Integration Test con Jest
+
+Gli integration test verificano che più unità funzionino correttamente insieme.
+
+### Esempio Pratico
+
+Testare una funzione che combina validazione e generazione di testo:
+
+```javascript
+// util.js
+function validateInput(text, notEmpty, isNumber) {
+  if (!text || text.trim().length === 0) {
+    return false;
+  }
+  if (notEmpty && text.trim().length === 0) {
+    return false;
+  }
+  if (isNumber && isNaN(text)) {
+    return false;
+  }
+  return true;
+}
+
+function generateText(name, age) {
+  return `${name} (${age} years old)`;
+}
+
+function checkAndGenerate(name, age) {
+  const nameIsValid = validateInput(name, false, false);
+  const ageIsValid = validateInput(age, false, true);
+  
+  if (!nameIsValid || !ageIsValid) {
+    return false;
+  }
+  
+  return generateText(name, age);
+}
+
+module.exports = { 
+  validateInput, 
+  generateText, 
+  checkAndGenerate 
+};
+```
+
+```javascript
+// util.test.js
+const { checkAndGenerate } = require('./util');
+
+test('should generate a valid text output', () => {
+  const text = checkAndGenerate('Max', 29);
+  expect(text).toBe('Max (29 years old)');
+});
+```
+
+### Perché gli Integration Test sono Importanti
+
+Anche se ogni unità funziona correttamente quando testata isolatamente, potrebbero esserci problemi quando vengono combinate:
+
+- **Uso errato dei risultati**: una funzione potrebbe usare il risultato di un'altra in modo sbagliato
+- **Ordine di esecuzione**: l'ordine in cui le funzioni vengono chiamate potrebbe causare problemi
+- **Stato condiviso**: modifiche allo stato condiviso potrebbero influenzare altre funzioni
+
+Gli integration test aiutano a identificare questi problemi.
+
+### Strategia di Testing
+
+La strategia migliore è:
+
+1. **Scrivere unit test** per ogni unità isolata
+2. **Scrivere integration test** per verificare che le unità funzionino insieme
+3. **Scrivere end-to-end test** per i flussi critici
+
+In questo modo, se un integration test fallisce, è possibile verificare gli unit test per capire quale unità causa il problema.
+
+---
+
+## End-to-End Test con Puppeteer
+
+Gli end-to-end test simulano interazioni utente reali nel browser. **Puppeteer** è uno strumento che permette di controllare un browser Chrome headless (o con interfaccia) programmaticamente.
+
+### Installazione
+
+```bash
+npm install --save-dev puppeteer
+```
+
+Puppeteer scarica automaticamente una versione di Chromium quando viene installato.
+
+### Struttura Base di un E2E Test
+
+```javascript
+const puppeteer = require('puppeteer');
+
+test('should create an element with text and correct class', async () => {
+  // Launch browser
+  const browser = await puppeteer.launch({
+    headless: false, // Mostra il browser
+    slowMo: 80,      // Rallenta le operazioni per vedere cosa succede
+    args: ['--window-size=1920,1080']
+  });
+  
+  // Create a new page
+  const page = await browser.newPage();
+  
+  // Navigate to the page
+  await page.goto('file:///path/to/index.html');
+  
+  // Interact with the page
+  await page.click('#name');
+  await page.type('#name', 'Anna');
+  await page.click('#age');
+  await page.type('#age', '28');
+  await page.click('#button-add-user');
+  
+  // Verify the result
+  const finalText = await page.$eval('.user-item', el => el.textContent);
+  expect(finalText).toBe('Anna (28 years old)');
+  
+  // Close browser
+  await browser.close();
+}, 10000); // Timeout di 10 secondi
+```
+
+### Opzioni di Puppeteer
+
+**headless**: `false` mostra il browser, `true` lo esegue in background (più veloce)
+
+**slowMo**: rallenta le operazioni di un numero di millisecondi per vedere cosa succede
+
+**args**: argomenti da passare al browser (es. dimensione finestra, flag Chrome)
+
+### Metodi Comuni di Puppeteer
+
+```javascript
+// Navigazione
+await page.goto('https://example.com');
+
+// Click
+await page.click('#button-id');
+await page.click('.class-name');
+
+// Digitare testo
+await page.type('#input-id', 'testo da inserire');
+
+// Ottenere contenuto di un elemento
+const text = await page.$eval('#element-id', el => el.textContent);
+
+// Ottenere tutti gli elementi che corrispondono a un selettore
+const elements = await page.$$eval('.class-name', elements => 
+  elements.map(el => el.textContent)
+);
+
+// Aspettare che un elemento appaia
+await page.waitForSelector('#element-id');
+
+// Aspettare navigazione
+await page.waitForNavigation();
+```
+
+### Timeout nei Test
+
+I test E2E possono richiedere più tempo degli unit test. Jest ha un timeout predefinito di 5 secondi. Per aumentarlo:
+
+```javascript
+test('test description', async () => {
+  // test code
+}, 10000); // Timeout di 10 secondi
+```
+
+### Quando Usare E2E Test
+
+Gli E2E test sono utili per:
+
+- **Flussi critici**: login, checkout, creazione account
+- **Interazioni complesse**: drag and drop, form multi-step
+- **Regressioni**: verificare che modifiche non abbiano rotto funzionalità esistenti
+
+Tuttavia, sono più lenti e complessi da mantenere, quindi vanno usati con parsimonia per i flussi più importanti.
+
+---
+
+## Testing di Codice Asincrono
+
+Il codice asincrono (promesse, chiamate HTTP, callback) richiede un approccio diverso nel testing.
+
+### Problema: Codice Asincrono nei Test
+
+Consideriamo questa funzione:
+
+```javascript
+// util.js
+const { fetchData } = require('./http');
+
+function loadTitle() {
+  return fetchData()
+    .then(response => {
+      return response.data.title.toUpperCase();
+    });
+}
+
+module.exports = { loadTitle };
+```
+
+Se testiamo questa funzione senza gestire l'asincronia:
+
+```javascript
+// ❌ Non funziona
+test('should return uppercase title', () => {
+  const title = loadTitle();
+  expect(title).toBe('DELECTUS AUT AUTEM'); // title è una Promise, non una stringa
+});
+```
+
+### Soluzione: Gestire le Promesse
+
+Jest sa come gestire le promesse nei test:
+
+```javascript
+// ✅ Funziona
+test('should return uppercase title', () => {
+  return loadTitle().then(title => {
+    expect(title).toBe('DELECTUS AUT AUTEM');
+  });
+});
+```
+
+**Alternativa con async/await**:
+
+```javascript
+// ✅ Più leggibile
+test('should return uppercase title', async () => {
+  const title = await loadTitle();
+  expect(title).toBe('DELECTUS AUT AUTEM');
+});
+```
+
+### Problema: Chiamate HTTP Reali
+
+Il problema principale con il codice asincrono è che spesso coinvolge chiamate HTTP reali:
+
+```javascript
+// http.js
+const axios = require('axios');
+
+function fetchData() {
+  return axios.get('https://jsonplaceholder.typicode.com/todos/1')
+    .then(response => response.data);
+}
+```
+
+**Problemi con chiamate HTTP reali nei test**:
+- Possono superare i limiti di rate dell'API
+- Possono modificare dati su API di produzione
+- Sono lente e rendono i test instabili
+- Non testano il nostro codice, ma l'API esterna
+
+### Soluzione: Mocking
+
+Il **mocking** consiste nel sostituire funzioni o moduli con implementazioni fake per i test.
+
+#### Mock di Funzioni Proprie
+
+Creare una cartella `__mocks__` nella root del progetto:
+
+```
+project/
+  __mocks__/
+    http.js
+  http.js
+  util.js
+  util.test.js
+```
+
+```javascript
+// __mocks__/http.js
+function fetchData() {
+  return Promise.resolve({
+    data: {
+      title: 'delectus aut autem' // lowercase per testare la trasformazione
+    }
+  });
+}
+
+module.exports = { fetchData };
+```
+
+Nel file di test, dire a Jest di usare il mock:
+
+```javascript
+// util.test.js
+jest.mock('./http'); // Jest userà automaticamente __mocks__/http.js
+
+const { loadTitle } = require('./util');
+
+test('should return uppercase title', async () => {
+  const title = await loadTitle();
+  expect(title).toBe('DELECTUS AUT AUTEM');
+});
+```
+
+#### Mock di Moduli Node.js
+
+Per mockare moduli npm (come `axios`), creare `__mocks__/axios.js`:
+
+```javascript
+// __mocks__/axios.js
+module.exports = {
+  get: function(url) {
+    return Promise.resolve({
+      data: {
+        title: 'delectus aut autem'
+      }
+    });
+  }
+};
+```
+
+Jest automaticamente usa il mock per i moduli Node.js quando presente in `__mocks__`.
+
+### Cosa Testare e Cosa Mockare
+
+**Cosa testare**:
+- La nostra logica: trasformazioni, validazioni, calcoli
+- Come il nostro codice gestisce i dati ricevuti
+- Gestione degli errori
+
+**Cosa mockare**:
+- Chiamate HTTP a API esterne
+- Accesso al filesystem
+- Librerie third-party (verificare che funzionino non è nostro compito)
+- Operazioni lente o costose
+
+### Strategia di Mocking
+
+1. **Mock al livello più basso possibile**: mockare `axios.get` invece di `fetchData` se possibile
+2. **Mock realistici**: i mock dovrebbero restituire dati simili a quelli reali
+3. **Testare la logica, non le dipendenze**: concentrarsi su ciò che il nostro codice fa con i dati
+
+---
+
+## Best Practices
+
+### Organizzazione dei Test
+
+- **Un file di test per file sorgente**: `util.js` → `util.test.js`
+- **Test descrittivi**: i nomi dei test dovrebbero descrivere chiaramente cosa viene testato
+- **Test isolati**: ogni test dovrebbe essere indipendente dagli altri
+
+### Scrivere Test Efficaci
+
+1. **Arrange-Act-Assert**: struttura chiara per ogni test
+2. **Un'idea per test**: ogni test dovrebbe verificare una cosa specifica
+3. **Test positivi e negativi**: testare sia il caso felice che i casi edge
+4. **Evitare test troppo specifici**: testare il comportamento, non l'implementazione
+
+### Mantenibilità
+
+- **Refactoring quando necessario**: se i test diventano difficili da mantenere, potrebbe essere necessario refactorizzare il codice
+- **Evitare test fragili**: test che falliscono per motivi non correlati al codice
+- **Documentazione**: commenti quando necessario per spiegare test complessi
+
+### Performance
+
+- **Test veloci**: gli unit test dovrebbero essere molto veloci
+- **Test paralleli**: Jest esegue i test in parallelo quando possibile
+- **Evitare operazioni costose**: mockare operazioni lente o costose
+
+---
+
+## Risorse Aggiuntive
+
+### Documentazione
+
+- **Jest Official Docs**: https://jestjs.io/docs/en/getting-started
+- **Puppeteer Official Docs**: https://pptr.dev/
+
+### Articoli e Tutorial
+
+- **JavaScript Testing Introduction**: https://academind.com/tutorials/javascript-testing-introduction
+- **Testing with Spies, Stubs & Mocks**: https://www.harrymt.com/blog/2018/04/11/stubs-spies-and-mocks-in-js.html
+
+### Concetti Avanzati
+
+- **Spies e Stubs**: alternative al mocking per verificare chiamate di funzione
+- **Snapshot Testing**: testare output complessi con snapshot
+- **Code Coverage**: misurare quanto codice è coperto dai test
+- **CI/CD Integration**: integrare i test nel workflow di deployment
+
+---
+
+## Conclusione
+
+Il testing automatico è uno strumento potente per:
+
+- **Identificare problemi rapidamente**: errori vengono segnalati immediatamente
+- **Migliorare la qualità del codice**: codice testabile è codice migliore
+- **Permettere refactoring sicuro**: modifiche possono essere fatte con fiducia
+- **Documentare il comportamento**: i test servono come documentazione vivente
+
+Ricorda:
+
+- **Inizia con unit test**: sono i più semplici e forniscono il maggior valore
+- **Aggiungi integration test**: per verificare che le parti funzionino insieme
+- **Usa E2E test con parsimonia**: solo per i flussi critici
+- **Mocka le dipendenze esterne**: concentrati sul testare il tuo codice
+- **Mantieni i test semplici**: test complessi sono difficili da mantenere
+
+Il testing è una skill che si sviluppa con la pratica. Inizia con test semplici e gradualmente aggiungi complessità quando necessario.

