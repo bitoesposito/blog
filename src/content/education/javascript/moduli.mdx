@@ -418,7 +418,7 @@ Nei moduli, le variabili definite a livello di modulo non vengono aggiunte autom
 
 ```javascript
 // app.js
-const defaultValue = 'Max';
+const defaultValue = 'Vito';
 
 // projectList.js
 console.log(defaultValue); // ❌ Errore: non definita
@@ -430,7 +430,7 @@ Se si vuole condividere dati globalmente, bisogna aggiungerli esplicitamente a `
 
 ```javascript
 // app.js
-window.defaultValue = 'Max';
+window.defaultValue = 'Vito';
 
 // projectList.js
 console.log(window.defaultValue); // ✅ Funziona

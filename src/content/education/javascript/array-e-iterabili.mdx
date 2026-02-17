@@ -765,9 +765,9 @@ const firstTwo = text.split(',', 2); // ['a', 'b']
 `join()` unisce gli elementi di un array in una stringa:
 
 ```javascript
-const nameFragments = ['Vito', 'Schwarz'];
-const fullName = nameFragments.join(' '); // 'Max Schwarz'
-const withComma = nameFragments.join(); // 'Max,Schwarz' (virgola di default)
+const nameFragments = ['Vito', 'Esposito'];
+const fullName = nameFragments.join(' '); // 'Vito Esposito'
+const withComma = nameFragments.join(); // 'Vito,Esposito' (virgola di default)
 ```
 
 ### Utilizzo pratico
@@ -787,7 +787,7 @@ Questi metodi sono utili per:
 Lo **spread operator** (`...`) estrae tutti gli elementi da un array:
 
 ```javascript
-const nameFragments = ['Vito', 'Schwarz'];
+const nameFragments = ['Vito', 'Esposito'];
 const copiedFragments = [...nameFragments];
 console.log(copiedFragments); // nuovo array indipendente
 ```
@@ -847,10 +847,10 @@ const copiedPersons = persons.map(person => ({
 La **destructuring** permette di estrarre elementi da un array in variabili separate:
 
 ```javascript
-const nameData = ['Vito', 'Schwarz'];
+const nameData = ['Vito', 'Esposito'];
 const [firstName, lastName] = nameData;
 console.log(firstName); // 'Vito'
-console.log(lastName); // 'Schwarz'
+console.log(lastName); // 'Esposito'
 ```
 
 ### Vantaggi
@@ -873,7 +873,7 @@ const [firstName, lastName] = nameData;
 Puoi raccogliere gli elementi rimanenti con il **rest operator**:
 
 ```javascript
-const nameData = ['Vito', 'Schwarz', 'Mr', 30];
+const nameData = ['Vito', 'Esposito', 'Mr', 30];
 const [firstName, lastName, ...otherInfo] = nameData;
 console.log(otherInfo); // ['Mr', 30]
 ```

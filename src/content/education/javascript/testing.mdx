@@ -227,8 +227,8 @@ module.exports = { generateText };
 const { generateText } = require('./util');
 
 test('should output name and age', () => {
-  const text = generateText('Max', 29);
-  expect(text).toBe('Max (29 years old)');
+  const text = generateText('Vito', 29);
+  expect(text).toBe('Vito (29 years old)');
 });
 ```
 
@@ -252,10 +252,10 @@ Tests:       1 passed, 1 total
 
 ```javascript
 test('should handle different inputs', () => {
-  const text1 = generateText('Max', 29);
+  const text1 = generateText('Vito', 29);
   const text2 = generateText('Anna', 28);
   
-  expect(text1).toBe('Max (29 years old)');
+  expect(text1).toBe('Vito (29 years old)');
   expect(text2).toBe('Anna (28 years old)');
 });
 ```
@@ -280,7 +280,7 @@ Jest fornisce molti **matchers** (funzioni di verifica):
 ```javascript
 // Uguaglianza
 expect(value).toBe(4);
-expect(value).toEqual({ name: 'Max' });
+expect(value).toEqual({ name: 'Vito' });
 
 // Verità/Falsità
 expect(value).toBeTruthy();
@@ -367,8 +367,8 @@ module.exports = {
 const { checkAndGenerate } = require('./util');
 
 test('should generate a valid text output', () => {
-  const text = checkAndGenerate('Max', 29);
-  expect(text).toBe('Max (29 years old)');
+  const text = checkAndGenerate('Vito', 29);
+  expect(text).toBe('Vito (29 years old)');
 });
 ```
 
