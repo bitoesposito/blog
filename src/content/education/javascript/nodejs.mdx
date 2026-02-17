@@ -1,0 +1,663 @@
+---
+title: "Node.js: JavaScript Fuori dal Browser"
+description: "Ambiente Node.js, file system, server HTTP, Express.js, REST API e integrazione con database MongoDB"
+date: 2026-02-17
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 21
+---
+
+## Introduzione
+
+Node.js è un ambiente di esecuzione JavaScript che permette di eseguire codice JavaScript al di fuori del browser. Utilizza il motore V8 di Chrome arricchito con API specifiche per operazioni lato server come accesso al file system, creazione di server HTTP e comunicazione con database.
+
+In questo capitolo si approfondiscono:
+
+- **Node.js vs Browser**: differenze tra gli ambienti
+- **Moduli Node.js**: sintassi `require` e `module.exports`
+- **File System**: leggere e scrivere file
+- **Server HTTP**: creare server con il modulo `http`
+- **Express.js**: framework per applicazioni web
+- **REST API**: creare endpoint per scambiare dati JSON
+- **Database MongoDB**: integrazione base con MongoDB
+
+---
+
+## Node.js vs Browser
+
+### Differenze Principali
+
+**Browser**:
+- API disponibili: DOM, `fetch`, `localStorage`, `window`
+- Esecuzione: codice eseguito nel browser dell'utente
+- Scopo: interfacce utente interattive
+
+**Node.js**:
+- API disponibili: file system, `http`, moduli core di Node.js
+- Esecuzione: codice eseguito su un server o macchina locale
+- Scopo: server, script utility, tooling
+
+### Cosa Rimane Uguale
+
+La sintassi JavaScript base è identica:
+- Variabili (`const`, `let`, `var`)
+- Funzioni, classi, oggetti
+- Array methods (`map`, `filter`, `reduce`)
+- Async/await, Promises
+- Tutte le funzionalità core del linguaggio
+
+### Eseguire Script Node.js
+
+```bash
+node app.js
+```
+
+Node.js legge ed esegue il file JavaScript specificato.
+
+---
+
+## Moduli Node.js
+
+### Sintassi Import/Export
+
+Node.js usa una sintassi diversa dai moduli ES6:
+
+**Importare un modulo**:
+```javascript
+const fs = require('fs');              // Modulo core
+const express = require('express');     // Pacchetto npm
+const myModule = require('./myModule'); // File locale
+```
+
+**Esportare da un modulo**:
+```javascript
+// Esportare un singolo valore
+module.exports = myFunction;
+
+// Esportare un oggetto
+module.exports = {
+  function1: myFunction1,
+  function2: myFunction2
+};
+
+// Esportare multipli valori
+module.exports.function1 = myFunction1;
+module.exports.function2 = myFunction2;
+```
+
+### Moduli Core
+
+Node.js include moduli built-in disponibili senza installazione:
+- `fs`: file system
+- `http`: server HTTP
+- `path`: utilità per percorsi
+- `url`: parsing di URL
+- `crypto`: funzionalità crittografiche
+
+---
+
+## File System
+
+### Scrivere un File
+
+```javascript
+const fs = require('fs');
+
+fs.writeFile('data.txt', 'Contenuto del file', (err) => {
+  if (err) {
+    console.error('Errore:', err);
+    return;
+  }
+  console.log('File scritto con successo');
+});
+```
+
+### Leggere un File
+
+```javascript
+const fs = require('fs');
+
+fs.readFile('data.txt', 'utf8', (err, data) => {
+  if (err) {
+    console.error('Errore:', err);
+    return;
+  }
+  console.log('Contenuto:', data);
+});
+```
+
+**Note**:
+- Il secondo parametro `'utf8'` specifica l'encoding
+- Senza encoding, si ottiene un `Buffer` invece di una stringa
+- Le operazioni sono asincrone (callback-based)
+
+### Metodi Sincroni (da Evitare)
+
+Esistono versioni sincrone (`writeFileSync`, `readFileSync`) che bloccano l'esecuzione. Evitarle in produzione.
+
+---
+
+## Server HTTP Base
+
+### Creare un Server
+
+```javascript
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.write('<h1>Hello World</h1>');
+  res.end();
+});
+
+server.listen(3000, () => {
+  console.log('Server in ascolto su porta 3000');
+});
+```
+
+### Parsing del Body (Metodo Manuale)
+
+```javascript
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  let body = [];
+  
+  req.on('data', (chunk) => {
+    body.push(chunk);
+  });
+  
+  req.on('end', () => {
+    body = Buffer.concat(body).toString();
+    const parsedData = parseBody(body); // Logica di parsing
+    res.end(JSON.stringify(parsedData));
+  });
+});
+```
+
+**Problemi**:
+- Parsing manuale complesso
+- Gestione errori verbosa
+- Difficile scalare
+
+---
+
+## Express.js
+
+### Installazione
+
+```bash
+npm init -y
+npm install express
+```
+
+### Setup Base
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.listen(3000, () => {
+  console.log('Server in ascolto su porta 3000');
+});
+```
+
+### Middleware
+
+Express è un framework basato su middleware: funzioni che processano le richieste in sequenza.
+
+```javascript
+app.use((req, res, next) => {
+  // Logica middleware
+  console.log('Richiesta ricevuta');
+  next(); // Passa al middleware successivo
+});
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'text/html');
+  next();
+});
+
+app.use((req, res) => {
+  res.send('<h1>Hello World</h1>');
+});
+```
+
+**Flusso**:
+1. Richiesta arriva al primo middleware
+2. Esegue la logica e chiama `next()`
+3. Passa al middleware successivo
+4. Se un middleware invia una risposta (`res.send()`), la catena si ferma
+
+### Body Parsing
+
+```bash
+npm install body-parser
+```
+
+```javascript
+const bodyParser = require('body-parser');
+
+// Parsing JSON
+app.use(bodyParser.json());
+
+// Parsing form data (URL-encoded)
+app.use(bodyParser.urlencoded({ extended: false }));
+
+// Ora req.body contiene i dati parsati
+app.post('/submit', (req, res) => {
+  console.log(req.body); // Oggetto con i dati
+  res.json({ success: true });
+});
+```
+
+### Routes
+
+```javascript
+// GET route
+app.get('/users', (req, res) => {
+  res.json({ users: [] });
+});
+
+// POST route
+app.post('/users', (req, res) => {
+  const newUser = req.body;
+  // Salva utente
+  res.json({ id: 123 });
+});
+
+// Route con parametri dinamici
+app.get('/users/:id', (req, res) => {
+  const userId = req.params.id;
+  res.json({ user: { id: userId } });
+});
+```
+
+### Router Separato
+
+**routes/users.js**:
+```javascript
+const express = require('express');
+const router = express.Router();
+
+router.get('/', (req, res) => {
+  res.json({ users: [] });
+});
+
+router.get('/:id', (req, res) => {
+  res.json({ user: { id: req.params.id } });
+});
+
+module.exports = router;
+```
+
+**app.js**:
+```javascript
+const usersRoutes = require('./routes/users');
+
+app.use('/users', usersRoutes);
+```
+
+---
+
+## Template Engine: EJS
+
+### Installazione e Configurazione
+
+```bash
+npm install ejs
+```
+
+```javascript
+app.set('view engine', 'ejs');
+app.set('views', 'views'); // Cartella dei template
+```
+
+### Template Base
+
+**views/index.ejs**:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>App</title>
+</head>
+<body>
+  <h1>Hello <%= username %></h1>
+</body>
+</html>
+```
+
+### Rendering
+
+```javascript
+app.get('/', (req, res) => {
+  res.render('index', { username: 'Max' });
+});
+```
+
+**Sintassi EJS**:
+- `<%= variabile %>`: output del valore
+- `<% codice %>`: esecuzione codice (if, loop, ecc.)
+- `<%- html %>`: output HTML non escapato
+
+---
+
+## REST API
+
+### Setup Base
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(express.json()); // Body parsing JSON
+
+app.listen(3000);
+```
+
+### Endpoint CRUD
+
+```javascript
+// GET: Recuperare tutte le risorse
+app.get('/api/items', (req, res) => {
+  res.json({ items: [] });
+});
+
+// GET: Recuperare una risorsa specifica
+app.get('/api/items/:id', (req, res) => {
+  const id = req.params.id;
+  res.json({ item: { id } });
+});
+
+// POST: Creare una nuova risorsa
+app.post('/api/items', (req, res) => {
+  const newItem = req.body;
+  // Salva item
+  res.json({ id: 123, ...newItem });
+});
+
+// PUT: Aggiornare una risorsa
+app.put('/api/items/:id', (req, res) => {
+  const id = req.params.id;
+  const updates = req.body;
+  res.json({ id, ...updates });
+});
+
+// DELETE: Eliminare una risorsa
+app.delete('/api/items/:id', (req, res) => {
+  const id = req.params.id;
+  res.status(204).send();
+});
+```
+
+### Status Codes
+
+```javascript
+res.status(200).json({ data });  // Success
+res.status(201).json({ data });  // Created
+res.status(404).json({ error });  // Not Found
+res.status(500).json({ error });  // Server Error
+res.status(204).send();           // No Content
+```
+
+---
+
+## CORS
+
+### Problema
+
+I browser bloccano richieste cross-origin per default. Se il frontend è su `localhost:8080` e il backend su `localhost:3000`, sono considerati origini diverse.
+
+### Soluzione: Headers CORS
+
+```javascript
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+```
+
+**Headers importanti**:
+- `Access-Control-Allow-Origin`: origini permesse (`*` = tutte)
+- `Access-Control-Allow-Methods`: metodi HTTP permessi
+- `Access-Control-Allow-Headers`: headers permessi nelle richieste
+
+**Nota**: per richieste POST, il browser invia prima una richiesta OPTIONS. Assicurarsi di gestirla o permettere OPTIONS nei metodi.
+
+---
+
+## MongoDB
+
+### Installazione Driver
+
+```bash
+npm install mongodb
+```
+
+### Connessione
+
+```javascript
+const mongodb = require('mongodb');
+const MongoClient = mongodb.MongoClient;
+
+const connectionURL = 'mongodb+srv://username:password@cluster.mongodb.net/database';
+
+const client = new MongoClient(connectionURL);
+
+client.connect((err, client) => {
+  if (err) {
+    console.error('Errore connessione:', err);
+    return;
+  }
+  
+  const db = client.db('database-name');
+  // Operazioni database
+});
+```
+
+### Inserire Documenti
+
+```javascript
+client.connect((err, client) => {
+  const db = client.db('locations');
+  const collection = db.collection('user-locations');
+  
+  collection.insertOne({
+    address: 'Via Roma 1',
+    coords: { lat: 41.9028, lng: 12.4964 }
+  }, (err, result) => {
+    if (err) {
+      console.error('Errore inserimento:', err);
+      return;
+    }
+    console.log('ID inserito:', result.insertedId);
+  });
+});
+```
+
+### Trovare Documenti
+
+```javascript
+// Trovare un documento
+collection.findOne(
+  { _id: new mongodb.ObjectId('id-stringa') },
+  (err, doc) => {
+    if (err) {
+      console.error('Errore ricerca:', err);
+      return;
+    }
+    console.log('Documento trovato:', doc);
+  }
+);
+
+// Trovare più documenti
+collection.find({ address: 'Via Roma' }).toArray((err, docs) => {
+  console.log('Documenti trovati:', docs);
+});
+```
+
+**Nota importante**: gli ID in MongoDB sono di tipo `ObjectId`, non stringhe. Usare `new mongodb.ObjectId(idString)` per le query.
+
+### Esempio Completo: Route con MongoDB
+
+```javascript
+const express = require('express');
+const mongodb = require('mongodb');
+const router = express.Router();
+
+const MongoClient = mongodb.MongoClient;
+const connectionURL = 'mongodb+srv://...';
+
+// POST: Salvare una location
+router.post('/location', (req, res) => {
+  MongoClient.connect(connectionURL, (err, client) => {
+    const db = client.db('locations');
+    const collection = db.collection('user-locations');
+    
+    collection.insertOne({
+      address: req.body.address,
+      coords: {
+        lat: req.body.lat,
+        lng: req.body.lng
+      }
+    }, (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: 'Errore salvataggio' });
+      }
+      res.json({ locId: result.insertedId });
+    });
+  });
+});
+
+// GET: Recuperare una location
+router.get('/location/:lid', (req, res) => {
+  const locationId = req.params.lid;
+  
+  MongoClient.connect(connectionURL, (err, client) => {
+    const db = client.db('locations');
+    const collection = db.collection('user-locations');
+    
+    collection.findOne(
+      { _id: new mongodb.ObjectId(locationId) },
+      (err, doc) => {
+        if (err || !doc) {
+          return res.status(404).json({ message: 'Not found' });
+        }
+        res.json({
+          address: doc.address,
+          coordinates: doc.coords
+        });
+      }
+    );
+  });
+});
+
+module.exports = router;
+```
+
+### Gestione Errori
+
+```javascript
+router.get('/location/:lid', (req, res) => {
+  let locationId;
+  
+  try {
+    locationId = new mongodb.ObjectId(req.params.lid);
+  } catch (error) {
+    return res.status(500).json({ message: 'Invalid id' });
+  }
+  
+  MongoClient.connect(connectionURL, (err, client) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    const db = client.db('locations');
+    const collection = db.collection('user-locations');
+    
+    collection.findOne({ _id: locationId }, (err, doc) => {
+      if (err) {
+        return res.status(500).json({ error: 'Query error' });
+      }
+      if (!doc) {
+        return res.status(404).json({ message: 'Not found' });
+      }
+      res.json({ address: doc.address, coordinates: doc.coords });
+    });
+  });
+});
+```
+
+---
+
+## Struttura Progetto Tipica
+
+```
+project/
+├── app.js                 # Entry point
+├── package.json
+├── routes/
+│   ├── users.js          # Routes utenti
+│   └── locations.js      # Routes locations
+├── views/                # Template EJS (se usati)
+│   └── index.ejs
+└── node_modules/
+```
+
+### app.js Esempio
+
+```javascript
+const express = require('express');
+const bodyParser = require('body-parser');
+const usersRoutes = require('./routes/users');
+const locationsRoutes = require('./routes/locations');
+
+const app = express();
+
+// Middleware globali
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+
+// CORS
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+// Routes
+app.use('/api/users', usersRoutes);
+app.use('/api/locations', locationsRoutes);
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+
+---
+
+## Riepilogo
+
+- **Node.js**: ambiente JavaScript lato server. Stessa sintassi del browser ma API diverse (file system, HTTP server, database).
+
+- **Moduli**: `require()` per importare, `module.exports` per esportare. Moduli core disponibili senza installazione.
+
+- **File System**: `fs.writeFile()` e `fs.readFile()` per operazioni su file. Operazioni asincrone con callback.
+
+- **Server HTTP**: `http.createServer()` per server base. Express.js semplifica la creazione di server web con middleware e routing.
+
+- **Express.js**: framework basato su middleware. `app.use()` per middleware globali, `app.get/post()` per routes, `app.listen()` per avviare il server.
+
+- **Body Parsing**: `body-parser` per parsare JSON e form data. Dati disponibili in `req.body` dopo il parsing.
+
+- **Routes**: organizzare routes in file separati con `express.Router()`. Esportare router e importarlo in `app.js` con `app.use()`.
+
+- **REST API**: pattern per scambiare dati JSON. Endpoint organizzati per risorsa (`/api/items`), metodi HTTP per operazioni (GET, POST, PUT, DELETE).
+
+- **CORS**: configurare headers per permettere richieste cross-origin. Necessario quando frontend e backend sono su origini diverse.
+
+- **MongoDB**: driver `mongodb` per connettersi e operare su database. `insertOne()` per inserire, `findOne()` per cercare. ID sono `ObjectId`, non stringhe.
