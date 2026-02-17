@@ -1,0 +1,594 @@
+---
+title: "Meta-Programmazione in JavaScript"
+description: "Symbols, iterators, generators, Reflect API e Proxy API: funzionalità avanzate per controllare il comportamento del codice"
+date: 2026-02-17
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 20
+---
+
+## Introduzione
+
+La meta-programmazione in JavaScript si riferisce a tecniche che permettono di modificare o controllare il comportamento del codice stesso. Queste funzionalità avanzate sono particolarmente utili quando si sviluppano librerie o API che verranno utilizzate da altri sviluppatori, permettendo di controllare come il codice viene utilizzato e migliorare la sicurezza dell'API.
+
+In questo capitolo si approfondiscono:
+
+- **Symbols**: identificatori unici per proprietà di oggetti
+- **Iterators**: oggetti che permettono di iterare su collezioni personalizzate
+- **Generators**: funzioni speciali che generano iterators
+- **Reflect API**: metodi standardizzati per manipolare oggetti
+- **Proxy API**: creare trappole per operazioni su oggetti
+
+---
+
+## Quando Usare la Meta-Programmazione
+
+### Caratteristiche Comuni
+
+Queste funzionalità condividono alcune caratteristiche:
+
+- **Niche e avanzate**: non vengono usate quotidianamente nella maggior parte dei progetti
+- **Utili per autori di librerie**: particolarmente rilevanti quando si creano pacchetti riutilizzabili
+- **Controllo del comportamento**: permettono di modificare come il codice si comporta quando viene utilizzato
+- **Sicurezza dell'API**: aiutano a garantire che gli oggetti e le funzioni esposte vengano usati correttamente
+
+### Casi d'Uso Tipici
+
+- Creare librerie JavaScript riutilizzabili
+- Controllare l'accesso a proprietà di oggetti
+- Rendere oggetti personalizzati iterabili con `for/of`
+- Validare o trasformare valori prima che vengano assegnati
+- Tracciare l'accesso a proprietà per debugging o analytics
+
+---
+
+## Symbols
+
+### Cos'è un Symbol
+
+Un **Symbol** è un tipo primitivo in JavaScript, simile a stringhe, numeri e booleani. A differenza degli oggetti, i symbols sono valori primitivi, non reference values.
+
+La caratteristica principale dei symbols è la **garanzia di unicità**: ogni symbol creato è unico e non può essere duplicato o sovrascritto accidentalmente.
+
+### Creare un Symbol
+
+```javascript
+const uid = Symbol();
+console.log(uid); // Symbol()
+```
+
+Si può passare un identificatore opzionale per scopi di debugging:
+
+```javascript
+const uid = Symbol('uid');
+console.log(uid); // Symbol(uid)
+```
+
+**Importante**: l'identificatore è solo per scopi di identificazione visiva. Non crea un "nome interno" del symbol e non influisce sulla sua unicità.
+
+### Usare Symbols come Chiavi di Oggetti
+
+I symbols possono essere usati come identificatori di proprietà negli oggetti:
+
+```javascript
+const uid = Symbol('uid');
+
+const person = {
+  name: 'Vito',
+  age: 25,
+  [uid]: 'p1'  // Usa il symbol come chiave
+};
+
+console.log(person[uid]); // 'p1'
+```
+
+### Unicità dei Symbols
+
+Ogni symbol è unico, anche se creato con lo stesso identificatore:
+
+```javascript
+const symbol1 = Symbol('uid');
+const symbol2 = Symbol('uid');
+
+console.log(symbol1 === symbol2); // false
+```
+
+Questo significa che anche usando lo stesso identificatore, si creano symbols completamente diversi.
+
+### Caso d'Uso: Proprietà Protette
+
+Immagina di creare una libreria che espone oggetti utente. Vuoi garantire che una proprietà ID non possa essere sovrascritta dagli utilizzatori della libreria:
+
+```javascript
+// Libreria (codice interno)
+const uid = Symbol('userId');
+
+function createUser(name) {
+  const user = {
+    name: name,
+    [uid]: Math.random().toString(36)
+  };
+  return user;
+}
+
+// Codice dell'applicazione (utilizzatore della libreria)
+const user = createUser('Vito');
+user.id = 'custom-id';  // Non sovrascrive il symbol
+
+console.log(user[uid]);  // Il symbol originale è intatto
+console.log(user.id);    // 'custom-id' (proprietà separata)
+```
+
+Poiché il symbol `uid` non è esposto pubblicamente, gli utilizzatori della libreria non possono accedervi o modificarlo.
+
+### Well-Known Symbols
+
+JavaScript include symbols predefiniti chiamati **well-known symbols**. Questi sono accessibili come proprietà statiche dell'oggetto `Symbol`:
+
+```javascript
+Symbol.iterator
+Symbol.toStringTag
+Symbol.toPrimitive
+// ... e altri
+```
+
+Questi symbols sono usati internamente da JavaScript per controllare comportamenti specifici. Ad esempio, `Symbol.iterator` viene usato da `for/of` per determinare se un oggetto è iterabile.
+
+### Symbol.toStringTag
+
+Il symbol `Symbol.toStringTag` permette di personalizzare il tag restituito da `toString()`:
+
+```javascript
+const user = {
+  name: 'Vito',
+  age: 25,
+  [Symbol.toStringTag]: 'UserObject'
+};
+
+console.log(user.toString()); // '[object UserObject]'
+```
+
+Senza questo symbol, `toString()` restituirebbe `'[object Object]'`.
+
+---
+
+## Iterators
+
+### Cos'è un Iterator
+
+Un **iterator** è un oggetto che ha un metodo `next()` che restituisce un oggetto con questa struttura:
+
+```javascript
+{
+  value: <valore corrente>,
+  done: <boolean che indica se ci sono più valori>
+}
+```
+
+### Creare un Iterator Manualmente
+
+```javascript
+const company = {
+  employees: ['Vito', 'Manuel', 'Anna'],
+  currentEmployee: 0,
+  
+  next() {
+    if (this.currentEmployee >= this.employees.length) {
+      return { value: undefined, done: true };
+    }
+    
+    const value = this.employees[this.currentEmployee];
+    this.currentEmployee++;
+    
+    return { value: value, done: false };
+  }
+};
+
+// Usare l'iterator
+console.log(company.next()); // { value: 'Vito', done: false }
+console.log(company.next()); // { value: 'Manuel', done: false }
+console.log(company.next()); // { value: 'Anna', done: false }
+console.log(company.next()); // { value: undefined, done: true }
+```
+
+### Usare un Iterator con un Loop
+
+```javascript
+let employee = company.next();
+while (!employee.done) {
+  console.log(employee.value);
+  employee = company.next();
+}
+```
+
+Questo permette di creare logiche di iterazione personalizzate per qualsiasi struttura dati.
+
+---
+
+## Generators
+
+### Cos'è un Generator
+
+Un **generator** è una funzione speciale che genera automaticamente un iterator. Si crea usando la sintassi `function*` (con un asterisco):
+
+```javascript
+function* employeeGenerator() {
+  const employees = ['Vito', 'Manuel', 'Anna'];
+  let currentEmployee = 0;
+  
+  while (currentEmployee < employees.length) {
+    yield employees[currentEmployee];
+    currentEmployee++;
+  }
+}
+```
+
+### La Parola Chiave `yield`
+
+`yield` è simile a `return`, ma con una differenza importante:
+- `return` termina l'esecuzione della funzione
+- `yield` **sospende** l'esecuzione e restituisce un valore, permettendo alla funzione di continuare dalla stessa posizione alla chiamata successiva
+
+### Usare un Generator
+
+Quando si chiama una funzione generator, non viene eseguita immediatamente. Invece, restituisce un iterator:
+
+```javascript
+const iterator = employeeGenerator();
+
+console.log(iterator.next()); // { value: 'Vito', done: false }
+console.log(iterator.next()); // { value: 'Manu', done: false }
+console.log(iterator.next()); // { value: 'Anna', done: false }
+console.log(iterator.next()); // { value: undefined, done: true }
+```
+
+### Rendere Oggetti Iterabili con `for/of`
+
+Per rendere un oggetto utilizzabile con `for/of`, bisogna aggiungere una proprietà `Symbol.iterator` che restituisca un iterator:
+
+```javascript
+const company = {
+  employees: ['Vito', 'Manuel', 'Anna'],
+  
+  [Symbol.iterator]: function* () {
+    let currentEmployee = 0;
+    while (currentEmployee < this.employees.length) {
+      yield this.employees[currentEmployee];
+      currentEmployee++;
+    }
+  }
+};
+
+// Ora si può usare con for/of
+for (const employee of company) {
+  console.log(employee);
+}
+// Output: Vito, Manuel, Anna
+```
+
+### Spread Operator con Iterables
+
+Gli oggetti iterabili possono essere usati anche con lo spread operator:
+
+```javascript
+const employees = [...company];
+console.log(employees); // ['Vito', 'Manuel', 'Anna']
+```
+
+### Come Funzionano Array e Stringhe Internamente
+
+Array e stringhe sono iterabili perché hanno un metodo `Symbol.iterator` nel loro prototype. Quando si usa `for/of` su un array, JavaScript:
+
+1. Cerca `Symbol.iterator` sull'oggetto
+2. Chiama la funzione generator associata
+3. Ottiene un iterator
+4. Chiama `next()` ripetutamente finché `done` è `true`
+5. Estrae il `value` da ogni risultato
+
+Questo è esattamente lo stesso meccanismo che si può implementare per oggetti personalizzati.
+
+---
+
+## Reflect API
+
+### Cos'è la Reflect API
+
+La **Reflect API** è un oggetto globale che raggruppa metodi statici per manipolare oggetti JavaScript. Fornisce un'interfaccia standardizzata e coerente per operazioni che prima erano sparse tra diversi approcci.
+
+### Perché Esiste la Reflect API
+
+Prima della Reflect API, operazioni sugli oggetti erano disponibili in modi diversi:
+- Alcune su `Object` (come `Object.defineProperty()`)
+- Alcune come operatori (come `delete`)
+- Alcune non disponibili affatto
+
+La Reflect API unifica tutto in un unico posto con comportamento consistente.
+
+### Metodi Principali della Reflect API
+
+**Reflect.setPrototypeOf()**
+Imposta il prototype di un oggetto:
+
+```javascript
+const course = {
+  title: 'Javascript - The Complete Guide'
+};
+
+const newPrototype = {
+  toString() {
+    return this.title;
+  }
+};
+
+Reflect.setPrototypeOf(course, newPrototype);
+console.log(course.toString()); // 'Javascript - The Complete Guide'
+```
+
+**Reflect.defineProperty()**
+Definisce una nuova proprietà con descriptor:
+
+```javascript
+const course = {};
+
+Reflect.defineProperty(course, 'title', {
+  value: 'Javascript - The Complete Guide',
+  writable: false,  // Non modificabile
+  enumerable: true,
+  configurable: true
+});
+```
+
+**Reflect.deleteProperty()**
+Elimina una proprietà (alternativa più pulita all'operatore `delete`):
+
+```javascript
+const course = {
+  title: 'Javascript - The Complete Guide',
+  rating: 5
+};
+
+Reflect.deleteProperty(course, 'rating');
+console.log(course.rating); // undefined
+```
+
+**Altri metodi utili**:
+- `Reflect.get()`: ottiene il valore di una proprietà
+- `Reflect.set()`: imposta il valore di una proprietà
+- `Reflect.has()`: verifica se una proprietà esiste
+- `Reflect.getPrototypeOf()`: ottiene il prototype di un oggetto
+
+### Vantaggi della Reflect API
+
+**1. Comportamento Consistente**
+I metodi della Reflect API restituiscono sempre `true` o `false` per indicare successo o fallimento, invece di lanciare eccezioni o restituire `undefined`.
+
+**2. Tutto in Un Posto**
+Tutte le operazioni sugli oggetti sono raggruppate in un'unica API invece di essere sparse.
+
+**3. Metodi Mancanti**
+Alcune operazioni (come `deleteProperty`) non erano disponibili come metodi prima della Reflect API.
+
+---
+
+## Proxy API
+
+### Cos'è un Proxy
+
+Un **Proxy** è un oggetto che avvolge un altro oggetto e permette di intercettare e modificare operazioni fondamentali su quell'oggetto, come l'accesso a proprietà, l'assegnazione di valori, e altro ancora.
+
+### Creare un Proxy
+
+```javascript
+const course = {
+  title: 'Javascript - The Complete Guide'
+};
+
+const courseHandler = {
+  get(target, propertyName) {
+    console.log(`Accessing property: ${propertyName}`);
+    return target[propertyName];
+  }
+};
+
+const proxyCourse = new Proxy(course, courseHandler);
+```
+
+**Spiegazione**:
+- **Primo argomento**: l'oggetto da wrappare (`course`)
+- **Secondo argomento**: un oggetto handler che definisce le "trappole" (traps)
+
+### Trap: `get`
+
+La trap `get` viene eseguita quando si accede a una proprietà:
+
+```javascript
+const courseHandler = {
+  get(target, propertyName) {
+    if (propertyName in target) {
+      return target[propertyName];
+    }
+    return 'Not found';
+  }
+};
+
+const proxyCourse = new Proxy(course, courseHandler);
+
+console.log(proxyCourse.title);  // 'Javascript - The Complete Guide'
+console.log(proxyCourse.rating); // 'Not found' (invece di undefined)
+```
+
+### Trap: `set`
+
+La trap `set` viene eseguita quando si assegna un valore a una proprietà:
+
+```javascript
+const courseHandler = {
+  set(target, propertyName, value) {
+    // Blocca l'assegnazione di 'rating'
+    if (propertyName === 'rating') {
+      return false; // Blocca l'operazione
+    }
+    
+    // Permette altre assegnazioni
+    target[propertyName] = value;
+    return true;
+  }
+};
+
+const proxyCourse = new Proxy(course, courseHandler);
+
+proxyCourse.rating = 5;  // Bloccato
+proxyCourse.title = 'New Title';  // Permesso
+
+console.log(proxyCourse.rating);  // undefined (non è stato impostato)
+console.log(proxyCourse.title);   // 'New Title'
+```
+
+### Validazione con Proxy
+
+```javascript
+const courseHandler = {
+  set(target, propertyName, value) {
+    // Valida che rating sia un numero tra 1 e 5
+    if (propertyName === 'rating' && (value < 1 || value > 5)) {
+      throw new Error('Rating must be between 1 and 5');
+    }
+    
+    target[propertyName] = value;
+    return true;
+  }
+};
+
+const proxyCourse = new Proxy(course, courseHandler);
+
+proxyCourse.rating = 3;  // OK
+proxyCourse.rating = 10; // Errore!
+```
+
+### Logging e Analytics
+
+```javascript
+const courseHandler = {
+  get(target, propertyName) {
+    console.log(`Property accessed: ${propertyName}`);
+    // Invia a un servizio di analytics
+    // analytics.track('property_access', propertyName);
+    return target[propertyName];
+  },
+  
+  set(target, propertyName, value) {
+    console.log(`Property set: ${propertyName} = ${value}`);
+    // Invia a un servizio di analytics
+    // analytics.track('property_set', { propertyName, value });
+    target[propertyName] = value;
+    return true;
+  }
+};
+```
+
+### Altre Trap Disponibili
+
+La Proxy API supporta molte altre trap:
+- `has`: intercetta l'operatore `in`
+- `deleteProperty`: intercetta `delete`
+- `ownKeys`: intercetta `Object.keys()`
+- `apply`: intercetta chiamate a funzioni (se il target è una funzione)
+- E altre ancora
+
+### Proxy vs Getters/Setters
+
+**Getters e Setters**:
+- Definiti per proprietà specifiche
+- Limitati a una singola proprietà per volta
+
+**Proxy**:
+- Intercettano tutte le operazioni su tutte le proprietà
+- Più flessibili e potenti
+- Permettono logica complessa che può variare in base alla proprietà
+
+---
+
+## Confronto: Quando Usare Cosa
+
+### Symbols
+
+**Usa quando**:
+- Vuoi proprietà "nascoste" che non possono essere sovrascritte accidentalmente
+- Stai creando una libreria e vuoi proteggere proprietà interne
+- Hai bisogno di identificatori unici garantiti
+
+**Esempio**: ID interni di oggetti esposti da una libreria
+
+### Iterators e Generators
+
+**Usa quando**:
+- Vuoi rendere oggetti personalizzati iterabili con `for/of`
+- Hai bisogno di logica di iterazione complessa
+- Vuoi creare sequenze lazy (valori calcolati on-demand)
+
+**Esempio**: Iterare su una struttura dati personalizzata come un albero o un grafo
+
+### Reflect API
+
+**Usa quando**:
+- Vuoi manipolare oggetti in modo standardizzato
+- Hai bisogno di metodi che restituiscono sempre `true`/`false`
+- Vuoi un'interfaccia unificata per operazioni sugli oggetti
+
+**Esempio**: Framework o librerie che devono manipolare oggetti in modo consistente
+
+### Proxy API
+
+**Usa quando**:
+- Vuoi validare valori prima che vengano assegnati
+- Hai bisogno di logging o tracciamento di accessi
+- Vuoi trasformare valori quando vengono letti
+- Vuoi bloccare accessi a proprietà specifiche
+
+**Esempio**: Validazione automatica, logging per debugging, API più sicure
+
+---
+
+## Best Practices
+
+### Quando Non Usare Queste Funzionalità
+
+Queste funzionalità sono potenti ma non sempre necessarie:
+
+- **Per codice semplice**: se non hai bisogno di controllo avanzato, usa approcci più semplici
+- **Per performance critiche**: proxy e alcune operazioni possono avere overhead
+- **Se non capisci il problema**: assicurati di avere un caso d'uso chiaro prima di usarle
+
+### Consigli per l'Uso
+
+**1. Documenta il Comportamento**
+Se usi symbols, proxy o altre funzionalità avanzate, documenta chiaramente come funzionano per altri sviluppatori.
+
+**2. Testa Approfonditamente**
+Queste funzionalità possono avere comportamenti sottili. Assicurati di testare tutti i casi d'uso.
+
+**3. Considera le Alternative**
+A volte un approccio più semplice è migliore. Valuta se hai davvero bisogno di questa complessità.
+
+**4. Usa TypeScript per Type Safety**
+Se possibile, usa TypeScript per avere type checking quando lavori con queste funzionalità avanzate.
+
+---
+
+## Riepilogo
+
+- **Meta-programmazione**: tecniche che permettono di modificare o controllare il comportamento del codice. Utili principalmente per autori di librerie e scenari avanzati.
+
+- **Symbols**: valori primitivi unici che garantiscono unicità. Utili come chiavi di oggetti per creare proprietà "nascoste" che non possono essere sovrascritte accidentalmente. Well-known symbols come `Symbol.iterator` sono usati internamente da JavaScript.
+
+- **Iterators**: oggetti con un metodo `next()` che restituisce `{ value, done }`. Permettono di creare logiche di iterazione personalizzate per qualsiasi struttura dati.
+
+- **Generators**: funzioni speciali (`function*`) che generano automaticamente iterators. Usano `yield` per sospendere l'esecuzione e restituire valori. Combinati con `Symbol.iterator`, rendono oggetti personalizzati utilizzabili con `for/of`.
+
+- **Reflect API**: oggetto globale con metodi statici per manipolare oggetti in modo standardizzato. Unifica operazioni che prima erano sparse tra `Object` e operatori, con comportamento consistente (restituisce sempre `true`/`false`).
+
+- **Proxy API**: permette di creare oggetti che avvolgono altri oggetti e intercettano operazioni (get, set, delete, ecc.). Utile per validazione, logging, trasformazione di valori e controllo dell'accesso alle proprietà.
+
+- **Casi d'uso**: queste funzionalità sono particolarmente utili quando si sviluppano librerie riutilizzabili, si vuole controllare come il codice viene utilizzato, o si ha bisogno di comportamenti avanzati non disponibili con approcci standard.
+
+- **Quando usarle**: principalmente per autori di librerie, framework, o codice riutilizzabile complesso. Non necessarie per la maggior parte delle applicazioni web standard.
