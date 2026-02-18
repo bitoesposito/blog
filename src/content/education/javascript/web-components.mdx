@@ -1,0 +1,1338 @@
+---
+title: "Web Components"
+description: "Custom Elements, Shadow DOM, Templates e Slots per creare componenti HTML riutilizzabili e incapsulati"
+date: 2026-02-17
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 27
+---
+
+## Introduzione
+
+I Web Components sono un insieme di tecnologie che permettono di creare elementi HTML personalizzati riutilizzabili. A differenza delle librerie e framework esterni, i Web Components sono standard nativi del browser che permettono di costruire componenti incapsulati e riutilizzabili utilizzando solo JavaScript vanilla.
+
+In questo capitolo si approfondiscono:
+
+- **Cos'è un Web Component**: elementi HTML personalizzati
+- **Specifiche dei Web Components**: Custom Elements, Shadow DOM, Templates & Slots
+- **Browser support**: compatibilità e polyfills
+- **Creazione di componenti autonomi**: estendere HTMLElement
+- **Shadow DOM**: isolamento degli stili e del DOM
+- **Templates e Slots**: struttura HTML e proiezione di contenuti
+- **Styling avanzato**: :host, :host-context, ::slotted, CSS variables
+- **Lifecycle hooks**: connectedCallback, disconnectedCallback, attributeChangedCallback
+- **Eventi custom**: dispatch di eventi personalizzati
+- **Esempi pratici**: componente Tooltip e componente Modal completi
+
+---
+
+## Cos'è un Web Component
+
+### Definizione
+
+Un **Web Component** è un elemento HTML personalizzato creato dallo sviluppatore. A differenza degli elementi HTML nativi del browser (come `<button>`, `<div>`, `<input>`), i Web Components sono definiti in JavaScript e possono essere utilizzati come normali tag HTML in qualsiasi progetto.
+
+**Caratteristiche principali:**
+- Elementi HTML personalizzati riutilizzabili
+- Logica e stile incapsulati
+- Utilizzabili come normali tag HTML
+- Funzionano senza framework esterni
+- Compatibili con qualsiasi framework o libreria
+
+### Esempio Pratico: Utilizzo di un Web Component
+
+Supponiamo di avere un componente modal già creato:
+
+```html
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="modal.js"></script>
+</head>
+<body>
+	<uc-modal opened>
+		<h1 slot="title">Titolo del Modal</h1>
+		<p>Questo è il contenuto del modal.</p>
+	</uc-modal>
+</body>
+</html>
+```
+
+Il componente `<uc-modal>` funziona esattamente come un elemento HTML nativo:
+- Può essere configurato tramite attributi (`opened`)
+- Può ricevere contenuto tra i tag di apertura e chiusura
+- Può utilizzare slot per posizionare contenuti specifici
+- Può essere controllato programmaticamente tramite JavaScript
+
+```javascript
+// Controllo programmatico
+const modal = document.querySelector('uc-modal')
+modal.open() // Metodo personalizzato del componente
+modal.addEventListener('confirm', () => {
+	console.log('Utente ha confermato')
+})
+```
+
+---
+
+## Le Specifiche dei Web Components
+
+### Panoramica delle Specifiche
+
+Il termine "Web Components" si riferisce a un insieme di specifiche correlate che lavorano insieme:
+
+**1. Custom Elements**
+- Specifica principale che permette di registrare elementi HTML personalizzati
+- Definisce le API per creare e gestire elementi custom
+- Fornisce lifecycle hooks per gestire il ciclo di vita del componente
+
+**2. Shadow DOM**
+- DOM separato e isolato per ogni componente
+- Isola gli stili CSS del componente dal resto della pagina
+- Previene conflitti di stile e namespace
+
+**3. Templates & Slots**
+- `<template>`: definisce markup HTML riutilizzabile non renderizzato
+- `<slot>`: punti di inserimento per contenuti esterni
+- Permette di definire la struttura del componente e accettare contenuti dinamici
+
+**4. HTML Imports (deprecato)**
+- Specifica non più continuata
+- L'industria si è spostata verso JavaScript modules
+- Non necessario con gli strumenti moderni
+
+### Custom Elements
+
+La specifica **Custom Elements** è il fondamento dei Web Components. Permette di:
+
+- Registrare nuovi tag HTML personalizzati
+- Definire la logica e il comportamento del componente
+- Gestire il ciclo di vita del componente
+- Reagire ai cambiamenti degli attributi
+
+**Esempio base:**
+```javascript
+class MyElement extends HTMLElement {
+	constructor() {
+		super()
+		// Inizializzazione
+	}
+}
+
+customElements.define('my-element', MyElement)
+```
+
+### Shadow DOM
+
+Il **Shadow DOM** crea un DOM isolato per ogni componente:
+
+**Vantaggi:**
+- **Isolamento degli stili**: CSS del componente non influenza il resto della pagina
+- **Isolamento del DOM**: elementi interni non sono accessibili direttamente dall'esterno
+- **Encapsulation**: logica e struttura sono nascoste all'interno del componente
+
+**Esempio:**
+```javascript
+class MyComponent extends HTMLElement {
+	constructor() {
+		super()
+		this.attachShadow({ mode: 'open' })
+		this.shadowRoot.innerHTML = `
+			<style>
+				/* Stili isolati */
+			</style>
+			<div>Contenuto isolato</div>
+		`
+	}
+}
+```
+
+### Templates & Slots
+
+**Templates** permettono di definire markup HTML riutilizzabile:
+
+```html
+<template id="my-template">
+	<div class="component">
+		<slot name="content"></slot>
+	</div>
+</template>
+```
+
+**Slots** permettono di proiettare contenuti esterni nel componente:
+
+```html
+<my-component>
+	<div slot="content">Contenuto proiettato</div>
+</my-component>
+```
+
+---
+
+## Browser Support
+
+### Compatibilità
+
+Il supporto per i Web Components varia tra i browser:
+
+**Custom Elements:**
+- Chrome: supportato dalla versione 67+
+- Firefox: supportato dalla versione 63+
+- Safari: supportato dalla versione 10.1+
+- Edge: supportato dalla versione 79+ (Chromium)
+
+**Shadow DOM:**
+- Chrome: supportato dalla versione 53+
+- Firefox: supportato dalla versione 63+
+- Safari: supportato dalla versione 10.1+
+- Edge: supportato dalla versione 79+
+
+**Templates:**
+- Supporto universale nei browser moderni
+
+### Polyfills
+
+Per browser più vecchi, è possibile utilizzare polyfills:
+
+- **@webcomponents/webcomponentsjs**: polyfill completo per Custom Elements e Shadow DOM
+- **@webcomponents/custom-elements**: polyfill solo per Custom Elements
+- **document-register-element**: alternativa leggera
+
+**Installazione:**
+```bash
+npm install @webcomponents/webcomponentsjs
+```
+
+**Utilizzo:**
+```html
+<script src="node_modules/@webcomponents/webcomponentsjs/webcomponents-loader.js"></script>
+```
+
+### Verifica del Supporto
+
+Per verificare il supporto dei Web Components:
+
+**Risorse:**
+- **webcomponents.org**: tabella di compatibilità aggiornata
+- **caniuse.com**: supporto dettagliato per ogni specifica
+- **MDN**: documentazione completa con esempi
+
+---
+
+## Creazione di Componenti Autonomi
+
+### Struttura Base
+
+Un componente autonomo estende `HTMLElement` e viene registrato con `customElements.define()`:
+
+```javascript
+class Tooltip extends HTMLElement {
+	constructor() {
+		super() // Sempre necessario
+		// Logica di inizializzazione
+	}
+}
+
+customElements.define('uc-tooltip', Tooltip)
+```
+
+### Regole per i Nomi dei Tag
+
+I nomi dei tag personalizzati devono seguire regole specifiche:
+
+- **Almeno due parti separate da un trattino**: `my-element` è valido, `element` non lo è
+- **Deve contenere un trattino**: `uc-tooltip` è valido, `tooltip` non lo è
+- **Solo trattini**: non sono ammessi underscore o altri caratteri speciali
+
+**Ragione delle regole:**
+- Previene conflitti con elementi HTML esistenti
+- Previene conflitti con elementi futuri
+- Garantisce un namespace univoco
+
+**Convenzioni per i prefissi:**
+- Usare prefissi univoci (es. iniziali dell'azienda, nome del progetto)
+- Esempi: `ac-tooltip`, `ms-button`, `uc-modal`
+
+### Esempio Completo: Componente Tooltip Base
+
+```javascript
+class Tooltip extends HTMLElement {
+	constructor() {
+		super()
+		console.log('Tooltip creato')
+	}
+}
+
+customElements.define('uc-tooltip', Tooltip)
+```
+
+```html
+<!-- Utilizzo -->
+<uc-tooltip></uc-tooltip>
+```
+
+---
+
+## Lifecycle Hooks
+
+### Il Ciclo di Vita di un Web Component
+
+Il browser segue un ciclo di vita specifico quando crea e gestisce un componente:
+
+**1. Constructor**
+- Eseguito quando l'elemento viene creato
+- L'elemento non è ancora nel DOM
+- Ideale per inizializzazioni base
+- Non accedere al DOM qui
+
+**2. connectedCallback**
+- Eseguito quando l'elemento viene aggiunto al DOM
+- Ideale per setup del DOM, event listeners, accesso agli attributi
+- Può essere chiamato più volte se l'elemento viene rimosso e riaggiunto
+
+**3. disconnectedCallback**
+- Eseguito quando l'elemento viene rimosso dal DOM
+- Ideale per cleanup: rimuovere event listeners, cancellare richieste, pulizia risorse
+
+**4. attributeChangedCallback**
+- Eseguito quando un attributo osservato cambia
+- Richiede la definizione di `observedAttributes`
+- Permette di reagire ai cambiamenti degli attributi
+
+### Esempio: Lifecycle Completo
+
+```javascript
+class MyComponent extends HTMLElement {
+	constructor() {
+		super()
+		// 1. Constructor: inizializzazione base
+		this._data = null
+		console.log('Constructor eseguito')
+	}
+
+	static get observedAttributes() {
+		return ['value', 'disabled']
+	}
+
+	connectedCallback() {
+		// 2. Elemento aggiunto al DOM
+		console.log('Elemento connesso al DOM')
+		this.setupEventListeners()
+	}
+
+	disconnectedCallback() {
+		// 3. Elemento rimosso dal DOM
+		console.log('Elemento disconnesso dal DOM')
+		this.cleanup()
+	}
+
+	attributeChangedCallback(name, oldValue, newValue) {
+		// 4. Attributo osservato cambiato
+		console.log(`Attributo ${name} cambiato da ${oldValue} a ${newValue}`)
+		if (name === 'value') {
+			this._data = newValue
+			this.updateDisplay()
+		}
+	}
+
+	setupEventListeners() {
+		// Setup event listeners
+	}
+
+	cleanup() {
+		// Cleanup risorse
+	}
+
+	updateDisplay() {
+		// Aggiorna il display
+	}
+}
+```
+
+---
+
+## Shadow DOM
+
+### Cos'è il Shadow DOM
+
+Il **Shadow DOM** crea un albero DOM separato e isolato per ogni componente. Questo albero è "nascosto" dal DOM principale (light DOM) e non è influenzato dagli stili globali.
+
+**Vantaggi:**
+- **Isolamento CSS**: stili del componente non influenzano il resto della pagina
+- **Isolamento DOM**: elementi interni non sono direttamente accessibili
+- **Encapsulation**: struttura interna nascosta
+
+### Creazione del Shadow DOM
+
+```javascript
+class MyComponent extends HTMLElement {
+	constructor() {
+		super()
+		// Crea shadow DOM
+		this.attachShadow({ mode: 'open' })
+		// mode: 'open' permette accesso esterno
+		// mode: 'closed' nasconde completamente (non raccomandato)
+	}
+}
+```
+
+### Accesso al Shadow DOM
+
+```javascript
+// Con mode: 'open'
+const shadowRoot = element.shadowRoot
+shadowRoot.innerHTML = '<div>Contenuto</div>'
+
+// Con mode: 'closed'
+// shadowRoot è null dall'esterno
+```
+
+### Esempio: Componente con Shadow DOM
+
+```javascript
+class Tooltip extends HTMLElement {
+	constructor() {
+		super()
+		this.attachShadow({ mode: 'open' })
+		
+		this.shadowRoot.innerHTML = `
+			<style>
+				span {
+					background: black;
+					color: white;
+					padding: 0.25rem;
+				}
+			</style>
+			<span>?</span>
+		`
+	}
+}
+
+customElements.define('uc-tooltip', Tooltip)
+```
+
+Gli stili definiti nel shadow DOM non influenzano elementi fuori dal componente.
+
+---
+
+## Templates e Slots
+
+### HTML Templates
+
+Il tag `<template>` definisce markup HTML che non viene renderizzato immediatamente:
+
+```html
+<template id="tooltip-template">
+	<span class="icon">?</span>
+</template>
+```
+
+**Caratteristiche:**
+- Non viene renderizzato fino a quando non viene clonato
+- Può essere riutilizzato più volte
+- Ideale per definire la struttura del componente
+
+### Utilizzo dei Templates
+
+**Opzione 1: Template nel HTML**
+```html
+<template id="tooltip-template">
+	<span>?</span>
+</template>
+```
+
+```javascript
+class Tooltip extends HTMLElement {
+	constructor() {
+		super()
+		this.attachShadow({ mode: 'open' })
+		
+		const template = document.querySelector('#tooltip-template')
+		this.shadowRoot.appendChild(template.content.cloneNode(true))
+	}
+}
+```
+
+**Opzione 2: Template nel JavaScript**
+```javascript
+class Tooltip extends HTMLElement {
+	constructor() {
+		super()
+		this.attachShadow({ mode: 'open' })
+		
+		this.shadowRoot.innerHTML = `
+			<span>?</span>
+		`
+	}
+}
+```
+
+### Slots
+
+Gli **slots** permettono di proiettare contenuti esterni nel componente:
+
+**Slot senza nome (default):**
+```javascript
+// Nel componente
+this.shadowRoot.innerHTML = `
+	<div>
+		<slot></slot>
+	</div>
+`
+```
+
+```html
+<!-- Utilizzo -->
+<uc-tooltip>Testo del tooltip</uc-tooltip>
+```
+
+**Slot con nome:**
+```javascript
+// Nel componente
+this.shadowRoot.innerHTML = `
+	<div>
+		<slot name="title"></slot>
+		<slot name="content"></slot>
+	</div>
+`
+```
+
+```html
+<!-- Utilizzo -->
+<uc-modal>
+	<h1 slot="title">Titolo</h1>
+	<p slot="content">Contenuto</p>
+</uc-modal>
+```
+
+### Slot con Contenuto di Default
+
+```javascript
+this.shadowRoot.innerHTML = `
+	<slot name="title">
+		<span>Default Title</span>
+	</slot>
+`
+```
+
+Se non viene fornito contenuto per lo slot, viene utilizzato il contenuto di default.
+
+### Caratteristiche Importanti degli Slots
+
+**1. Contenuto slotted non è parte del Shadow DOM**
+- Il contenuto proiettato rimane nel light DOM
+- Può essere stilizzato dal light DOM
+- Non è tecnicamente "spostato" nel shadow DOM
+
+**2. Accesso al contenuto slotted**
+```javascript
+connectedCallback() {
+	const slot = this.shadowRoot.querySelector('slot')
+	
+	slot.addEventListener('slotchange', () => {
+		const assignedNodes = slot.assignedNodes()
+		console.log('Nodi assegnati:', assignedNodes)
+	})
+}
+```
+
+---
+
+## Styling dei Web Components
+
+### Stili Scoped nel Shadow DOM
+
+Gli stili definiti nel shadow DOM sono automaticamente isolati:
+
+```javascript
+this.shadowRoot.innerHTML = `
+	<style>
+		div {
+			background: black;
+			color: white;
+		}
+	</style>
+	<div>Contenuto</div>
+`
+```
+
+Questi stili non influenzano elementi fuori dal componente.
+
+### Selettore :host
+
+Il selettore `:host` permette di stilizzare l'elemento host (il componente stesso):
+
+```javascript
+this.shadowRoot.innerHTML = `
+	<style>
+		:host {
+			display: block;
+			background: lightgray;
+		}
+	</style>
+`
+```
+
+**`:host` con condizioni:**
+```javascript
+this.shadowRoot.innerHTML = `
+	<style>
+		:host([opened]) {
+			opacity: 1;
+		}
+		
+		:host(.important) {
+			background: yellow;
+		}
+	</style>
+`
+```
+
+### Selettore :host-context
+
+Il selettore `:host-context` permette di stilizzare il componente basandosi sul contesto esterno:
+
+```javascript
+this.shadowRoot.innerHTML = `
+	<style>
+		:host-context(p) {
+			font-weight: bold;
+		}
+		
+		:host-context(.container) {
+			margin: 1rem;
+		}
+	</style>
+`
+```
+
+### Selettore ::slotted
+
+Il selettore `::slotted()` permette di stilizzare contenuti proiettati negli slot:
+
+```javascript
+this.shadowRoot.innerHTML = `
+	<style>
+		::slotted(h1) {
+			font-size: 1.5rem;
+		}
+		
+		::slotted(.highlight) {
+			background: yellow;
+		}
+	</style>
+`
+```
+
+**Limitazioni:**
+- Può selezionare solo il livello più esterno del contenuto slotted
+- Non può selezionare elementi annidati nel contenuto slotted
+
+### CSS Variables (Custom Properties)
+
+Le CSS variables permettono di personalizzare lo stile del componente dall'esterno:
+
+**Nel componente:**
+```javascript
+this.shadowRoot.innerHTML = `
+	<style>
+		:host {
+			background: var(--component-bg, lightgray);
+		}
+	</style>
+`
+```
+
+**Nel light DOM:**
+```css
+:root {
+	--component-bg: blue;
+}
+
+uc-tooltip {
+	--component-bg: green;
+}
+```
+
+**Vantaggi:**
+- Personalizzazione senza modificare il componente
+- Valori di default con fallback
+- Supporto per temi e personalizzazione dinamica
+
+### Precedenza degli Stili
+
+**Ordine di precedenza (dal più debole al più forte):**
+1. Stili nel shadow DOM (`:host`, `::slotted`)
+2. Stili nel light DOM per contenuti slotted
+3. Stili nel light DOM per l'elemento host
+
+---
+
+## Gestione degli Attributi
+
+### Lettura degli Attributi
+
+```javascript
+class Tooltip extends HTMLElement {
+	connectedCallback() {
+		const text = this.getAttribute('text')
+		if (text) {
+			this._tooltipText = text
+		} else {
+			this._tooltipText = 'Default tooltip'
+		}
+	}
+}
+```
+
+### Osservazione dei Cambiamenti
+
+Per reagire ai cambiamenti degli attributi, è necessario:
+
+**1. Definire gli attributi osservati:**
+```javascript
+static get observedAttributes() {
+	return ['text', 'position']
+}
+```
+
+**2. Implementare attributeChangedCallback:**
+```javascript
+attributeChangedCallback(name, oldValue, newValue) {
+	if (name === 'text' && oldValue !== newValue) {
+		this._tooltipText = newValue
+		this.updateTooltip()
+	}
+}
+```
+
+### Esempio Completo
+
+```javascript
+class Tooltip extends HTMLElement {
+	constructor() {
+		super()
+		this._tooltipText = 'Default tooltip'
+	}
+
+	static get observedAttributes() {
+		return ['text']
+	}
+
+	connectedCallback() {
+		const text = this.getAttribute('text')
+		if (text) {
+			this._tooltipText = text
+		}
+		this.render()
+	}
+
+	attributeChangedCallback(name, oldValue, newValue) {
+		if (name === 'text' && oldValue !== newValue) {
+			this._tooltipText = newValue
+			this.render()
+		}
+	}
+
+	render() {
+		// Aggiorna il display con il nuovo testo
+	}
+}
+```
+
+---
+
+## Eventi Custom
+
+### Dispatch di Eventi
+
+I Web Components possono dispatchare eventi personalizzati:
+
+```javascript
+class Modal extends HTMLElement {
+	confirm() {
+		// Crea evento custom
+		const event = new CustomEvent('confirm', {
+			bubbles: true,
+			composed: true
+		})
+		
+		// Dispatch sull'elemento
+		this.dispatchEvent(event)
+	}
+}
+```
+
+### Configurazione degli Eventi
+
+**Opzioni disponibili:**
+- **bubbles**: l'evento si propaga verso l'alto nel DOM
+- **composed**: l'evento può attraversare i confini del shadow DOM
+- **detail**: dati aggiuntivi da passare con l'evento
+
+```javascript
+const event = new CustomEvent('confirm', {
+	bubbles: true,
+	composed: true,
+	detail: {
+		userId: 123,
+		action: 'payment'
+	}
+})
+```
+
+### Ascolto di Eventi Custom
+
+```javascript
+const modal = document.querySelector('uc-modal')
+
+modal.addEventListener('confirm', (event) => {
+	console.log('Confermato:', event.detail)
+})
+
+modal.addEventListener('cancel', () => {
+	console.log('Annullato')
+})
+```
+
+### Eventi dal Shadow DOM
+
+Quando si dispatcha un evento da un elemento dentro il shadow DOM:
+
+```javascript
+// Dentro il shadow DOM
+cancelButton.addEventListener('click', (event) => {
+	const cancelEvent = new CustomEvent('cancel', {
+		bubbles: true,
+		composed: true // Necessario per attraversare shadow DOM
+	})
+	this.dispatchEvent(cancelEvent)
+})
+```
+
+**Nota:** `composed: true` è necessario se l'evento deve essere ascoltato fuori dal shadow DOM.
+
+---
+
+## Esempio Completo: Componente Tooltip
+
+### Implementazione Completa
+
+```javascript
+class Tooltip extends HTMLElement {
+	constructor() {
+		super()
+		this.attachShadow({ mode: 'open' })
+		this._tooltipText = 'Default tooltip'
+		this._tooltipVisible = false
+	}
+
+	static get observedAttributes() {
+		return ['text']
+	}
+
+	connectedCallback() {
+		// Leggi attributo text se presente
+		if (this.hasAttribute('text')) {
+			this._tooltipText = this.getAttribute('text')
+		}
+
+		// Setup template
+		this.shadowRoot.innerHTML = `
+			<style>
+				:host {
+					position: relative;
+				}
+
+				.icon {
+					background: black;
+					color: white;
+					padding: 0.25rem 0.5rem;
+					border-radius: 50%;
+					cursor: pointer;
+				}
+
+				.tooltip-container {
+					position: absolute;
+					top: 1.5rem;
+					left: 0.75rem;
+					background: black;
+					color: white;
+					padding: 0.15rem;
+					border-radius: 3px;
+					box-shadow: 1px 1px 6px rgba(0,0,0,0.26);
+					z-index: 10;
+					display: none;
+				}
+
+				.tooltip-container.visible {
+					display: block;
+				}
+			</style>
+			<slot></slot>
+			<span class="icon">?</span>
+			<div class="tooltip-container"></div>
+		`
+
+		// Setup event listeners
+		const icon = this.shadowRoot.querySelector('.icon')
+		icon.addEventListener('mouseenter', this._showTooltip.bind(this))
+		icon.addEventListener('mouseleave', this._hideTooltip.bind(this))
+	}
+
+	disconnectedCallback() {
+		// Cleanup non necessario in questo caso semplice
+		// ma buona pratica per componenti complessi
+	}
+
+	attributeChangedCallback(name, oldValue, newValue) {
+		if (name === 'text' && oldValue !== newValue) {
+			this._tooltipText = newValue
+			this._render()
+		}
+	}
+
+	_showTooltip() {
+		this._tooltipVisible = true
+		this._render()
+	}
+
+	_hideTooltip() {
+		this._tooltipVisible = false
+		this._render()
+	}
+
+	_render() {
+		const tooltipContainer = this.shadowRoot.querySelector('.tooltip-container')
+		if (this._tooltipVisible) {
+			tooltipContainer.textContent = this._tooltipText
+			tooltipContainer.classList.add('visible')
+		} else {
+			tooltipContainer.classList.remove('visible')
+		}
+	}
+}
+
+customElements.define('uc-tooltip', Tooltip)
+```
+
+### Utilizzo
+
+```html
+<uc-tooltip text="Web Components sono un insieme di standard">
+	Web Components
+</uc-tooltip>
+```
+
+---
+
+## Esempio Completo: Componente Modal
+
+### Implementazione Completa
+
+```javascript
+class Modal extends HTMLElement {
+	constructor() {
+		super()
+		this.attachShadow({ mode: 'open' })
+		this._isOpen = false
+	}
+
+	static get observedAttributes() {
+		return ['opened']
+	}
+
+	connectedCallback() {
+		this.shadowRoot.innerHTML = `
+			<style>
+				:host {
+					display: none;
+				}
+
+				:host([opened]) {
+					display: block;
+				}
+
+				.backdrop {
+					position: fixed;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100vh;
+					background: rgba(0, 0, 0, 0.75);
+					z-index: 10;
+					opacity: 0;
+					pointer-events: none;
+					transition: opacity 0.3s ease-out;
+				}
+
+				:host([opened]) .backdrop {
+					opacity: 1;
+					pointer-events: all;
+				}
+
+				#modal {
+					position: fixed;
+					top: 10vh;
+					left: 25%;
+					width: 50%;
+					background: white;
+					border-radius: 3px;
+					box-shadow: 0 2px 8px rgba(0,0,0,0.26);
+					z-index: 100;
+					display: flex;
+					flex-direction: column;
+					justify-content: space-between;
+					opacity: 0;
+					transform: translateY(-2rem);
+					transition: all 0.3s ease-out;
+				}
+
+				:host([opened]) #modal {
+					opacity: 1;
+					top: 15vh;
+					transform: translateY(0);
+				}
+
+				header {
+					padding: 1rem;
+					border-bottom: 1px solid #ccc;
+				}
+
+				header h1 {
+					margin: 0;
+					font-size: 1.25rem;
+				}
+
+				#main {
+					padding: 1rem;
+				}
+
+				#actions {
+					padding: 1rem;
+					border-top: 1px solid #ccc;
+					display: flex;
+					justify-content: flex-end;
+				}
+
+				#actions button {
+					margin: 0 0.25rem;
+				}
+
+				::slotted(h1) {
+					margin: 0;
+					font-size: 1.25rem;
+				}
+			</style>
+			<div class="backdrop"></div>
+			<div id="modal">
+				<header>
+					<slot name="title">
+						<h1>Please Confirm</h1>
+					</slot>
+				</header>
+				<section id="main">
+					<slot></slot>
+				</section>
+				<section id="actions">
+					<button id="cancel-btn">Cancel</button>
+					<button id="confirm-btn">Okay</button>
+				</section>
+			</div>
+		`
+
+		// Setup event listeners
+		const backdrop = this.shadowRoot.querySelector('.backdrop')
+		const cancelBtn = this.shadowRoot.querySelector('#cancel-btn')
+		const confirmBtn = this.shadowRoot.querySelector('#confirm-btn')
+
+		backdrop.addEventListener('click', this._cancel.bind(this))
+		cancelBtn.addEventListener('click', this._cancel.bind(this))
+		confirmBtn.addEventListener('click', this._confirm.bind(this))
+	}
+
+	attributeChangedCallback(name, oldValue, newValue) {
+		if (name === 'opened') {
+			this._isOpen = this.hasAttribute('opened')
+		}
+	}
+
+	open() {
+		this.setAttribute('opened', '')
+		this._isOpen = true
+	}
+
+	hide() {
+		this.removeAttribute('opened')
+		this._isOpen = false
+	}
+
+	get isOpen() {
+		return this._isOpen
+	}
+
+	_cancel() {
+		this.hide()
+		this.dispatchEvent(new CustomEvent('cancel', {
+			bubbles: true,
+			composed: true
+		}))
+	}
+
+	_confirm() {
+		this.hide()
+		this.dispatchEvent(new CustomEvent('confirm', {
+			bubbles: true,
+			composed: true
+		}))
+	}
+}
+
+customElements.define('uc-modal', Modal)
+```
+
+### Utilizzo
+
+```html
+<uc-modal id="payment-modal">
+	<h1 slot="title">Conferma Pagamento</h1>
+	<p>Sei sicuro di voler procedere con il pagamento?</p>
+</uc-modal>
+
+<button id="show-modal">Mostra Modal</button>
+
+<script>
+	const modal = document.querySelector('#payment-modal')
+	const showBtn = document.querySelector('#show-modal')
+
+	showBtn.addEventListener('click', () => {
+		modal.open()
+	})
+
+	modal.addEventListener('confirm', () => {
+		console.log('Pagamento confermato')
+		// Logica di pagamento
+	})
+
+	modal.addEventListener('cancel', () => {
+		console.log('Pagamento annullato')
+	})
+</script>
+```
+
+---
+
+## Estendere Elementi Built-in
+
+### Componenti Autonomi vs Estesi
+
+Oltre ai componenti autonomi, è possibile estendere elementi HTML esistenti:
+
+**Componente autonomo:**
+```javascript
+class MyButton extends HTMLElement {
+	// Componente completamente nuovo
+}
+customElements.define('my-button', MyButton)
+```
+
+**Componente esteso:**
+```javascript
+class ConfirmLink extends HTMLAnchorElement {
+	// Estende l'elemento <a>
+}
+customElements.define('uc-confirm-link', ConfirmLink, { extends: 'a' })
+```
+
+### Esempio: Link con Conferma
+
+```javascript
+class ConfirmLink extends HTMLAnchorElement {
+	connectedCallback() {
+		this.addEventListener('click', (event) => {
+			if (!confirm('Sei sicuro di voler lasciare questa pagina?')) {
+				event.preventDefault()
+			}
+		})
+	}
+}
+
+customElements.define('uc-confirm-link', ConfirmLink, { extends: 'a' })
+```
+
+```html
+<!-- Utilizzo -->
+<a href="https://example.com" is="uc-confirm-link">Vai a Example</a>
+```
+
+**Nota:** L'attributo `is` è necessario quando si estende un elemento built-in.
+
+### Quando Usare Componenti Estesi
+
+**Vantaggi:**
+- Mantiene tutte le funzionalità dell'elemento originale
+- Può aggiungere comportamento senza cambiare l'aspetto
+- Compatibile con attributi nativi
+
+**Svantaggi:**
+- Meno flessibile dei componenti autonomi
+- Richiede l'attributo `is` nell'HTML
+- Supporto limitato in alcuni browser
+
+---
+
+## Best Practices
+
+### Organizzazione del Codice
+
+**1. Separare logica e presentazione**
+```javascript
+class MyComponent extends HTMLElement {
+	_render() {
+		// Tutta la logica di rendering in un metodo
+	}
+
+	_updateData() {
+		// Aggiorna dati
+		this._render() // Poi renderizza
+	}
+}
+```
+
+**2. Metodi privati con underscore**
+```javascript
+class MyComponent extends HTMLElement {
+	_privateMethod() {
+		// Metodo interno
+	}
+
+	publicMethod() {
+		// Metodo pubblico
+	}
+}
+```
+
+**3. Proprietà vs Attributi**
+- Usa attributi per configurazione dichiarativa
+- Usa proprietà per stato interno e metodi pubblici
+
+### Performance
+
+**1. Evitare operazioni costose nel constructor**
+```javascript
+// ❌ Sbagliato
+constructor() {
+	super()
+	this.shadowRoot.innerHTML = heavyTemplate() // Costoso
+}
+
+// ✅ Corretto
+constructor() {
+	super()
+	this._template = heavyTemplate() // Prepara
+}
+
+connectedCallback() {
+	this.shadowRoot.innerHTML = this._template // Renderizza quando necessario
+}
+```
+
+**2. Cleanup appropriato**
+```javascript
+disconnectedCallback() {
+	// Rimuovi event listeners
+	// Cancella timers
+	// Annulla richieste HTTP
+}
+```
+
+**3. Cache di riferimenti DOM**
+```javascript
+connectedCallback() {
+	this._button = this.shadowRoot.querySelector('button')
+	// Riusa this._button invece di querySelector ogni volta
+}
+```
+
+### Accessibilità
+
+**1. Attributi ARIA appropriati**
+```javascript
+this.shadowRoot.innerHTML = `
+	<button aria-label="Close modal" aria-expanded="false">
+		<span aria-hidden="true">×</span>
+	</button>
+`
+```
+
+**2. Gestione della tastiera**
+```javascript
+connectedCallback() {
+	this.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			this.hide()
+		}
+	})
+}
+```
+
+**3. Focus management**
+```javascript
+open() {
+	this.setAttribute('opened', '')
+	this._firstFocusable.focus()
+}
+```
+
+### Testing
+
+**1. Test isolati**
+```javascript
+// Ogni componente può essere testato indipendentemente
+const tooltip = document.createElement('uc-tooltip')
+tooltip.setAttribute('text', 'Test')
+document.body.appendChild(tooltip)
+// Test...
+```
+
+**2. Mock del DOM**
+```javascript
+// I componenti possono essere testati senza DOM reale
+// utilizzando librerie di testing
+```
+
+---
+
+## Risorse Aggiuntive
+
+Per approfondire ulteriormente i Web Components:
+
+- **MDN - Web Components**: [Documentazione completa](https://developer.mozilla.org/en-US/docs/Web/Web_Components)
+- **MDN - Using Templates and Slots**: [Guida dettagliata](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_templates_and_slots)
+- **Google - Custom Elements**: [Articolo approfondito](https://developers.google.com/web/fundamentals/web-components/customelements)
+- **Google - Shadow DOM**: [Guida completa](https://developers.google.com/web/fundamentals/web-components/shadowdom)
+- **webcomponents.org**: [Risorse e esempi](https://www.webcomponents.org/)
+
+---
+
+## Conclusione
+
+I Web Components rappresentano un potente insieme di tecnologie native del browser che permettono di creare componenti HTML riutilizzabili e incapsulati. Comprendere Custom Elements, Shadow DOM, Templates e Slots fornisce le basi per costruire librerie di componenti riutilizzabili che funzionano con qualsiasi framework o libreria.
+
+**Punti chiave:**
+
+- **Custom Elements**: permettono di creare elementi HTML personalizzati
+- **Shadow DOM**: isola stili e struttura del componente
+- **Templates & Slots**: definiscono struttura e accettano contenuti dinamici
+- **Lifecycle hooks**: gestiscono il ciclo di vita del componente
+- **Eventi custom**: permettono comunicazione con il mondo esterno
+
+**Vantaggi principali:**
+
+- **Riutilizzabilità**: componenti utilizzabili in qualsiasi progetto
+- **Incapsulamento**: logica e stile isolati
+- **Standard nativi**: nessuna dipendenza esterna
+- **Compatibilità**: funzionano con qualsiasi framework
+
+I Web Components sono una tecnologia matura e supportata che offre un'alternativa potente ai framework esterni per la creazione di componenti riutilizzabili.
