@@ -1,0 +1,644 @@
+---
+title: "Introduzione a SQL e PostgreSQL"
+description: "Concetti fondamentali sui database, SQL, PostgreSQL e primi passi con tabelle, tipi di dati e query base"
+date: 2026-02-18
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 1
+---
+
+## Introduzione
+
+I database sono strumenti fondamentali per memorizzare, organizzare e recuperare informazioni in modo strutturato ed efficiente. PostgreSQL è uno dei database relazionali open source più avanzati disponibili, utilizzato da migliaia di applicazioni in produzione.
+
+In questo capitolo si approfondiscono:
+
+- **Cos'è un database**: memorizzazione e persistenza dei dati
+- **SQL**: linguaggio di comunicazione con i database
+- **PostgreSQL**: caratteristiche e sfide principali
+- **Tabelle, colonne e righe**: struttura base di un database relazionale
+- **Tipi di dati**: VARCHAR, INTEGER e altri tipi fondamentali
+- **Operazioni base**: CREATE TABLE, INSERT, SELECT
+- **Colonne calcolate**: operazioni matematiche e trasformazioni
+- **Operatori e funzioni per stringhe**: manipolazione del testo
+
+---
+
+## Cos'è un Database
+
+### Definizione Base
+
+Un **database** è un sistema organizzato per memorizzare informazioni. A livello fondamentale, i database permettono di:
+
+- **Memorizzare dati**: prendere informazioni da una fonte e inserirle nel database
+- **Persistere dati**: conservare le informazioni in memoria o su disco rigido
+- **Recuperare dati**: accedere alle informazioni memorizzate in un momento successivo
+
+### Client e Database
+
+Per lavorare con un database PostgreSQL, è necessario utilizzare un **client**. Un client è qualsiasi software che si connette al database per interagire con esso.
+
+**Esempi di client:**
+- **API server**: applicazioni backend che si connettono al database
+- **Utility program**: strumenti progettati per investigare e gestire i dati
+- **Interfacce web**: applicazioni web che permettono di eseguire query SQL
+- **Applicazioni desktop**: programmi con interfaccia grafica per gestire database
+
+Il client invia comandi SQL al database, il database esegue questi comandi e restituisce i risultati al client.
+
+---
+
+## Cos'è SQL
+
+### Linguaggio di Comunicazione
+
+**SQL** (Structured Query Language) è il linguaggio standard utilizzato per comunicare con i database relazionali. SQL permette di:
+
+- **Inserire dati**: aggiungere nuove informazioni nel database
+- **Leggere dati**: recuperare informazioni dal database
+- **Aggiornare dati**: modificare informazioni esistenti
+- **Eliminare dati**: rimuovere informazioni dal database
+
+### SQL come Linguaggio Standard
+
+SQL è supportato da molti database diversi:
+- **PostgreSQL**: database open source avanzato
+- **Oracle**: database enterprise
+- **Microsoft SQL Server**: database Microsoft
+- **MySQL**: database open source popolare
+
+Una volta appreso SQL per un database, è possibile applicare gran parte di questa conoscenza ad altri database. Non c'è sempre una trasferibilità perfetta al 100%, ma comprendere SQL facilita il lavoro con qualsiasi database relazionale.
+
+### Esempi di Query SQL
+
+```sql
+-- Inserire dati
+INSERT INTO cities (name, country, population) 
+VALUES ('Tokyo', 'Japan', 38505000);
+
+-- Leggere dati
+SELECT name, population FROM cities;
+
+-- Aggiornare dati
+UPDATE cities SET population = 39000000 WHERE name = 'Tokyo';
+
+-- Eliminare dati
+DELETE FROM cities WHERE name = 'Tokyo';
+```
+
+---
+
+## Le Sfide Principali con PostgreSQL
+
+Quando si lavora con PostgreSQL, esistono quattro sfide principali da affrontare:
+
+### 1. Scrivere Query Efficienti
+
+Scrivere query SQL efficienti per recuperare informazioni dal database è la sfida più importante e generalmente la più complessa. Tra le quattro operazioni principali (inserire, leggere, aggiornare, eliminare), la lettura è quella che richiede più attenzione e ottimizzazione.
+
+**Obiettivi:**
+- Recuperare solo i dati necessari
+- Utilizzare indici appropriati
+- Evitare query che scansionano intere tabelle
+- Ottimizzare join e aggregazioni
+
+### 2. Progettare lo Schema del Database
+
+Esistono quasi infinite possibilità per strutturare i dati all'interno di un database. Decidere quale approccio sia migliore può essere complesso e richiede una comprensione approfondita dei requisiti dell'applicazione.
+
+**Considerazioni:**
+- Normalizzazione vs denormalizzazione
+- Relazioni tra tabelle
+- Vincoli di integrità
+- Performance vs flessibilità
+
+### 3. Utilizzare Feature Avanzate
+
+Ogni database offre un insieme unico di funzionalità avanzate. Comprendere quando utilizzare queste funzionalità può essere impegnativo. PostgreSQL offre molte feature speciali che possono essere utili in determinati scenari.
+
+**Esempi:**
+- Tipi di dati avanzati (JSON, array, range)
+- Funzioni window
+- Full-text search
+- Estensioni personalizzate
+
+### 4. Gestire il Database in Produzione
+
+Gestire un database in un ambiente di produzione richiede competenze specifiche:
+
+- **Backup**: creare copie di sicurezza dei dati
+- **Scaling**: gestire più utenti e traffico crescente
+- **Monitoring**: monitorare performance e utilizzo
+- **Sicurezza**: proteggere i dati da accessi non autorizzati
+- **Manutenzione**: ottimizzare e aggiornare il database
+
+### Focus del Corso
+
+In questo corso ci concentreremo principalmente sulle prime due sfide:
+- Scrivere query efficienti
+- Progettare lo schema del database
+
+Queste sono le competenze fondamentali necessarie per lavorare efficacemente con PostgreSQL.
+
+---
+
+## Primo Progetto: Lista di Città
+
+### Obiettivo
+
+Come primo esempio pratico, si creerà un database per memorizzare una lista di grandi città del mondo. I dati provengono da una tabella su Wikipedia che contiene informazioni su città, paesi, popolazione e area.
+
+### Dati da Memorizzare
+
+Dalla tabella Wikipedia, si estraggono quattro colonne di interesse:
+
+- **City**: nome della città
+- **Country**: paese di appartenenza
+- **Population**: popolazione della città
+- **Area**: area dell'area urbana in chilometri quadrati
+
+### Processo di Design
+
+Per progettare correttamente il database, è utile rispondere a tre domande fondamentali:
+
+**1. Che tipo di cosa stiamo memorizzando?**
+- Risposta: una lista di città
+
+**2. Quali proprietà ha questa cosa?**
+- Risposta: nome, paese, popolazione, area
+
+**3. Che tipo di dati contiene ciascuna proprietà?**
+- Risposta: nome e paese sono stringhe di caratteri, popolazione e area sono numeri
+
+Queste risposte guidano la struttura del database.
+
+---
+
+## Tabelle, Colonne e Righe
+
+### Tabelle
+
+Una **tabella** è una struttura all'interno del database che memorizza una collezione di record con significato correlato. Nel caso dell'esempio, si crea una tabella chiamata `cities` che conterrà tutte le città.
+
+**Caratteristiche:**
+- Ogni tabella ha un nome univoco
+- Le tabelle contengono molti record
+- Tutti i dati vengono memorizzati all'interno di tabelle
+- La progettazione delle tabelle è fondamentale per un database ben strutturato
+
+### Colonne
+
+Le **colonne** rappresentano le proprietà degli oggetti memorizzati nella tabella. Per la tabella `cities`, si creano quattro colonne:
+
+- `name`: nome della città
+- `country`: paese di appartenenza
+- `population`: popolazione
+- `area`: area in km²
+
+Ogni colonna memorizza informazioni su una proprietà specifica di ogni record.
+
+### Righe
+
+Le **righe** rappresentano i singoli record memorizzati nella tabella. Ogni riga contiene un insieme completo di valori per tutte le colonne.
+
+**Esempio:**
+- Una riga potrebbe contenere: Tokyo, Japan, 38505000, 8223
+- Un'altra riga: Delhi, India, 28125000, 2240
+
+### Terminologia
+
+**Riepilogo:**
+- **Tabella**: collezione di record correlati (es. `cities`)
+- **Colonna**: proprietà di un record (es. `name`, `population`)
+- **Riga**: singolo record completo (es. una città con tutti i suoi dati)
+
+---
+
+## Creare una Tabella
+
+### Strumenti per Praticare
+
+Per iniziare a lavorare con PostgreSQL senza installare software localmente, è possibile utilizzare strumenti online come **pgsql.com**, che fornisce un database PostgreSQL gratuito accessibile tramite browser.
+
+**Caratteristiche:**
+- Editor SQL integrato
+- Esecuzione immediata delle query
+- Visualizzazione dei risultati
+- Cronologia delle query eseguite
+
+Più avanti nel corso si installerà PostgreSQL localmente sulla propria macchina.
+
+### Sintassi CREATE TABLE
+
+Per creare una tabella, si utilizza il comando `CREATE TABLE`:
+
+```sql
+CREATE TABLE cities (
+    name VARCHAR(50),
+    country VARCHAR(50),
+    population INTEGER,
+    area INTEGER
+);
+```
+
+**Spiegazione:**
+- `CREATE TABLE`: keyword che indica la creazione di una tabella
+- `cities`: nome della tabella (identificatore)
+- Parentesi: contengono la definizione delle colonne
+- Ogni colonna: nome seguito dal tipo di dato
+- Virgole: separano le colonne (tranne l'ultima)
+- Punto e virgola: termina l'istruzione SQL
+
+### Keywords e Identifiers
+
+**Keywords:**
+- Parole speciali che indicano azioni specifiche (es. `CREATE`, `TABLE`)
+- Sempre scritte in maiuscolo per convenzione
+- Esempi: `CREATE`, `TABLE`, `INSERT`, `SELECT`, `FROM`
+
+**Identifiers:**
+- Nomi di tabelle, colonne e altri oggetti del database
+- Scritti in minuscolo per convenzione
+- Esempi: `cities`, `name`, `population`
+
+---
+
+## Tipi di Dati
+
+### VARCHAR
+
+**VARCHAR** (Variable Character) è un tipo di dato che memorizza stringhe di caratteri.
+
+**Sintassi:**
+```sql
+VARCHAR(50)
+```
+
+**Caratteristiche:**
+- Il numero tra parentesi indica la lunghezza massima
+- Se si tenta di inserire una stringa più lunga, PostgreSQL genera un errore
+- Esempio: `VARCHAR(50)` accetta stringhe fino a 50 caratteri
+
+**Utilizzo:**
+- Nomi, testi descrittivi
+- Qualsiasi dato che è una sequenza di caratteri
+
+### INTEGER
+
+**INTEGER** è un tipo di dato che memorizza numeri interi (senza decimali).
+
+**Caratteristiche:**
+- Range approssimativo: da -2 miliardi a +2 miliardi
+- Se si tenta di inserire un valore fuori range, PostgreSQL genera un errore
+- Non supporta decimali
+
+**Utilizzo:**
+- Contatori, quantità
+- Valori numerici che non richiedono precisione decimale
+
+### Altri Tipi di Dati Comuni
+
+PostgreSQL supporta molti altri tipi di dati:
+
+- **TEXT**: stringhe di lunghezza illimitata
+- **NUMERIC/DECIMAL**: numeri con decimali
+- **BOOLEAN**: valori vero/falso
+- **DATE**: date
+- **TIMESTAMP**: data e ora
+- **JSON**: dati strutturati JSON
+
+Questi verranno approfonditi nei capitoli successivi.
+
+---
+
+## Inserire Dati (INSERT)
+
+### Inserire una Singola Riga
+
+Per inserire dati in una tabella, si utilizza il comando `INSERT INTO`:
+
+```sql
+INSERT INTO cities (name, country, population, area)
+VALUES ('Tokyo', 'Japan', 38505000, 8223);
+```
+
+**Spiegazione:**
+- `INSERT INTO cities`: specifica la tabella di destinazione
+- `(name, country, population, area)`: elenca le colonne
+- `VALUES`: keyword che introduce i valori
+- `('Tokyo', 'Japan', 38505000, 8223)`: valori corrispondenti alle colonne
+
+**Ordine importante:**
+- L'ordine dei valori deve corrispondere all'ordine delle colonne
+- Se si cambia l'ordine delle colonne, si deve cambiare anche l'ordine dei valori
+
+### Inserire Multiple Righe
+
+È possibile inserire più righe in una singola istruzione:
+
+```sql
+INSERT INTO cities (name, country, population, area)
+VALUES 
+    ('Tokyo', 'Japan', 38505000, 8223),
+    ('Delhi', 'India', 28125000, 2240),
+    ('Shanghai', 'China', 25582000, 4015),
+    ('São Paulo', 'Brazil', 21650000, 3043);
+```
+
+**Vantaggi:**
+- Più efficiente di multiple istruzioni separate
+- Meno codice da scrivere
+- Esecuzione atomica (tutte le righe vengono inserite insieme o nessuna)
+
+### Note sulla Sintassi
+
+**Virgole:**
+- Ogni valore è separato da una virgola
+- L'ultimo valore non ha virgola dopo
+
+**Punto e virgola:**
+- Termina l'istruzione SQL
+- Tecnicamente obbligatorio nello standard SQL
+- Alcuni client possono funzionare senza, ma è buona pratica includerlo
+
+**Virgolette:**
+- Stringhe vanno tra virgolette singole (`'Tokyo'`)
+- Non utilizzare virgolette doppie per stringhe
+- I numeri non richiedono virgolette
+
+---
+
+## Leggere Dati (SELECT)
+
+### SELECT Base
+
+Per recuperare dati da una tabella, si utilizza il comando `SELECT`:
+
+```sql
+SELECT * FROM cities;
+```
+
+**Spiegazione:**
+- `SELECT`: keyword che indica la selezione di dati
+- `*`: selettore che indica "tutte le colonne"
+- `FROM cities`: specifica la tabella da cui leggere
+
+### Selezionare Colonne Specifiche
+
+È possibile selezionare solo colonne specifiche:
+
+```sql
+SELECT name, country FROM cities;
+```
+
+**Risultato:**
+- Restituisce solo le colonne `name` e `country`
+- Le altre colonne non vengono incluse nel risultato
+
+### Ordinare le Colonne
+
+L'ordine delle colonne nel risultato corrisponde all'ordine specificato nella query:
+
+```sql
+SELECT area, name, population FROM cities;
+```
+
+**Risultato:**
+- Colonne nell'ordine: `area`, `name`, `population`
+
+### Colonne Multiple Volte
+
+È possibile selezionare la stessa colonna più volte:
+
+```sql
+SELECT name, name, name FROM cities;
+```
+
+**Risultato:**
+- La colonna `name` appare tre volte nel risultato
+- Utile per calcoli o formattazioni diverse della stessa colonna
+
+---
+
+## Colonne Calcolate
+
+### Concetto
+
+Le colonne calcolate permettono di trasformare o processare i dati prima di recuperarli dal database. Non si recuperano solo i dati memorizzati, ma si possono eseguire calcoli su di essi.
+
+### Esempio: Densità di Popolazione
+
+Per calcolare la densità di popolazione (popolazione divisa per area):
+
+```sql
+SELECT name, population / area FROM cities;
+```
+
+**Risultato:**
+- Per ogni città, calcola popolazione divisa per area
+- Restituisce il numero di persone per chilometro quadrato
+
+### Rinomare Colonne Calcolate
+
+Le colonne calcolate hanno un nome di default (`?column?`). È possibile rinomarele usando `AS`:
+
+```sql
+SELECT name, population / area AS population_density FROM cities;
+```
+
+**Risultato:**
+- La colonna calcolata viene chiamata `population_density`
+- Il nome è più descrittivo e chiaro
+
+### Operatori Matematici
+
+PostgreSQL supporta vari operatori matematici:
+
+**Operatori base:**
+- `+`: addizione
+- `-`: sottrazione
+- `*`: moltiplicazione
+- `/`: divisione
+- `%`: modulo (resto della divisione)
+- `^`: elevamento a potenza
+- `|/`: radice quadrata
+- `||/`: radice cubica
+- `@`: valore assoluto
+
+**Esempi:**
+```sql
+-- Addizione
+SELECT population + area FROM cities;
+
+-- Moltiplicazione
+SELECT population * area FROM cities;
+
+-- Elevamento a potenza
+SELECT area ^ 2 FROM cities;
+```
+
+**Nota:** Attenzione ai limiti degli INTEGER. Moltiplicare valori molto grandi può causare errori di overflow.
+
+### Esempio Pratico: Revenue
+
+```sql
+-- Tabella phones con name, price, units_sold
+SELECT name, price * units_sold AS revenue FROM phones;
+```
+
+Questo calcola il ricavo totale per ogni telefono moltiplicando il prezzo per le unità vendute.
+
+---
+
+## Operatori e Funzioni per Stringhe
+
+### Concatenazione con ||
+
+L'operatore `||` (doppio pipe) concatena due stringhe:
+
+```sql
+SELECT name || country FROM cities;
+```
+
+**Risultato:**
+- `TokyoJapan`, `DelhiIndia`, ecc.
+
+### Concatenazione con Separatori
+
+Per rendere il risultato più leggibile, si possono aggiungere separatori:
+
+```sql
+SELECT name || ', ' || country AS location FROM cities;
+```
+
+**Risultato:**
+- `Tokyo, Japan`, `Delhi, India`, ecc.
+
+### Funzione CONCAT
+
+La funzione `CONCAT` fa la stessa cosa dell'operatore `||`:
+
+```sql
+SELECT CONCAT(name, ', ', country) AS location FROM cities;
+```
+
+**Risultato:**
+- Stesso risultato dell'esempio precedente
+- Sintassi alternativa più leggibile in alcuni casi
+
+### Funzioni per Manipolare Stringhe
+
+**UPPER e LOWER:**
+```sql
+-- Convertire in maiuscolo
+SELECT UPPER(name) FROM cities;
+
+-- Convertire in minuscolo
+SELECT LOWER(country) FROM cities;
+
+-- Combinare funzioni
+SELECT UPPER(CONCAT(name, ', ', country)) AS location FROM cities;
+```
+
+**LENGTH:**
+```sql
+-- Lunghezza di una stringa
+SELECT name, LENGTH(name) AS name_length FROM cities;
+```
+
+**Risultato:**
+- Restituisce il numero di caratteri in ogni nome
+- Utile per filtrare stringhe di lunghezza specifica
+
+### Funzioni Annidate
+
+Le funzioni possono essere annidate:
+
+```sql
+SELECT UPPER(CONCAT(name, ', ', country)) AS location FROM cities;
+```
+
+**Ordine di esecuzione:**
+1. Prima viene eseguito `CONCAT(name, ', ', country)`
+2. Poi il risultato viene passato a `UPPER`
+3. Il risultato finale viene assegnato alla colonna `location`
+
+---
+
+## Best Practices
+
+### Naming Conventions
+
+**Tabelle:**
+- Nomi al plurale per collezioni (es. `cities`, `users`, `orders`)
+- Nomi descrittivi e chiari
+- Utilizzare underscore per separare parole (es. `user_profiles`)
+
+**Colonne:**
+- Nomi al singolare (es. `name`, `population`)
+- Nomi descrittivi
+- Evitare abbreviazioni non ovvie
+
+### Tipi di Dati
+
+**Scegliere il tipo appropriato:**
+- Usare `VARCHAR(n)` quando si conosce la lunghezza massima
+- Usare `TEXT` per stringhe di lunghezza variabile o sconosciuta
+- Usare `INTEGER` per numeri interi
+- Usare `NUMERIC` o `DECIMAL` per valori monetari o che richiedono precisione
+
+**Dimensionamento:**
+- Non sovradimensionare `VARCHAR` (es. `VARCHAR(50)` invece di `VARCHAR(1000)`)
+- Considerare i limiti degli INTEGER per valori molto grandi
+
+### Query Leggibili
+
+**Formattazione:**
+- Capitalizzare keywords SQL (`SELECT`, `FROM`, `WHERE`)
+- Utilizzare minuscolo per identifiers (`cities`, `name`)
+- Indentare query complesse
+- Utilizzare alias descrittivi per colonne calcolate
+
+**Esempio:**
+```sql
+SELECT 
+    name,
+    population / area AS population_density
+FROM cities
+WHERE population > 20000000;
+```
+
+### Performance
+
+**Considerazioni iniziali:**
+- Per ora, concentrarsi sulla correttezza delle query
+- Le ottimizzazioni di performance verranno approfondite nei capitoli successivi
+- Evitare `SELECT *` in produzione quando non necessario
+
+---
+
+## Risorse Aggiuntive
+
+Per approfondire ulteriormente SQL e PostgreSQL:
+
+- **PostgreSQL Official Documentation**: [Documentazione ufficiale](https://www.postgresql.org/docs/)
+- **SQL Tutorial**: [W3Schools SQL Tutorial](https://www.w3schools.com/sql/)
+- **PostgreSQL Tutorial**: [PostgreSQLTutorial.com](https://www.postgresqltutorial.com/)
+- **pgsql.com**: Strumento online per praticare SQL (se disponibile)
+
+---
+
+## Conclusione
+
+Questo capitolo ha introdotto i concetti fondamentali per lavorare con PostgreSQL:
+
+- **Database**: sistemi per memorizzare e recuperare dati
+- **SQL**: linguaggio standard per comunicare con i database
+- **Tabelle, colonne e righe**: struttura base dei database relazionali
+- **CREATE TABLE**: creare strutture per memorizzare dati
+- **INSERT**: aggiungere dati alle tabelle
+- **SELECT**: recuperare dati dalle tabelle
+- **Colonne calcolate**: trasformare dati durante la query
+- **Operatori e funzioni**: manipolare numeri e stringhe
+
+Queste sono le basi necessarie per iniziare a lavorare con PostgreSQL. Nei capitoli successivi si approfondiranno query più complesse, relazioni tra tabelle e ottimizzazioni avanzate.
