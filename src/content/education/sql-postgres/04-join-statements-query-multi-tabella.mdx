@@ -1,0 +1,554 @@
+---
+title: "JOIN Statements: Query Multi-Tabella"
+description: "Combinare dati da più tabelle con JOIN, tipi di join (INNER, LEFT, RIGHT, FULL), filtri con WHERE, join multipli tra tre o più tabelle"
+date: 2026-02-19
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Introduzione
+
+Con database multi-tabella, spesso serve combinare dati da più tabelle in un'unica query. I **JOIN** permettono di unire righe da tabelle diverse basandosi su relazioni definite da foreign keys.
+
+Questo capitolo introduce i JOIN statements, i diversi tipi di join (INNER, LEFT OUTER, RIGHT OUTER, FULL OUTER), l'uso di WHERE con i join, e join multipli tra tre o più tabelle.
+
+---
+
+## Setup del Database di Esempio
+
+### Schema Completo
+
+Per lavorare con query multi-tabella, si utilizza un database di esempio per un'applicazione di photo sharing con tre tabelle correlate:
+
+```sql
+-- Tabella users
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50)
+);
+
+-- Tabella photos con foreign key verso users
+CREATE TABLE photos (
+    id SERIAL PRIMARY KEY,
+    url VARCHAR(200),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Tabella comments con foreign keys verso users e photos
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    contents VARCHAR(240),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    photo_id INTEGER REFERENCES photos(id) ON DELETE CASCADE
+);
+```
+
+**Struttura delle relazioni:**
+- Un utente può avere molte foto (one-to-many)
+- Una foto può avere molti commenti (one-to-many)
+- Un utente può creare molti commenti (one-to-many)
+
+### Dati di Esempio
+
+Il database contiene:
+- 5 utenti
+- 20 foto
+- 100 commenti
+
+Questi dati permettono di scrivere query complesse che combinano informazioni da più tabelle.
+
+---
+
+## Cos'è un JOIN
+
+### Definizione
+
+Un **JOIN** è un'operazione SQL che combina righe da due o più tabelle in un unico result set basandosi su una condizione di corrispondenza tra colonne.
+
+**Quando usare JOIN:**
+- Quando una query richiede informazioni da più tipi di risorse (es. commenti e utenti)
+- Quando si devono combinare dati correlati da tabelle diverse
+- Quando si vogliono mostrare relazioni tra entità
+
+**Indicatori linguistici:**
+- "Per ogni X, mostra anche Y" (es. "per ogni commento, mostra anche l'username")
+- "Trova X insieme a Y" (es. "trova foto insieme ai loro autori")
+- Menzione di più tipi di risorse nella stessa query
+
+### Come Funziona un JOIN
+
+Concettualmente, un JOIN crea una tabella temporanea che contiene colonne da entrambe le tabelle:
+
+1. **FROM**: seleziona tutte le righe dalla tabella sorgente (es. `comments`)
+2. **JOIN**: per ogni riga della tabella sorgente, cerca righe corrispondenti nella tabella join (es. `users`)
+3. **ON**: la condizione di corrispondenza determina quali righe vengono combinate (es. `users.id = comments.user_id`)
+4. **SELECT**: seleziona le colonne desiderate dalla tabella temporanea risultante
+
+**Esempio concettuale:**
+- Si parte con tutte le righe di `comments`
+- Per ogni commento, si cerca l'utente corrispondente usando `user_id`
+- Si crea una riga combinata con colonne da entrambe le tabelle
+- Si selezionano solo le colonne necessarie nel risultato finale
+
+---
+
+## JOIN Base: Comments e Users
+
+### Query Base
+
+Per mostrare il contenuto di ogni commento insieme all'username dell'autore:
+
+```sql
+SELECT contents, username
+FROM comments
+JOIN users ON users.id = comments.user_id;
+```
+
+**Spiegazione:**
+- `FROM comments`: parte da tutte le righe della tabella `comments`
+- `JOIN users`: combina con la tabella `users`
+- `ON users.id = comments.user_id`: condizione di corrispondenza (l'ID utente nel commento corrisponde all'ID nella tabella users)
+- `SELECT contents, username`: seleziona colonne da entrambe le tabelle
+
+**Risultato:**
+Ogni riga mostra il testo del commento e l'username dell'autore.
+
+### JOIN con Photos
+
+Per mostrare il contenuto di ogni commento insieme all'URL della foto a cui appartiene:
+
+```sql
+SELECT contents, url
+FROM comments
+JOIN photos ON photos.id = comments.photo_id;
+```
+
+**Spiegazione:**
+- `FROM comments`: parte da tutti i commenti
+- `JOIN photos`: combina con la tabella `photos`
+- `ON photos.id = comments.photo_id`: corrispondenza tra l'ID della foto nel commento e l'ID nella tabella photos
+
+---
+
+## Tipi di JOIN
+
+Esistono quattro tipi principali di JOIN, ognuno con un comportamento diverso quando ci sono righe senza corrispondenza.
+
+### INNER JOIN
+
+**INNER JOIN** (o semplicemente `JOIN`) restituisce solo le righe che hanno una corrispondenza in entrambe le tabelle.
+
+**Comportamento:**
+- Se una riga nella tabella sorgente non ha corrispondenza nella tabella join, viene esclusa
+- Se una riga nella tabella join non ha corrispondenza nella tabella sorgente, viene esclusa
+- Solo le righe con corrispondenza perfetta vengono incluse
+
+**Sintassi:**
+```sql
+SELECT columns
+FROM table1
+INNER JOIN table2 ON condition;
+-- oppure semplicemente:
+SELECT columns
+FROM table1
+JOIN table2 ON condition;
+```
+
+**Esempio:**
+```sql
+SELECT photos.url, users.username
+FROM photos
+JOIN users ON users.id = photos.user_id;
+```
+
+Se una foto ha `user_id = NULL` o se un utente non ha foto, quelle righe non appaiono nel risultato.
+
+### LEFT OUTER JOIN
+
+**LEFT OUTER JOIN** (o `LEFT JOIN`) restituisce tutte le righe dalla tabella sinistra (FROM), anche se non hanno corrispondenza nella tabella destra (JOIN).
+
+**Comportamento:**
+- Tutte le righe dalla tabella sinistra vengono incluse
+- Se non c'è corrispondenza nella tabella destra, le colonne della tabella destra vengono riempite con `NULL`
+- Righe dalla tabella destra senza corrispondenza nella sinistra vengono escluse
+
+**Sintassi:**
+```sql
+SELECT columns
+FROM table1
+LEFT JOIN table2 ON condition;
+```
+
+**Esempio:**
+```sql
+SELECT photos.url, users.username
+FROM photos
+LEFT JOIN users ON users.id = photos.user_id;
+```
+
+Anche se una foto ha `user_id = NULL`, quella foto appare nel risultato con `username = NULL`.
+
+**Quando usare:**
+- Quando si vogliono tutte le righe dalla tabella sorgente, anche senza corrispondenza
+- Esempio: "mostra tutte le foto, anche quelle senza utente associato"
+
+### RIGHT OUTER JOIN
+
+**RIGHT OUTER JOIN** (o `RIGHT JOIN`) restituisce tutte le righe dalla tabella destra (JOIN), anche se non hanno corrispondenza nella tabella sinistra (FROM).
+
+**Comportamento:**
+- Tutte le righe dalla tabella destra vengono incluse
+- Se non c'è corrispondenza nella tabella sinistra, le colonne della tabella sinistra vengono riempite con `NULL`
+- Righe dalla tabella sinistra senza corrispondenza nella destra vengono escluse
+
+**Sintassi:**
+```sql
+SELECT columns
+FROM table1
+RIGHT JOIN table2 ON condition;
+```
+
+**Esempio:**
+```sql
+SELECT photos.url, users.username
+FROM photos
+RIGHT JOIN users ON users.id = photos.user_id;
+```
+
+Anche se un utente non ha foto, quell'utente appare nel risultato con `url = NULL`.
+
+**Quando usare:**
+- Quando si vogliono tutte le righe dalla tabella join, anche senza corrispondenza
+- Esempio: "mostra tutti gli utenti, anche quelli senza foto"
+
+### FULL OUTER JOIN
+
+**FULL OUTER JOIN** (o `FULL JOIN`) restituisce tutte le righe da entrambe le tabelle, anche se non hanno corrispondenza.
+
+**Comportamento:**
+- Tutte le righe da entrambe le tabelle vengono incluse
+- Se non c'è corrispondenza, le colonne della tabella senza corrispondenza vengono riempite con `NULL`
+- Nessuna riga viene esclusa
+
+**Sintassi:**
+```sql
+SELECT columns
+FROM table1
+FULL JOIN table2 ON condition;
+```
+
+**Esempio:**
+```sql
+SELECT photos.url, users.username
+FROM photos
+FULL JOIN users ON users.id = photos.user_id;
+```
+
+Si ottengono tutte le foto (anche senza utente) e tutti gli utenti (anche senza foto).
+
+**Quando usare:**
+- Quando si vogliono tutte le righe da entrambe le tabelle
+- Esempio: "mostra tutte le foto e tutti gli utenti, indipendentemente dalle corrispondenze"
+
+### Riepilogo dei Tipi di JOIN
+
+| Tipo di JOIN | Righe incluse dalla tabella sinistra | Righe incluse dalla tabella destra |
+|--------------|--------------------------------------|-------------------------------------|
+| INNER JOIN | Solo con corrispondenza | Solo con corrispondenza |
+| LEFT JOIN | Tutte | Solo con corrispondenza |
+| RIGHT JOIN | Solo con corrispondenza | Tutte |
+| FULL JOIN | Tutte | Tutte |
+
+**Nota:** "Sinistra" e "destra" si riferiscono all'ordine nella query: `FROM table1 JOIN table2` significa che `table1` è a sinistra e `table2` è a destra.
+
+---
+
+## Ordine delle Tabelle nei JOIN
+
+### Quando l'Ordine Conta
+
+L'ordine delle tabelle in `FROM` e `JOIN` può influenzare il risultato quando si usano LEFT o RIGHT JOIN.
+
+**Esempio con LEFT JOIN:**
+
+```sql
+-- Query 1: FROM photos LEFT JOIN users
+SELECT photos.url, users.username
+FROM photos
+LEFT JOIN users ON users.id = photos.user_id;
+-- Include tutte le foto, anche senza utente
+
+-- Query 2: FROM users LEFT JOIN photos
+SELECT photos.url, users.username
+FROM users
+LEFT JOIN photos ON photos.user_id = users.id;
+-- Include tutti gli utenti, anche senza foto
+```
+
+**Con INNER JOIN:**
+Con INNER JOIN, l'ordine delle tabelle non cambia il risultato finale (solo l'ordine delle colonne può cambiare).
+
+**Con FULL JOIN:**
+Con FULL JOIN, l'ordine delle tabelle non cambia il risultato finale.
+
+### Regola Generale
+
+- **LEFT JOIN**: la tabella nel `FROM` è quella di cui si vogliono tutte le righe
+- **RIGHT JOIN**: la tabella nel `JOIN` è quella di cui si vogliono tutte le righe
+- **INNER JOIN**: l'ordine non importa per il risultato
+- **FULL JOIN**: l'ordine non importa per il risultato
+
+---
+
+## Colonne Ambigue nei JOIN
+
+### Il Problema
+
+Quando due tabelle hanno colonne con lo stesso nome (es. entrambe hanno una colonna `id`), è necessario specificare da quale tabella proviene la colonna.
+
+**Esempio di errore:**
+```sql
+SELECT id FROM comments JOIN photos ON photos.id = comments.photo_id;
+-- Errore: "column reference id is ambiguous"
+```
+
+**Soluzione:**
+Usare il nome della tabella come prefisso:
+
+```sql
+SELECT comments.id, photos.id
+FROM comments
+JOIN photos ON photos.id = comments.photo_id;
+```
+
+O usare alias per le tabelle:
+
+```sql
+SELECT c.id, p.id
+FROM comments c
+JOIN photos p ON p.id = c.photo_id;
+```
+
+### Alias per le Tabelle
+
+È possibile rinominare le tabelle usando `AS` o semplicemente omettendo `AS`:
+
+```sql
+-- Con AS
+SELECT c.contents, u.username
+FROM comments AS c
+JOIN users AS u ON u.id = c.user_id;
+
+-- Senza AS (equivalente)
+SELECT c.contents, u.username
+FROM comments c
+JOIN users u ON u.id = c.user_id;
+```
+
+**Quando usare alias:**
+- Query complesse con molte tabelle
+- Nomi di tabelle lunghi
+- Per migliorare la leggibilità
+
+**Nota:** Gli alias si applicano solo ai riferimenti alle tabelle, non ai nomi delle colonne. Se una colonna si chiama `photo_id`, non si può abbreviare in `p_id` usando l'alias.
+
+---
+
+## JOIN con WHERE
+
+### Filtrare Risultati dopo il JOIN
+
+È possibile combinare JOIN con WHERE per filtrare i risultati dopo che le tabelle sono state unite.
+
+**Esempio: Commenti su foto proprie**
+
+Trovare tutti i commenti lasciati dagli utenti sulle proprie foto:
+
+```sql
+SELECT comments.contents, photos.url
+FROM comments
+JOIN photos ON photos.id = comments.photo_id
+WHERE comments.user_id = photos.user_id;
+```
+
+**Spiegazione:**
+1. `FROM comments`: parte da tutti i commenti
+2. `JOIN photos`: combina con le foto corrispondenti
+3. `WHERE comments.user_id = photos.user_id`: filtra solo le righe dove l'autore del commento è anche l'autore della foto
+
+**Ordine di esecuzione:**
+1. FROM → seleziona righe da `comments`
+2. JOIN → combina con `photos`
+3. WHERE → filtra le righe combinate
+4. SELECT → seleziona le colonne finali
+
+### WHERE con Condizioni Multiple
+
+È possibile combinare più condizioni in WHERE:
+
+```sql
+SELECT comments.contents, photos.url, users.username
+FROM comments
+JOIN photos ON photos.id = comments.photo_id
+WHERE comments.user_id = photos.user_id
+  AND photos.user_id = 1;
+```
+
+Questa query trova i commenti lasciati dall'utente con `id = 1` sulle proprie foto.
+
+---
+
+## Three-Way JOIN
+
+### Join tra Tre Tabelle
+
+È possibile unire tre o più tabelle in una singola query usando JOIN multipli.
+
+**Esempio: Commenti, Foto e Utenti**
+
+Mostrare il contenuto di ogni commento, l'URL della foto e l'username dell'autore del commento, ma solo per commenti lasciati dagli utenti sulle proprie foto:
+
+```sql
+SELECT comments.contents, photos.url, users.username
+FROM comments
+JOIN photos ON photos.id = comments.photo_id
+JOIN users ON users.id = comments.user_id 
+           AND users.id = photos.user_id;
+```
+
+**Spiegazione:**
+1. `FROM comments`: parte da tutti i commenti
+2. `JOIN photos`: combina con le foto corrispondenti (`photos.id = comments.photo_id`)
+3. `JOIN users`: combina con gli utenti, ma solo quelli che soddisfano entrambe le condizioni:
+   - `users.id = comments.user_id` (l'utente è l'autore del commento)
+   - `users.id = photos.user_id` (l'utente è l'autore della foto)
+
+**Risultato:**
+Solo i commenti dove l'autore del commento è anche l'autore della foto.
+
+### Condizioni Complesse nel Secondo JOIN
+
+Nel secondo JOIN di una three-way join, spesso serve una condizione più complessa che coinvolge più tabelle:
+
+```sql
+SELECT columns
+FROM table1
+JOIN table2 ON table2.id = table1.foreign_key
+JOIN table3 ON table3.id = table1.another_foreign_key
+           AND table3.id = table2.another_foreign_key;
+```
+
+La condizione `AND` nel secondo JOIN garantisce che tutte e tre le tabelle siano correlate correttamente.
+
+---
+
+## Esercizi di Riepilogo
+
+### JOIN Base: Authors e Books
+
+Scrivere una query che unisca le tabelle `authors` e `books` e restituisca il titolo di ogni libro insieme al nome dell'autore.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT books.title, authors.name
+FROM books
+JOIN authors ON authors.id = books.author_id;
+```
+
+Oppure usando alias:
+
+```sql
+SELECT b.title, a.name
+FROM books b
+JOIN authors a ON a.id = b.author_id;
+```
+
+</div>
+</details>
+
+### LEFT JOIN: Tutti gli Autori
+
+Scrivere una query che restituisca il titolo di ogni libro insieme al nome dell'autore, includendo tutti gli autori anche se non hanno libri associati.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione 1: LEFT JOIN</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT books.title, authors.name
+FROM authors
+LEFT JOIN books ON books.author_id = authors.id;
+```
+
+Partendo da `authors` e facendo LEFT JOIN con `books`, si ottengono tutti gli autori, anche quelli senza libri.
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione 2: RIGHT JOIN</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT books.title, authors.name
+FROM books
+RIGHT JOIN authors ON authors.id = books.author_id;
+```
+
+Partendo da `books` e facendo RIGHT JOIN con `authors`, si ottengono tutti gli autori (tabella a destra), anche quelli senza libri.
+
+</div>
+</details>
+
+### Three-Way JOIN: Books, Authors e Reviews
+
+Scrivere una query che restituisca il titolo di ogni libro, il nome dell'autore e il rating della recensione, ma solo per le recensioni scritte dagli autori sui propri libri.
+
+**Schema:**
+- `books`: id, title, author_id
+- `authors`: id, name
+- `reviews`: id, rating, reviewer_id (foreign key verso authors), book_id (foreign key verso books)
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT books.title, authors.name, reviews.rating
+FROM reviews
+JOIN books ON books.id = reviews.book_id
+JOIN authors ON authors.id = reviews.reviewer_id 
+              AND authors.id = books.author_id;
+```
+
+**Spiegazione:**
+- `FROM reviews`: parte da tutte le recensioni
+- `JOIN books`: combina con i libri corrispondenti (`books.id = reviews.book_id`)
+- `JOIN authors`: combina con gli autori, ma solo quelli che soddisfano entrambe le condizioni:
+  - `authors.id = reviews.reviewer_id` (l'autore è il recensore)
+  - `authors.id = books.author_id` (l'autore è anche l'autore del libro)
+
+Questo garantisce che solo le recensioni scritte dagli autori sui propri libri vengano incluse.
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **JOIN**: operazione che combina righe da due o più tabelle basandosi su una condizione di corrispondenza.
+- **INNER JOIN**: restituisce solo righe con corrispondenza in entrambe le tabelle. È il default quando si usa solo `JOIN`.
+- **LEFT OUTER JOIN**: include tutte le righe dalla tabella sinistra (FROM), anche senza corrispondenza. Le colonne della tabella destra sono NULL se non c'è corrispondenza.
+- **RIGHT OUTER JOIN**: include tutte le righe dalla tabella destra (JOIN), anche senza corrispondenza. Le colonne della tabella sinistra sono NULL se non c'è corrispondenza.
+- **FULL OUTER JOIN**: include tutte le righe da entrambe le tabelle, anche senza corrispondenza.
+- **Ordine delle tabelle**: con LEFT e RIGHT JOIN, l'ordine delle tabelle nel FROM e JOIN influisce sul risultato. Con INNER e FULL JOIN, l'ordine non cambia il risultato.
+- **Colonne ambigue**: quando due tabelle hanno colonne con lo stesso nome, usare il prefisso del nome della tabella (es. `table1.id`) o alias per le tabelle.
+- **Alias per tabelle**: usare `AS` o semplicemente il nome dopo il nome della tabella per creare abbreviazioni (es. `FROM comments c`).
+- **WHERE con JOIN**: WHERE può essere usato dopo JOIN per filtrare i risultati combinati.
+- **Three-way JOIN**: è possibile unire tre o più tabelle usando JOIN multipli. Il secondo JOIN spesso richiede condizioni complesse con `AND` per correlare correttamente tutte le tabelle.
+- **Condizioni di JOIN**: la condizione `ON` determina come le righe vengono combinate. Può essere semplice (es. `table1.id = table2.foreign_key`) o complessa con multiple condizioni `AND`.
