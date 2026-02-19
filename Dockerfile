@@ -1,17 +1,26 @@
 # Multi-stage build per ottimizzare le dimensioni dell'immagine
+# syntax=docker/dockerfile:1.4
 FROM node:20-alpine AS builder
 
 # Imposta la directory di lavoro
 WORKDIR /app
 
+# Aumenta il limite di memoria heap di Node.js per il build
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Copia i file di configurazione delle dipendenze
+# Questo layer viene cachato se package*.json non cambiano
 COPY package*.json ./
 COPY patches/ ./patches/
 
-# Installa le dipendenze
-RUN npm ci --only=production
+# Installa TUTTE le dipendenze (incluso devDependencies per il build)
+# Usa cache mount per velocizzare le installazioni successive
+# La cache di npm viene mantenuta tra i build, evitando di scaricare pacchetti già scaricati
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Copia il codice sorgente
+# Questo layer viene ricostruito solo quando cambiano i file sorgente
 COPY . .
 
 # Build dell'applicazione Astro
