@@ -1,0 +1,482 @@
+---
+title: "GROUP BY, Aggregazioni e HAVING"
+description: "Raggruppare righe con GROUP BY, funzioni di aggregazione (COUNT, SUM, AVG, MIN, MAX), filtrare gruppi con HAVING, differenza tra WHERE e HAVING"
+date: 2026-02-19
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 5
+---
+
+## Introduzione
+
+Finora le query hanno restituito righe individuali dal database. Spesso serve invece condensare molte righe in un risultato più piccolo: contare elementi, calcolare medie, trovare valori massimi o minimi.
+
+Questo capitolo introduce due tecniche complementari: **GROUP BY** per raggruppare righe, e le **funzioni di aggregazione** per calcolare valori da gruppi di righe. Si copre anche **HAVING** per filtrare i gruppi dopo il raggruppamento.
+
+---
+
+## GROUP BY: Concetto Base
+
+### Definizione
+
+**GROUP BY** è una clausola SQL che raggruppa righe con lo stesso valore in una o più colonne, riducendo il numero di righe nel risultato.
+
+**Obiettivo:**
+- Prendere molte righe e condensarle in un numero minore di righe
+- Il risultato di GROUP BY sono ancora righe, ma raggruppate per valori comuni
+
+**Sintassi base:**
+```sql
+SELECT column
+FROM table
+GROUP BY column;
+```
+
+### Come Funziona GROUP BY
+
+Per capire GROUP BY, è utile visualizzare cosa succede:
+
+1. **Identificazione dei valori unici**: PostgreSQL trova tutti i valori unici nella colonna specificata in GROUP BY
+2. **Creazione di gruppi**: per ogni valore unico, crea un "gruppo" o "bucket"
+3. **Assegnazione delle righe**: ogni riga della tabella originale viene assegnata al gruppo corrispondente al suo valore nella colonna GROUP BY
+
+**Esempio concettuale:**
+
+Se si ha una tabella `comments` con molte righe e si esegue:
+```sql
+SELECT user_id
+FROM comments
+GROUP BY user_id;
+```
+
+**Processo:**
+- PostgreSQL trova i valori unici in `user_id` (es. 1, 2, 3, 5)
+- Crea un gruppo per ogni valore unico
+- Assegna ogni riga al gruppo corrispondente al suo `user_id`
+- Restituisce solo i valori unici (uno per gruppo)
+
+**Risultato:** invece di 100 righe, si ottengono solo 5 righe (una per ogni `user_id` unico).
+
+### Limitazioni nel SELECT con GROUP BY
+
+Quando si usa GROUP BY, ci sono restrizioni su cosa si può selezionare:
+
+**Si può selezionare:**
+- Le colonne specificate in GROUP BY
+- Il risultato di funzioni di aggregazione
+
+**Non si può selezionare direttamente:**
+- Colonne che non sono nel GROUP BY e non sono parte di un'aggregazione
+
+**Esempio di errore:**
+```sql
+SELECT user_id, contents
+FROM comments
+GROUP BY user_id;
+-- Errore: "column 'contents' must appear in GROUP BY clause 
+--          or be used in an aggregate function"
+```
+
+**Spiegazione:** dopo il GROUP BY, ogni gruppo contiene molte righe. Selezionare `contents` senza aggregazione non è possibile perché PostgreSQL non sa quale valore di `contents` restituire per ogni gruppo.
+
+---
+
+## Funzioni di Aggregazione
+
+### Definizione
+
+Le **funzioni di aggregazione** prendono molti valori da una colonna e li riducono a un singolo valore.
+
+**Funzioni disponibili:**
+- **COUNT**: conta il numero di valori
+- **SUM**: somma i valori numerici
+- **AVG**: calcola la media dei valori numerici
+- **MIN**: trova il valore minimo
+- **MAX**: trova il valore massimo
+
+### Sintassi Base
+
+Le funzioni di aggregazione vengono usate nel SELECT:
+
+```sql
+SELECT AGGREGATE_FUNCTION(column)
+FROM table;
+```
+
+**Esempi:**
+
+```sql
+-- Trovare il valore massimo
+SELECT MAX(id) FROM comments;
+
+-- Trovare il valore minimo
+SELECT MIN(id) FROM comments;
+
+-- Calcolare la media
+SELECT AVG(id) FROM comments;
+
+-- Contare il numero di righe
+SELECT COUNT(id) FROM comments;
+
+-- Sommare tutti i valori
+SELECT SUM(id) FROM comments;
+```
+
+### Limitazioni con SELECT
+
+Quando si usa una funzione di aggregazione, non si può selezionare altre colonne non aggregate nella stessa query:
+
+```sql
+-- Errore
+SELECT id, MAX(id) FROM comments;
+-- Errore: "column 'id' must appear in GROUP BY clause 
+--          or be used in an aggregate function"
+```
+
+**Spiegazione:** `MAX(id)` restituisce un singolo valore, mentre `id` restituirebbe molte righe. PostgreSQL non sa come combinare questi risultati.
+
+### COUNT(*) vs COUNT(column)
+
+**COUNT(column):**
+- Conta solo i valori non NULL nella colonna specificata
+- Se una riga ha `NULL` nella colonna, non viene contata
+
+**COUNT(*):**
+- Conta tutte le righe, indipendentemente dai valori NULL
+- Più affidabile quando si vuole contare il numero totale di righe
+
+**Esempio:**
+
+```sql
+-- Se ci sono 21 foto ma una ha user_id = NULL
+SELECT COUNT(user_id) FROM photos;
+-- Restituisce 20 (esclude la riga con NULL)
+
+SELECT COUNT(*) FROM photos;
+-- Restituisce 21 (conta tutte le righe)
+```
+
+**Best practice:** usare `COUNT(*)` quando si vuole contare tutte le righe, indipendentemente dai valori NULL.
+
+---
+
+## Combinare GROUP BY con Aggregazioni
+
+### Concetto
+
+Quando si combina GROUP BY con funzioni di aggregazione, l'aggregazione viene applicata a ciascun gruppo separatamente, non a tutte le righe insieme.
+
+**Processo:**
+1. GROUP BY crea i gruppi
+2. Per ogni gruppo, la funzione di aggregazione viene applicata solo alle righe di quel gruppo
+3. Il risultato contiene una riga per gruppo con il valore aggregato
+
+### Esempio: Contare Commenti per Utente
+
+```sql
+SELECT user_id, COUNT(*) AS num_comments
+FROM comments
+GROUP BY user_id;
+```
+
+**Spiegazione:**
+- `GROUP BY user_id`: crea gruppi per ogni `user_id` unico
+- `COUNT(*)`: conta le righe in ciascun gruppo
+- Risultato: una riga per utente con il numero di commenti creati
+
+**Risultato esempio:**
+```
+user_id | num_comments
+--------|--------------
+1       | 23
+2       | 18
+3       | 15
+4       | 22
+5       | 22
+```
+
+### Esempio: Contare Commenti per Foto
+
+```sql
+SELECT photo_id, COUNT(*) AS num_comments
+FROM comments
+GROUP BY photo_id;
+```
+
+**Spiegazione:**
+- `GROUP BY photo_id`: crea gruppi per ogni `photo_id` unico
+- `COUNT(*)`: conta i commenti per ogni foto
+- Risultato: una riga per foto con il numero di commenti associati
+
+### Visualizzazione Concettuale
+
+Dopo GROUP BY, si può immaginare una tabella temporanea con:
+- Una riga per ogni gruppo (valore unico nella colonna GROUP BY)
+- Colonne aggregate che contengono i risultati delle funzioni di aggregazione per quel gruppo
+
+**Esempio con MAX:**
+
+```sql
+SELECT user_id, MAX(id) AS max_comment_id
+FROM comments
+GROUP BY user_id;
+```
+
+Per ogni gruppo di `user_id`, trova il valore massimo di `id` tra tutte le righe di quel gruppo.
+
+---
+
+## GROUP BY con JOIN
+
+### Combinare Raggruppamento e Unione di Tabelle
+
+È possibile combinare GROUP BY con JOIN per raggruppare dati da più tabelle.
+
+**Esempio: Nome Autore e Numero di Libri**
+
+```sql
+SELECT authors.name, COUNT(*) AS num_books
+FROM books
+JOIN authors ON authors.id = books.author_id
+GROUP BY authors.name;
+```
+
+**Spiegazione:**
+1. `FROM books JOIN authors`: unisce le tabelle books e authors
+2. `GROUP BY authors.name`: raggruppa per nome dell'autore
+3. `COUNT(*)`: conta i libri per ogni autore
+4. Risultato: nome dell'autore e numero di libri scritti
+
+**Regola importante:** quando si usa GROUP BY con JOIN, tutte le colonne non aggregate nel SELECT devono essere nel GROUP BY.
+
+**Esempio corretto:**
+```sql
+SELECT authors.name, COUNT(*)
+FROM books
+JOIN authors ON authors.id = books.author_id
+GROUP BY authors.name;  -- authors.name è nel GROUP BY
+```
+
+**Esempio errato:**
+```sql
+SELECT authors.name, COUNT(*)
+FROM books
+JOIN authors ON authors.id = books.author_id
+GROUP BY books.author_id;  -- Errore: authors.name non è nel GROUP BY
+```
+
+---
+
+## HAVING: Filtrare i Gruppi
+
+### Definizione
+
+**HAVING** è una clausola SQL che filtra i gruppi dopo che GROUP BY è stato applicato, simile a WHERE ma per gruppi invece che per righe individuali.
+
+**Differenza chiave:**
+- **WHERE**: filtra righe individuali prima del GROUP BY
+- **HAVING**: filtra gruppi dopo il GROUP BY
+
+**Sintassi:**
+```sql
+SELECT columns
+FROM table
+WHERE condition_on_rows
+GROUP BY column
+HAVING condition_on_groups;
+```
+
+### Quando Usare HAVING
+
+Usare HAVING quando:
+- Si vuole filtrare basandosi sul risultato di una funzione di aggregazione
+- Si vuole filtrare i gruppi dopo il raggruppamento
+- La condizione di filtro coinvolge valori aggregati (COUNT, SUM, AVG, ecc.)
+
+**Indicatori linguistici:**
+- "Trova gruppi dove il conteggio è maggiore di X"
+- "Mostra solo i gruppi con somma superiore a Y"
+- "Filtra gruppi basandosi su un valore aggregato"
+
+### Esempio Base: Foto con Più di Due Commenti
+
+```sql
+SELECT photo_id, COUNT(*) AS num_comments
+FROM comments
+WHERE photo_id < 3
+GROUP BY photo_id
+HAVING COUNT(*) > 2;
+```
+
+**Spiegazione:**
+1. `FROM comments`: parte da tutti i commenti
+2. `WHERE photo_id < 3`: filtra solo i commenti per le prime due foto (filtro sulle righe)
+3. `GROUP BY photo_id`: raggruppa per foto
+4. `HAVING COUNT(*) > 2`: filtra solo i gruppi con più di 2 commenti (filtro sui gruppi)
+5. Risultato: solo le foto con ID < 3 che hanno più di 2 commenti
+
+### Ordine di Esecuzione
+
+L'ordine logico di esecuzione è:
+
+1. **FROM**: seleziona la tabella sorgente
+2. **WHERE**: filtra le righe individuali
+3. **GROUP BY**: raggruppa le righe rimanenti
+4. **HAVING**: filtra i gruppi
+5. **SELECT**: seleziona le colonne finali
+
+**Nota:** HAVING viene sempre dopo GROUP BY. Non si può usare HAVING senza GROUP BY.
+
+### Esempio Complesso: Utenti Attivi
+
+Trovare gli utenti che hanno commentato più di 20 volte sulle prime 50 foto:
+
+```sql
+SELECT user_id, COUNT(*) AS num_comments
+FROM comments
+WHERE photo_id <= 50
+GROUP BY user_id
+HAVING COUNT(*) > 20;
+```
+
+**Spiegazione:**
+1. `FROM comments`: tutti i commenti
+2. `WHERE photo_id <= 50`: solo commenti per le prime 50 foto
+3. `GROUP BY user_id`: raggruppa per utente
+4. `HAVING COUNT(*) > 20`: solo utenti con più di 20 commenti
+5. Risultato: ID utente e numero di commenti per utenti attivi
+
+### HAVING con Aggregazioni Complesse
+
+HAVING può usare qualsiasi funzione di aggregazione:
+
+```sql
+SELECT manufacturer, SUM(price * units_sold) AS total_revenue
+FROM phones
+GROUP BY manufacturer
+HAVING SUM(price * units_sold) > 2000000;
+```
+
+**Spiegazione:**
+- Raggruppa telefoni per produttore
+- Calcola il ricavo totale (prezzo × unità vendute) per ogni produttore
+- Filtra solo i produttori con ricavo totale maggiore di 2 milioni
+
+**Nota:** la stessa espressione aggregata (`SUM(price * units_sold)`) appare sia nel SELECT che nell'HAVING. Questo è normale e necessario.
+
+---
+
+## Esercizi di Riepilogo
+
+### GROUP BY Base: Contare Libri per Autore
+
+Scrivere una query che restituisca l'ID dell'autore e il numero di libri che ha scritto.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT author_id, COUNT(*) AS num_books
+FROM books
+GROUP BY author_id;
+```
+
+**Spiegazione:**
+- `GROUP BY author_id`: raggruppa i libri per autore
+- `COUNT(*)`: conta i libri in ciascun gruppo
+- Risultato: una riga per autore con il conteggio dei libri
+
+</div>
+</details>
+
+### GROUP BY con JOIN: Nome Autore e Numero di Libri
+
+Scrivere una query che restituisca il nome dell'autore e il numero di libri scritti, usando JOIN tra books e authors.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT authors.name, COUNT(*) AS num_books
+FROM books
+JOIN authors ON authors.id = books.author_id
+GROUP BY authors.name;
+```
+
+**Spiegazione:**
+- `FROM books JOIN authors`: unisce le tabelle
+- `GROUP BY authors.name`: raggruppa per nome dell'autore
+- `COUNT(*)`: conta i libri per ogni autore
+- Risultato: nome dell'autore e numero di libri
+
+</div>
+</details>
+
+### HAVING: Produttori con Ricavo Elevato
+
+Scrivere una query che restituisca il nome del produttore e il ricavo totale (prezzo × unità vendute) per tutti i telefoni, ma solo per i produttori con ricavo totale maggiore di 2.000.000.
+
+**Tabella phones:** name, manufacturer, price, units_sold
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT manufacturer, SUM(price * units_sold) AS total_revenue
+FROM phones
+GROUP BY manufacturer
+HAVING SUM(price * units_sold) > 2000000;
+```
+
+**Spiegazione:**
+- `GROUP BY manufacturer`: raggruppa i telefoni per produttore
+- `SUM(price * units_sold)`: calcola il ricavo totale per ogni produttore
+- `HAVING SUM(price * units_sold) > 2000000`: filtra solo i produttori con ricavo > 2 milioni
+- Risultato: nome del produttore e ricavo totale per i produttori più redditizi
+
+**Nota:** l'espressione `SUM(price * units_sold)` appare sia nel SELECT che nell'HAVING. Questo è necessario perché HAVING deve filtrare basandosi sul valore aggregato.
+
+</div>
+</details>
+
+### WHERE e HAVING Insieme: Commenti Attivi su Foto Specifiche
+
+Scrivere una query che trovi gli utenti che hanno commentato più di 20 volte sulle prime 50 foto.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT user_id, COUNT(*) AS num_comments
+FROM comments
+WHERE photo_id <= 50
+GROUP BY user_id
+HAVING COUNT(*) > 20;
+```
+
+**Spiegazione:**
+- `FROM comments`: tutti i commenti
+- `WHERE photo_id <= 50`: filtra solo i commenti per le prime 50 foto (filtro sulle righe)
+- `GROUP BY user_id`: raggruppa per utente
+- `HAVING COUNT(*) > 20`: filtra solo gli utenti con più di 20 commenti (filtro sui gruppi)
+- Risultato: ID utente e numero di commenti per utenti attivi
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **GROUP BY**: raggruppa righe con lo stesso valore in una colonna, riducendo il numero di righe nel risultato. Si può selezionare solo colonne nel GROUP BY o risultati di aggregazioni.
+- **Funzioni di aggregazione**: COUNT, SUM, AVG, MIN, MAX riducono molti valori a un singolo valore. Quando usate con GROUP BY, vengono applicate a ciascun gruppo separatamente.
+- **COUNT(*) vs COUNT(column)**: COUNT(*) conta tutte le righe, COUNT(column) conta solo valori non NULL. Preferire COUNT(*) quando si vuole contare tutte le righe.
+- **GROUP BY con JOIN**: è possibile combinare GROUP BY con JOIN. Tutte le colonne non aggregate nel SELECT devono essere nel GROUP BY.
+- **HAVING**: filtra i gruppi dopo GROUP BY, simile a WHERE ma per gruppi invece che per righe. Si usa quando il filtro coinvolge funzioni di aggregazione.
+- **Differenza WHERE vs HAVING**: WHERE filtra righe individuali prima del GROUP BY, HAVING filtra gruppi dopo il GROUP BY. WHERE non può usare aggregazioni, HAVING può.
+- **Ordine di esecuzione**: FROM → WHERE → GROUP BY → HAVING → SELECT. HAVING viene sempre dopo GROUP BY.
+- **Espressioni aggregate in HAVING**: quando si filtra basandosi su un valore aggregato, la stessa espressione aggregata può apparire sia nel SELECT che nell'HAVING.
