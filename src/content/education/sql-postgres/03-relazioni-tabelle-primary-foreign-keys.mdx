@@ -1,0 +1,509 @@
+---
+title: "Relazioni tra tabelle: Primary Keys e Foreign Keys"
+description: "Database multi-tabella, tipi di relazioni, primary keys e foreign keys, data consistency, vincoli ON DELETE"
+date: 2026-02-19
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 3
+---
+
+## Introduzione
+
+Finora si è lavorato con database contenenti una singola tabella. Nelle applicazioni reali è raro avere un solo insieme di dati: i database contengono più tabelle correlate.
+
+Questo capitolo introduce la progettazione di database multi-tabella, i tipi di relazioni tra tabelle (one-to-many, many-to-one, one-to-one, many-to-many), e come implementarle usando **primary keys** e **foreign keys**. Si coprono anche la consistenza dei dati e i vincoli di eliminazione (ON DELETE).
+
+---
+
+## Database Multi-Tabella
+
+### Il Passaggio alla Complessità
+
+Nelle applicazioni reali, i database contengono più tabelle che rappresentano entità diverse e le loro relazioni. Ad esempio, un'applicazione di photo sharing può avere:
+
+- Una tabella di utenti
+- Una tabella di foto
+- Una tabella di commenti
+- Una tabella di like
+
+Ogni tabella memorizza un tipo di risorsa, e le relazioni tra tabelle permettono di collegare i dati (es. quali foto appartengono a un utente, quali commenti sono associati a una foto).
+
+### Progettazione di un Database
+
+Quando si progetta un database, si identificano:
+
+1. **Le risorse principali**: quali entità devono essere memorizzate (utenti, foto, commenti, ecc.)
+2. **Le relazioni**: come le risorse si collegano tra loro (un utente ha molte foto, una foto ha molti commenti)
+
+Per funzionalità comuni (autenticazione, sistemi di like, commenti), esistono risorse online che mostrano schemi di database consolidati. Per funzionalità originali, si parte dai mockup dell'interfaccia per identificare le risorse e le loro relazioni.
+
+---
+
+## Tipi di Relazioni
+
+Esistono quattro tipi di relazioni tra tabelle. La scelta dipende dalla prospettiva da cui si guarda la relazione.
+
+### One-to-Many (Uno-a-Molti)
+
+Una riga di una tabella è associata a molte righe di un'altra tabella.
+
+**Esempio: Utenti e Foto**
+- Un utente può avere molte foto
+- In linguaggio comune: "un utente **ha molte** foto"
+
+**Indicatore linguistico:** quando si dice "ha molte", si tratta di una relazione one-to-many.
+
+### Many-to-One (Molti-a-Uno)
+
+Molte righe di una tabella sono associate a una singola riga di un'altra tabella.
+
+**Esempio: Foto e Utenti**
+- Molte foto appartengono a un singolo utente
+- In linguaggio comune: "una foto **ha uno** utente" o "molte foto appartengono a un utente"
+
+**Nota:** Many-to-One è il rovescio di One-to-Many. La stessa relazione può essere descritta in entrambi i modi a seconda della prospettiva.
+
+### One-to-One (Uno-a-Uno)
+
+Una riga di una tabella è associata a esattamente una riga di un'altra tabella, e viceversa.
+
+**Esempi:**
+- Una barca ha un capitano; un capitano ha una barca
+- Una capitale ha un paese; un paese ha una capitale
+- Una persona ha una patente di guida; una patente appartiene a una persona
+
+### Many-to-Many (Molti-a-Molti)
+
+Molte righe di una tabella sono associate a molte righe di un'altra tabella.
+
+**Esempi:**
+- Studenti e classi: uno studente frequenta molte classi; una classe ha molti studenti
+- Attori e film: un attore recita in molti film; un film ha molti attori
+- Ingegneri e progetti: un ingegnere lavora su molti progetti; un progetto coinvolge molti ingegneri
+
+**Nota:** Le relazioni many-to-many richiedono una tabella intermedia (tabella di join) per essere implementate nel database.
+
+---
+
+## Primary Keys
+
+### Definizione
+
+Una **primary key** è una colonna (o insieme di colonne) che identifica in modo univoco ogni riga di una tabella.
+
+**Caratteristiche:**
+- Ogni valore nella colonna è **univoco**: non esistono due righe con lo stesso valore
+- Il valore **non cambia mai**: una volta assegnato, rimane fisso per quella riga
+- Permette di identificare una riga specifica in modo affidabile
+
+**Esempio:**
+Se una tabella `users` ha una colonna `id` come primary key con valore `1`, quella riga sarà sempre identificabile con `id = 1`, indipendentemente dall'ordinamento o da altre modifiche.
+
+### Convenzioni
+
+**Nome della colonna:**
+- Di solito si chiama `id`
+- Evitare di usare colonne esistenti come primary key se possono avere duplicati (es. il nome di una città)
+
+**Tipo di dato:**
+- **INTEGER** con auto-incremento (SERIAL in PostgreSQL)
+- **UUID** (Universal Unique Identifier) per identificatori globalmente unici
+
+**Comportamento:**
+- Una volta assegnato un ID a una riga, non viene mai riutilizzato, anche se la riga viene eliminata
+- Se si elimina la riga con `id = 1`, non ci sarà mai un'altra riga con `id = 1`
+
+---
+
+## Foreign Keys
+
+### Definizione
+
+Una **foreign key** è una colonna che memorizza il valore della primary key di un'altra tabella (o della stessa tabella) per stabilire una relazione tra righe.
+
+**Scopo:**
+- Collegare una riga a un'altra riga in un'altra tabella
+- Implementare relazioni one-to-many, many-to-one, one-to-one e many-to-many
+
+**Esempio:**
+Nella tabella `photos`, una colonna `user_id` può contenere l'ID dell'utente che ha creato quella foto. Il valore in `user_id` corrisponde al valore `id` nella tabella `users`.
+
+### Regola: "Many Side Gets the Foreign Key"
+
+Quando si stabilisce una relazione, la tabella sul lato "many" (molti) riceve la colonna foreign key.
+
+**Esempio:**
+- Relazione: "un utente ha molte foto" (one-to-many)
+- La tabella `photos` è sul lato "many"
+- Quindi `photos` riceve la colonna `user_id` (foreign key)
+
+**Altro esempio:**
+- Relazione: "una foto ha molti commenti" (one-to-many)
+- La tabella `comments` è sul lato "many"
+- Quindi `comments` riceve la colonna `photo_id` (foreign key)
+
+### Caratteristiche delle Foreign Keys
+
+**Unicità:**
+- Le foreign keys **non devono essere uniche**
+- Molte righe possono avere lo stesso valore nella foreign key (es. molte foto con `user_id = 1`)
+
+**Naming convention:**
+- Nome: `nome_tabella_riferita_id` (es. `user_id`, `photo_id`)
+- Il nome indica quale tabella viene referenziata
+
+**Valore:**
+- Deve corrispondere esattamente al valore della primary key della riga referenziata
+- Se si referenzia `users.id = 4`, la foreign key deve contenere `4`
+
+**Modificabilità:**
+- A differenza delle primary keys, le foreign keys **possono cambiare** se la relazione cambia
+- Esempio: si può riassegnare una foto a un altro utente cambiando `user_id`
+
+---
+
+## Creare Tabelle con Primary Keys
+
+### Tipo SERIAL
+
+In PostgreSQL, per creare una colonna primary key con auto-incremento si usa il tipo **SERIAL**:
+
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50)
+);
+```
+
+**Comportamento di SERIAL:**
+- PostgreSQL genera automaticamente i valori per la colonna `id`
+- Il primo valore è `1`
+- Ogni nuovo inserimento incrementa il valore di `1`
+- Non è necessario specificare `id` durante l'INSERT
+
+**Inserire dati:**
+```sql
+INSERT INTO users (username)
+VALUES 
+    ('Monahan93'),
+    ('Pfeiffer'),
+    ('Sid99'),
+    ('Strowman');
+```
+
+Dopo l'inserimento, ogni utente avrà un `id` univoco assegnato automaticamente (1, 2, 3, 4).
+
+---
+
+## Creare Tabelle con Foreign Keys
+
+### Sintassi REFERENCES
+
+Per creare una colonna foreign key, si usa la keyword **REFERENCES**:
+
+```sql
+CREATE TABLE photos (
+    id SERIAL PRIMARY KEY,
+    url VARCHAR(200),
+    user_id INTEGER REFERENCES users(id)
+);
+```
+
+**Spiegazione:**
+- `user_id INTEGER`: colonna di tipo INTEGER
+- `REFERENCES users(id)`: indica che questa colonna referenzia la colonna `id` della tabella `users`
+- PostgreSQL applica vincoli di integrità referenziale per garantire che i valori esistano
+
+**Inserire dati:**
+```sql
+INSERT INTO photos (url, user_id)
+VALUES 
+    ('http://one.jpg', 4),
+    ('http://two.jpg', 1),
+    ('http://25.jpg', 1),
+    ('http://36.jpg', 1);
+```
+
+Ogni foto è associata a un utente tramite `user_id`.
+
+### Tabelle con Multiple Foreign Keys
+
+Una tabella può avere più foreign keys per riferirsi a tabelle diverse:
+
+```sql
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    contents VARCHAR(240),
+    photo_id INTEGER REFERENCES photos(id),
+    user_id INTEGER REFERENCES users(id)
+);
+```
+
+La tabella `comments` ha due foreign keys:
+- `photo_id`: referenzia la foto a cui appartiene il commento
+- `user_id`: referenzia l'utente che ha creato il commento
+
+---
+
+## Query con Foreign Keys
+
+### Filtrare per Foreign Key
+
+Per trovare tutte le righe associate a una specifica riga di un'altra tabella, si usa WHERE con la foreign key:
+
+```sql
+-- Trovare tutte le foto di un utente specifico
+SELECT * FROM photos
+WHERE user_id = 4;
+```
+
+Restituisce tutte le foto associate all'utente con `id = 4`.
+
+**Esempio pratico:**
+Questa query è utile per costruire una pagina profilo che mostra tutte le foto pubblicate da un utente.
+
+### JOIN Statements (Introduzione)
+
+Le query **JOIN** permettono di combinare dati da più tabelle in un unico result set:
+
+```sql
+SELECT photos.url, users.username
+FROM photos
+JOIN users ON users.id = photos.user_id;
+```
+
+**Spiegazione:**
+- `JOIN users`: combina la tabella `photos` con `users`
+- `ON users.id = photos.user_id`: condizione di join (corrispondenza tra primary key e foreign key)
+- Il risultato contiene colonne da entrambe le tabelle
+
+**Risultato:**
+Ogni riga mostra una foto con il nome utente del creatore. Utile per costruire un feed principale che mostra foto e informazioni sugli autori.
+
+**Nota:** I JOIN sono un argomento complesso che verrà approfondito in seguito. Questa è solo un'introduzione.
+
+---
+
+## Data Consistency
+
+### Vincoli di Integrità Referenziale
+
+Le foreign keys garantiscono la **consistenza dei dati** impedendo riferimenti a righe inesistenti.
+
+### Scenari di Inserimento
+
+Quando si inserisce una riga con una foreign key, ci sono tre scenari possibili:
+
+**1. Riferimento valido:**
+```sql
+-- L'utente con id=1 esiste
+INSERT INTO photos (url, user_id)
+VALUES ('http://photo.jpg', 1);
+```
+Inserimento riuscito: la foreign key punta a una riga esistente.
+
+**2. Riferimento non valido:**
+```sql
+-- L'utente con id=9999 NON esiste
+INSERT INTO photos (url, user_id)
+VALUES ('http://photo.jpg', 9999);
+```
+**Errore:** `foreign key constraint violation`. PostgreSQL impedisce l'inserimento perché non esiste un utente con `id = 9999`.
+
+**3. Nessun riferimento (NULL):**
+```sql
+-- Foto senza utente associato
+INSERT INTO photos (url, user_id)
+VALUES ('http://photo.jpg', NULL);
+```
+Inserimento riuscito: `NULL` indica che non c'è relazione. Utile per foto "pubbliche" o foto del giorno non associate a un utente.
+
+---
+
+## Vincoli ON DELETE
+
+Quando si elimina una riga referenziata da altre righe tramite foreign keys, bisogna decidere cosa fare con le righe dipendenti.
+
+### Opzioni Disponibili
+
+**ON DELETE RESTRICT** (default):
+- Impedisce l'eliminazione se esistono righe che referenziano quella riga
+- Genera un errore se si tenta di eliminare
+
+**ON DELETE NO ACTION:**
+- Simile a RESTRICT, con una differenza tecnica minima che non ha impatto pratico a questo livello
+
+**ON DELETE CASCADE:**
+- Elimina automaticamente tutte le righe dipendenti quando si elimina la riga referenziata
+- Utile quando si vuole eliminare un'entità e tutti i suoi dati correlati
+
+**ON DELETE SET NULL:**
+- Imposta a `NULL` la foreign key delle righe dipendenti quando si elimina la riga referenziata
+- Le righe dipendenti rimangono nel database ma senza relazione
+
+**ON DELETE SET DEFAULT:**
+- Imposta un valore di default alla foreign key delle righe dipendenti
+- Richiede che la colonna abbia un valore di default definito
+
+### Sintassi
+
+Per specificare un vincolo ON DELETE, si aggiunge la clausola dopo la definizione della foreign key:
+
+```sql
+CREATE TABLE photos (
+    id SERIAL PRIMARY KEY,
+    url VARCHAR(200),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+### Esempi Pratici
+
+**ON DELETE CASCADE:**
+
+```sql
+-- Creare tabella con CASCADE
+CREATE TABLE photos (
+    id SERIAL PRIMARY KEY,
+    url VARCHAR(200),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Eliminare un utente
+DELETE FROM users WHERE id = 1;
+
+-- Tutte le foto associate vengono eliminate automaticamente
+SELECT * FROM photos; -- Le foto con user_id = 1 non ci sono più
+```
+
+**Quando usare CASCADE:**
+- Eliminare un post di un forum e tutti i suoi commenti
+- Eliminare un articolo di blog e tutti i suoi commenti
+- Eliminare un utente e tutti i suoi contenuti
+
+**ON DELETE SET NULL:**
+
+```sql
+-- Creare tabella con SET NULL
+CREATE TABLE photos (
+    id SERIAL PRIMARY KEY,
+    url VARCHAR(200),
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Eliminare un utente
+DELETE FROM users WHERE id = 4;
+
+-- Le foto rimangono ma user_id diventa NULL
+SELECT * FROM photos; -- Le foto con user_id = 4 ora hanno user_id = NULL
+```
+
+**Quando usare SET NULL:**
+- Eliminare un utente problematico ma mantenere i contenuti che ha creato
+- Eliminare un'entità ma preservare i dati storici
+
+### DROP TABLE
+
+Per eliminare completamente una tabella e tutti i suoi dati:
+
+```sql
+DROP TABLE photos;
+```
+
+Dopo un DROP TABLE, la tabella non esiste più e qualsiasi query su di essa genererà un errore.
+
+---
+
+## Esercizi di Riepilogo
+
+### Creare Tabelle con Foreign Keys
+
+Creare una tabella `crew_members` con una foreign key `boat_id` che referenzia la tabella `boats`. Poi scrivere una query per trovare tutti i membri dell'equipaggio associati alla barca con `id = 1`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+-- Creare tabella boats
+CREATE TABLE boats (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR
+);
+
+-- Creare tabella crew_members con foreign key
+CREATE TABLE crew_members (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR,
+    boat_id INTEGER REFERENCES boats(id)
+);
+
+-- Inserire dati
+INSERT INTO boats (name)
+VALUES ('Rogue Wave'), ('Harbor Master');
+
+INSERT INTO crew_members (first_name, boat_id)
+VALUES ('Alex', 1), ('Lucia', 1), ('Ari', 2);
+
+-- Query per trovare membri dell'equipaggio della barca con id=1
+SELECT * FROM crew_members WHERE boat_id = 1;
+```
+
+</div>
+</details>
+
+### Schema Completo Photo Sharing
+
+Creare lo schema completo per un'applicazione di photo sharing con tabelle `users`, `photos` e `comments`, includendo tutte le relazioni appropriate.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+-- Tabella users
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50)
+);
+
+-- Tabella photos con foreign key verso users
+CREATE TABLE photos (
+    id SERIAL PRIMARY KEY,
+    url VARCHAR(200),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Tabella comments con foreign keys verso users e photos
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    contents VARCHAR(240),
+    photo_id INTEGER REFERENCES photos(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+```
+
+**Spiegazione:**
+- `photos.user_id`: ogni foto appartiene a un utente
+- `comments.photo_id`: ogni commento appartiene a una foto
+- `comments.user_id`: ogni commento è creato da un utente
+- `ON DELETE CASCADE` su `photos.user_id`: eliminando un utente, si eliminano le sue foto
+- `ON DELETE CASCADE` su `comments.photo_id`: eliminando una foto, si eliminano i suoi commenti
+- `ON DELETE SET NULL` su `comments.user_id`: eliminando un utente, i suoi commenti rimangono ma senza autore
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **Database multi-tabella**: le applicazioni reali usano più tabelle correlate per rappresentare entità diverse e le loro relazioni.
+- **Tipi di relazioni**: One-to-Many, Many-to-One, One-to-One, Many-to-Many. La stessa relazione può essere descritta diversamente a seconda della prospettiva.
+- **Primary Key**: colonna che identifica univocamente ogni riga. Valori unici e immutabili. Di solito `id` di tipo SERIAL.
+- **Foreign Key**: colonna che memorizza il valore della primary key di un'altra tabella per stabilire relazioni. La tabella sul lato "many" riceve la foreign key.
+- **SERIAL**: tipo di dato PostgreSQL che genera automaticamente valori incrementali per le primary keys.
+- **REFERENCES**: keyword per definire foreign keys. Sintassi: `colonna INTEGER REFERENCES tabella(colonna_riferita)`.
+- **Data Consistency**: le foreign keys garantiscono che i riferimenti siano validi, impedendo riferimenti a righe inesistenti.
+- **ON DELETE**: vincoli che definiscono cosa succede quando si elimina una riga referenziata. Opzioni: RESTRICT (default), CASCADE, SET NULL, SET DEFAULT.
+- **JOIN**: permette di combinare dati da più tabelle. Argomento complesso che verrà approfondito in seguito.

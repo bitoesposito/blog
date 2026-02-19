@@ -1,0 +1,389 @@
+---
+title: "Filtrare risultati: WHERE, UPDATE e DELETE"
+description: "Filtrare le righe con WHERE, operatori di confronto, condizioni composte, calcoli nella clausola WHERE, aggiornare e eliminare record"
+date: 2026-02-19
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 2
+---
+
+## Introduzione
+
+Finora le query hanno restituito tutte le righe delle tabelle. In molti casi serve invece limitare i risultati a un sottoinsieme di righe che soddisfano determinati criteri. In SQL questo si ottiene con la clausola **WHERE**, che permette di filtrare il result set.
+
+In questo capitolo si affrontano: l’ordine di valutazione delle clausole (FROM, WHERE, SELECT), gli operatori di confronto, condizioni composte con AND/OR, l’uso di espressioni e calcoli in WHERE, e le operazioni **UPDATE** e **DELETE** con criteri di filtro.
+
+---
+
+## Filtrare con WHERE
+
+### Sintassi Base
+
+Per restituire solo le righe che soddisfano una condizione si usa la keyword **WHERE** dopo **FROM**:
+
+```sql
+SELECT name, area
+FROM cities
+WHERE area > 4000;
+```
+
+**Comportamento:**
+- La condizione `area > 4000` viene valutata per ogni riga
+- Solo le righe per cui la condizione è vera entrano nel result set
+- Nell’esempio si ottengono solo Tokyo e Shanghai, le uniche città con area maggiore di 4000
+
+### Ordine di Valutazione
+
+È utile non leggere la query da sinistra a destra come se fosse l’ordine di esecuzione. PostgreSQL valuta le parti della query in un ordine preciso:
+
+1. **FROM**: viene considerata per prima la sorgente dati (tutte le righe della tabella)
+2. **WHERE**: si applica il filtro e si tengono solo le righe che soddisfano la condizione
+3. **SELECT**: sulle righe rimanenti si scelgono le colonne da restituire
+
+Quindi l’ordine logico è: **FROM → WHERE → SELECT**.
+
+**Esempio con la tabella cities:**
+- FROM restituisce tutte le città (Tokyo, Delhi, Shanghai, São Paulo)
+- WHERE area > 4000 esclude Delhi e São Paulo
+- Restano Tokyo e Shanghai
+- SELECT name, area restituisce solo nome e area per quelle due righe
+
+Avere chiaro questo ordine aiuta a scrivere e correggere query più complesse.
+
+---
+
+## Operatori di Confronto
+
+Oltre a `>` (maggiore di), in **WHERE** si possono usare altri operatori di confronto.
+
+### Uguaglianza e Disuguaglianza
+
+**Confronto per uguaglianza:** si usa un solo `=` (in SQL il confronto non è `==`):
+
+```sql
+SELECT name, area
+FROM cities
+WHERE area = 8223;
+```
+
+Restituisce solo Tokyo, l’unica riga con area uguale a 8223.
+
+**Non uguale:** due forme equivalenti:
+
+```sql
+-- Con !=
+SELECT name, area FROM cities WHERE area != 8223;
+
+-- Con <>
+SELECT name, area FROM cities WHERE area <> 8223;
+```
+
+Entrambe restituiscono tutte le città con area diversa da 8223.
+
+**Riepilogo operatori:**
+
+| Operatore | Significato |
+|-----------|-------------|
+| `=` | uguale a |
+| `!=` o `<>` | diverso da |
+| `<` | minore di |
+| `>` | maggiore di |
+| `<=` | minore o uguale a |
+| `>=` | maggiore o uguale a |
+
+La condizione nel WHERE viene valutata **per ogni riga** della tabella.
+
+---
+
+## BETWEEN, IN e NOT IN
+
+### BETWEEN
+
+**BETWEEN** verifica se un valore è compreso tra due estremi (inclusi):
+
+```sql
+SELECT name, area
+FROM cities
+WHERE area BETWEEN 2000 AND 4000;
+```
+
+Restituisce le città con area tra 2000 e 4000 (inclusi), ad esempio Delhi e São Paulo. Aumentando il limite superiore (es. 5000) si include anche Shanghai.
+
+Sintassi: `colonna BETWEEN valore_min AND valore_max`.
+
+### IN e NOT IN
+
+**IN** verifica se un valore è presente in un elenco:
+
+```sql
+SELECT name, area
+FROM cities
+WHERE name IN ('Delhi', 'Shanghai');
+```
+
+Restituisce solo Delhi e Shanghai. La lista va tra parentesi e i valori sono separati da virgola; le stringhe tra virgolette singole.
+
+**NOT IN** esclude i valori presenti nella lista:
+
+```sql
+SELECT name, area
+FROM cities
+WHERE name NOT IN ('Delhi', 'Shanghai');
+```
+
+Restituisce Tokyo e São Paulo.
+
+**IN e NOT IN con numeri:**
+
+```sql
+SELECT name, area
+FROM cities
+WHERE area IN (3043, 8223);
+```
+
+Restituisce le città con area 3043 o 8223 (es. São Paulo e Tokyo). Con `NOT IN (3043, 8223)` si ottengono le altre (es. Delhi e Shanghai).
+
+---
+
+## Condizioni Composte: AND e OR
+
+È possibile combinare più condizioni in un solo **WHERE** usando **AND** e **OR**.
+
+### AND
+
+Con **AND** una riga deve soddisfare **tutte** le condizioni:
+
+```sql
+SELECT name, area
+FROM cities
+WHERE area NOT IN (3043, 8223)
+  AND name = 'Delhi';
+```
+
+Risultato: solo Delhi (area non in lista e nome uguale a Delhi).
+
+### OR
+
+Con **OR** basta che sia soddisfatta **almeno una** condizione:
+
+```sql
+SELECT name, area
+FROM cities
+WHERE area NOT IN (3043, 8223)
+   OR name = 'Delhi';
+```
+
+Risultato: Delhi (nome = Delhi) e Shanghai (area non in lista).
+
+Si possono concatenare più condizioni con AND e OR; per controllare la precedenza si usano le parentesi.
+
+---
+
+## Calcoli nella Clausola WHERE
+
+In **WHERE** non si è limitati a confrontare colonne con costanti: si possono usare **espressioni e calcoli**.
+
+**Esempio: densità di popolazione maggiore di 6000**
+
+```sql
+SELECT name, population / area AS population_density
+FROM cities
+WHERE population / area > 6000;
+```
+
+**Ordine di valutazione:** prima si calcola `population / area` per ogni riga, poi si confronta il risultato con 6000. Solo le righe con densità > 6000 (es. Delhi e São Paulo) vengono restituite.
+
+**Nota:** l’espressione va ripetuta in WHERE; non si può usare l’alias `population_density` definito in SELECT, perché WHERE viene valutato prima di SELECT. Stessa cosa per qualsiasi altra colonna calcolata.
+
+---
+
+## Aggiornare Record (UPDATE)
+
+### Sintassi
+
+Per modificare i valori di una o più colonne si usa **UPDATE**:
+
+```sql
+UPDATE cities
+SET population = 39505000
+WHERE name = 'Tokyo';
+```
+
+**Struttura:**
+- **UPDATE** *tabella*: tabella da modificare
+- **SET** *colonna = valore*: colonna e nuovo valore
+- **WHERE** *condizione*: quali righe aggiornare
+
+Solo le righe che soddisfano la condizione vengono aggiornate. Senza WHERE verrebbero aggiornate tutte le righe della tabella.
+
+**Verifica:** dopo l’UPDATE il client di solito conferma l’esito. Per controllare i dati si può eseguire:
+
+```sql
+SELECT * FROM cities;
+```
+
+e verificare che Tokyo abbia population = 39505000.
+
+### Attenzione alla Clausola WHERE
+
+La **WHERE** in UPDATE è fondamentale: deve identificare in modo univoco le righe da modificare.
+
+Se esistono più righe con lo stesso valore (es. due città con nome "Shanghai" in paesi diversi), una condizione come `WHERE name = 'Shanghai'` aggiornerebbe **tutte** quelle righe. In questi casi conviene usare condizioni più precise (es. nome e paese, o un identificatore univoco).
+
+---
+
+## Eliminare Record (DELETE)
+
+### Sintassi
+
+Per rimuovere righe da una tabella si usa **DELETE**:
+
+```sql
+DELETE FROM cities
+WHERE name = 'Tokyo';
+```
+
+**Struttura:**
+- **DELETE FROM** *tabella*: tabella da cui eliminare righe
+- **WHERE** *condizione*: quali righe eliminare
+
+Solo le righe che soddisfano la condizione vengono eliminate. Senza WHERE si eliminerebbero tutte le righe della tabella.
+
+**Esempio che elimina più righe:**
+
+```sql
+DELETE FROM cities
+WHERE name != 'Tokyo';
+```
+
+Elimina tutte le città il cui nome è diverso da Tokyo (Delhi, Shanghai, São Paulo).
+
+Come per UPDATE, la WHERE deve essere il più possibile precisa per evitare di cancellare righe non volute.
+
+### Reinserire una Riga (INSERT)
+
+Dopo un DELETE si può reinserire una riga con **INSERT INTO**:
+
+```sql
+INSERT INTO cities (name, country, population, area)
+VALUES ('Tokyo', 'Japan', 38505000, 8223);
+```
+
+L’ordine e i tipi dei valori devono corrispondere alle colonne indicate.
+
+---
+
+## Esercizi di Riepilogo
+
+### Filtrare per colonna numerica
+
+Scrivere una query che restituisca **name** e **price** di tutti i telefoni con **units_sold** maggiore di 5000 (tabella `phones` con colonne: name, manufacturer, price, units_sold).
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name, price
+FROM phones
+WHERE units_sold > 5000;
+```
+
+</div>
+</details>
+
+### Filtrare con IN (manufacturer)
+
+Scrivere una query che restituisca **name** e **manufacturer** per tutti i telefoni prodotti da Apple o Samsung.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione 1: IN</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name, manufacturer
+FROM phones
+WHERE manufacturer IN ('Apple', 'Samsung');
+```
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione 2: OR</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name, manufacturer
+FROM phones
+WHERE manufacturer = 'Apple' OR manufacturer = 'Samsung';
+```
+
+</div>
+</details>
+
+### Calcolo in SELECT e WHERE
+
+Scrivere una query che restituisca **name** e **total_revenue** (prezzo × units_sold) per i telefoni con ricavo totale maggiore di 1.000.000. Usare **AS** per rinominare la colonna calcolata in SELECT; in WHERE usare l’espressione (price * units_sold), non l’alias.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name, (price * units_sold) AS total_revenue
+FROM phones
+WHERE (price * units_sold) > 1000000;
+```
+
+Il numero 1.000.000 va scritto senza separatori delle migliaia: `1000000`.
+
+</div>
+</details>
+
+### UPDATE
+
+Scrivere una query che aggiorni **units_sold** a 8543 per il telefono con **name** = 'N8'.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+UPDATE phones
+SET units_sold = 8543
+WHERE name = 'N8';
+```
+
+</div>
+</details>
+
+### DELETE
+
+Scrivere una query che elimini tutti i telefoni con **manufacturer** = 'Samsung'.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+DELETE FROM phones
+WHERE manufacturer = 'Samsung';
+```
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **WHERE** filtra le righe; l’ordine logico di valutazione è FROM → WHERE → SELECT.
+- **Operatori di confronto:** `=`, `!=`, `<>`, `<`, `>`, `<=`, `>=`.
+- **BETWEEN**: valore compreso tra due estremi (inclusi).
+- **IN** / **NOT IN**: valore in una lista o non in una lista.
+- **AND** e **OR** permettono condizioni composte; si usano parentesi per la precedenza.
+- In **WHERE** si possono usare espressioni (es. `population / area > 6000`); non si può usare l’alias definito in SELECT.
+- **UPDATE** *tabella* **SET** *colonna = valore* **WHERE** *condizione*: aggiorna solo le righe che soddisfano la condizione.
+- **DELETE FROM** *tabella* **WHERE** *condizione*: elimina solo le righe che soddisfano la condizione.
+- Per UPDATE e DELETE è essenziale usare una WHERE precisa per evitare modifiche o cancellazioni involontarie.
