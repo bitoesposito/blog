@@ -155,3 +155,57 @@
 @utility small {
   @apply text-sm leading-6 [&_code]:text-xs [&_img,video,figure,details,blockquote,.katex-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
 }
+
+/* Stili per la stampa - forza testo nero */
+@media print {
+  /* Nascondi elementi di navigazione durante la stampa */
+  header[role="banner"],
+  header,
+  footer,
+  #scroll-to-top,
+  button[aria-label="Torna in cima"],
+  nav {
+    display: none !important;
+  }
+
+  * {
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  .prose,
+  .prose * {
+    color: #000 !important;
+  }
+
+  .prose :where(p):not(:where(.not-prose, .not-prose *)) {
+    color: #000 !important;
+  }
+
+  .prose :where(li):not(:where(.not-prose, .not-prose *)) {
+    color: #000 !important;
+  }
+
+  .prose :where(td):not(:where(.not-prose, .not-prose *)) {
+    color: #000 !important;
+  }
+
+  .prose :where(.katex-display):not(:where(.not-prose, .not-prose *)) {
+    color: #000 !important;
+  }
+
+  .prose :where(blockquote):not(:where(.not-prose, .not-prose *)) {
+    color: #000 !important;
+  }
+
+  .prose :where(blockquote *):not(:where(.not-prose, .not-prose *)) {
+    color: #000 !important;
+  }
+
+  .text-muted-foreground,
+  .text-foreground\/80,
+  [class*="text-muted"],
+  [class*="text-foreground/"] {
+    color: #000 !important;
+  }
+}
