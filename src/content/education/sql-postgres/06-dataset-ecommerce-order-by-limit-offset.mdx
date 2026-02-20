@@ -1,0 +1,314 @@
+---
+title: "Dataset E-Commerce: ORDER BY, LIMIT e OFFSET"
+description: "Schema E-Commerce (users, products, orders), relazioni many-to-many e join table, ordinamento con ORDER BY, LIMIT e OFFSET per paginazione"
+date: 2026-02-20
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 6
+---
+
+## Introduzione
+
+Questo capitolo introduce un nuovo dataset che simula un'applicazione **E-Commerce**: utenti, prodotti e ordini. Lo schema permette di rivedere GROUP BY e JOIN e di affrontare due clausole fondamentali per il controllo del risultato: **ORDER BY** (ordinamento) e **LIMIT** / **OFFSET** (limite e paginazione).
+
+Vengono trattati: struttura del dataset, relazione many-to-many tramite tabella degli ordini, ordinamento per una o più colonne, limitazione del numero di righe e paginazione.
+
+---
+
+## Dataset E-Commerce
+
+### Schema delle Tabelle
+
+Il database è composto da tre tabelle correlate:
+
+**Tabella `users`:**
+- **id**: SERIAL PRIMARY KEY
+- **first_name**: VARCHAR
+- **last_name**: VARCHAR
+
+**Tabella `products`:**
+- **id**: SERIAL PRIMARY KEY
+- **name**: VARCHAR
+- **department**: VARCHAR (categoria del prodotto)
+- **price**: INTEGER (es. in centesimi o unità monetarie)
+- **weight**: INTEGER (es. peso per spedizione)
+
+**Tabella `orders`:**
+- **id**: SERIAL PRIMARY KEY
+- **user_id**: INTEGER REFERENCES users(id) — utente che effettua l'ordine
+- **product_id**: INTEGER REFERENCES products(id) — prodotto ordinato
+- **paid**: BOOLEAN — se l'ordine è stato pagato
+
+### Creazione dello Schema
+
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR,
+    last_name VARCHAR
+);
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    price INTEGER,
+    weight INTEGER
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    product_id INTEGER REFERENCES products(id),
+    paid BOOLEAN
+);
+```
+
+Dopo la creazione delle tabelle, si inseriscono utenti, prodotti e ordini. Il dataset completo contiene decine di utenti, circa 100 prodotti e centinaia di ordini. Per esercitarsi si può usare un subset di dati o il file SQL fornito dal corso.
+
+### Relazione Many-to-Many e Join Table
+
+Tra **utenti** e **prodotti** la relazione è **many-to-many**: un utente può ordinare molti prodotti e un prodotto può essere ordinato da molti utenti.
+
+Questa relazione non si modella con una sola foreign key in una delle due tabelle. Si usa una tabella intermedia che collega le due entità: la tabella **orders** funge da **join table** (tabella di giunzione).
+
+- Ogni riga in `orders` rappresenta un ordine: un utente (`user_id`) ha ordinato un prodotto (`product_id`).
+- Tramite `orders` si risale da un utente ai suoi ordini e ai prodotti, o da un prodotto agli ordini e agli utenti.
+
+Per interrogare dati che coinvolgono utenti e prodotti si useranno quindi JOIN attraverso `orders`.
+
+---
+
+## ORDER BY: Ordinare i Risultati
+
+### Sintassi Base
+
+**ORDER BY** ordina le righe del result set in base al valore di una o più colonne.
+
+**Sintassi:**
+```sql
+SELECT columns
+FROM table
+ORDER BY column [ASC | DESC];
+```
+
+- **ASC** (ascending): ordine crescente (valori minori prima). È il **default** se non si specifica nulla.
+- **DESC** (descending): ordine decrescente (valori maggiori prima).
+
+### Ordinamento per Colonna Numerica
+
+```sql
+SELECT * FROM products
+ORDER BY price;
+```
+
+Ordina i prodotti dal prezzo minore al maggiore (ASC implicito).
+
+```sql
+SELECT * FROM products
+ORDER BY price DESC;
+```
+
+Ordina dal prezzo maggiore al minore.
+
+### Ordinamento per Colonna Testuale
+
+Con colonne di tipo stringa (VARCHAR, TEXT), l'ordinamento è tipicamente **alfabetico**:
+
+```sql
+SELECT * FROM products
+ORDER BY name;
+```
+
+Ordine dalla A alla Z.
+
+```sql
+SELECT * FROM products
+ORDER BY name DESC;
+```
+
+Ordine dalla Z alla A.
+
+### Ordinamento per Più Colonne
+
+Si può specificare più di una colonna: l'ordinamento principale è sulla prima; a parità di valore si usa la seconda, e così via.
+
+```sql
+SELECT * FROM products
+ORDER BY price, weight;
+```
+
+Ordina prima per `price` (crescente), poi per `weight` (crescente) quando il prezzo è uguale.
+
+Ogni colonna può avere il proprio criterio ASC/DESC:
+
+```sql
+SELECT * FROM products
+ORDER BY price ASC, weight DESC;
+```
+
+Prezzo crescente; a parità di prezzo, peso decrescente.
+
+---
+
+## LIMIT e OFFSET
+
+### LIMIT
+
+**LIMIT** limita il numero massimo di righe restituite dalla query.
+
+**Sintassi:**
+```sql
+SELECT columns
+FROM table
+ORDER BY column  -- spesso usato insieme a LIMIT
+LIMIT n;
+```
+
+**Esempi:**
+- `LIMIT 5`: solo le prime 5 righe.
+- `LIMIT 1`: una sola riga (utile per "il record con valore massimo/minimo" dopo ORDER BY).
+
+Se si chiede un LIMIT maggiore delle righe disponibili, non si ottiene errore: vengono restituite tutte le righe presenti.
+
+### OFFSET
+
+**OFFSET** salta un certo numero di righe dal risultato prima di restituire le successive.
+
+**Sintassi:**
+```sql
+SELECT columns
+FROM table
+ORDER BY column
+LIMIT n
+OFFSET m;
+```
+
+- Si saltano le prime **m** righe.
+- Si restituiscono al massimo **n** righe dopo lo skip.
+
+**Convenzione:** quando si usano insieme, si scrive prima **LIMIT** e poi **OFFSET**.
+
+### Combinare ORDER BY, LIMIT e OFFSET
+
+**Esempio: i 5 prodotti meno cari**
+```sql
+SELECT * FROM products
+ORDER BY price
+LIMIT 5;
+```
+
+**Esempio: i 5 prodotti più cari**
+```sql
+SELECT * FROM products
+ORDER BY price DESC
+LIMIT 5;
+```
+
+**Esempio: secondo e terzo prodotto più cari**
+```sql
+SELECT * FROM products
+ORDER BY price DESC
+LIMIT 2 OFFSET 1;
+```
+
+- `ORDER BY price DESC`: i più cari per primi.
+- `OFFSET 1`: si salta il primo (il più caro).
+- `LIMIT 2`: si prendono le successive 2 righe (secondo e terzo).
+
+### Uso Tipico: Paginazione
+
+LIMIT e OFFSET sono usati per la **paginazione**: mostrare un sottoinsieme di risultati per pagina.
+
+- **Pagina 1:** `LIMIT 20 OFFSET 0` (primi 20 record).
+- **Pagina 2:** `LIMIT 20 OFFSET 20` (record da 21 a 40).
+- **Pagina 3:** `LIMIT 20 OFFSET 40` (record da 41 a 60).
+
+Formula: per la pagina `p` con `page_size` risultati per pagina:
+`OFFSET = (p - 1) * page_size`, `LIMIT = page_size`.
+
+---
+
+## Esercizi di Ripasso e Applicazione
+
+### GROUP BY: Conteggio Ordini Pagati e Non Pagati
+
+Scrivere una query che restituisca il numero di ordini pagati e non pagati (colonna `paid`).
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT paid, COUNT(*) AS count
+FROM orders
+GROUP BY paid;
+```
+
+**Spiegazione:** Si raggruppano le righe di `orders` per `paid` e si conta quante righe ci sono in ogni gruppo. Il risultato ha due righe (true/false) con il rispettivo conteggio.
+
+</div>
+</details>
+
+### JOIN: Utenti e Ordini
+
+Scrivere una query che unisca `users` e `orders` e restituisca `first_name`, `last_name` e `paid` per ogni ordine.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT first_name, last_name, paid
+FROM orders
+JOIN users ON orders.user_id = users.id;
+```
+
+Oppure partendo da `users`:
+
+```sql
+SELECT first_name, last_name, paid
+FROM users
+JOIN orders ON orders.user_id = users.id;
+```
+
+Un utente con più ordini apparirà su più righe (una per ordine). L’ordine delle righe può essere reso più leggibile con `ORDER BY users.id` (o un’altra colonna a scelta).
+
+</div>
+</details>
+
+### ORDER BY, LIMIT, OFFSET: Secondo e Terzo Telefono più Costosi
+
+Data una tabella `phones` con colonne `name`, `manufacturer`, `price`, `units_sold`, scrivere una query che restituisca solo i **nomi** del secondo e del terzo telefono più costoso.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name
+FROM phones
+ORDER BY price DESC
+LIMIT 2 OFFSET 1;
+```
+
+**Spiegazione:**
+- `ORDER BY price DESC`: telefoni ordinati dal prezzo più alto al più basso.
+- `OFFSET 1`: si salta il primo (il più costoso).
+- `LIMIT 2`: si prendono le due righe successive (secondo e terzo).
+- `SELECT name`: si mostra solo il nome del telefono.
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **Dataset E-Commerce:** tre tabelle `users`, `products`, `orders`. La tabella `orders` collega utenti e prodotti (user_id, product_id, paid).
+- **Relazione many-to-many:** un utente può avere molti ordini/prodotti, un prodotto può essere in molti ordini. La **join table** `orders` modella questa relazione.
+- **ORDER BY:** ordina il result set per una o più colonne. **ASC** (default) = crescente, **DESC** = decrescente. Con più colonne si ordina prima per la prima, poi per le successive.
+- **LIMIT n:** restituisce al massimo **n** righe.
+- **OFFSET m:** salta le prime **m** righe. Si usa spesso con LIMIT per paginazione.
+- **Convenzione:** con LIMIT e OFFSET insieme si scrive `LIMIT n OFFSET m`. ORDER BY è quasi sempre usato quando si applicano LIMIT/OFFSET per avere un ordine deterministico.
+- **Paginazione:** pagina `p` con `page_size` risultati: `LIMIT page_size OFFSET (p - 1) * page_size`.
