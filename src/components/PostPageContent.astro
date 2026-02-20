@@ -1,6 +1,6 @@
 ---
-import Breadcrumbs from '@/components/Breadcrumbs.astro'
 import BreadcrumbListStructuredData from '@/components/BreadcrumbListStructuredData.astro'
+import Breadcrumbs from '@/components/Breadcrumbs.astro'
 import Link from '@/components/Link.astro'
 import PostHead from '@/components/PostHead.astro'
 import PostNavigation from '@/components/PostNavigation.astro'
@@ -12,12 +12,11 @@ import TOCSidebar from '@/components/TOCSidebar.astro'
 import { badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Layout from '@/layouts/Layout.astro'
-import type { PostCollection, GetCollectionEntry } from '@/lib/collections'
+import type { PostCollection } from '@/lib/collections'
 import { formatDate } from '@/lib/utils'
 import { Icon } from 'astro-icon/components'
 import { Image } from 'astro:assets'
 import type { CollectionEntry } from 'astro:content'
-import { Fragment } from 'astro/jsx-runtime'
 
 interface Props {
   post: CollectionEntry<'blog' | 'education' | 'quote'>
@@ -26,7 +25,12 @@ interface Props {
   currentPostId: string
   Content: any
   headings: any[]
-  authors: Array<{ id: string; name: string; avatar: string; isRegistered: boolean }>
+  authors: Array<{
+    id: string
+    name: string
+    avatar: string
+    isRegistered: boolean
+  }>
   isCurrentSubpost: boolean
   parentPost: CollectionEntry<'blog' | 'education' | 'quote'> | null
   hasChildPosts: boolean
@@ -95,9 +99,18 @@ const config = {
 const cfg = config[collection]
 
 // Variabili booleane per condizioni complesse
-const showEducationCertificate = collection === 'education' && (post as CollectionEntry<'education'>).data.certificate
-const showQuoteClient = collection === 'quote' && (post as CollectionEntry<'quote'>).data.client
-const showTOC = headings?.length > 0 && !(isCurrentSubpost && headings.length === 1 && headings[0].text === post.data.title)
+const showEducationCertificate =
+  collection === 'education' &&
+  (post as CollectionEntry<'education'>).data.certificate
+const showQuoteClient =
+  collection === 'quote' && (post as CollectionEntry<'quote'>).data.client
+const showTOC =
+  headings?.length > 0 &&
+  !(
+    isCurrentSubpost &&
+    headings.length === 1 &&
+    headings[0].text === post.data.title
+  )
 
 // Prepara breadcrumbs per structured data
 const breadcrumbs = [
@@ -105,10 +118,21 @@ const breadcrumbs = [
   { name: cfg.breadcrumbLabel, url: new URL(basePath, Astro.site).href },
   ...(isCurrentSubpost && parentPost
     ? [
-        { name: parentPost.data.title, url: new URL(`${basePath}/${parentPost.id}`, Astro.site).href },
-        { name: post.data.title, url: new URL(`${basePath}/${currentPostId}`, Astro.site).href },
+        {
+          name: parentPost.data.title,
+          url: new URL(`${basePath}/${parentPost.id}`, Astro.site).href,
+        },
+        {
+          name: post.data.title,
+          url: new URL(`${basePath}/${currentPostId}`, Astro.site).href,
+        },
       ]
-    : [{ name: post.data.title, url: new URL(`${basePath}/${currentPostId}`, Astro.site).href }]),
+    : [
+        {
+          name: post.data.title,
+          url: new URL(`${basePath}/${currentPostId}`, Astro.site).href,
+        },
+      ]),
 ]
 
 // Breadcrumbs per componente (se necessario)
@@ -140,42 +164,53 @@ const breadcrumbItems = cfg.showBreadcrumbsComponent
 ---
 
 <Layout>
-  <PostHead slot="head" post={post} collection={collection} breadcrumbs={breadcrumbs} />
-  {cfg.showBreadcrumbListStructuredData ? (
-    <BreadcrumbListStructuredData items={breadcrumbs} />
-  ) : null}
-  {(hasChildPosts || isCurrentSubpost) ? (
-    <SubpostsHeader
-      slot="subposts-navigation"
-      parentId={isCurrentSubpost ? getParentId(currentPostId) : currentPostId}
-      basePath={basePath}
-      collection={collection}
-    />
-  ) : null}
-  {showTOC ? (
-    <TOCHeader slot="table-of-contents" headings={headings} />
-  ) : null}
+  <PostHead
+    slot="head"
+    post={post}
+    collection={collection}
+    breadcrumbs={breadcrumbs}
+  />
+  {
+    cfg.showBreadcrumbListStructuredData ? (
+      <BreadcrumbListStructuredData items={breadcrumbs} />
+    ) : null
+  }
+  {
+    hasChildPosts || isCurrentSubpost ? (
+      <SubpostsHeader
+        slot="subposts-navigation"
+        parentId={isCurrentSubpost ? getParentId(currentPostId) : currentPostId}
+        basePath={basePath}
+        collection={collection}
+      />
+    ) : null
+  }
+  {showTOC ? <TOCHeader slot="table-of-contents" headings={headings} /> : null}
 
   <section
     class="grid grid-cols-[minmax(0px,1fr)_min(calc(var(--breakpoint-md)-2rem),100%)_minmax(0px,1fr)] gap-y-6"
   >
-    {cfg.showBreadcrumbsComponent ? (
-      <div class="col-start-2 py-3 xl:py-0">
-        <Breadcrumbs items={breadcrumbItems} />
-      </div>
-    ) : null}
+    {
+      cfg.showBreadcrumbsComponent ? (
+        <div class="col-start-2 py-3 xl:py-0">
+          <Breadcrumbs items={breadcrumbItems} />
+        </div>
+      ) : null
+    }
 
-    {(cfg.showImage && post.data.image) ? (
-      <Image
-        src={post.data.image}
-        alt={post.data.title}
-        width={1200}
-        height={630}
-        class="col-span-full mx-auto w-full max-w-3xl object-cover rounded-lg"
-      />
-    ) : null}
+    {
+      cfg.showImage && post.data.image ? (
+        <Image
+          src={post.data.image}
+          alt={post.data.title}
+          width={1200}
+          height={630}
+          class="col-span-full mx-auto w-full max-w-3xl rounded-lg object-cover"
+        />
+      ) : null
+    }
 
-    <section class="col-start-2 flex flex-col gap-y-6 text-center">
+    <section class="col-start-2 flex flex-col gap-y-6 text-center self-start">
       <div class="flex flex-col">
         <h1
           class="mb-2 scroll-mt-31 text-3xl leading-tight font-medium sm:text-4xl"
@@ -187,26 +222,32 @@ const breadcrumbItems = cfg.showBreadcrumbsComponent
         <div
           class="text-muted-foreground divide-border mb-4 flex flex-col items-center justify-center divide-y text-xs sm:flex-row sm:flex-wrap sm:divide-x sm:divide-y-0 sm:text-sm"
         >
-          {authors.length > 0 ? (
-            <div class="flex w-full items-center justify-center gap-x-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
-              {authors.map((author) => (
-                <div class="flex items-center gap-x-1.5">
-                  {author.isRegistered ? (
-                    <Link
-                      href={`/authors/${author.id}`}
-                      underline
-                      class="text-foreground"
-                      title={collection === 'blog' ? `Vedi tutti gli articoli di ${author.name}` : undefined}
-                    >
+          {
+            authors.length > 0 ? (
+              <div class="flex w-full items-center justify-center gap-x-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+                {authors.map((author) => (
+                  <div class="flex items-center gap-x-1.5">
+                    {author.isRegistered ? (
+                      <Link
+                        href={`/authors/${author.id}`}
+                        underline
+                        class="text-foreground"
+                        title={
+                          collection === 'blog'
+                            ? `Vedi tutti gli articoli di ${author.name}`
+                            : undefined
+                        }
+                      >
+                        <span>{author.name}</span>
+                      </Link>
+                    ) : (
                       <span>{author.name}</span>
-                    </Link>
-                  ) : (
-                    <span>{author.name}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : null}
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : null
+          }
 
           <div
             class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0"
@@ -219,63 +260,141 @@ const breadcrumbItems = cfg.showBreadcrumbsComponent
           >
             <span>
               {postReadingTime}
-              {(combinedReadingTime && combinedReadingTime !== postReadingTime) ? (
-                <span class="text-muted-foreground">
-                  {' '}
-                  ({combinedReadingTime} totale)
-                </span>
-              ) : null}
+              {
+                combinedReadingTime &&
+                combinedReadingTime !== postReadingTime ? (
+                  <span class="text-muted-foreground">
+                    {' '}
+                    ({combinedReadingTime} totale)
+                  </span>
+                ) : null
+              }
             </span>
           </div>
 
-          {subpostCount > 0 ? (
-            <div class="flex w-full items-center justify-center gap-1 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
-              <Icon name="lucide:file-text" class="size-3" />
-              {subpostCount} {cfg.subpostLabel}{subpostCount === 1 ? '' : collection === 'quote' ? 'i' : ''}
-            </div>
-          ) : null}
+          {
+            subpostCount > 0 ? (
+              <div class="flex w-full items-center justify-center gap-1 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+                <Icon name="lucide:file-text" class="size-3" />
+                {subpostCount} {cfg.subpostLabel}
+                {subpostCount === 1 ? '' : collection === 'quote' ? 'i' : ''}
+              </div>
+            ) : null
+          }
 
-          {showEducationCertificate ? (
-            <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
-              <a
-                href={(post as CollectionEntry<'education'>).data.certificate}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Certificato (si apre in una nuova finestra)"
-                class="text-foreground hover:text-foreground/80 transition-colors flex items-center gap-1.5"
-              >
-                <Icon name="lucide:award" class="size-3" aria-hidden="true" />
-                <span class="sr-only"> (si apre in una nuova finestra)</span>
-                <span>Certificato</span>
-                <Icon name="lucide:external-link" class="size-3" aria-hidden="true" />
-              </a>
-            </div>
-          ) : null}
+          {
+            showEducationCertificate ? (
+              <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+                <a
+                  href={(post as CollectionEntry<'education'>).data.certificate}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Certificato (si apre in una nuova finestra)"
+                  class="text-foreground hover:text-foreground/80 flex items-center gap-1.5 transition-colors"
+                >
+                  <Icon name="lucide:award" class="size-3" aria-hidden="true" />
+                  <span class="sr-only"> (si apre in una nuova finestra)</span>
+                  <span>Certificato</span>
+                  <Icon
+                    name="lucide:external-link"
+                    class="size-3"
+                    aria-hidden="true"
+                  />
+                </a>
+              </div>
+            ) : null
+          }
 
-          {showQuoteClient ? (
-            <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
-              <Icon name="lucide:user" class="size-3" />
-              <span>{(post as CollectionEntry<'quote'>).data.client}</span>
-            </div>
-          ) : null}
+          {
+            showQuoteClient ? (
+              <div class="flex w-full items-center justify-center gap-2 py-2 sm:w-fit sm:px-2 sm:py-0 first:sm:pl-0 last:sm:pr-0">
+                <Icon name="lucide:user" class="size-3" />
+                <span>{(post as CollectionEntry<'quote'>).data.client}</span>
+              </div>
+            ) : null
+          }
         </div>
         <div class="flex flex-wrap justify-center gap-2">
-          {(post.data.tags && post.data.tags.length > 0)
-            ? post.data.tags.map((tag) => (
-                <a
-                  href={`/tags/${tag}`}
-                  class={badgeVariants({ variant: 'muted' })}
-                  title={collection === 'blog' ? `Vedi tutti gli articoli con tag ${tag}` : undefined}
-                >
-                  <Icon name="lucide:hash" class="size-3" />
-                  {tag}
-                </a>
-              ))
-            : null}
+          {
+            post.data.tags && post.data.tags.length > 0
+              ? post.data.tags.map((tag) => (
+                  <a
+                    href={`/tags/${tag}`}
+                    class={badgeVariants({ variant: 'muted' })}
+                    title={
+                      collection === 'blog'
+                        ? `Vedi tutti gli articoli con tag ${tag}`
+                        : undefined
+                    }
+                  >
+                    <Icon name="lucide:hash" class="size-3" />
+                    {tag}
+                  </a>
+                ))
+              : null
+          }
         </div>
       </div>
 
-      {(cfg.showPostNavigation && navigation && postReadingTime && parseInt(postReadingTime) >= 3) ? (
+      {
+        cfg.showPostNavigation &&
+        navigation &&
+        postReadingTime &&
+        parseInt(postReadingTime) >= 3 ? (
+          <PostNavigation
+            newerPost={navigation.newer}
+            olderPost={navigation.older}
+            parentPost={isCurrentSubpost ? navigation.parent : undefined}
+            basePath={basePath}
+            collection={collection}
+          />
+        ) : null
+      }
+    </section>
+
+    {
+      tocSections.length > 0 ? (
+        <TOCSidebar
+          sections={tocSections}
+          currentPostId={currentPostId}
+          basePath={basePath}
+          collection={collection}
+        />
+      ) : null
+    }
+
+    <article class="prose col-start-2 max-w-none self-start">
+      <Content />
+    </article>
+
+    {
+      hasChildPosts || isCurrentSubpost ? (
+        <SubpostsBanner
+          parentId={
+            isCurrentSubpost ? getParentId(currentPostId) : currentPostId
+          }
+          currentPostId={currentPostId}
+          basePath={basePath}
+          collection={collection}
+        />
+      ) : null
+    }
+
+    {
+      hasChildPosts || isCurrentSubpost ? (
+        <SubpostsSidebar
+          parentId={
+            isCurrentSubpost ? getParentId(currentPostId) : currentPostId
+          }
+          basePath={basePath}
+          collection={collection}
+          className="w-64"
+        />
+      ) : null
+    }
+
+    {
+      cfg.showPostNavigation && navigation ? (
         <PostNavigation
           newerPost={navigation.newer}
           olderPost={navigation.older}
@@ -283,48 +402,8 @@ const breadcrumbItems = cfg.showBreadcrumbsComponent
           basePath={basePath}
           collection={collection}
         />
-      ) : null}
-    </section>
-
-    {tocSections.length > 0 ? (
-      <TOCSidebar sections={tocSections} currentPostId={currentPostId} basePath={basePath} collection={collection} />
-    ) : null}
-
-    <article class="prose col-start-2 max-w-none">
-      <Content />
-    </article>
-
-    {(hasChildPosts || isCurrentSubpost) ? (
-      <SubpostsBanner
-        parentId={
-          isCurrentSubpost ? getParentId(currentPostId) : currentPostId
-        }
-        currentPostId={currentPostId}
-        basePath={basePath}
-        collection={collection}
-      />
-    ) : null}
-
-    {(hasChildPosts || isCurrentSubpost) ? (
-      <SubpostsSidebar
-        parentId={
-          isCurrentSubpost ? getParentId(currentPostId) : currentPostId
-        }
-        basePath={basePath}
-        collection={collection}
-        className="w-64"
-      />
-    ) : null}
-
-    {(cfg.showPostNavigation && navigation) ? (
-      <PostNavigation
-        newerPost={navigation.newer}
-        olderPost={navigation.older}
-        parentPost={isCurrentSubpost ? navigation.parent : undefined}
-        basePath={basePath}
-        collection={collection}
-      />
-    ) : null}
+      ) : null
+    }
   </section>
 
   <Button
@@ -376,4 +455,3 @@ const breadcrumbItems = cfg.showBreadcrumbsComponent
     }
   }
 </script>
-

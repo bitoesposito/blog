@@ -38,9 +38,9 @@ const displaySections = collection === 'quote'
   ? sections.filter((section) => section.type === 'parent')
   : sections
 
-// Posizione sidebar: blog/education a sinistra (col-start-1), quote a destra (col-start-3)
-const colStart = collection === 'quote' ? 'col-start-3' : 'col-start-1'
-const margin = collection === 'quote' ? 'mr-auto ml-8' : 'mr-8 ml-auto'
+// Posizione sidebar: sempre a sinistra (col-start-1) per tutte le collections
+const colStart = 'col-start-1'
+const margin = 'mr-8 ml-auto'
 ---
 
 {
