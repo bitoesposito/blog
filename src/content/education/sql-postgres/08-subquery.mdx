@@ -1,0 +1,415 @@
+---
+title: "Subquery"
+description: "Query annidate in SELECT, FROM, JOIN e WHERE; forma dei dati; operatori e subquery; subquery correlate; SELECT senza FROM"
+date: 2026-02-23
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 8
+---
+
+## Introduzione
+
+Spesso un risultato dipende da un altro: ad esempio "tutti i prodotti più cari del prezzo massimo nel reparto Toys". Invece di eseguire due query separate e usare a mano il valore della prima nella seconda, si può **annidare** una query dentro l’altra: la query interna è una **subquery**.
+
+Questo capitolo introduce l’uso delle subquery in **SELECT**, **FROM**, **JOIN** e **WHERE**, la **forma dei dati** che ciascun contesto richiede, gli operatori che determinano tale forma (in particolare in WHERE), le **subquery correlate** e il **SELECT senza FROM** con sole subquery scalari.
+
+---
+
+## Cos'è una Subquery
+
+### Definizione
+
+Una **subquery** è una query SQL scritta tra parentesi e usata all’interno di un’altra query (query esterna). La subquery viene valutata per prima; il suo risultato viene usato dalla query esterna.
+
+**Esempio di problema:** elencare nome e prezzo di tutti i prodotti più cari di **ogni** prodotto nel reparto Toys.
+
+Senza subquery si dovrebbe: (1) trovare il prezzo massimo nel reparto Toys; (2) usare quel valore in una seconda query. Con una subquery si fa tutto in un’unica istruzione:
+
+```sql
+SELECT name, price
+FROM products
+WHERE price > (
+    SELECT MAX(price) FROM products WHERE department = 'Toys'
+);
+```
+
+**Esecuzione:** PostgreSQL valuta prima la subquery (prezzo massimo in Toys), poi la query esterna filtra i prodotti con prezzo maggiore di quel valore. Non serve conoscere il valore 876 a mano: lo calcola il database.
+
+---
+
+## Forma dei Dati Restituiti da una Query
+
+L’uso di una subquery in una certa posizione è valido solo se il risultato ha la **forma** adatta a quel contesto.
+
+**Tre forme principali:**
+
+1. **Valore scalare (scalar):** una riga e una colonna — un singolo valore. Esempio: `SELECT MAX(price) FROM products`.
+2. **Singola colonna:** più righe, una colonna — lista di valori. Esempio: `SELECT id FROM orders`.
+3. **Insieme di righe e colonne:** più righe e più colonne. Esempio: `SELECT * FROM orders`.
+
+La posizione della subquery (SELECT, FROM, JOIN, WHERE) impone quale forma è ammessa. Conviene sempre ragionare su: "cosa restituisce questa query?" e "cosa si aspetta il contesto?".
+
+---
+
+## Subquery nella Clausola SELECT
+
+### Regola
+
+In **SELECT** si può usare una subquery solo se restituisce **un singolo valore** (una riga, una colonna).
+
+**Esempio:** mostrare per ogni prodotto nome, prezzo e prezzo massimo di tutta la tabella (per confronto):
+
+```sql
+SELECT name, price, (SELECT MAX(price) FROM products) AS max_price
+FROM products
+WHERE price > 867;
+```
+
+La subquery `(SELECT MAX(price) FROM products)` restituisce un numero; viene ripetuta concettualmente per ogni riga del risultato esterno (il motore può ottimizzarla).
+
+**Rinominare il risultato:** si può usare `AS nome_colonna` dopo la subquery per dare un nome alla colonna risultante.
+
+**Esempio con valore da una riga specifica:**
+
+```sql
+SELECT name, price, (SELECT price FROM products WHERE id = 3) AS id_3_price
+FROM products
+WHERE price > 867;
+```
+
+Anche qui la subquery deve restituire un solo valore (un solo prodotto con `id = 3`).
+
+---
+
+## Subquery nella Clausola FROM
+
+### Regola
+
+In **FROM** la subquery fornisce una **sorgente di righe**. Può restituire una o più colonne e più righe; la query esterna deve riferirsi solo alle colonne presenti nel risultato della subquery.
+
+**Obbligo:** la subquery in FROM deve avere un **alias** (nome), altrimenti PostgreSQL segnala errore.
+
+**Esempio:** prodotti con rapporto prezzo/peso maggiore di 5, usando una subquery che calcola nome e rapporto:
+
+```sql
+SELECT name, price_weight_ratio
+FROM (
+    SELECT name, price / weight AS price_weight_ratio
+    FROM products
+) AS p
+WHERE price_weight_ratio > 5;
+```
+
+La query esterna "vede" solo le colonne `name` e `price_weight_ratio`. Non può usare `price` o `weight` direttamente perché non sono nel risultato della subquery.
+
+### Perché usare una subquery in FROM
+
+Un uso tipico è **applicare un’aggregazione ai risultati di un’altra aggregazione**. Esempio: numero medio di ordini per utente.
+
+1. Prima si calcola il numero di ordini per utente (GROUP BY user_id, COUNT(*)).
+2. Poi si fa la media di quei conteggi.
+
+La prima parte produce più righe (una per utente); la media si fa trattando quel risultato come tabella in FROM:
+
+```sql
+SELECT AVG(order_count) AS avg_orders_per_user
+FROM (
+    SELECT user_id, COUNT(*) AS order_count
+    FROM orders
+    GROUP BY user_id
+) AS p;
+```
+
+La subquery restituisce `user_id` e `order_count`; la query esterna seleziona solo la media di `order_count`.
+
+---
+
+## Subquery nella Clausola JOIN
+
+Una subquery può essere usata al posto di una tabella in un **JOIN**. Deve restituire dati **compatibili con la condizione ON** (stesso tipo di confronto che si farebbe con una tabella). Anche qui la subquery deve avere un **alias**.
+
+**Esempio (meccanico):** nomi degli utenti che hanno ordinato il prodotto con id 3:
+
+```sql
+SELECT first_name
+FROM users
+JOIN (
+    SELECT user_id FROM orders WHERE product_id = 3
+) AS o ON o.user_id = users.id;
+```
+
+In molti casi lo stesso risultato si ottiene con un JOIN normale su `orders` e un WHERE; la subquery in JOIN serve quando la sorgente “destra” del join è proprio il risultato di una query complessa.
+
+---
+
+## Subquery nella Clausola WHERE
+
+Le subquery in **WHERE** sono molto usate. L'**operatore** usato nel confronto determina la **forma** che la subquery deve restituire.
+
+### Operatori che richiedono un singolo valore
+
+Se in WHERE si usa **=**, **<>**, **>**, **<**, **>=**, **<=**, la subquery deve restituire **un solo valore** (una riga, una colonna).
+
+**Esempio:** prodotti con prezzo maggiore della media:
+
+```sql
+SELECT name
+FROM products
+WHERE price > (SELECT AVG(price) FROM products);
+```
+
+**Esempio:** telefoni con prezzo maggiore del Samsung S5620 Monte:
+
+```sql
+SELECT name, price
+FROM phones
+WHERE price > (SELECT price FROM phones WHERE name = 'S5620 Monte');
+```
+
+La subquery deve identificare un solo telefono (un solo nome 'S5620 Monte') per restituire un solo prezzo.
+
+### Operatori che richiedono una singola colonna: IN e NOT IN
+
+Con **IN** e **NOT IN** la subquery deve restituire **una sola colonna** (più righe consentite).
+
+**Esempio:** ordini che riguardano prodotti con rapporto prezzo/peso maggiore di 50:
+
+```sql
+SELECT id
+FROM orders
+WHERE product_id IN (
+    SELECT id FROM products WHERE price / weight > 50
+);
+```
+
+**Esempio:** prodotti il cui reparto **non** è tra quelli che hanno almeno un prodotto con prezzo < 100:
+
+```sql
+SELECT name, department
+FROM products
+WHERE department NOT IN (
+    SELECT department FROM products WHERE price < 100
+);
+```
+
+### Riepilogo operatore vs forma della subquery
+
+| Operatore (WHERE)     | Forma richiesta dalla subquery |
+|------------------------|---------------------------------|
+| = , <> , > , < , >= , <= | Singolo valore                  |
+| IN , NOT IN            | Singola colonna                 |
+| > ALL , < ALL , = ALL , ecc. | Singola colonna              |
+| > SOME/ANY , < SOME/ANY , ecc. | Singola colonna           |
+
+---
+
+## Confronti con ALL e SOME/ANY
+
+### ALL
+
+**> ALL** (e analogamente **< ALL**, **>= ALL**, **<= ALL**, **= ALL**, **<> ALL**) significa: confrontare un valore con **tutti** i valori di una colonna; la condizione deve essere vera per **ogni** valore della colonna.
+
+La subquery deve restituire **una sola colonna**.
+
+**Esempio:** prodotti più cari di **tutti** i prodotti del reparto Industrial:
+
+```sql
+SELECT name, department, price
+FROM products
+WHERE price > ALL (
+    SELECT price FROM products WHERE department = 'Industrial'
+);
+```
+
+Equivalente con MAX (spesso più chiaro e efficiente):
+
+```sql
+SELECT name, department, price
+FROM products
+WHERE price > (SELECT MAX(price) FROM products WHERE department = 'Industrial');
+```
+
+### SOME e ANY
+
+**> SOME** (o **> ANY**) significa: maggiore di **almeno un** valore della colonna restituita dalla subquery. Stessa idea per **< SOME**, **>= SOME**, ecc. **SOME** e **ANY** sono sinonimi.
+
+La subquery deve restituire **una sola colonna**.
+
+**Esempio:** prodotti più cari di **almeno un** prodotto nel reparto Industrial:
+
+```sql
+SELECT name, department, price
+FROM products
+WHERE price > SOME (
+    SELECT price FROM products WHERE department = 'Industrial'
+);
+```
+
+---
+
+## Subquery Correlate
+
+Una **subquery correlata** è una subquery che **usa colonne della query esterna**: il risultato della subquery dipende dalla riga corrente della query esterna. Si può pensare come un doppio ciclo: per ogni riga esterna si riesegue la subquery.
+
+Per riferirsi alla riga esterna si usano **alias** sulle tabelle (es. `p1` per la tabella esterna, `p2` per quella nella subquery).
+
+### Esempio: Prodotto più caro per reparto
+
+Obiettivo: nome, reparto e prezzo del **prodotto più costoso in ogni reparto**.
+
+Per ogni riga di `products` (alias `p1`) si chiede: "il prezzo di questa riga è uguale al prezzo massimo tra tutti i prodotti dello **stesso reparto**?". Solo quelle righe sono il “vincitore” per quel reparto.
+
+```sql
+SELECT name, department, price
+FROM products AS p1
+WHERE price = (
+    SELECT MAX(price)
+    FROM products AS p2
+    WHERE p2.department = p1.department
+);
+```
+
+La subquery usa `p1.department` (riga esterna) e filtra `p2` per stesso reparto; poi calcola MAX(price). Se `p1.price` è uguale a quel massimo, la riga viene restituita.
+
+### Esempio: Numero di ordini per prodotto (senza JOIN/GROUP BY)
+
+Obiettivo: per ogni prodotto, nome e numero di ordini, usando solo subquery (nessun JOIN né GROUP BY). La subquery è nel **SELECT** e conta le righe di `orders` in cui `product_id` coincide con l’id del prodotto della riga esterna:
+
+```sql
+SELECT name, (SELECT COUNT(*) FROM orders AS o WHERE o.product_id = p1.id) AS num_orders
+FROM products AS p1;
+```
+
+Per ogni `p1` la subquery restituisce un singolo numero (COUNT), quindi è ammessa in SELECT.
+
+In pratica, per questo tipo di richiesta sono di solito preferibili JOIN e GROUP BY; l’esempio serve a capire il meccanismo delle subquery correlate.
+
+---
+
+## SELECT senza FROM
+
+È possibile scrivere un **SELECT** che contiene **solo** subquery (e eventuali espressioni) e **nessuna** tabella in FROM, a patto che ogni subquery restituisca **un singolo valore**.
+
+**Esempio:** rapporto tra prezzo massimo e prezzo medio:
+
+```sql
+SELECT (SELECT MAX(price) FROM products) / (SELECT AVG(price) FROM products) AS ratio;
+```
+
+**Esempio:** massimo, minimo e media dei prezzi in una sola riga (tre colonne):
+
+```sql
+SELECT
+    (SELECT MAX(price) FROM phones) AS max_price,
+    (SELECT MIN(price) FROM phones) AS min_price,
+    (SELECT AVG(price) FROM phones) AS avg_price;
+```
+
+Utile quando si vogliono solo aggregati o espressioni derivate, senza scansionare righe da una tabella nel FROM esterno.
+
+---
+
+## Esercizi di Riepilogo
+
+### Subquery in SELECT: rapporto prezzo / prezzo massimo
+
+Per ogni telefono, mostrare nome, prezzo e rapporto `price / (prezzo massimo di tutti i telefoni)`, con la terza colonna rinominata `price_ratio`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name, price, price / (SELECT MAX(price) FROM phones) AS price_ratio
+FROM phones;
+```
+
+</div>
+</details>
+
+### Subquery in FROM: media massima
+
+Calcolare il prezzo medio per produttore (GROUP BY manufacturer) e poi restituire il **massimo** di queste medie, rinominando il risultato in `max_average_price`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT MAX(avg_price) AS max_average_price
+FROM (
+    SELECT AVG(price) AS avg_price
+    FROM phones
+    GROUP BY manufacturer
+) AS p;
+```
+
+</div>
+</details>
+
+### Subquery in WHERE: prezzo maggiore di un modello
+
+Elencare nome e prezzo dei telefoni con prezzo maggiore del Samsung S5620 Monte, usando una subquery per ottenere il prezzo di quel modello.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name, price
+FROM phones
+WHERE price > (SELECT price FROM phones WHERE name = 'S5620 Monte');
+```
+
+</div>
+</details>
+
+### WHERE con > ALL
+
+Elencare i nomi dei telefoni con prezzo maggiore di **tutti** i telefoni Samsung.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name
+FROM phones
+WHERE price > ALL (SELECT price FROM phones WHERE manufacturer = 'Samsung');
+```
+
+</div>
+</details>
+
+### SELECT senza FROM: max, min, media
+
+Usando solo subquery (nessun FROM nella query esterna), restituire prezzo massimo, minimo e medio di tutti i telefoni, con colonne `max_price`, `min_price`, `avg_price`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT
+    (SELECT MAX(price) FROM phones) AS max_price,
+    (SELECT MIN(price) FROM phones) AS min_price,
+    (SELECT AVG(price) FROM phones) AS avg_price;
+```
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **Subquery:** query tra parentesi usata dentro un’altra query; viene valutata per prima e il risultato usato dalla query esterna.
+- **Forma dei dati:** scalare (un valore), singola colonna, tabella (più righe e colonne). La posizione (SELECT, FROM, JOIN, WHERE) determina quale forma è ammessa.
+- **SELECT:** la subquery deve restituire **un singolo valore**. Si può rinominare con AS.
+- **FROM:** la subquery fornisce una sorgente di righe; è **obbligatorio** un alias. La query esterna può usare solo le colonne del risultato della subquery.
+- **JOIN:** la subquery deve essere compatibile con la condizione ON e deve avere alias.
+- **WHERE:** la forma richiesta dipende dall’operatore: **=, <, >, …** → singolo valore; **IN, NOT IN, > ALL, > SOME/ANY** → singola colonna.
+- **> ALL / < ALL / …:** il valore deve soddisfare il confronto con **tutti** i valori della colonna restituita dalla subquery.
+- **> SOME / > ANY:** il valore deve soddisfare il confronto con **almeno un** valore della colonna. SOME e ANY sono equivalenti.
+- **Subquery correlata:** la subquery usa colonne della query esterna (tramite alias); viene rivalutata per ogni riga esterna.
+- **SELECT senza FROM:** si possono usare solo subquery (e espressioni) che restituiscono un singolo valore; utile per aggregati o rapporti tra aggregati.
