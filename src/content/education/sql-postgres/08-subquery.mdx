@@ -148,7 +148,7 @@ Le subquery in **WHERE** sono molto usate. L'**operatore** usato nel confronto d
 
 ### Operatori che richiedono un singolo valore
 
-Se in WHERE si usa **=**, **<>**, **>**, **<**, **>=**, **<=**, la subquery deve restituire **un solo valore** (una riga, una colonna).
+Se in WHERE si usa **=**, **&lt;&gt;**, **&gt;**, **&lt;**, **&gt;=**, **&lt;=**, la subquery deve restituire **un solo valore** (una riga, una colonna).
 
 **Esempio:** prodotti con prezzo maggiore della media:
 
@@ -182,7 +182,7 @@ WHERE product_id IN (
 );
 ```
 
-**Esempio:** prodotti il cui reparto **non** è tra quelli che hanno almeno un prodotto con prezzo < 100:
+**Esempio:** prodotti il cui reparto **non** è tra quelli che hanno almeno un prodotto con prezzo &lt; 100:
 
 ```sql
 SELECT name, department
@@ -196,10 +196,10 @@ WHERE department NOT IN (
 
 | Operatore (WHERE)     | Forma richiesta dalla subquery |
 |------------------------|---------------------------------|
-| = , <> , > , < , >= , <= | Singolo valore                  |
+| = , &lt;&gt; , &gt; , &lt; , &gt;= , &lt;= | Singolo valore                  |
 | IN , NOT IN            | Singola colonna                 |
-| > ALL , < ALL , = ALL , ecc. | Singola colonna              |
-| > SOME/ANY , < SOME/ANY , ecc. | Singola colonna           |
+| &gt; ALL , &lt; ALL , = ALL , ecc. | Singola colonna              |
+| &gt; SOME/ANY , &lt; SOME/ANY , ecc. | Singola colonna           |
 
 ---
 
@@ -207,7 +207,7 @@ WHERE department NOT IN (
 
 ### ALL
 
-**> ALL** (e analogamente **< ALL**, **>= ALL**, **<= ALL**, **= ALL**, **<> ALL**) significa: confrontare un valore con **tutti** i valori di una colonna; la condizione deve essere vera per **ogni** valore della colonna.
+**&gt; ALL** (e analogamente **&lt; ALL**, **&gt;= ALL**, **&lt;= ALL**, **= ALL**, **&lt;&gt; ALL**) significa: confrontare un valore con **tutti** i valori di una colonna; la condizione deve essere vera per **ogni** valore della colonna.
 
 La subquery deve restituire **una sola colonna**.
 
@@ -231,7 +231,7 @@ WHERE price > (SELECT MAX(price) FROM products WHERE department = 'Industrial');
 
 ### SOME e ANY
 
-**> SOME** (o **> ANY**) significa: maggiore di **almeno un** valore della colonna restituita dalla subquery. Stessa idea per **< SOME**, **>= SOME**, ecc. **SOME** e **ANY** sono sinonimi.
+**&gt; SOME** (o **&gt; ANY**) significa: maggiore di **almeno un** valore della colonna restituita dalla subquery. Stessa idea per **&lt; SOME**, **&gt;= SOME**, ecc. **SOME** e **ANY** sono sinonimi.
 
 La subquery deve restituire **una sola colonna**.
 
@@ -364,7 +364,7 @@ WHERE price > (SELECT price FROM phones WHERE name = 'S5620 Monte');
 </div>
 </details>
 
-### WHERE con > ALL
+### WHERE con &gt; ALL
 
 Elencare i nomi dei telefoni con prezzo maggiore di **tutti** i telefoni Samsung.
 
@@ -408,8 +408,8 @@ SELECT
 - **SELECT:** la subquery deve restituire **un singolo valore**. Si può rinominare con AS.
 - **FROM:** la subquery fornisce una sorgente di righe; è **obbligatorio** un alias. La query esterna può usare solo le colonne del risultato della subquery.
 - **JOIN:** la subquery deve essere compatibile con la condizione ON e deve avere alias.
-- **WHERE:** la forma richiesta dipende dall’operatore: **=, <, >, …** → singolo valore; **IN, NOT IN, > ALL, > SOME/ANY** → singola colonna.
-- **> ALL / < ALL / …:** il valore deve soddisfare il confronto con **tutti** i valori della colonna restituita dalla subquery.
-- **> SOME / > ANY:** il valore deve soddisfare il confronto con **almeno un** valore della colonna. SOME e ANY sono equivalenti.
+- **WHERE:** la forma richiesta dipende dall’operatore: **=, &lt;, &gt;, …** → singolo valore; **IN, NOT IN, &gt; ALL, &gt; SOME/ANY** → singola colonna.
+- **&gt; ALL / &lt; ALL / …:** il valore deve soddisfare il confronto con **tutti** i valori della colonna restituita dalla subquery.
+- **&gt; SOME / &gt; ANY:** il valore deve soddisfare il confronto con **almeno un** valore della colonna. SOME e ANY sono equivalenti.
 - **Subquery correlata:** la subquery usa colonne della query esterna (tramite alias); viene rivalutata per ogni riga esterna.
 - **SELECT senza FROM:** si possono usare solo subquery (e espressioni) che restituiscono un singolo valore; utile per aggregati o rapporti tra aggregati.
