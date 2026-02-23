@@ -1,0 +1,284 @@
+---
+title: "Operatori di insieme: UNION, INTERSECT e EXCEPT"
+description: "Combinare i risultati di più query con UNION e UNION ALL, trovare righe in comune con INTERSECT, sottrarre risultati con EXCEPT"
+date: 2026-02-23
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 7
+---
+
+## Introduzione
+
+A volte serve combinare o confrontare i risultati di due (o più) query invece di scriverne una sola. Gli **operatori di insieme** (set operators) permettono di unire, intersecare o sottrarre i result set di query diverse.
+
+Questo capitolo introduce **UNION**, **UNION ALL**, **INTERSECT** (e **INTERSECT ALL**) e **EXCEPT**, con le regole su struttura e tipi delle colonne e sugli effetti dell’ordine delle query.
+
+---
+
+## UNION
+
+### Definizione
+
+**UNION** unisce i risultati di due query in un unico result set e **elimina le righe duplicate**: una riga che compare in entrambe le query appare una sola volta nel risultato.
+
+**Sintassi:**
+```sql
+SELECT ... FROM ... 
+UNION
+SELECT ... FROM ...;
+```
+
+### Esempio: Prodotti per Prezzo e per Rapporto Prezzo/Peso
+
+Obiettivo: ottenere i **4 prodotti più cari** e i **4 prodotti con rapporto prezzo/peso più alto** (es. per evidenziare i più redditizi e i più convenienti da spedire). I criteri di ordinamento sono diversi, quindi conviene usare due query e unirle.
+
+**Prima query — i 4 più cari:**
+```sql
+SELECT * FROM products
+ORDER BY price DESC
+LIMIT 4;
+```
+
+**Seconda query — i 4 con rapporto prezzo/peso più alto:**
+```sql
+SELECT * FROM products
+ORDER BY price / weight DESC
+LIMIT 4;
+```
+
+**Unione con UNION:**
+```sql
+(SELECT * FROM products
+ ORDER BY price DESC
+ LIMIT 4)
+UNION
+(SELECT * FROM products
+ ORDER BY price / weight DESC
+ LIMIT 4);
+```
+
+**Risultato:** al massimo 8 righe (4 + 4). Se un prodotto è sia tra i 4 più cari sia tra i 4 con rapporto prezzo/peso più alto, compare una sola volta: UNION rimuove i duplicati.
+
+### Parentesi con ORDER BY e LIMIT
+
+Quando una delle due query ha **ORDER BY** o **LIMIT**, in PostgreSQL è necessario racchiuderla tra **parentesi** per chiarire che ORDER BY/LIMIT si applicano a quella sottocomponente e non all’intera espressione UNION.
+
+Senza parentesi si può ottenere un errore; con parentesi la query è corretta.
+
+Se nessuna delle due query ha ORDER BY o LIMIT, le parentesi non sono obbligatorie:
+
+```sql
+SELECT * FROM products
+UNION
+SELECT * FROM products;
+```
+
+---
+
+## UNION ALL
+
+### Definizione
+
+**UNION ALL** unisce i risultati di due query **senza eliminare duplicati**: tutte le righe di entrambe le query compaiono nel risultato.
+
+**Sintassi:**
+```sql
+SELECT ... FROM ...
+UNION ALL
+SELECT ... FROM ...;
+```
+
+### Quando usare UNION ALL
+
+- Quando si vogliono **tutte** le righe, anche ripetute.
+- Quando si sa che non ci sono duplicati e si evita il costo della deduplicazione.
+
+Nell’esempio dei 4 prodotti più cari e dei 4 con rapporto prezzo/peso più alto, se si usa **UNION ALL** il prodotto presente in entrambi i gruppi compare due volte nel risultato.
+
+---
+
+## Regole per UNION e UNION ALL
+
+### Stessa struttura dei result set
+
+Per usare UNION (o UNION ALL) le due query devono restituire:
+
+1. **Stesso numero di colonne**
+2. **Stesse posizioni** (prima colonna con prima colonna, ecc.)
+3. **Tipi compatibili** per colonne corrispondenti
+
+I **nomi** delle colonne possono essere diversi; il risultato userà i nomi della prima query. L’importante è che tipo e ordine delle colonne coincidano.
+
+**Esempio di errore — tipi incompatibili:**
+```sql
+SELECT name FROM products
+UNION
+SELECT price FROM products;
+-- Errore: tipi delle colonne non compatibili (es. VARCHAR vs INTEGER)
+```
+
+**Esempio valido — stesse colonne e tipi:**
+```sql
+SELECT name, price FROM products
+UNION
+SELECT name, price FROM products;
+```
+
+Non si può “barare” rinominando una colonna per far combaciare i nomi se i tipi restano diversi: la compatibilità è sui tipi e sull’ordine, non solo sui nomi.
+
+---
+
+## INTERSECT
+
+### Definizione
+
+**INTERSECT** restituisce solo le righe che compaiono **in entrambe** le query: l’intersezione dei due result set.
+
+**Sintassi:**
+```sql
+(SELECT ... FROM ... ORDER BY ... LIMIT ...)
+INTERSECT
+(SELECT ... FROM ... ORDER BY ... LIMIT ...);
+```
+
+### Esempio: Prodotti sia tra i 4 più cari sia tra i 4 con rapporto prezzo/peso più alto
+
+```sql
+(SELECT * FROM products ORDER BY price DESC LIMIT 4)
+INTERSECT
+(SELECT * FROM products ORDER BY price / weight DESC LIMIT 4);
+```
+
+Risultato: solo i prodotti presenti in entrambi i gruppi (nell’esempio del corso, ad esempio il prodotto con id 7). Utile per trovare programmaticamente i duplicati tra le due liste.
+
+### INTERSECT ALL
+
+**INTERSECT ALL** considera le ripetizioni: una riga viene restituita tante volte quante il minimo tra le occorrenze nella prima e nella seconda query. Se una riga appare 1 volta nella prima e 1 nella seconda, si vede 1 volta; se 2 nella prima e 1 nella seconda, si vede 1 volta. Non raddoppia semplicemente le righe in comune.
+
+---
+
+## EXCEPT
+
+### Definizione
+
+**EXCEPT** restituisce le righe presenti nella **prima** query ma **non** nella seconda: sottrazione del secondo result set dal primo.
+
+**Sintassi:**
+```sql
+(SELECT ... FROM ...)
+EXCEPT
+(SELECT ... FROM ...);
+```
+
+**Comportamento:**
+- Per ogni riga della prima query si controlla se esiste nella seconda (confronto su tutte le colonne).
+- Se esiste, la riga viene scartata.
+- Se non esiste, la riga resta nel risultato.
+- Le righe presenti solo nella seconda query **non** compaiono nel risultato: EXCEPT considera solo la “parte sinistra” e toglie ciò che è anche a destra.
+
+### L’ordine delle query conta
+
+A differenza di UNION e INTERSECT, con **EXCEPT l’ordine delle due query cambia il risultato**:
+
+- **Query1 EXCEPT Query2**: righe in Query1 che non sono in Query2.
+- **Query2 EXCEPT Query1**: righe in Query2 che non sono in Query1.
+
+I due risultati sono in generale diversi.
+
+### Esempio: Prodotti tra i 4 più cari ma non tra i 4 con rapporto prezzo/peso più alto
+
+```sql
+(SELECT * FROM products ORDER BY price DESC LIMIT 4)
+EXCEPT
+(SELECT * FROM products ORDER BY price / weight DESC LIMIT 4);
+```
+
+Risultato: i prodotti che sono tra i 4 più cari ma non tra i 4 con rapporto prezzo/peso più alto (es. id 38, 46, 80). Il prodotto presente in entrambe le liste (es. id 7) viene escluso.
+
+Se si invertono le due query, si ottengono invece i prodotti con rapporto prezzo/peso più alto che non sono tra i 4 più cari (es. id 5 e 6 nell’esempio del corso).
+
+---
+
+## Esercizi di Riepilogo
+
+### UNION: Produttori per prezzo e per numero di telefoni
+
+Scrivere una query che restituisca:
+1. I produttori (`manufacturer`) dei telefoni con prezzo inferiore a 170.
+2. I produttori che hanno creato più di due telefoni.
+
+Unire i due result set con **UNION** (una sola colonna `manufacturer` in entrambe le query).
+
+**Tabella `phones`:** name, manufacturer, price, units_sold
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT manufacturer FROM phones WHERE price < 170
+UNION
+SELECT manufacturer FROM phones
+GROUP BY manufacturer
+HAVING COUNT(*) > 2;
+```
+
+**Spiegazione:**
+- Prima query: `manufacturer` dove `price < 170`.
+- Seconda query: `manufacturer` con più di 2 telefoni (GROUP BY manufacturer, HAVING COUNT(*) > 2).
+- UNION unisce le due liste e rimuove i duplicati (stesso produttore in entrambe).
+
+In ambienti che non richiedono parentesi per ORDER BY/LIMIT nelle sottoquery, la stessa sintassi senza parentesi è valida.
+
+</div>
+</details>
+
+### INTERSECT: Prodotti in entrambe le liste
+
+Usando la tabella `products`, trovare i prodotti che sono sia tra i 3 più cari sia tra i 3 con rapporto prezzo/peso più alto.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+(SELECT * FROM products ORDER BY price DESC LIMIT 3)
+INTERSECT
+(SELECT * FROM products ORDER BY price / weight DESC LIMIT 3);
+```
+
+Risultato: solo le righe presenti in entrambi i result set.
+
+</div>
+</details>
+
+### EXCEPT: Solo nella prima lista
+
+Scrivere una query che restituisca i prodotti tra i 4 più cari che **non** sono tra i 4 con rapporto prezzo/peso più alto.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+(SELECT * FROM products ORDER BY price DESC LIMIT 4)
+EXCEPT
+(SELECT * FROM products ORDER BY price / weight DESC LIMIT 4);
+```
+
+Risultato: righe della prima query escluse dalla seconda.
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **UNION**: unisce i risultati di due query e rimuove i duplicati. Le due query devono avere stesso numero di colonne e tipi compatibili.
+- **UNION ALL**: unisce i risultati senza rimuovere duplicati. Stesse regole di struttura di UNION.
+- **Parentesi**: con ORDER BY o LIMIT in una delle due query, in PostgreSQL è necessario racchiudere quella query tra parentesi per evitare ambiguità.
+- **INTERSECT**: restituisce solo le righe presenti in entrambe le query. **INTERSECT ALL** considera le molteplicità (minimo delle occorrenze).
+- **EXCEPT**: restituisce le righe della prima query che non compaiono nella seconda. **L’ordine delle query è rilevante**: Query1 EXCEPT Query2 ≠ Query2 EXCEPT Query1.
+- **Regole comuni**: stesso numero di colonne e tipi compatibili per colonne corrispondenti; i nomi delle colonne possono differire (vale il nome della prima query).
+- **Uso tipico**: combinare liste con criteri diversi (UNION), trovare overlap (INTERSECT) o differenze (EXCEPT) tra result set.
