@@ -78,6 +78,7 @@ const quote = defineCollection({
       draft: z.boolean().optional(),
       client: z.string().optional(), // Nome del cliente
       noindex: z.boolean().optional().default(false), // Indicizza nei motori di ricerca di default
+      version: z.number().optional(), // Versione del preventivo (versioning)
     }),
 })
 

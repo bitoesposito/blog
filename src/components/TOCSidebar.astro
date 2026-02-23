@@ -1,6 +1,6 @@
 ---
 import { ScrollArea } from '@/components/ui/scroll-area'
-import type { TOCSection, PostCollection } from '@/lib/collections'
+import type { PostCollection, TOCSection } from '@/lib/collections'
 import { cn, getHeadingMargin } from '@/lib/utils'
 
 type Props = {
@@ -21,7 +21,9 @@ if (collection === 'blog') {
   isSubpostFn = isSubpost
   getParentIdFn = getParentId
 } else if (collection === 'education') {
-  const { isEducationSubpost, getEducationParentId } = await import('@/lib/collections')
+  const { isEducationSubpost, getEducationParentId } = await import(
+    '@/lib/collections'
+  )
   isSubpostFn = isEducationSubpost
   getParentIdFn = getEducationParentId
 } else {
@@ -33,10 +35,7 @@ if (collection === 'blog') {
 const isCurrentSubpost = isSubpostFn(currentPostId)
 const parentId = isCurrentSubpost ? getParentIdFn(currentPostId) : currentPostId
 
-// Quote mostra solo sezioni parent
-const displaySections = collection === 'quote'
-  ? sections.filter((section) => section.type === 'parent')
-  : sections
+const displaySections = sections
 
 // Posizione sidebar: sempre a sinistra (col-start-1) per tutte le collections
 const colStart = 'col-start-1'
@@ -64,7 +63,7 @@ const margin = 'mr-8 ml-auto'
 
             return (
               <>
-                {isFirstSubpost && collection !== 'quote' && (
+                {isFirstSubpost && (
                   <div class="mt-2 flex items-center gap-2">
                     <div class="bg-border h-px flex-1" />
                     <span class="text-muted-foreground text-xs font-medium">
@@ -102,70 +101,72 @@ const margin = 'mr-8 ml-auto'
                     ))}
                   </ul>
                 ) : (
-                  collection !== 'quote' && (
-                    <div
-                      class={cn(
-                        'rounded-md border p-2',
-                        section.subpostId === currentPostId ? 'bg-muted/50' : '',
-                      )}
-                    >
-                      <ul class="flex list-none flex-col gap-y-2">
+                  <div
+                    class={cn(
+                      'rounded-md border p-2',
+                      section.subpostId === currentPostId ? 'bg-muted/50' : '',
+                    )}
+                  >
+                    <ul class="flex list-none flex-col gap-y-2">
+                      <li
+                        class={cn(
+                          'text-xs font-medium',
+                          section.subpostId === currentPostId
+                            ? 'text-foreground'
+                            : 'text-foreground/70',
+                        )}
+                      >
+                        <a
+                          href={
+                            section.subpostId === currentPostId
+                              ? '#'
+                              : `${basePath}/${section.subpostId}`
+                          }
+                          class="marker:text-foreground/30 list-none underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
+                          data-heading-link={
+                            section.subpostId === currentPostId
+                              ? 'top'
+                              : `${section.subpostId}-top`
+                          }
+                          aria-label={
+                            section.subpostId === currentPostId
+                              ? `Vai all'inizio del post corrente`
+                              : `Vai al post: ${section.title}`
+                          }
+                        >
+                          {section.title}
+                        </a>
+                      </li>
+                      {section.headings.map((heading) => (
                         <li
                           class={cn(
-                            'text-xs font-medium',
+                            'text-xs',
+                            getHeadingMargin(heading.depth),
                             section.subpostId === currentPostId
-                              ? 'text-foreground'
-                              : 'text-foreground/70',
+                              ? 'text-foreground/60'
+                              : 'text-foreground/30',
                           )}
                         >
                           <a
                             href={
                               section.subpostId === currentPostId
-                                ? '#'
-                                : `${basePath}/${section.subpostId}`
+                                ? `#${heading.slug}`
+                                : `${basePath}/${section.subpostId}#${heading.slug}`
                             }
-                            class="marker:text-foreground/30 list-none underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
+                            class="marker:text-foreground/30 hover:text-foreground/80 list-none underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
                             data-heading-link={
                               section.subpostId === currentPostId
-                                ? 'top'
-                                : `${section.subpostId}-top`
+                                ? heading.slug
+                                : `${section.subpostId}-${heading.slug}`
                             }
-                            aria-label={section.subpostId === currentPostId ? `Vai all'inizio del post corrente` : `Vai al post: ${section.title}`}
+                            aria-label={`Vai alla sezione: ${heading.text}${section.subpostId !== currentPostId ? ` nel post ${section.subpostId}` : ''}`}
                           >
-                            {section.title}
+                            {heading.text}
                           </a>
                         </li>
-                        {section.headings.map((heading) => (
-                          <li
-                            class={cn(
-                              'text-xs',
-                              getHeadingMargin(heading.depth),
-                              section.subpostId === currentPostId
-                                ? 'text-foreground/60'
-                                : 'text-foreground/30',
-                            )}
-                          >
-                            <a
-                              href={
-                                section.subpostId === currentPostId
-                                  ? `#${heading.slug}`
-                                  : `${basePath}/${section.subpostId}#${heading.slug}`
-                              }
-                              class="marker:text-foreground/30 hover:text-foreground/80 list-none underline decoration-transparent underline-offset-[3px] transition-colors duration-200 hover:decoration-inherit"
-                              data-heading-link={
-                                section.subpostId === currentPostId
-                                  ? heading.slug
-                                  : `${section.subpostId}-${heading.slug}`
-                              }
-                              aria-label={`Vai alla sezione: ${heading.text}${section.subpostId !== currentPostId ? ` nel post ${section.subpostId}` : ''}`}
-                            >
-                              {heading.text}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </>
             )
