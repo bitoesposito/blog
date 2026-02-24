@@ -1,0 +1,141 @@
+---
+title: "Internals di PostgreSQL: dove e come sono memorizzati i dati"
+description: "Directory dati, heap file, blocchi e pagine; struttura di un blocco (header, item identifier, free space, tuple); layout a livello binario"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 13
+---
+
+## Introduzione
+
+Per ottenere buone prestazioni non basta seguire una checklist di consigli: è necessario capire **come** PostgreSQL memorizza e accede ai dati. Questa sezione tratta gli **internals**: dove i dati risiedono su disco, come sono organizzati in **heap file**, **blocchi** (pagine) e **tuple**, e come è strutturato un singolo blocco fino al livello **binario**. Questa base sarà utile quando si parlerà di **indici** e di come le query vengono eseguite. Parte del contenuto è molto di dettaglio; può essere letta in un secondo momento come riferimento.
+
+---
+
+## Dove Postgres memorizza i dati
+
+PostgreSQL salva tutti i dati in una **directory** sul filesystem. Per conoscere il percorso:
+
+```sql
+SHOW data_directory;
+```
+
+Il risultato è un path (es. `/usr/local/var/postgres` su macOS, o un path sotto la directory di installazione). Aprendo quella cartella si vedono varie sottocartelle; i dati di **tutti** i database risiedono nella sottocartella **`base`**.
+
+Dentro `base` ci sono diverse directory numerate (es. `22442`, `16384`). Ogni numero è l’**identificativo interno** (OID) di un database. Per associare numero e nome:
+
+```sql
+SELECT oid, datname
+FROM pg_database;
+```
+
+Ad esempio il database `instagram` potrebbe avere `oid = 22442`; la directory `base/22442` conterrà tutti i file relativi a quel database. L’OID può cambiare tra installazioni.
+
+Dentro la directory del database (es. `base/22442`) ci sono molti **file**, anch’essi identificati da numeri. Ogni file corrisponde a un **oggetto** del database: una tabella, un indice, una sequenza, ecc. Per sapere cosa rappresenta ogni file:
+
+```sql
+SELECT *
+FROM pg_class;
+```
+
+Le colonne utili sono ad esempio `oid` (identificativo del file) e `relname` (nome dell’oggetto, es. `users`, `posts`). Cercando la riga con `relname = 'users'` si ottiene l’OID del file che contiene **tutta** la tabella `users`; cercando `relname = 'posts'` si ottiene il file della tabella `posts`. Quei numeri corrispondono ai nomi dei file nella directory (es. `22445`, `22459`).
+
+In sintesi: **un file = un oggetto** (tipicamente una tabella o un indice); tutto il contenuto della tabella `users` è nel suo heap file.
+
+---
+
+## Terminologia: heap file, tuple, blocco (pagina)
+
+- **Heap (heap file):** il file su disco che contiene **tutti** i dati di una tabella. Non va confuso con la struttura dati “heap” (coda di priorità); qui “heap” indica solo “insieme di righe”.
+- **Tuple (o row, item):** una **singola riga** della tabella. Tuple e “riga” sono sinonimi in questo contesto.
+- **Blocco (block) o pagina (page):** un heap file è diviso in **blocchi** (o pagine). Blocco e pagina sono la stessa cosa. Ogni blocco ha una **dimensione fissa**, per default **8 KB** (8192 byte), e contiene un certo numero di tuple (anche zero). I blocchi sono numerati a partire da 0 (block 0, block 1, …).
+
+Relazione: **heap file** → sequenza di **blocchi** da 8 KB → dentro ogni blocco ci sono **tuple** (righe).
+
+---
+
+## Struttura di un heap file
+
+Concettualmente:
+
+- Il **file** è l’intero heap (es. tutto `users`).
+- Il file è suddiviso in **blocchi** di 8 KB.
+- Ogni blocco può contenere zero o più **tuple** (righe).
+
+Il numero di tuple per blocco dipende dalla dimensione delle righe. Blocchi piccoli e fissi servono per gestire la **lettura da disco** e la **cache** in memoria in unità uniformi; PostgreSQL legge e scrive a “blocco” piuttosto che a singola riga.
+
+---
+
+## Struttura di un singolo blocco (pagina)
+
+Un blocco da 8 KB non è solo “un mucchio di righe” scritto in fila. Ha una **struttura interna** ben definita. Dall’inizio alla fine del blocco si trovano (in ordine):
+
+1. **Page header** – Metadati del blocco (circa 24 byte): informazioni di controllo, checksum, flag, e due offset importanti chiamati **lower** e **upper** (vedi sotto).
+2. **Item identifiers (item ID array)** – Una sequenza di “puntatori” (ognuno di pochi byte) che indicano **dove** si trova ogni tuple nel blocco e **quanto** è lunga. Non contengono i dati delle righe, solo offset e lunghezza.
+3. **Free space** – Spazio libero, disponibile per inserire nuove tuple o per aggiornamenti che allungano una riga.
+4. **Tuple (item) data** – I dati veri e propri delle righe. Ogni tuple ha a sua volta un piccolo **header** (informazioni sulla riga) e poi i valori delle colonne.
+
+Gli offset **lower** e **upper** nel page header indicano rispettivamente l’inizio della zona di **free space** e la fine di essa (cioè l’inizio della zona dove sono memorizzate le tuple). Così PostgreSQL sa dove può scrivere nuove righe senza sovrascrivere dati esistenti.
+
+Questa organizzazione permette di trovare rapidamente le righe in un blocco: si scorre l’array degli item identifier, si legge offset e lunghezza, e si salta direttamente ai byte che contengono la tuple.
+
+---
+
+## Dettaglio a livello binario (riferimento)
+
+Questa sezione descrive come interpretare il contenuto **binario** di un blocco. È materiale opzionale e molto tecnico; serve soprattutto come riferimento per chi vuole approfondire o per quando si studiano gli indici. Si può saltare e tornare in seguito.
+
+### Tool e documentazione
+
+Per ispezionare i byte di un heap file serve un **hex editor** (o un’estensione “Hex Editor” in VS Code). La documentazione ufficiale PostgreSQL descrive il **page layout** (layout della pagina) nella sezione “Database Page Layout”: lì sono definiti byte per byte header, item identifier e layout delle tuple.
+
+### Page header (primi 24 byte)
+
+I primi **24 byte** del blocco sono il **page header**. In base alla documentazione (tabella tipo “Table 68.3” nel manuale) si trovano in ordine, tra gli altri:
+
+- **pd_lsn** (8 byte) – Log Sequence Number.
+- **pd_checksum** (2 byte) – Checksum della pagina.
+- **pd_flags** (2 byte) – Flag.
+- **pd_lower** (2 byte) – Offset, in byte dall’inizio della pagina, **all’inizio** dello spazio libero (free space). È un intero a 16 bit (es. 228).
+- **pd_upper** (2 byte) – Offset, in byte dall’inizio della pagina, **alla fine** dello spazio libero (quindi all’inizio dell’area delle tuple).
+- **pd_special** (2 byte), **pd_pagesize_version** (2 byte), **pd_prune** (4 byte) – Altri campi di controllo.
+
+Esempio: se `pd_lower = 228`, contando 228 byte dall’inizio del blocco si arriva al primo byte del free space. Se `pd_upper = 296`, contando 296 byte si arriva al primo byte dei dati delle tuple. La zona tra 228 e 296 è il free space. I valori si leggono nell’hex editor come interi (es. Int16 nel data inspector).
+
+### Item identifiers
+
+Subito dopo il header (dall’byte 24 fino a `pd_lower`) c’è l’**array degli item identifier**. Ogni **item identifier** è lungo **4 byte** e descrive una tuple in quel blocco:
+
+- **Offset** – Byte offset dall’inizio della **pagina** all’inizio di quella tuple (es. 296).
+- **Length** – Lunghezza in byte della parte “dati” della tuple (es. 172).
+
+L’ordine esatto dei bit/byte per offset e length è descritto nella documentazione (item identifier format). In pratica: con i primi due byte (e la convenzione little-endian / bit layout del manuale) si ricava l’offset; con gli altri si ricava la length. Ad esempio si può ottenere un offset di 296 e una length di 172. Contando 296 byte dall’inizio del blocco si arriva al primo byte di quella tuple.
+
+### Struttura di una tuple (item/row)
+
+Ogni tuple nel blocco inizia con un **tuple header** (circa 23 byte, dipende dalla versione e dalle opzioni): informazioni di sistema (visibility, lock, ecc.). Subito dopo può esserci un po’ di “filler” per allineamento. **Dopo** header e filler iniziano i **dati veri** della riga: i valori delle colonne nel formato interno di Postgres.
+
+Quindi: **inizio tuple** = inizio header; **inizio dati utente** = dopo header (+ eventuale filler). Il primo valore memorizzato è spesso l’**ID** della riga (colonna `id` se presente). Ad esempio, per la riga con `username = 'Gene76'` si potrebbe trovare nel blocco l’ID 203 e poi gli altri campi. Si può verificare con una query:
+
+```sql
+SELECT * FROM users WHERE username = 'Gene76';
+```
+
+e confrontare l’`id` restituito (es. 203) con il valore interpretato dai byte dopo il tuple header.
+
+### Più pagine nello stesso file
+
+Un heap file grande è composto da **molte pagine** da 8 KB. La prima pagina inizia al byte 0 del file, la seconda al byte 8192 (o 8096 a seconda della convenzione “page” vs “block”), e così via. In un hex editor, scorrendo di 8192 byte (o il valore indicato dalla documentazione) si passa dalla fine della pagina 0 all’inizio della pagina 1. Ogni pagina ripete la stessa struttura: header, item identifiers, free space, tuple.
+
+Questa organizzazione a blocchi e a puntatori (item ID) è alla base del modo in cui PostgreSQL e i suoi **indici** trovano le righe su disco senza scansionare tutto il file; gli indici useranno concetti analoghi (strutture ad albero che puntano a blocchi e tuple).
+
+---
+
+## Riepilogo
+
+- **SHOW data_directory** indica la directory di dati; i database sono sotto **base/** in sottocartelle numerate (OID). **pg_database** associa OID e nome database; **pg_class** associa OID file e nome oggetto (tabelle, indici, ecc.).
+- **Heap file:** file che contiene tutti i dati di una tabella. **Tuple** = riga. **Blocco (pagina)** = unità fissa (default 8 KB) in cui il file è suddiviso; ogni blocco contiene più tuple.
+- **Struttura di un blocco:** page header (con lower/upper), array di **item identifier** (offset + length per ogni tuple), **free space**, poi i **dati delle tuple**. Ogni tuple ha un header e poi i valori delle colonne.
+- **Livello binario (opzionale):** header 24 byte (pd_lsn, checksum, flags, pd_lower, pd_upper, …); item ID da 4 byte; tuple con header ~23 byte + dati. Lower/upper e item ID permettono di localizzare ogni riga nel blocco. Più pagine da 8 KB compongono l’intero heap file.
+- Questa organizzazione è il fondamento per capire come gli **indici** e l’esecutore delle query accedono ai dati e come migliorare le **prestazioni**.
