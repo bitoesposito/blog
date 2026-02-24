@@ -1,0 +1,174 @@
+---
+title: "Schema designer e design di un database"
+description: "Strumenti per diagrammare lo schema; scelte di design per un'app tipo Instagram: likes, tag, hashtag, followers"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 12
+---
+
+## Introduzione
+
+Per capire come sono collegate le tabelle senza ispezionare manualmente il database si usano **schema designer**: strumenti che rappresentano tabelle, colonne e relazioni in modo visivo o tramite configurazione. Questo capitolo introduce brevemente questi strumenti e, in forma concettuale, le **scelte di design** per un database tipo Instagram (likes, tag su foto e caption, hashtag, followers). La traduzione in **CREATE TABLE** e il caricamento dati restano da fare in un database reale (es. con script SQL o in un capitolo successivo).
+
+---
+
+## Schema designer: a cosa servono
+
+Uno **schema designer** è uno strumento (sito web o applicazione) che serve a **rappresentare la struttura** del database: quali tabelle esistono, quali colonne hanno, come sono collegate (foreign key). Lo scopo è **documentazione e chiarezza**: capire il modello senza aprire pgAdmin o eseguire query sul catalogo.
+
+Esistono due approcci principali:
+
+- **Diagram-based:** si creano tabelle e colonne con drag-and-drop, si collegano le tabelle definendo le foreign key dall’interfaccia. Il risultato è un diagramma che si modifica cliccando su caselle e linee.
+- **Code-based:** si scrive un file di configurazione (o un linguaggio dedicato, non SQL) che descrive tabelle e relazioni; lo strumento **genera** il diagramma. Il file può essere versionato (es. su Git) e condiviso.
+
+Esempi di strumenti: dbdiagram.io (configurazione testuale + diagramma), Draw.io (diagrammi generici), oltre a molti altri. La scelta dipende da preferenze e dal fatto che si voglia o meno mantenere lo schema come file di testo.
+
+Per il resto del capitolo ci concentriamo sulle **decisioni di design**, indipendentemente dallo strumento usato per disegnarle.
+
+---
+
+## Modello base: users, posts, comments
+
+Si parte da tre tabelle:
+
+- **users** – id (SERIAL PK), username, created_at, updated_at, e poi bio, avatar (URL), phone, email, password, status (online/offline/…).
+- **posts** – id (SERIAL PK), url (foto), caption, lat/long (opzionali), created_at, updated_at, **user_id** → users(id) (autore del post).
+- **comments** – id (SERIAL PK), contents, created_at, updated_at, **user_id** → users(id), **post_id** → posts(id).
+
+Un post appartiene a un utente; un commento appartiene a un utente e a un post. Niente di derivato (conteggi) nelle tabelle: ad esempio **non** si memorizza “numero di post” o “numero di follower” su `users`; si calcolano con COUNT quando serve.
+
+---
+
+## Sistema di like: perché non una colonna “likes”
+
+Un’idea sbagliata è aggiungere alla tabella **posts** una colonna `likes INTEGER` che tiene il numero di like. Problemi:
+
+- Non si sa **chi** ha messo like: non si può impedire che lo stesso utente metta like più volte.
+- Non si può implementare “togli like” (unlike) in modo pulito.
+- Non si può mostrare “chi ha messo like” o “i post più likati da un utente”.
+- Se un utente viene eliminato, non si sa quali like togliere.
+
+La soluzione corretta è una **tabella di relazione** che modella “l’utente X ha messo like al post Y”:
+
+- **likes** – id, created_at, **user_id** (FK → users), **post_id** (FK → posts), con **UNIQUE(user_id, post_id)** così un utente può mettere like a un post una sola volta. Un like si “toglie” cancellando la riga.
+
+Per **reazioni** (like, love, sad, …) si può aggiungere una colonna `type` (o usare un tipo ENUM in Postgres) sulla stessa tabella.
+
+---
+
+## Like su post **oppure** su commento (associazione polimorfa)
+
+Se si vuole permettere like sia su **post** sia su **comment**, servono collegamenti a due tipi di entità. Tre approcci tipici:
+
+**1. Polimorfico (likeable_id + likeable_type)**  
+Una tabella `likes` con `likeable_id` (integer) e `likeable_type` (stringa, es. `'post'` o `'comment'`). **Svantaggio:** `likeable_id` non può essere una vera foreign key verso una sola tabella, quindi si perde l’integrità referenziale garantita dal DB.
+
+**2. Una tabella con post_id e comment_id (entrambi nullable)**  
+`likes` ha sia `post_id` (FK → posts) sia `comment_id` (FK → comments). Per ogni riga **esattamente uno** dei due è valorizzato, l’altro NULL. Si può imporre con un CHECK (es. usando COALESCE e conversione a intero per contare “quanti sono non null” e richiedere che sia 1). **Vantaggio:** foreign key vere, integrità garantita. **Svantaggio:** se i “tipi” likabili crescono molto, si aggiungono molte colonne.
+
+**3. Tabelle separate**  
+`post_likes` (user_id, post_id) e `comment_likes` (user_id, comment_id). **Vantaggio:** molto chiaro, vincoli semplici. **Svantaggio:** per query “tutti i like di un utente” servono UNION o viste.
+
+Per un’app tipo Instagram spesso si usa l’**opzione 2**: una sola tabella `likes` con `user_id`, `post_id`, `comment_id` e un CHECK che impone “esattamente uno tra post_id e comment_id non null”, più UNIQUE appropriato (es. su user_id + post_id + comment_id o su combinazioni coerenti) per evitare like duplicati.
+
+---
+
+## Tag su foto e menzioni in caption
+
+**Tag su foto:** un utente viene “taggato” in un punto preciso della foto (coordinate x, y). Si modella con una tabella **photo_tags**: post_id (FK), user_id (FK), x, y (es. interi in pixel), created_at, updated_at; UNIQUE(post_id, user_id) se un utente può essere taggato una sola volta per foto.
+
+**Menzioni in caption:** il testo della caption può contenere @username. Se serve **query** su “post in cui è stato menzionato l’utente X” o **notifiche** “sei stato menzionato”, conviene modellare le menzioni in DB con una tabella **caption_tags**: post_id (FK), user_id (FK), created_at; UNIQUE(post_id, user_id) se si conta una menzione per utente per post. Se invece basta mostrare il testo evidenziato nel client, si può tenere solo la colonna `caption` su `posts` e parsare lato applicazione.
+
+Si possono tenere **photo_tags** e **caption_tags** separate (due tabelle) per chiarezza e per evolvere le funzionalità (es. solo i tag su foto potrebbero avere coordinate o altre proprietà).
+
+---
+
+## Hashtag
+
+Gli hashtag compaiono in caption, commenti e bio. Se l’**uso reale** (es. come in Instagram) è solo “cerca hashtag → elenco di **post** che usano quell’hashtag”, basta modellare il legame **hashtag – post**:
+
+- **hashtags** – id, title (es. VARCHAR(20)), UNIQUE(title).
+- **hashtags_posts** (tabella di join) – hashtag_id (FK), post_id (FK), eventualmente UNIQUE(hashtag_id, post_id). Così si evitano duplicati dello stesso hashtag per lo stesso post e si risparmia spazio rispetto a ripetere la stringa in ogni riga.
+
+Relazioni “hashtag – commenti” o “hashtag – bio” si aggiungono solo se servono query o funzionalità che le richiedono.
+
+---
+
+## Followers
+
+Il rapporto “l’utente A segue l’utente B” si modella con una tabella **followers** (o **follows**):
+
+- **leader_id** (FK → users): chi è seguito.
+- **follower_id** (FK → users): chi segue.
+
+Regole tipiche: UNIQUE(leader_id, follower_id) (non seguire due volte la stessa persona); CHECK(leader_id &lt;&gt; follower_id) (non seguire se stessi). Un “unfollow” è una DELETE della riga.
+
+I numeri “following” / “followers” **non** vanno memorizzati come colonne su `users`: sono **dati derivati** e si ottengono con COUNT sulle tabelle di relazione (post, followers, ecc.).
+
+---
+
+## Da design a CREATE TABLE
+
+Le scelte sopra si traducono in **CREATE TABLE** con:
+
+- PRIMARY KEY e FOREIGN KEY con REFERENCES e, dove appropriato, ON DELETE CASCADE.
+- NOT NULL e DEFAULT (es. created_at DEFAULT CURRENT_TIMESTAMP) dove ha senso.
+- CHECK per vincoli come “esattamente uno tra post_id e comment_id” in `likes`, o intervalli per lat/long su `posts`.
+- UNIQUE su coppie (user_id, post_id) in likes, (post_id, user_id) in photo_tags/caption_tags, (hashtag_id, post_id) in hashtags_posts, (leader_id, follower_id) in followers.
+
+La scrittura completa di tutte le CREATE TABLE e l’inserimento di dati di test (o il restore da backup) si fa in un database reale (pgAdmin, script .sql). In un post di testo non è pratico riportare tutto il DDL; qui ci si limita ai **concetti** e ai vincoli chiave.
+
+---
+
+## Esercizi rapidi (su uno schema tipo Instagram)
+
+Supponendo di avere tabelle `users`, `posts`, `likes` con le relazioni descritte sopra.
+
+### Ultimi tre utenti per ID
+
+Restituire i tre utenti con ID più alto.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT * FROM users
+ORDER BY id DESC
+LIMIT 3;
+```
+
+</div>
+</details>
+
+### Username e numero di like dati
+
+Per ogni username, restituire il numero di like che quell’utente ha dato (conteggio sulle righe di `likes`).
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT u.username, COUNT(*) AS likes_given
+FROM users u
+JOIN likes l ON l.user_id = u.id
+GROUP BY u.username;
+```
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **Schema designer:** strumenti (diagram-based o code-based) per documentare tabelle, colonne e relazioni senza dipendere da pgAdmin.
+- **Like:** tabella di relazione `likes` (user_id, post_id) con UNIQUE(user_id, post_id); mai una sola colonna “conteggio” su posts.
+- **Like su post o comment:** una tabella con post_id e comment_id (uno e uno solo valorizzato) e CHECK, oppure tabelle separate; il polimorfico (likeable_id/type) perde le foreign key.
+- **Tag:** photo_tags (post, user, x, y); caption_tags (post, user) se servono query/notifiche sulle menzioni.
+- **Hashtag:** tabella hashtags + join table hashtags_posts verso posts; altre relazioni solo se necessarie.
+- **Followers:** tabella followers(leader_id, follower_id) con UNIQUE e CHECK per non seguire se stessi.
+- **Dati derivati:** non memorizzare conteggi (post, follower, like) su users/posts; calcolarli con query.
+- L’implementazione completa (CREATE TABLE, backup, restore) si fa in un database reale con script SQL.
