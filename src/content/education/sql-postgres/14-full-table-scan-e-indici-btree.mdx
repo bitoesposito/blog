@@ -1,0 +1,197 @@
+---
+title: "Full table scan e indici B-tree"
+description: "Come viene eseguita una query sul heap; full table scan; indici come struttura di lookup; creazione, benchmarking e svantaggi; indici automatici su PK e UNIQUE"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 14
+---
+
+## Introduzione
+
+Dopo aver visto come i dati sono memorizzati in blocchi dentro l’heap file, la domanda è: **perché** conta per le prestazioni? Questo capitolo descrive come PostgreSQL **esegue** una query semplice (es. cercare un utente per username), introduce il **full table scan**, l’**indice** come alternativa per trovare rapidamente il blocco e la riga corretti, e come **creare**, **misurare** e **valutare** gli indici (B-tree, costi, indici automatici su primary key e unique). Una sezione opzionale accenna alla struttura su disco dell’indice e all’estensione **pageinspect**.
+
+---
+
+## Esecuzione di una query senza indice
+
+Si consideri una query come:
+
+```sql
+SELECT * FROM users WHERE username = 'Ryan';
+```
+
+I dati risiedono nell’heap file su disco. PostgreSQL **non** può “leggere il file in posto”: per confrontare i valori deve **caricare** i dati in **memoria**. In pratica:
+
+1. Si attraversano i **blocchi** dell’heap file (es. block 0, block 1, …).
+2. Per ogni blocco si carica il suo contenuto in memoria.
+3. Si **scorrono le righe** una per una e si applica la condizione `username = 'Ryan'`.
+
+Il costo principale è il **trasferimento da disco a memoria** (I/O). In più, una volta in memoria, si deve comunque **iterare** su ogni riga fino a trovare quelle che soddisfano il filtro.
+
+Questo modo di eseguire la query si chiama **full table scan** (scansione completa della tabella): si caricano (possibilmente) **tutte** le righe dall’heap in memoria e si esegue un’iterazione per applicare il filtro. In molti articoli si legge che il full table scan è “lento”; in realtà non è sempre negativo (per tabelle piccole o quando si leggono quasi tutte le righe può essere la scelta migliore). Tuttavia, **ogni volta** che si osserva un full table scan conviene chiedersi se esiste un modo più efficiente (ad esempio un **indice**) per quella query.
+
+---
+
+## L’alternativa: l’indice
+
+Se esistesse una struttura **esterna** all’heap che, dato un valore (es. `username = 'Ryan'`), restituisse **dove** si trova quella riga (numero di **blocco** e **indice** della riga nel blocco), PostgreSQL potrebbe:
+
+1. Consultare questa struttura.
+2. Ottenere “Ryan → block 1, index 2”.
+3. Caricare **solo** il blocco 1 (e non block 0 né altri), leggere la riga all’indice 2 e restituirla.
+
+Si eviterebbero il caricamento di blocchi inutili e gran parte dell’iterazione. Questa struttura è proprio un **indice**: un **registro** che mappa valori (di una o più colonne) alle **posizioni** (blocco + indice) delle righe nell’heap file. PostgreSQL implementa gli indici come strutture dati (in particolare **B-tree**) che consentono lookup efficienti.
+
+---
+
+## Come è costruito un indice (concetto)
+
+Per capire come funziona un indice è utile pensare a come viene **costruito** (in modo semplificato):
+
+1. **Scelta della colonna** – Si decide su quale colonna si vuole un lookup veloce (es. `username` per query con `WHERE username = ...`).
+
+2. **Estrazione (valore, posizione)** – Si percorre l’heap file e per ogni riga si estrae il valore della colonna e la **posizione** (blocco + indice della riga). Si ottiene una lista del tipo: (Nancy, block 0, index 1), (Elf, block 0, index 2), (Gia, block 1, index 1), (Ryan, block 1, index 2). Nell’indice non si memorizzano le altre colonne (id, bio, avatar, …), solo il valore indicizzato e il puntatore alla riga.
+
+3. **Ordinamento** – Si ordinano le coppie (valore, posizione) in base al valore (per stringhe in ordine alfabetico, per numeri in ordine crescente/decrescente, per date in ordine temporale).
+
+4. **Organizzazione ad albero (B-tree)** – I record ordinati vengono organizzati in una struttura ad **albero**. Le **foglie** contengono i valori con i rispettivi puntatori (blocco, indice), in ordine. I **nodi interni** (e la **radice**) non contengono i dati completi ma “**direzioni**”: ad esempio “se il valore cercato è &lt; Nancy vai a questa foglia, altrimenti a quell’altra”. Così, partendo dalla radice, si fanno pochi confronti e si scende in una sola foglia dove si trova la riga (o si capisce che non c’è).
+
+5. **Lookup** – Per cercare `username = 'Ryan'` si parte dalla radice, si valutano le disuguaglianze e si scende fino alla foglia corretta; lì si trova la voce “Ryan → block 1, index 2” e si accede direttamente a quel blocco e a quell’indice nell’heap.
+
+In questo modo non si caricano tutti i blocchi e non si scorrono tutte le righe: si usa l’indice per andare subito al blocco giusto.
+
+---
+
+## Creare e rimuovere un indice
+
+**Creazione:**
+
+```sql
+CREATE INDEX ON users (username);
+```
+
+PostgreSQL costruisce l’albero (estrazione, ordinamento, struttura) in automatico. Se non si specifica un nome, viene assegnato uno automatico con la convenzione **nome_tabella_nome_colonna_idx** (es. `users_username_idx`). Per dare un nome esplicito:
+
+```sql
+CREATE INDEX nome_scelto ON users (username);
+```
+
+Si consiglia di usare comunque la stessa convenzione (es. `users_username_idx`) per ritrovare facilmente gli indici.
+
+**Rimozione:**
+
+```sql
+DROP INDEX users_username_idx;
+```
+
+Conoscere la convenzione evita di dover cercare il nome dell’indice nell’interfaccia.
+
+---
+
+## Misurare l’impatto: EXPLAIN ANALYZE
+
+Per capire **quanto** un indice aiuta si può misurare il tempo di esecuzione reale. Il tempo mostrato in pgAdmin (“query returned in X ms”) include il round-trip di rete e non riflette solo il lavoro del database. Per avere il tempo **di esecuzione della query** si usa:
+
+```sql
+EXPLAIN ANALYZE
+SELECT * FROM users WHERE username = 'Emil30';
+```
+
+`EXPLAIN ANALYZE` esegue la query e restituisce un piano di esecuzione con statistiche; una riga importante è **Execution time** (es. 0,05–0,08 ms). Eseguendo la stessa query **senza** indice (dopo un `DROP INDEX`), il tempo può salire a 1,2–1,5 ms. Il rapporto (es. 1,25 / 0,075 ≈ 17) mostra che con l’indice la query può essere **molte volte** più veloce. `EXPLAIN` e `ANALYZE` verranno approfonditi in seguito; per ora bastano per un confronto di tempi.
+
+---
+
+## Svantaggi degli indici
+
+Avere indici su **ogni** colonna non è una buona pratica. Gli indici hanno costi:
+
+1. **Spazio su disco** – L’indice è un oggetto persistente: per ogni riga della tabella si memorizza (almeno) il valore della colonna indicizzata e un puntatore (blocco, indice). Si può stimare lo spazio con:
+   ```sql
+   SELECT pg_size_pretty(pg_relation_size('users'));
+   SELECT pg_size_pretty(pg_relation_size('users_username_idx'));
+   ```
+   Su tabelle grandi (o in ambienti hosted dove lo storage costa), molti indici aumentano costi e footprint.
+
+2. **INSERT, UPDATE, DELETE più lenti** – Ogni modifica alla tabella può richiedere l’aggiornamento dell’indice (inserimento/rimozione/aggiornamento di voci nell’albero). Tabelle molto aggiornate con molti indici possono subire un rallentamento sulle scritture.
+
+3. **L’indice non è sempre usato** – La presenza di un indice **non garantisce** che il planner lo usi. In alcuni casi (es. quando si seleziona una frazione molto alta delle righe, o con condizioni che il planner stima meglio soddisfatte con una scansione completa) PostgreSQL può scegliere comunque un full table scan. Se l’indice non viene mai usato, si paga solo in spazio e in rallentamento delle scritture senza benefici in lettura.
+
+Quindi: creare indici dove ci si aspetta **query** che filtrano o ordinano su quelle colonne, e dove il beneficio in lettura giustifica spazio e costo in scrittura.
+
+---
+
+## Tipo di indice: B-tree
+
+Con `CREATE INDEX` si crea di default un indice **B-tree**. Il B-tree è il tipo più comune e adatto alla maggior parte dei casi (confronti con =, &lt;, &gt;, BETWEEN, ORDER BY, ecc.). PostgreSQL supporta altri tipi (hash, GiST, GIN, BRIN, …) per casi molto specifici (ricerche full-text, dati geografici, array, ecc.). Salvo esigenze particolari, ci si può limitare ai **B-tree**.
+
+---
+
+## Indici automatici (primary key e UNIQUE)
+
+PostgreSQL crea **automaticamente** un indice:
+
+- su ogni colonna (o insieme di colonne) dichiarata **PRIMARY KEY**;
+- su ogni colonna (o insieme di colonne) con vincolo **UNIQUE**.
+
+Quindi **non** serve (e non conviene) creare a mano un indice su una colonna che è già primary key o unique: l’indice esiste già e viene usato per lookup e per garantire univocità. In pgAdmin gli indici legati a primary key e unique a volte non compaiono nella sezione “Indexes” della tabella; per elencare **tutti** gli indici del database:
+
+```sql
+SELECT relname, relkind
+FROM pg_class
+WHERE relkind = 'i';
+```
+
+`relkind = 'i'` indica che l’oggetto è un indice. Si vedranno ad esempio `users_pkey`, `hashtags_pkey`, `hashtags_title_key`, ecc. Regola pratica: non creare un indice su una colonna che è già primary key o unique.
+
+---
+
+## Dettaglio opzionale: struttura su disco e pageinspect
+
+Questa sezione è opzionale e serve come riferimento per chi vuole vedere come l’indice è memorizzato su disco e come leggerlo.
+
+### File e pagine dell’indice
+
+L’indice è memorizzato in un **file separato** (come l’heap), con la stessa organizzazione a **pagine da 8 KB**. La prima pagina è la **meta page** (metadati dell’indice); poi ci sono le pagine che rappresentano i **nodi** del B-tree: una (o più) **root**, eventuali nodi **interni** e le **leaf page** dove sono memorizzati i valori indicizzati e i puntatori (blocco, indice) alle righe nell’heap.
+
+### Estensione pageinspect
+
+L’estensione **pageinspect** fornisce funzioni per ispezionare il contenuto delle pagine (heap e indice). Dopo:
+
+```sql
+CREATE EXTENSION pageinspect;
+```
+
+si può ad esempio:
+
+- **Meta page dell’indice** – `bt_meta('users_username_idx')`: restituisce, tra l’altro, l’indice della pagina **root** (es. 3).
+- **Contenuto di una pagina** – `bt_page_items('users_username_idx', 3)`: per la pagina 3 (root) restituisce le righe con colonne come **ctid** (blocco e indice nel heap, o riferimento a un’altra pagina dell’indice) e **data** (valore memorizzato, spesso in forma binaria/esadecimale).
+
+Nella **root**, le righe rappresentano le “direzioni”: ad esempio “se il valore cercato è &gt;= valore in data, vai alla pagina indicata da ctid”. Il primo elemento può essere vuoto; gli altri contengono valori di separazione (es. convertendo il valore esadecimale in stringa si può ottenere un username come "Allison 14", "Austin..."). Nelle **leaf page**, ogni riga corrisponde a una voce dell’indice: **data** è il valore (es. username), **ctid** è il puntatore alla riga nell’heap (numero di blocco e indice della riga in quel blocco). La **prima** riga di una leaf page ha un significato speciale: è un puntatore alla **prima voce** della leaf successiva, per permettere di scorrere in ordine tutte le voci senza risalire l’albero.
+
+### Verificare ctid
+
+Ogni riga nell’heap ha un **ctid** (identificatore di posizione fisica): (numero_blocco, indice_nel_blocco). Si può mostrare con:
+
+```sql
+SELECT ctid, * FROM users WHERE username = 'Aaliyah Hintze';
+```
+
+Se l’indice dice che "Aaliyah Hintze" è in ctid (33, 43), il risultato della query mostrerà lo stesso ctid. Questo conferma che l’indice punta correttamente alla riga nell’heap.
+
+### Più livelli nel B-tree
+
+Con pochi dati, il B-tree può avere solo radice e foglie. Con **molte** righe (es. centinaia di migliaia), PostgreSQL introduce **nodi intermedi** tra radice e foglie, mantenendo lookup efficienti. La struttura su disco resta la stessa (meta, root, leaf e eventuali pagine interne); cambia solo il numero di livelli.
+
+---
+
+## Riepilogo
+
+- **Full table scan:** caricamento (anche totale) dei blocchi dell’heap in memoria e iterazione riga per riga per applicare il filtro. Costoso in I/O; non sempre “cattivo”, ma da valutare.
+- **Indice:** struttura (B-tree) che mappa valori di una colonna alle **posizioni** (blocco, indice) nell’heap, permettendo di caricare solo i blocchi necessari.
+- **Creazione:** `CREATE INDEX ON tabella (colonna)`; nome automatico `tabella_colonna_idx`. Rimozione: `DROP INDEX nome_indice`.
+- **Misura:** `EXPLAIN ANALYZE` + tempo di esecuzione per confrontare con/senza indice (es. ~17× più veloce con indice su username).
+- **Svantaggi:** spazio su disco, rallentamento di INSERT/UPDATE/DELETE, nessuna garanzia che il planner usi l’indice. Non indicizzare ogni colonna.
+- **Tipo:** di default B-tree; altri tipi solo per casi molto specifici.
+- **PK e UNIQUE:** creano indici automaticamente; non creare indici duplicati su quelle colonne. Elenco indici: `pg_class` con `relkind = 'i'`.
+- **Opzionale:** indice su file con pagine 8 KB (meta, root, leaf); pageinspect per leggere meta e item delle pagine; ctid per collegare indice e heap; con molti dati il B-tree ha più livelli.
