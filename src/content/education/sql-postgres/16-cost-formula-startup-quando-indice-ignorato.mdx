@@ -1,0 +1,158 @@
+---
+title: "Cost: formula, startup e quando l'indice viene ignorato"
+description: "Definizione di cost; confronto index vs sequential scan; formula con costanti del planner; startup cost vs total cost; propagazione verso il padre; quando Postgres sceglie il sequential scan"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 16
+---
+
+## Introduzione
+
+Il **cost** (costo) nel piano di esecuzione è un valore che il planner usa per confrontare strategie diverse **senza** eseguire la query. Questo capitolo chiarisce cosa rappresenta il cost, come viene calcolato (formula con **costanti del planner**), il significato dei **due numeri** (startup e total), come il cost **si propaga** dai figli al padre e in quali casi PostgreSQL **non usa** l’indice nonostante esista.
+
+---
+
+## Cos’è il cost (definizione di lavoro)
+
+Per **cost** si intende, in modo semplificato, una stima del **tempo** (o dell’“impegno”) necessario per eseguire un passo del piano (es. un Index Scan o un Seq Scan). Non è un tempo reale in secondi o millisecondi: è un **numero adimensionale** che permette di confrontare un passo con un altro o un piano con un altro. Si può pensare al cost come a uno **score** di “quanto è pesante” quell’operazione, in relazione a un’unità di riferimento (il caricamento sequenziale di una pagina). Questa definizione è sufficiente per interpretare i piani e capire perché il planner preferisce l’indice in alcuni casi e la scansione sequenziale in altri.
+
+---
+
+## Confrontare due piani senza eseguire la query
+
+Si consideri la query:
+
+```sql
+SELECT * FROM users WHERE username = 'Allison 14';
+```
+
+Il planner può scegliere tra (almeno) due strategie:
+
+**Piano A – Uso dell’indice su username:**  
+Si entra nella radice dell’indice B-tree, si scende in una foglia (una o poche pagine), si trova il puntatore (blocco, indice) alla riga nell’heap, si apre l’heap e si carica **solo quel blocco**. In totale si caricano poche **pagine** (es. 2: una foglia dell’indice e un blocco dell’heap), ma gli accessi sono **random** (salto da indice a heap, non lettura sequenziale del file).
+
+**Piano B – Sequential scan su users:**  
+Si apre l’heap file e si caricano i blocchi **in ordine** (blocco 0, 1, 2, …), processando le righe fino a trovare quelle che soddisfano il filtro. Si caricano **tutte** le pagine dell’heap (es. 110), ma in modo **sequenziale**.
+
+Per dare un “punteggio” a ciascun piano senza eseguire la query si può usare il **numero di pagine** caricate, tenendo conto che:
+
+- Leggere una pagina in modo **random** (saltando in punti diversi del disco) è in genere **più costoso** che leggerla in modo sequenziale.
+- La documentazione e i default di PostgreSQL assumono che una **lettura random** costi circa **4 volte** una lettura sequenziale (vedi sotto: `random_page_cost`).
+
+Con queste convenzioni:
+
+- **Piano A:** 2 pagine in random → 2 × 4 = **8** (usando 4 come fattore per la random).
+- **Piano B:** 110 pagine in sequenziale → 110 × 1 = **110** (usando 1 come unità per la sequenziale).
+
+I numeri 8 e 110 **non** hanno unità di misura (non sono secondi né millisecondi): sono **score** relativi. Il planner fa calcoli analoghi e sceglie il piano con cost minore; in questo esempio preferirebbe il piano con indice (8 &lt; 110).
+
+---
+
+## Calcolare il cost per un nodo: Seq Scan su comments
+
+Per un singolo nodo del piano (es. **Seq Scan on comments**) il cost dipende da:
+
+1. **Pagine** lette dall’heap (in sequenza).
+2. **Righe** processate dalla CPU (valutazione del filtro, preparazione per il nodo padre).
+
+Si può usare una formula semplificata:
+
+- **Costo** ≈ (numero di pagine × costo unitario pagina sequenziale) + (numero di righe × costo unitario per riga).
+
+Con i default di PostgreSQL:
+
+- `sequential_page_cost = 1.0` (baseline).
+- `cpu_tuple_cost = 0.01` (elaborare una riga costa circa l’1% del costo di leggere una pagina sequenziale).
+
+Esempio: tabella `comments` con **985 pagine** e **60 410 righe**:
+
+- Cost ≈ 985 × 1.0 + 60 410 × 0.01 = 985 + 604,1 = **1589,1**.
+
+Questo valore coincide con il **total cost** mostrato nel piano per “Seq Scan on comments”. Il cost è quindi un numero **relativo** (nessuna unità fisica), calcolato a partire da stime (pagine, righe) e dalle **costanti del planner**. Serve per confrontare passi e piani tra loro, non per tradurlo direttamente in secondi.
+
+---
+
+## Formula completa e costanti del planner
+
+L’equazione reale usata dal planner è più generale. Include, tra gli altri:
+
+- **Pagine lette in sequenza** × `sequential_page_cost`
+- **Pagine lette in random** × `random_page_cost`
+- **Righe processate** × `cpu_tuple_cost`
+- **Voci di indice processate** × `cpu_index_tuple_cost`
+- **Operatori valutati** × `cpu_operator_cost`
+
+(Esistono anche termini per query parallele e altri casi; qui ci si limita ai concetti principali.)
+
+Le **costanti** sono configurabili e sono documentate nella sezione **Planner Cost Constants** della documentazione PostgreSQL. Valori tipici (default):
+
+- **sequential_page_cost = 1.0** – Costo di leggere **una pagina in sequenza**; funge da **baseline**: tutti gli altri costi sono espressi in rapporto a questo.
+- **random_page_cost = 4.0** – Lettura di **una pagina in random** ≈ 4 volte la lettura sequenziale.
+- **cpu_tuple_cost = 0.01** – Elaborare **una riga** (tuple) ≈ 1% del costo di una pagina sequenziale.
+- **cpu_index_tuple_cost = 0.005** – Elaborare una voce d’indice ≈ metà del costo di una riga.
+- **cpu_operator_cost = 0.0025** – Valutare un operatore (confronto, somma, ecc.) ≈ un quarto del costo di una riga.
+
+Se si modifica `sequential_page_cost`, gli altri non si aggiornano automaticamente; in teoria l’intero modello è “relativo” a quella baseline. In pratica si lasciano spesso i default a meno di necessità particolari (es. dischi SSD dove il random è meno penalizzato; in quel caso si può abbassare `random_page_cost`).
+
+Per un **solo sequential scan** molti termini sono zero (nessuna lettura random, nessuna voce d’indice, ecc.), quindi la formula si riduce ai due termini: **pagine × sequential_page_cost** e **righe × cpu_tuple_cost**. In molti articoli e nella documentazione si vede proprio questa forma abbreviata per la seq scan.
+
+---
+
+## I due numeri: startup cost e total cost
+
+Ogni riga del piano mostra il cost come **due numeri** (es. `0.00..1589.10`). **Non** sono un intervallo di stima:
+
+- **Primo numero (startup cost)** – Costo per produrre la **prima riga** in uscita da quel nodo (quanto “lavoro” serve prima di emettere qualcosa).
+- **Secondo numero (total cost)** – Costo per produrre **tutte** le righe attese da quel nodo.
+
+Alcuni nodi possono iniziare a **emettere righe** man mano che le leggono (es. sequential scan: dopo aver letto e processato la prima pagina può già passare righe al padre). In altri nodi tutto il lavoro deve essere completato prima di emettere la prima riga (es. **Hash** che costruisce una tabella hash: deve ricevere tutte le righe dal figlio prima di poter rispondere al join). Nel primo caso lo startup cost è inferiore al total cost; nel secondo **startup cost ≈ total cost** (es. 8.30..8.30).
+
+Per il **sequential scan** lo startup cost è spesso **0.00** nel piano, anche se in realtà leggere la prima pagina ha un costo; è una convenzione del planner per quel tipo di nodo. L’importante è che, quando si confrontano piani, uno con **startup cost** basso può restituire la prima riga più in fretta (time-to-first-row minore), mentre un nodo con startup = total è “bloccante” fino al termine del suo lavoro.
+
+---
+
+## Il cost si propaga verso l’alto (nodi padre)
+
+Per un nodo che ha **figli** (es. Hash Join con sotto Hash e Seq Scan), il cost mostrato **include** il lavoro dei figli:
+
+- **Startup cost del padre** = costo intrinseco del padre per emettere la prima riga **più** gli startup (o total, a seconda della logica del nodo) dei figli necessari per poter iniziare.
+- **Total cost del padre** = costo intrinseco del padre **più** i total cost dei figli (o la combinazione che il planner usa per quel tipo di nodo).
+
+Esempio: **Hash Join** con startup 8.31. I figli sono Hash (8.30..8.30) e Seq Scan (0.00..1589.10). Lo startup del Hash Join (8.31) è circa 8.30 (dovuto soprattutto allo startup del Hash, che deve finire tutto prima di emettere) più un piccolo contributo intrinseco del join (0.01). Quindi il **cost dei figli “fluisce” verso l’alto** e si somma al costo del nodo padre. Questo spiega perché i numeri in alto nell’albero sono più grandi: includono tutto il lavoro dei sotto-alberi.
+
+---
+
+## Quando il planner non usa l’indice
+
+Avere un **indice** su una colonna non garantisce che venga usato. Il planner confronta il cost del piano “usa indice” con il cost del piano “sequential scan” e sceglie quello che stima più economico.
+
+**Esempio:** tabella `likes` con circa 750 000 righe, colonna `created_at`.
+
+- Query: `SELECT * FROM likes WHERE created_at < '2013-01-01'` → restituisce circa **63 000** righe. Con un indice su `created_at`, il piano può usare **Bitmap Index Scan** + **Bitmap Heap Scan**: si usano le foglie dell’indice per trovare i puntatori e poi si accede all’heap (anche con più livelli nel B-tree se la tabella è grande).
+- Stessa query ma con **`created_at > '2013-01-01'`** → restituisce circa **688 000** righe (quasi tutta la tabella). In questo caso il piano può essere un **solo Sequential Scan** sulla tabella `likes`, **senza** usare l’indice.
+
+**Perché:** quando si seleziona una **frazione molto alta** delle righe (es. ~90%), usare l’indice significa:
+
+- Visitare gran parte delle foglie dell’indice;
+- Seguire un numero enorme di puntatori verso l’heap;
+- Effettuare moltissimi **accessi random** all’heap (con il relativo costo `random_page_cost`).
+
+In queste condizioni il planner stima che sia **più economico** leggere l’intero heap in **sequenziale** (un solo passaggio ordinato) piuttosto che indice + moltissimi salti random nell’heap. Quindi **non** usare l’indice è una scelta corretta dal punto di vista del cost.
+
+**Conseguenze pratiche:**
+
+- Conviene eseguire **EXPLAIN** (o **EXPLAIN ANALYZE**) sulle query importanti e verificare se il piano usa gli indici che ti aspetti.
+- Se un indice **non viene mai** usato (per nessuna query tipica), può avere senso **rimuoverlo** (meno spazio e meno rallentamento su INSERT/UPDATE/DELETE).
+- **Non** ha senso “forzare” PostgreSQL a usare l’indice: il planner ha già confrontato i costi; se sceglie il sequential scan, in genere è perché in quel contesto è la strategia stimata più economica. Su forum e Stack Overflow è comune la domanda “perché non usa il mio indice?”: la risposta è spesso proprio questa (troppe righe selezionate, cost del sequential scan minore).
+
+---
+
+## Riepilogo
+
+- **Cost** è uno **score** adimensionale che stima il “peso” di un passo (o di un piano), in relazione al costo di leggere una pagina in sequenza. Non è un tempo in secondi.
+- Il planner **confronta** piani (es. index vs sequential scan) usando il cost: meno pagine e/o meno random in genere danno cost minore; con pochi risultati l’indice di solito vince, con quasi tutta la tabella può vincere il sequential scan.
+- **Formula:** contributi da pagine (sequenziali e random), righe, voci d’indice, operatori, moltiplicati per le **costanti del planner** (`sequential_page_cost`, `random_page_cost`, `cpu_tuple_cost`, ecc.). La baseline è `sequential_page_cost = 1.0`.
+- Ogni cost nel piano ha **due numeri**: **startup** (costo per la prima riga) e **total** (costo per tutte le righe). Nodi “bloccanti” (es. Hash) hanno startup ≈ total.
+- Il cost dei **figli** si **propaga** nel nodo **padre**: il cost del padre include il lavoro dei figli più il proprio.
+- L’**indice** può essere **ignorato** quando la query seleziona una frazione molto alta delle righe: il planner preferisce il sequential scan. Verificare con EXPLAIN; se un indice non serve, considerare di eliminarlo invece di forzarne l’uso.

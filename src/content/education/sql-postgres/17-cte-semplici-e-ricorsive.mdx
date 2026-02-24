@@ -1,0 +1,147 @@
+---
+title: "Common Table Expressions (CTE) semplici e ricorsive"
+description: "WITH per leggibilità; CTE ricorsive per alberi e grafi; esempio countdown; esempio suggerimenti 'who to follow' su followers"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 17
+---
+
+## Introduzione
+
+Dopo aver approfondito aspetti di basso livello (storage, indici, cost), si torna al livello SQL con le **Common Table Expressions** (CTE). Una CTE permette di dare un **nome** a una subquery e usarla nella query principale, migliorando la **leggibilità**. Esistono due forme: **semplice** (solo leggibilità, stesso piano di esecuzione) e **ricorsiva** (per dati ad albero o a grafo, molto più potente). Questo capitolo introduce entrambe con esempi: unione di caption_tag e photo_tag, un countdown numerico e i suggerimenti “who to follow” sull’Instagram schema.
+
+---
+
+## Esempio: utenti taggati prima di una data
+
+Si vuole elencare **username** e **data** in cui l’utente è stato taggato (in caption o in foto), solo per tag **prima del 7 gennaio 2010**. Servono le tabelle `users`, `caption_tags` e `photo_tags`; entrambe le tabelle di tag hanno `user_id` e `created_at`.
+
+Un approccio è usare **UNION** (o **UNION ALL**) per unire le due fonti di tag, poi fare JOIN con `users`:
+
+```sql
+SELECT users.username, tags.created_at
+FROM users
+JOIN (
+    SELECT user_id, created_at FROM caption_tags
+    UNION ALL
+    SELECT user_id, created_at FROM photo_tags
+) AS tags ON tags.user_id = users.id
+WHERE tags.created_at < '2010-01-07';
+```
+
+**UNION ALL** mantiene eventuali duplicati (due righe con stesso user_id e created_at restano entrambe). Le due SELECT devono avere lo stesso numero e tipo di colonne (`user_id`, `created_at`). Nella SELECT finale si usa **tags.created_at** perché anche `users` ha una colonna `created_at`: il prefisso evita ambiguità. La query è corretta ma la subquery in mezzo può rendere il tutto meno leggibile.
+
+---
+
+## CTE semplici: WITH nome AS (subquery)
+
+Una **Common Table Expression** (CTE) sposta la subquery **sopra** la query principale e le assegna un **nome**. La query principale usa solo quel nome.
+
+**Sintassi:**
+
+```sql
+WITH tags AS (
+    SELECT user_id, created_at FROM caption_tags
+    UNION ALL
+    SELECT user_id, created_at FROM photo_tags
+)
+SELECT users.username, tags.created_at
+FROM users
+JOIN tags ON tags.user_id = users.id
+WHERE tags.created_at < '2010-01-07';
+```
+
+Si legge: “con `tags` definito come (subquery), seleziona … da users join tags …”. Il risultato e il **piano di esecuzione** sono gli stessi della versione con subquery inline: con **EXPLAIN** (o **EXPLAIN ANALYZE**) si vede lo stesso piano. La CTE **semplice** serve solo a rendere la query più chiara, senza cambiare il modo in cui viene eseguita.
+
+**Regole sintattiche:** la definizione della CTE va **prima** della query principale; tra il nome della CTE e `AS` si possono indicare i nomi delle colonne (opzionale se sono univoci). Una CTE semplice è solo un “alias” per una subquery.
+
+---
+
+## CTE ricorsive: quando e perché
+
+La forma **ricorsiva** è concettualmente diversa dalla CTE semplice. Serve quando i dati hanno una **struttura ad albero o a grafo** (gerarchie, catene di riferimenti) e si devono esplorare **livelli successivi** senza scrivere JOIN annidati per ogni livello.
+
+- **Quando pensare a una CTE ricorsiva:** gerarchie (dipendenti–manager, categorie–sottocategorie), “chi segue chi” a più livelli, percorsi su grafi, qualsiasi “cammino” che si ripete (da A a B, da B a C, …).
+- **Sintassi:** si usa **WITH RECURSIVE**; il corpo della CTE contiene **due** parti unite da **UNION** (o UNION ALL): la **query iniziale** (non ricorsiva) e la **query ricorsiva** che fa riferimento al nome della CTE stessa.
+- **Difficoltà:** le CTE ricorsive sono tra i concetti più complessi in SQL. L’obiettivo qui è **riconoscerle** e sapere quando cercare documentazione o esempi per scriverle; non è necessario padroneggiarle subito.
+
+---
+
+## Esempio ricorsivo: countdown
+
+Un esempio minimo che non usa tabelle:
+
+```sql
+WITH RECURSIVE countdown(val) AS (
+    SELECT 3 AS val
+    UNION
+    SELECT val - 1 FROM countdown WHERE val > 1
+)
+SELECT * FROM countdown;
+```
+
+Risultato: una colonna `val` con i valori **3, 2, 1**.
+
+**Terminologia:**
+
+- La SELECT **sopra** la UNION è la **query iniziale** (o non ricorsiva): produce la “prima generazione” di righe (qui: una riga con 3).
+- La SELECT **sotto** la UNION è la **query ricorsiva**: può riferirsi al nome della CTE (`countdown`) che sta definendo; a runtime quel riferimento viene trattato come “l’insieme di righe prodotto al passo precedente” (working set).
+
+**Esecuzione (semplificata):**
+
+1. Si creano due strutture temporanee con le stesse colonne della CTE (`val`): **results** e **working**.
+2. Si esegue la **query iniziale** e si inserisce il risultato sia in results sia in working.
+3. Si esegue la **query ricorsiva** sostituendo mentalmente “FROM countdown” con “FROM working”: si leggono le righe attuali di working (es. val=3), si applica WHERE (val &gt; 1) e si calcola val−1 → 2. Il risultato (2) viene **aggiunto** a results e **sostituisce** il contenuto di working.
+4. Si ripete il passo 3: working ha (2), val−1=1, si aggiunge 1 a results, working diventa (1). Eseguendo di nuovo la ricorsione, WHERE val &gt; 1 non seleziona nulla → si **termina**.
+5. La tabella finale “countdown” è il contenuto di results (3, 2, 1), usata dalla query esterna.
+
+Quindi: la parte ricorsiva **usa** le righe “correnti” (working), produce nuove righe che diventano il prossimo working e si appendono a results, e si ferma quando non ci sono più righe.
+
+---
+
+## Esempio realistico: suggerimenti “who to follow”
+
+Si vuole suggerire a un utente **chi seguire** a partire da chi segue già: prima le persone seguite dai propri seguiti (livello 1), poi i seguiti di quelli (livello 2), ecc. La tabella **followers** ha ad esempio `leader_id` (chi è seguito) e `follower_id` (chi segue). Per l’utente X:
+
+- **Livello 1:** chi segue X (non ci interessa per i suggerimenti; sono i “seguiti” di X).
+- **Livello 2:** chi è seguito da quelli che X segue (candidati suggerimenti).
+- **Livello 3, 4, …:** si può andare più in profondità.
+
+Una CTE ricorsiva può costruire questa “catena” senza un JOIN fisso per ogni livello.
+
+**Schema concettuale:** la CTE `suggestions` ha colonne come `leader_id`, `follower_id`, `depth`. La query iniziale inserisce le righe di `followers` dove `follower_id = :id_utente` (chi segue l’utente), con `depth = 1`. La query ricorsiva fa un JOIN tra `followers` e la CTE (working set): `suggestions.leader_id = followers.follower_id`, così si ottiene “chi seguono i leader attuali”, con `depth + 1`. Si limita la profondità con `WHERE depth < N` per evitare ricorsione infinita. Nella query esterna si filtra `depth > 1` (escludiamo chi l’utente segue già), si fa JOIN con `users` su `leader_id` per avere id e username, e si può usare `DISTINCT` e `LIMIT` per il risultato finale.
+
+**Esempio di struttura (per un utente con id 1000):**
+
+```sql
+WITH RECURSIVE suggestions(leader_id, follower_id, depth) AS (
+    SELECT leader_id, follower_id, 1 AS depth
+    FROM followers
+    WHERE follower_id = 1000
+    UNION
+    SELECT f.leader_id, f.follower_id, s.depth + 1
+    FROM followers f
+    JOIN suggestions s ON s.leader_id = f.follower_id
+    WHERE s.depth < 3
+)
+SELECT DISTINCT u.id, u.username
+FROM suggestions s
+JOIN users u ON u.id = s.leader_id
+WHERE s.depth > 1
+LIMIT 30;
+```
+
+- **Iniziale:** righe di `followers` con `follower_id = 1000` (chi 1000 segue), `depth = 1`.
+- **Ricorsiva:** “dalla working table (suggestions), prendi i `leader_id`; in `followers` cerca dove `follower_id` è uno di quei leader” → nuovi (leader_id, follower_id) con depth aumentato; `depth < 3` ferma la ricorsione.
+- **Esterna:** si tengono solo livelli `depth > 1` (i suggerimenti veri, non i diretti), si unisce con `users` e si limita l’output.
+
+Per **capire** la ricorsione: nella parte ricorsiva, quando si legge “FROM suggestions”, si può pensare a “dalla tabella di lavoro del passo corrente”; quella tabella a ogni iterazione contiene i “leader” del livello appena calcolato, e il JOIN con `followers` trova il livello successivo. Quando la ricorsione non restituisce più righe, ci si ferma e la CTE restituisce l’unione di tutti i livelli (results).
+
+---
+
+## Riepilogo
+
+- **CTE semplice:** **WITH nome AS (subquery)** poi query principale che usa **nome**. Migliora la leggibilità senza cambiare il piano di esecuzione (stesso comportamento della subquery inline).
+- **CTE ricorsiva:** **WITH RECURSIVE nome(colonne) AS (iniziale UNION ricorsiva)**. La parte iniziale produce il “seme”; la parte ricorsiva riferisce il nome della CTE (working set), produce nuove righe che alimentano l’iterazione successiva, e si ferma quando non ci sono più righe. Ideale per **alberi**, **grafi** e **gerarchie** (dipendenti, “who to follow”, categorie, ecc.).
+- Per la CTE ricorsiva è sufficiente riconoscere il pattern e sapere quando cercare esempi (documentazione, tutorial); la scrittura da zero si può approfondire in seguito. Per un risultato identico a una subquery, la forma semplice con WITH è spesso la scelta migliore per chi legge il codice.

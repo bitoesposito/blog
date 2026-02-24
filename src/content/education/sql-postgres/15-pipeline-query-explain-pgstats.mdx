@@ -1,0 +1,171 @@
+---
+title: "Pipeline delle query, EXPLAIN e statistiche"
+description: "Parser, rewriter, planner, executor; EXPLAIN vs EXPLAIN ANALYZE; lettura del piano di esecuzione; pg_stats e stime del planner"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 15
+---
+
+## Introduzione
+
+Per decidere **quando** usare un indice e come migliorare una query serve capire come PostgreSQL **gestisce** la query che invii: quali passi esegue e come sceglie la strategia. Questo capitolo descrive la **pipeline** di elaborazione (parser, rewriter, planner, executor), l’uso di **EXPLAIN** e **EXPLAIN ANALYZE** per ispezionare il **piano di esecuzione**, come **leggere** i nodi del piano e da dove arrivano le **stime** (righe, larghezza) grazie alle statistiche in **pg_stats**.
+
+---
+
+## Cosa succede quando si invia una query
+
+Quando si invia a PostgreSQL una query come:
+
+```sql
+SELECT * FROM users WHERE username = 'Allison 14';
+```
+
+la stringa SQL attraversa una serie di **stadi** prima di produrre i risultati:
+
+1. **Parser**
+2. **Rewriter**
+3. **Planner**
+4. **Executor**
+
+Ognuno riceve l’output dello stadio precedente e lo trasforma. Di questi, il **planner** è quello su cui si ha più influenza quando si ottimizzano le query.
+
+---
+
+## Parser
+
+Il **parser** prende la stringa della query, la scompone (carattere per carattere, parola per parola) e verifica che sia **SQL valido**: keyword esistenti e scritte correttamente, punteggiatura corretta, riferimenti a tabelle/colonne coerenti.
+
+Se la query è valida, il parser costruisce un **query tree** (albero della query): una rappresentazione **programmatica** della query, ad esempio un nodo “SelectStmt” con sotto-nodi per la lista delle colonne (es. `*`), la clausola **FROM** (riferimento alla relazione `users`), la clausola **WHERE** (confronto con `=` tra la colonna `username` e la stringa `'Allison 14'`). Il query tree non dice *come* ottenere i dati, ma *cosa* si vuole ottenere; sarà usato dagli stadi successivi.
+
+---
+
+## Rewriter
+
+Il **rewriter** prende il query tree e può applicare **modifiche** per ottimizzare o adattare la query. Un uso frequente è l’espansione delle **viste** (views): se la query fa riferimento a una vista, il rewriter la sostituisce con la definizione della vista nel tree. Le viste verranno trattate in seguito; per ora basta sapere che il rewriter produce un query tree eventualmente trasformato, ancora di tipo “logico” (cosa fare, non come).
+
+---
+
+## Planner
+
+Il **planner** è lo stadio centrale per le prestazioni. In ingresso ha il query tree; in uscita produce un **piano di esecuzione** (query plan): una strategia concreta per ottenere i dati.
+
+Il planner:
+
+1. **Analizza** il query tree e capisce quali dati servono (quali tabelle, quali filtri, quali join).
+2. **Genera** diverse strategie possibili. Ad esempio, per “utente con username = 'Allison 14'” può considerare:
+   - usare l’indice su `username`, trovare il puntatore alla riga e leggere solo quel blocco nell’heap;
+   - oppure fare una scansione sequenziale della tabella `users` e filtrare riga per riga.
+3. **Stima** il “costo” di ogni strategia (in base a statistiche su tabelle e indici, senza eseguire la query).
+4. **Sceglie** il piano che ritiene più economico e lo passa all’executor.
+
+Come il planner calcola il costo e confronta i piani si vedrà in dettaglio più avanti; qui conta l’idea: il planner **decide** se usare un indice o una full table scan in base a stime derivate dalle **statistiche** che PostgreSQL mantiene sulle tabelle.
+
+---
+
+## Executor
+
+L’**executor** riceve il piano di esecuzione e **lo esegue**: accede a heap e indici, applica join e filtri, e restituisce le righe al client. Non decide la strategia; la esegue.
+
+---
+
+## EXPLAIN e EXPLAIN ANALYZE
+
+Per capire **quale** piano ha scelto il planner (e quanto ha impiegato) si usano due comandi che si **prepongono** alla query:
+
+- **EXPLAIN** – PostgreSQL costruisce il piano di esecuzione e lo **mostra**, ma **non esegue** la query. Si vede cosa il planner *intenderebbe* fare, senza tempi reali né dati restituiti.
+- **EXPLAIN ANALYZE** – PostgreSQL costruisce il piano, **esegue** la query e mostra il piano insieme a **statistiche reali** (es. tempo di esecuzione per nodo e totale, righe effettivamente restituite). Non si ottengono le righe del risultato come in una SELECT normale, solo il piano e le metriche.
+
+Sintassi:
+
+```sql
+EXPLAIN
+SELECT username, contents
+FROM users
+JOIN comments ON comments.user_id = users.id
+WHERE username = 'Allison 14';
+```
+
+```sql
+EXPLAIN ANALYZE
+SELECT username, contents
+FROM users
+JOIN comments ON comments.user_id = users.id
+WHERE username = 'Allison 14';
+```
+
+**Nota:** EXPLAIN ed EXPLAIN ANALYZE vanno usati solo per **analisi delle prestazioni** (sviluppo, tuning), non in produzione per “restituire dati” all’applicazione: con EXPLAIN/ANALYZE non si ricevono le righe del risultato, solo il piano (e con ANALYZE i tempi).
+
+In pgAdmin è disponibile un pulsante “Explain Analyze” che esegue EXPLAIN ANALYZE e mostra una vista grafica del piano; è utile, ma conviene saper **leggere** anche l’output testuale, perché in molti ambienti (CLI, script, altri client) si userà solo il testo.
+
+---
+
+## Leggere il piano di esecuzione
+
+L’output di EXPLAIN (e EXPLAIN ANALYZE) è un albero di **nodi**. Ogni riga che inizia con una freccia (o che rappresenta un’operazione) è un **query node**: un passo che legge dati (da tabella o indice) o che li elabora (join, hash, sort, ecc.).
+
+### Flusso dei dati
+
+Si legge dal **basso verso l’alto** (dai nodi più “interni” verso la radice):
+
+- I nodi più interni **accedono** ai dati (es. **Index Scan** su `users_username_idx`, **Seq Scan** su `comments`).
+- Ogni nodo passa le righe al **nodo padre** più vicino (quello con la freccia al livello superiore).
+- I nodi intermedi (es. **Hash**, **Hash Join**) **elaborano** i dati ricevuti e ne emettono di nuovi verso l’alto.
+- Il nodo in cima produce il risultato finale della query.
+
+Esempio semplificato per la query users + comments con filtro su username:
+
+- **Index Scan** su `users_username_idx` → legge dall’indice le righe che soddisfano `username = 'Allison 14'` e le passa a **Hash**.
+- **Hash** → costruisce una struttura hash (per il join) e passa l’output a **Hash Join**.
+- **Seq Scan** su `comments` → legge tutta la tabella comments e passa le righe a **Hash Join**.
+- **Hash Join** → combina i due input (utenti filtrati e commenti) secondo la condizione di join e produce il risultato finale.
+
+### Colonne importanti: cost, rows, width
+
+Su ogni riga del piano compaiono in genere:
+
+- **Nome dell’operazione** (Index Scan, Seq Scan, Hash Join, Hash, …): indica *come* viene ottenuto o elaborato il dato.
+- **Cost** – Una stima del “costo” di quel nodo (elaborazione + I/O). Si approfondirà in seguito; per ora: valori più bassi = passo considerato meno costoso.
+- **Rows** – **Stima** del numero di righe che quel nodo produrrà (anche con il solo EXPLAIN, senza eseguire).
+- **Width** – **Stima** della larghezza media in byte di ogni riga emessa da quel nodo.
+
+Con il solo **EXPLAIN** la query non viene eseguita: non si accede a tabelle né indici. Eppure il piano mostra comunque **rows** e **width**. Questi valori sono **stime** calcolate dal planner usando **statistiche** che PostgreSQL mantiene su tabelle e colonne. La tabella **pg_stats** è la fonte principale di queste statistiche.
+
+---
+
+## Da dove vengono le stime: pg_stats
+
+PostgreSQL raccoglie e aggiorna automaticamente **statistiche** su tabelle e colonne. Sono esposte nella vista di sistema **pg_stats** (e nelle tabelle/catalogo correlate). Il planner le usa per stimare quante righe passeranno attraverso ogni nodo e che dimensione avranno, senza eseguire la query.
+
+Per vedere le statistiche relative a una tabella (es. `users`):
+
+```sql
+SELECT *
+FROM pg_stats
+WHERE tablename = 'users';
+```
+
+Si ottiene una riga (o più) per colonna, con informazioni quali:
+
+- **attname** – Nome della colonna.
+- **avg_width** – Larghezza media in byte dei valori in quella colonna (es. username ~13, bio ~45).
+- **n_distinct** – Stima del numero di valori distinti.
+- **most_common_vals** – Valori più frequenti (es. per `status`: 'online', 'offline').
+- **most_common_freqs** – Frequenze di quei valori (es. ~50% online, ~50% offline).
+- **histogram_bounds** – Limiti degli intervalli di un istogramma che descrive la distribuzione dei valori.
+
+Queste statistiche permettono al planner di stimare, ad esempio:
+
+- Quante righe soddisfano `username = 'Allison 14'` (anche senza leggere la tabella).
+- La larghezza media delle righe in uscita da un nodo (es. la somma delle larghezze medie delle colonne selezionate: username + contents → ~13 + ~68 ≈ 81 per la riga “rows” e “width” del Hash Join).
+
+Le statistiche vengono aggiornate da **ANALYZE** (eseguito automaticamente da autovacuum o manualmente). Se le stime sono molto sbagliate, spesso conviene rieseguire **ANALYZE** sulla tabella interessata.
+
+---
+
+## Riepilogo
+
+- Una query attraversa **parser** (validazione + query tree), **rewriter** (modifiche, es. viste), **planner** (scelta del piano di esecuzione), **executor** (esecuzione). Il **planner** è il punto su cui si agisce per le prestazioni.
+- **EXPLAIN** mostra il piano senza eseguire la query; **EXPLAIN ANALYZE** esegue la query e mostra il piano con tempi e (se presenti) righe effettive. Si usano per l’analisi delle prestazioni, non per restituire dati all’applicazione.
+- Il piano è un albero di **nodi** (Index Scan, Seq Scan, Hash, Hash Join, …). I dati “fluiscono” dai nodi più interni (accesso a tabelle/indici) verso la radice (risultato). Su ogni nodo compaiono **cost**, **rows** (stima), **width** (stima).
+- Le stime **rows** e **width** (e il **cost**) derivano dalle **statistiche** in **pg_stats**. Consultando `pg_stats` per una tabella si vede come il planner può stimare distribuzioni e dimensioni senza leggere i dati. Il concetto di **cost** e il confronto tra piani verranno approfonditi nei prossimi capitoli.
