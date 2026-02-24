@@ -1,0 +1,253 @@
+---
+title: "Validazione a livello di riga"
+description: "NOT NULL, UNIQUE, CHECK e DEFAULT; dove applicare la validazione tra database e applicazione"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 11
+---
+
+## Introduzione
+
+I dati inseriti in una tabella non sono sempre corretti: prezzi negativi, campi mancanti, nomi duplicati. La **validazione** può avvenire nel **server applicativo** (es. form web) oppure direttamente nel **database**. Questo capitolo introduce la validazione **a livello di riga** in PostgreSQL: vincoli **NOT NULL**, **UNIQUE**, **CHECK** e valori **DEFAULT**, e quando conviene usare il database rispetto all’applicazione.
+
+---
+
+## Due scenari: dove validare
+
+### Scenario 1: validazione nel server applicativo
+
+Un amministratore usa un’interfaccia web per aggiungere prodotti: compila un form (nome, reparto, prezzo, peso) e invia i dati. Il server (JavaScript, Python, ecc.) può controllare che il prezzo sia positivo, che tutti i campi obbligatori siano presenti, e solo in seguito inserire una riga nella tabella `products`. Se i controlli falliscono, il server risponde con un errore senza toccare il database. Questo approccio è molto comune e spesso sufficiente quando **tutti** gli inserimenti passano da quell’applicazione.
+
+### Scenario 2: accesso diretto al database
+
+Se non esiste un’interfaccia web e l’amministratore si connette al database con **pgAdmin** (o un altro client) e inserisce righe a mano, non c’è nessun server che faccia da filtro. Senza vincoli sulla tabella è possibile inserire ad esempio un prezzo negativo o lasciare il prezzo a NULL. Per evitare dati incoerenti anche in questo caso, è utile aggiungere **validazione a livello di tabella** nel database.
+
+In sintesi: la validazione può stare **solo** nell’applicazione, **solo** nel database, o **in entrambi**. Le sezioni che seguono mostrano come realizzare la validazione nel database.
+
+---
+
+## Validazione a livello di riga: tre forme
+
+Per **validazione a livello di riga** si intende il controllo dei dati **in fase di INSERT o UPDATE** su una singola riga. In PostgreSQL si usano soprattutto tre meccanismi:
+
+1. **Valore obbligatorio** – la colonna non può essere NULL (**NOT NULL**).
+2. **Valore univoco** – nessun altro valore uguale nella stessa colonna (o combinazione di colonne) (**UNIQUE**).
+3. **Condizione generica** – un’espressione booleana deve essere vera per la riga (**CHECK**, con operatori come &gt;, &lt;, =, ecc.).
+
+Ogni vincolo si può definire **in fase di CREATE TABLE** oppure **dopo**, con **ALTER TABLE**.
+
+Per gli esempi si suppone di lavorare in un database dedicato (es. `validation`). In pgAdmin: tasto destro sul database → **Query Tool**. Le istruzioni eseguite si applicano al database selezionato nella scheda (es. `validation`).
+
+---
+
+## Tabella di esempio senza vincoli
+
+Si crea una tabella `products` con la struttura abituale, **senza** vincoli (a parte la primary key):
+
+```sql
+CREATE TABLE products (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(40),
+    department  VARCHAR(40),
+    price       INTEGER,
+    weight      INTEGER
+);
+```
+
+Inserendo una riga con tutti i valori tutto funziona. Se si inserisce una riga **senza** specificare `price`:
+
+```sql
+INSERT INTO products (name, department, weight)
+VALUES ('pants', 'clothes', 3);
+```
+
+l’inserimento va a buon fine e la colonna `price` conterrà **NULL**. Per molte applicazioni un prezzo NULL è indesiderato (può essere interpretato come “gratis” o causare errori). Si può obbligare la presenza del valore con **NOT NULL**.
+
+---
+
+## NOT NULL
+
+### Definizione
+
+Il vincolo **NOT NULL** su una colonna impone che, in ogni INSERT o UPDATE, quel campo **non** sia NULL. Se si tenta di inserire o aggiornare a NULL, PostgreSQL restituisce errore.
+
+### Sintassi
+
+**In CREATE TABLE:**
+```sql
+price INTEGER NOT NULL
+```
+
+**Dopo la creazione (ALTER TABLE):**
+```sql
+ALTER TABLE products
+ALTER COLUMN price SET NOT NULL;
+```
+
+### Attenzione: dati esistenti
+
+**Non** si può aggiungere NOT NULL a una colonna che **già contiene NULL**. L’errore tipico è: *column "price" contains null values*.
+
+Prima bisogna **sistemare i dati**:
+
+- **Opzione 1:** eliminare le righe con NULL in quella colonna.
+- **Opzione 2:** aggiornare le righe con NULL a un valore valido (temporaneo o definitivo).
+
+Per trovare e aggiornare i NULL si usa **IS NULL** (non `= NULL`):
+
+```sql
+UPDATE products
+SET price = 999
+WHERE price IS NULL;
+```
+
+Dopo aver eliminato tutti i NULL dalla colonna `price`, l’`ALTER TABLE ... SET NOT NULL` va a buon fine. Da quel momento ogni INSERT che omette `price` (o lo imposta a NULL) fallirà. In molte tabelle ha senso dichiarare **NOT NULL** su quasi tutte le colonne, a meno che non si voglia esplicitamente ammettere “valore sconosciuto”.
+
+---
+
+## DEFAULT
+
+Se in alcuni casi non si conosce ancora il valore ma non si vuole usare NULL, si può definire un **valore di default** per la colonna. In fase di INSERT, se la colonna non viene specificata (o viene passata con DEFAULT), PostgreSQL usa quel valore invece di NULL.
+
+**In CREATE TABLE:**
+```sql
+price INTEGER DEFAULT 9999
+```
+
+**Con ALTER TABLE:**
+```sql
+ALTER TABLE products
+ALTER COLUMN price SET DEFAULT 9999;
+```
+
+Dopo aver impostato il default, un INSERT che omette `price` inserirà 9999 (o il valore scelto) e **non** NULL. Il default può essere un numero, una stringa (per VARCHAR/TEXT), un booleano (TRUE/FALSE), un timestamp, ecc., purché compatibile con il tipo della colonna. NOT NULL e DEFAULT possono coesistere: la colonna non sarà mai NULL perché, se omessa, viene usato il default.
+
+---
+
+## UNIQUE
+
+### Definizione
+
+Il vincolo **UNIQUE** su una colonna (o su un insieme di colonne) impone che **non esistano due righe** con la stessa combinazione di valori in quelle colonne. Utile ad esempio per evitare due prodotti con lo stesso nome.
+
+### Sintassi
+
+**In CREATE TABLE (singola colonna):**
+```sql
+name VARCHAR(40) UNIQUE
+```
+
+Si possono combinare più vincoli: `name VARCHAR(40) NOT NULL UNIQUE`.
+
+**Dopo la creazione:**
+```sql
+ALTER TABLE products
+ADD UNIQUE (name);
+```
+
+La colonna va indicata tra **parentesi**. Se si vuole l’univocità sulla **combinazione** di più colonne (es. nome e reparto insieme):
+
+```sql
+ALTER TABLE products
+ADD UNIQUE (name, department);
+```
+
+In quel caso sono ammessi due prodotti con lo stesso nome in reparti diversi, ma non due righe con identico nome **e** reparto.
+
+### Attenzione: duplicati esistenti
+
+Non si può aggiungere UNIQUE se nella colonna (o nella combinazione) **ci sono già duplicati**. L’errore indica che il vincolo non può essere creato perché esistono valori ripetuti. Prima bisogna:
+
+- rinominare o modificare i duplicati, oppure
+- eliminare righe duplicate,
+
+e solo dopo eseguire `ADD UNIQUE`. In pgAdmin, modificando una cella nella vista “View/Edit Data”, le modifiche vengono salvate solo dopo aver cliccato il pulsante di **salvataggio** (icona a forma di griglia); altrimenti un refresh ripristina i valori precedenti.
+
+### Rimuovere un vincolo UNIQUE
+
+I vincoli hanno un **nome** (es. `products_name_key` per UNIQUE su `name`). Per vedere i nomi: in pgAdmin, espandere il database → Schemas → public → Tables → products → Constraints.
+
+Per eliminare il vincolo:
+```sql
+ALTER TABLE products
+DROP CONSTRAINT products_name_key;
+```
+
+Dopo un UNIQUE su più colonne il nome sarà del tipo `products_name_department_key`; per rimuoverlo si usa lo stesso `DROP CONSTRAINT` con quel nome.
+
+---
+
+## CHECK
+
+### Definizione
+
+Il vincolo **CHECK** impone che un’**espressione booleana** sia vera per ogni riga inserita o aggiornata. Si usano gli stessi operatori che si usano in una clausola WHERE: &gt;, &lt;, &gt;=, &lt;=, =, &lt;&gt;, ecc. Esempio tipico: il prezzo deve essere maggiore di zero.
+
+### Sintassi
+
+**In CREATE TABLE (sulla colonna):**
+```sql
+price INTEGER CHECK (price > 0)
+```
+
+**Dopo la creazione:**
+```sql
+ALTER TABLE products
+ADD CHECK (price > 0);
+```
+
+PostgreSQL assegna un nome automatico al vincolo (es. `products_price_check`). Se si tenta di inserire una riga con `price = -99`, l’operazione fallisce con un messaggio che cita il vincolo CHECK.
+
+**Limitazione importante:** l’espressione del CHECK può usare **solo le colonne della riga** che si sta inserendo o aggiornando. **Non** sono ammesse subquery (es. “il prezzo deve essere minore del prezzo massimo già in tabella”).
+
+### Attenzione: dati esistenti
+
+Come per NOT NULL e UNIQUE, **non** si può aggiungere un CHECK se esistono già righe che **non** soddisfano la condizione. Prima bisogna correggere o eliminare quelle righe, poi aggiungere il vincolo.
+
+### CHECK su più colonne
+
+Il CHECK può coinvolgere **più colonne** della stessa riga. Esempio: tabella `orders` con data di creazione e data di consegna stimata; la consegna deve essere **dopo** la creazione.
+
+```sql
+CREATE TABLE orders (
+    id                  SERIAL PRIMARY KEY,
+    name                VARCHAR(40) NOT NULL,
+    created_at          TIMESTAMP NOT NULL,
+    estimated_delivery  TIMESTAMP NOT NULL,
+    CHECK (created_at < estimated_delivery)
+);
+```
+
+Il vincolo è definito a livello di tabella (in fondo alla lista delle colonne). Se si inserisce un ordine con `estimated_delivery` precedente a `created_at`, l’INSERT fallisce. Anche qui valgono le stesse regole: solo colonne della riga corrente, nessuna subquery.
+
+---
+
+## Dove mettere la validazione
+
+La validazione può stare **nel server applicativo** e/o **nel database**. Conviene usare **entrambi** i livelli, con ruoli diversi.
+
+### Validazione nel server applicativo
+
+- **Validazione complessa:** ad esempio controlli che richiedono chiamate a API esterne (es. verificare il valore di un titolo prima di registrare un acquisto) vanno fatti nell’applicazione; il database non è pensato per quella logica.
+- **Modifiche frequenti:** cambiare una regola (es. “prezzo minimo 10”) è spesso più semplice aggiornando il codice e facendo un deploy che alterando vincoli su un database in produzione.
+- **Librerie e formati:** email, numeri di telefono, formati custom sono comodi da validare con librerie del linguaggio (JavaScript, Python, ecc.) piuttosto che replicare tutto in SQL.
+
+### Validazione nel database
+
+- **Qualsiasi client:** chi si connette al database (pgAdmin, script, un’altra applicazione) deve rispettare i vincoli. Non si può “bypassare” la validazione inserendo da un client diverso dal web.
+- **Sempre applicata:** ogni INSERT e UPDATE passa dai vincoli; non dipende da quale parte del codice sia stata chiamata.
+- **Coerenza storica:** per aggiungere NOT NULL, UNIQUE o CHECK, i **dati esistenti** devono già soddisfare la regola. Quindi non restano in tabella righe “a metà” valide. Se si aggiunge solo validazione nell’applicazione, nel database potrebbero già esserci righe che la violano.
+
+In pratica, una buona strategia è: **la maggior parte** della validazione (formati, lunghezze, messaggi utente) nell’applicazione, e **regole critiche** (prezzo &gt; 0, campi obbligatori, univocità di chiavi naturali) anche nel database, così i dati restano coerenti indipendentemente da chi scrive nella tabella.
+
+---
+
+## Riepilogo
+
+- **Validazione a livello di riga:** controlla i dati in INSERT/UPDATE. Tre strumenti principali: **NOT NULL** (valore obbligatorio), **UNIQUE** (valore o combinazione univoci), **CHECK** (condizione booleana sulla riga).
+- **NOT NULL:** in CREATE TABLE o con ALTER COLUMN ... SET NOT NULL. Prima di aggiungerlo, eliminare o aggiornare le righe con NULL (usare `WHERE price IS NULL`).
+- **DEFAULT:** valore usato quando la colonna non è specificata in INSERT; si imposta con SET DEFAULT in ALTER COLUMN.
+- **UNIQUE:** una colonna o una lista (name, department) non può ripetersi. Prima di ADD UNIQUE bisogna eliminare i duplicati. Rimozione con DROP CONSTRAINT nome_vincolo.
+- **CHECK:** condizione (es. price &gt; 0, created_at &lt; estimated_delivery) che deve essere vera per la riga; solo colonne della riga, niente subquery. Anche per CHECK i dati esistenti devono già rispettare la regola.
+- **Dove validare:** validazione complessa o che dipende da servizi esterni e regole che cambiano spesso nell’applicazione; regole critiche e “ultima linea di difesa” nel database, così ogni client rispetta gli stessi vincoli e non restano dati incoerenti.

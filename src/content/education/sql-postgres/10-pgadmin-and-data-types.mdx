@@ -1,0 +1,253 @@
+---
+title: "pgAdmin e tipi di dato"
+description: "Strumento pgAdmin e architettura server/database; tipi numerici, carattere, booleani, date/ora e interval in PostgreSQL"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 10
+---
+
+## Introduzione
+
+Dopo aver installato PostgreSQL in locale è utile capire come si gestisce il server e i database e come PostgreSQL tratta i **tipi di dato**. Questo capitolo introduce **pgAdmin** come strumento per amministrare e ispezionare Postgres, l’architettura **un server, più database**, e le principali categorie di tipi: numerici, carattere, booleani, date/ora e **interval**.
+
+---
+
+## pgAdmin e architettura
+
+### Cos’è pgAdmin
+
+**pgAdmin** (nella versione 4) è uno strumento basato su interfaccia web per **gestire e ispezionare** un database PostgreSQL. Permette di:
+
+- Esplorare tabelle e righe
+- Eseguire query arbitrarie
+- Modificare dati e struttura del database
+
+Si può usare per connettersi a un’istanza **locale** (sul proprio computer) oppure **remota** (es. su AWS, Azure, Google Cloud). In genere, dopo l’installazione, è presente un solo server configurato, quello locale.
+
+### Server e database
+
+Un **server PostgreSQL** è il processo che gestisce i database. Su un singolo server possono coesistere **più database**.
+
+All’avvio, a seconda dell’ambiente si può vedere ad esempio:
+
+- **macOS (Postgres.app):** due database, uno chiamato `postgres` e uno con il nome dell’utente di sistema
+- **Windows / Linux:** spesso un solo database, `postgres`
+
+Non è importante avere subito lo stesso numero di database: si può creare un nuovo database dedicato e lavorare da lì, così da partire tutti dallo stesso punto.
+
+### Un database per applicazione
+
+In pratica, **un’applicazione si lega a un solo database**. Se si sviluppa un’app “todo” si crea un database per quella app; se il giorno dopo si lavora su un’app per acquisti telefoni, si userà un altro database. I dati e le tabelle non si mescolano tra applicazioni diverse. Creare più database sullo stesso server serve quindi a lavorare su più progetti in modo isolato; per ogni progetto si userà **un database alla volta**.
+
+---
+
+## Tipi di dato: introduzione
+
+Quando si crea una tabella si assegna a ogni colonna un **tipo di dato**. Il tipo definisce quali valori sono ammessi e, in alcuni casi, un comportamento speciale (es. auto-increment).
+
+**Esempio:**
+
+```sql
+CREATE TABLE products (
+    id          SERIAL,
+    name        VARCHAR(40),
+    department  VARCHAR(40),
+    price       INTEGER,
+    weight      INTEGER
+);
+```
+
+Qui i tipi usati sono **SERIAL**, **VARCHAR**, **INTEGER**. Una colonna di tipo INTEGER accetta solo numeri interi (nessun decimale, nessuna stringa).
+
+Le categorie principali che servono nella maggior parte dei casi sono:
+
+- **Numeri** (interi, decimali, auto-increment)
+- **Date e ora**
+- **Caratteri** (stringhe)
+- **Booleani**
+
+Di seguito regole pratiche e dettagli per ciascuna categoria.
+
+---
+
+## Tipi numerici
+
+### Regole rapide
+
+Quattro regole pratiche per scegliere il tipo di colonna quando si memorizzano numeri:
+
+1. **SERIAL** – per colonne che devono **auto-incrementare** (tipicamente l’ID). PostgreSQL gestisce la sequenza e assegna 1, 2, 3, … alle nuove righe.
+
+2. **INTEGER** – per numeri **senza decimali** (interi). Solo numeri interi; eventuali decimali vengono scartati.
+
+3. **NUMERIC** (o **DECIMAL**) – per numeri **con decimali che devono essere precisi**: saldi bancari, valute, quantità scientifiche, grammi d’oro. Preferire NUMERIC quando la precisione è importante.
+
+4. **DOUBLE PRECISION** – per numeri con decimali **non critici** per precisione: litri d’acqua in un bacino, kg di rifiuti in una discarica. Se un piccolo errore di arrotondamento è accettabile e si vogliono calcoli più veloci, usare DOUBLE PRECISION (o REAL/FLOAT).
+
+### Provare i tipi senza creare tabelle
+
+Si possono testare i tipi direttamente nel **Query Tool** di pgAdmin: tasto destro sul database (es. `postgres`) → **Query Tool**. Si può eseguire ad esempio:
+
+```sql
+SELECT (2.0)::INTEGER;
+```
+
+La sintassi **`valore::tipo`** indica a PostgreSQL di interpretare `valore` come quel tipo. Il risultato è `2` (il decimale viene rimosso). Così si può sperimentare con diversi tipi senza definire colonne.
+
+### Interi: SMALLINT, INTEGER, BIGINT
+
+Per gli interi esistono più tipi con **range** diversi:
+
+- **SMALLINT:** circa da -32 000 a +32 000
+- **INTEGER:** range più ampio
+- **BIGINT:** range molto grande
+
+Se si inserisce un valore **fuori dal range** del tipo scelto, PostgreSQL restituisce **errore** (es. 99 999 come SMALLINT, o numeri troppo grandi per INTEGER). I decimali forniti a un tipo intero vengono **silenziosamente eliminati**.
+
+### SERIAL
+
+**SERIAL** si usa in genere solo per colonne **ID** che devono incrementare automaticamente. Non serve memorizzare a mente tutti i sottotipi numerici; per gli ID SERIAL è la scelta standard.
+
+### DECIMAL/NUMERIC vs REAL/DOUBLE PRECISION
+
+**DECIMAL** e **NUMERIC** in PostgreSQL sono equivalenti: numeri con decimali gestiti in modo **esatto**.
+
+**REAL**, **DOUBLE PRECISION** e **FLOAT** usano l’aritmetica **in virgola mobile**: i calcoli possono introdurre piccoli errori di arrotondamento.
+
+**Esempio:** la differenza tra due numeri molto vicini:
+
+```sql
+SELECT (1.99999)::REAL - (1.99998)::REAL;
+```
+
+Il risultato atteso sarebbe 0,00001, ma con REAL può comparire qualcosa come 0,00001001358… A livello di calcoli ripetuti questi errori possono accumularsi.
+
+Stessa operazione con **NUMERIC** (o DECIMAL):
+
+```sql
+SELECT (1.99999)::NUMERIC - (1.99998)::NUMERIC;
+```
+
+Restituisce esattamente 0,00001.
+
+**In sintesi:** per valori che devono essere precisi (soldi, quantità critiche) usare **NUMERIC**; per valori approssimativi e calcoli dove la performance conta, **DOUBLE PRECISION** (o REAL/FLOAT) è accettabile.
+
+---
+
+## Tipi carattere (stringhe)
+
+I tipi **CHAR**, **VARCHAR** e **TEXT** servono a memorizzare stringhe.
+
+### CHAR(n)
+
+**CHAR(n)** indica una lunghezza **fissa** di `n` caratteri:
+
+- Stringa **più lunga** di `n`: PostgreSQL **tronca** a `n` caratteri
+- Stringa **più corta** di `n`: PostgreSQL **aggiunge spazi** a destra fino a `n`
+
+Esempio: `'abcde'::CHAR(3)` diventa `'abc'`; `'a'::CHAR(3)` diventa `'a'` con due spazi (visibili ispezionando il valore nella cella).
+
+### VARCHAR(n)
+
+**VARCHAR(n)** indica una **lunghezza massima** di `n` caratteri:
+
+- Stringa più lunga di `n`: viene **troncata** a `n`
+- Stringa più corta: **nessun riempimento** con spazi; la stringa resta così com’è
+
+Esempio: `'hello world'::VARCHAR(5)` → `'hello'`; `'hi'::VARCHAR(5)` → `'hi'`.
+
+### TEXT
+
+**TEXT** accetta stringhe di **lunghezza qualsiasi**, senza limite dichiarato.
+
+### Quale usare
+
+In PostgreSQL **non c’è differenza di performance** tra VARCHAR e TEXT (a differenza di altri DB). La scelta è dettata dalla logica dell’applicazione: usare **VARCHAR(n)** quando si vuole un **limite massimo** per validazione (evitare stringhe troppo lunghe); altrimenti **VARCHAR** senza limite o **TEXT** sono equivalenti per l’uso comune.
+
+---
+
+## Booleani
+
+Il tipo **BOOLEAN** ammette i valori **TRUE**, **FALSE** e **NULL** (assenza di valore).
+
+PostgreSQL accetta anche varie forme in input e le **converte** in booleano:
+
+- **True:** le stringhe `'yes'`, `'on'`, `'y'`, `'t'`, il numero `1`, ecc. → TRUE
+- **False:** le stringhe `'no'`, `'off'`, `'n'`, `'f'`, il numero `0`, ecc. → FALSE
+
+Questo è utile per compatibilità con altri sistemi o linguaggi che usano 1/0 o yes/no. **NULL** resta NULL: non è né vero né falso, indica “valore sconosciuto”.
+
+---
+
+## Date e ora
+
+PostgreSQL offre tipi per **date**, **ore** e **timestamp**, con o senza **fuso orario**.
+
+### DATE
+
+Il tipo **DATE** memorizza solo la data. L’input è **molto flessibile**: stringhe in formati comuni vengono interpretate correttamente, ad esempio:
+
+- `'Nov 20, 1980'`
+- `'1980-11-20'`
+- `'20 November 1980'`
+
+PostgreSQL normalizza il valore in un formato interno univoco.
+
+### TIME (con e senza time zone)
+
+**TIME** (o **TIME WITHOUT TIME ZONE**) memorizza solo l’ora (ore, minuti, secondi), senza data né fuso.
+
+**TIME WITH TIME ZONE** memorizza l’ora e il fuso; i valori vengono convertiti in un formato che include l’offset (es. UTC). Esempio: `'01:23:00 EST'` viene convertito con l’offset appropriato.
+
+Si può usare formato 12h (AM/PM) o 24h; i secondi sono opzionali.
+
+### TIMESTAMP (con e senza time zone)
+
+**TIMESTAMP** combina data e ora. **TIMESTAMP WITH TIME ZONE** è il tipo più usato quando si devono gestire orari in fusi diversi: PostgreSQL memorizza il valore in modo coerente (tipicamente in UTC) e lo presenta secondo la time zone della sessione.
+
+Anche per timestamp l’input è flessibile: si può fornire data, ora e indicazione del fuso in molti formati comuni.
+
+---
+
+## INTERVAL (durata)
+
+**INTERVAL** rappresenta una **durata** (un intervallo di tempo), non un istante. È utile per fare calcoli tra date e ore.
+
+### Sintassi
+
+Si specifica la durata con abbreviazioni come:
+
+- `1 day` o `1 d` – un giorno
+- `20 hours` – 20 ore
+- `30 minutes`, `45 seconds`
+- Combinazioni: `'1 day 20 hours 30 minutes 45 seconds'` o `'1d 20h 30m 45s'`
+
+Esempio:
+
+```sql
+SELECT ('1 day 20 hours 30 minutes 45 seconds')::INTERVAL;
+```
+
+### Operazioni con INTERVAL
+
+Si possono fare **operazioni aritmetiche** con gli interval:
+
+- **Interval − Interval:** sottraendo due durate si ottiene una durata. Esempio: `'1 day 20 hours 30 minutes 45 seconds'::INTERVAL - '1 day'::INTERVAL` → 20 ore, 30 minuti e 45 secondi.
+
+- **Timestamp ± Interval:** si può aggiungere o sottrarre una durata a un timestamp. Esempio: un timestamp “20 novembre 1980, 01:23 EST” meno `'4 days'::INTERVAL` restituisce la data/ora di quattro giorni prima.
+
+- **Differenza tra due timestamp:** sottraendo due valori di tipo TIMESTAMP (o DATE) si ottiene un **INTERVAL**. Esempio: la differenza tra il 20 novembre e il 10 novembre 1980 è 10 giorni. Con ore e fusi diversi, il risultato è un interval in giorni, ore e minuti (es. “9 days 16 hours 40 minutes”).
+
+Memorizzare una colonna di tipo INTERVAL in tabella è meno frequente; l’uso tipico è **calcolare** durate e spostamenti nel tempo direttamente in SQL, senza dipendere da librerie esterne nell’applicazione.
+
+---
+
+## Riepilogo
+
+- **pgAdmin:** strumento per gestire e ispezionare Postgres (tabelle, query, modifiche); connessione locale o remota. Un **server** può contenere **più database**; in pratica si usa **un database per applicazione**.
+- **Tipi numerici:** SERIAL per ID auto-increment; INTEGER per interi; NUMERIC/DECIMAL per decimali precisi (soldi, scienza); DOUBLE PRECISION per decimali approssimati (performance). Test con `SELECT (valore)::tipo` nel Query Tool.
+- **Tipi carattere:** CHAR(n) lunghezza fissa (pad/trim); VARCHAR(n) lunghezza massima (trim); TEXT lunghezza qualsiasi. In Postgres nessun vantaggio prestazionale; VARCHAR(n) utile per validazione.
+- **Booleani:** TRUE, FALSE, NULL; molte forme in input (yes/no, 1/0, on/off, y/n, t/f) vengono convertite automaticamente.
+- **Date/ora:** DATE, TIME, TIMESTAMP, con o senza time zone; input molto flessibile.
+- **INTERVAL:** durata (giorni, ore, minuti, secondi); operazioni: interval ± interval, timestamp ± interval, differenza tra due timestamp → interval. Utile per calcoli temporali nel database.

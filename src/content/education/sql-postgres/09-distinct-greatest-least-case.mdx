@@ -1,0 +1,262 @@
+---
+title: "DISTINCT, GREATEST, LEAST e CASE"
+description: "Valori univoci con DISTINCT, funzioni GREATEST e LEAST, espressioni condizionali con CASE; cenni all'installazione locale di PostgreSQL"
+date: 2026-02-24
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 9
+---
+
+## Introduzione
+
+Questo capitolo raccoglie argomenti utili che non richiedono una sezione dedicata: la keyword **DISTINCT** per ottenere valori univoci, le funzioni **GREATEST** e **LEAST** per confronti tra valori, le espressioni **CASE** per logica condizionale nel SELECT e un breve cenno all’installazione locale di PostgreSQL.
+
+---
+
+## DISTINCT
+
+### Definizione
+
+**DISTINCT** si usa nel **SELECT** (subito dopo la keyword SELECT) e fa sì che il risultato contenga solo **valori univoci** per le colonne selezionate: i duplicati vengono eliminati.
+
+**Sintassi:**
+```sql
+SELECT DISTINCT column
+FROM table;
+```
+
+**Esempio:** elencare i reparti univoci nella tabella prodotti:
+
+```sql
+SELECT DISTINCT department
+FROM products;
+```
+
+PostgreSQL considera la colonna `department`, tiene una sola occorrenza per ogni valore (es. Toys, Outdoors, Industrial) ed elimina le ripetizioni.
+
+### Una sola colonna
+
+Con `SELECT DISTINCT column` si ottiene una sola colonna di valori univoci. Non si possono selezionare altre colonne senza che il concetto di “univoco” si applichi all’insieme delle colonne (vedi sotto).
+
+### Contare i valori univoci
+
+Per ottenere il **numero** di valori univoci si usa **COUNT(DISTINCT column)**:
+
+```sql
+SELECT COUNT(DISTINCT department)
+FROM products;
+```
+
+Il risultato è un singolo numero (es. il numero di reparti diversi). Utile per esplorare un dataset e capire quanti valori distinti ha una colonna.
+
+### Più colonne con DISTINCT
+
+Si può usare DISTINCT su **più colonne**: in quel caso l’univocità è sulla **combinazione** delle colonne.
+
+```sql
+SELECT DISTINCT department, name
+FROM products;
+```
+
+Ogni riga nel risultato è una combinazione univoca di `department` e `name`; la stessa coppia (reparto, nome) non compare due volte.
+
+**Limitazione:** con DISTINCT su **due o più colonne** non si può usare **COUNT(DISTINCT col1, col2, …)** in PostgreSQL. COUNT(DISTINCT …) è supportato solo su una singola espressione. Per contare combinazioni univoche si può usare una subquery (es. SELECT COUNT(*) FROM (SELECT DISTINCT col1, col2 FROM table) AS t) o GROUP BY.
+
+### DISTINCT e GROUP BY
+
+Sia DISTINCT sia GROUP BY permettono di “raggruppare” e eliminare duplicati. La differenza principale è che con **GROUP BY** si possono usare **funzioni di aggregazione** (COUNT, SUM, AVG, ecc.) per ogni gruppo; con DISTINCT no. Per analisi per gruppo (conteggi, medie, ecc.) si usa in genere GROUP BY; DISTINCT è adatto quando serve solo l’elenco dei valori (o delle combinazioni) univoci.
+
+---
+
+## GREATEST e LEAST
+
+### GREATEST
+
+La funzione **GREATEST** accetta una lista di valori (o espressioni) e restituisce il **maggiore**.
+
+**Sintassi:**
+```sql
+SELECT GREATEST(value1, value2, value3, ...);
+```
+
+**Esempio:**
+```sql
+SELECT GREATEST(1, 20, 30);  -- restituisce 30
+SELECT GREATEST(1, 200, 30); -- restituisce 200
+```
+
+**Uso tipico:** calcolare un valore che non deve scendere sotto un minimo. Esempio: costo di spedizione = il maggiore tra 30 e (peso × 2), cioè almeno 30 oppure peso × 2 se maggiore:
+
+```sql
+SELECT name, weight, GREATEST(30, weight * 2) AS cost_to_ship
+FROM products;
+```
+
+Per ogni riga si confrontano 30 e `weight * 2`; viene restituito il valore più alto.
+
+### LEAST
+
+La funzione **LEAST** accetta una lista di valori (o espressioni) e restituisce il **minore**.
+
+**Sintassi:**
+```sql
+SELECT LEAST(value1, value2, value3, ...);
+```
+
+**Esempio:**
+```sql
+SELECT LEAST(1, 20, 50, 100);   -- restituisce 1
+SELECT LEAST(1000, 20, 50, 100); -- restituisce 20
+```
+
+**Uso tipico:** applicare un tetto massimo. Esempio: prezzo di saldo = il minore tra (prezzo × 0,5) e 400:
+
+```sql
+SELECT name, price, LEAST(price * 0.5, 400) AS sale_price
+FROM products;
+```
+
+GREATEST e LEAST sono utili quando serve un confronto “a soglia” (minimo garantito o massimo consentito) direttamente nella query.
+
+---
+
+## CASE
+
+### Definizione
+
+**CASE** è un’espressione SQL che permette di restituire un valore diverso in base a condizioni (simile a un if/else). Si usa tipicamente nel **SELECT** per creare una colonna calcolata in modo condizionale.
+
+**Sintassi:**
+```sql
+SELECT
+    column1,
+    CASE
+        WHEN condition1 THEN result1
+        WHEN condition2 THEN result2
+        ELSE default_result
+    END AS alias
+FROM table;
+```
+
+Le condizioni vengono valutate in ordine; alla prima condizione vera viene restituito il valore dopo **THEN** e il CASE termina. Se nessuna condizione è vera, viene usato il valore dopo **ELSE**. **ELSE** è opzionale: se manca e nessuna condizione è vera, il risultato è NULL.
+
+### Esempio: descrizione del prezzo
+
+Obiettivo: aggiungere una colonna che classifica il prezzo come "high", "medium" o "cheap" in base al valore:
+
+```sql
+SELECT
+    name,
+    price,
+    CASE
+        WHEN price > 600 THEN 'high'
+        WHEN price > 300 THEN 'medium'
+        ELSE 'cheap'
+    END AS price_description
+FROM products;
+```
+
+- Prezzo &gt; 600 → "high"
+- Prezzo &gt; 300 (e non &gt; 600) → "medium"
+- Altrimenti → "cheap"
+
+Le condizioni nel **WHEN** possono essere qualsiasi espressione booleana ammessa in una clausola WHERE (confronti, AND, OR, espressioni su più colonne, ecc.). Spesso la logica condizionale viene gestita nell’applicazione; CASE è utile quando si vuole fare questa classificazione direttamente nel database (report, viste, export).
+
+---
+
+## Installazione locale di PostgreSQL
+
+Per lavorare con PostgreSQL sul proprio computer è necessario installare il server e avere a disposizione il client **psql** (riga di comando).
+
+**macOS:** un’opzione comoda è **Postgres.app** ([postgresapp.com](https://postgresapp.com)): applicazione desktop che installa PostgreSQL e permette di avviare e fermare il server con un clic. Dopo l’installazione, è necessario aggiungere i binari al PATH (le istruzioni sono sul sito, nella sezione “Command Line Tools”) e riavviare il terminale; da quel momento si può usare `psql` da terminale.
+
+**Altri sistemi:** su Linux e Windows si può usare i pacchetti ufficiali o i repository della distribuzione; la documentazione su [postgresql.org](https://www.postgresql.org/download/) elenca le opzioni. Una volta avviato il server, la connessione avviene in genere su `localhost` sulla porta predefinita 5432.
+
+Verificare che PostgreSQL non sia già in esecuzione prima di installare una seconda istanza; in caso di problemi, le guide di Postgres.app e del sito ufficiale descrivono come disinstallare o riconfigurare l’installazione.
+
+---
+
+## Esercizi di Riepilogo
+
+### Conteggio produttori univoci
+
+Scrivere una query che restituisca il **numero di produttori univoci** nella tabella `phones` (colonna `manufacturer`).
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT COUNT(DISTINCT manufacturer)
+FROM phones;
+```
+
+Risultato atteso: un numero (es. 4 se i produttori sono Nokia, Apple, Samsung, Motorola).
+
+</div>
+</details>
+
+### Elenco dei reparti univoci
+
+Scrivere una query che restituisca l’elenco dei **reparti univoci** dalla tabella `products`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT DISTINCT department
+FROM products;
+```
+
+</div>
+</details>
+
+### Costo di spedizione con GREATEST
+
+Supponendo che il costo di spedizione sia il maggiore tra 20 e (peso × 3), scrivere una query che per ogni prodotto restituisca nome, peso e costo di spedizione.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT name, weight, GREATEST(20, weight * 3) AS shipping_cost
+FROM products;
+```
+
+</div>
+</details>
+
+### Classificazione con CASE
+
+Aggiungere una colonna che vale "expensive" se il prezzo è maggiore di 500, "mid" se maggiore di 200, altrimenti "budget". Restituire nome, prezzo e questa colonna dalla tabella `products`.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione</summary>
+<div class="px-4 pb-4">
+
+```sql
+SELECT
+    name,
+    price,
+    CASE
+        WHEN price > 500 THEN 'expensive'
+        WHEN price > 200 THEN 'mid'
+        ELSE 'budget'
+    END AS price_tier
+FROM products;
+```
+
+</div>
+</details>
+
+---
+
+## Riepilogo
+
+- **DISTINCT:** si mette dopo SELECT e restituisce valori univoci per le colonne indicate. Con una sola colonna si può usare COUNT(DISTINCT column); con più colonne no (in PostgreSQL). Simile a GROUP BY ma senza aggregazioni.
+- **GREATEST(val1, val2, …):** restituisce il valore massimo tra gli argomenti; utile per soglie minime (es. costo minimo di spedizione).
+- **LEAST(val1, val2, …):** restituisce il valore minimo tra gli argomenti; utile per tetti massimi (es. prezzo di saldo).
+- **CASE:** espressione condizionale nel SELECT. Sintassi: CASE WHEN cond1 THEN ris1 WHEN cond2 THEN ris2 … ELSE default END. Le condizioni sono come in WHERE; ELSE è opzionale (default NULL).
+- **Installazione locale:** su macOS Postgres.app è un’opzione semplice; su altri OS si usano i pacchetti ufficiali o della distribuzione. Dopo l’installazione, configurare il PATH per usare `psql` da terminale.
