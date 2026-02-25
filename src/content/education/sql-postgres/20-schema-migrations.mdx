@@ -1,0 +1,123 @@
+---
+title: "Schema migrations e data migrations"
+description: "Modifiche alla struttura del DB; lezione 1 e 2 (sync client, legare struttura al codice); file di migration up/down; schema vs data migration; flusso in cinque passi"
+date: 2026-02-27
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 20
+---
+
+## Introduzione
+
+Le **schema migrations** sono modifiche pianificate e controllate alla **struttura** del database: aggiungere o rimuovere colonne e tabelle, rinominare colonne, cambiare tipi e vincoli. Sono fondamentali quando si lavora in team: senza una procedura condivisa, un cambio allo schema può rompere l’applicazione o lasciare i colleghi con una versione del codice e una del database non allineate. Questo capitolo illustra due problemi tipici (cambio schema senza aggiornare i client; struttura del DB non legata al codice), introduce i **file di migration** (up/down, apply/revert), la distinzione tra **schema migration** e **data migration**, e un flusso in più passi per modifiche che coinvolgono anche i dati.
+
+---
+
+## Scenario: rinomina colonna e errore in produzione
+
+Si immagina di gestire la tabella **comments** in un ambiente con Postgres in **locale** (sviluppo) e su **AWS** (produzione). Arriva la richiesta di rinominare la colonna **contents** in **body** (per chiarezza e per evitare confusione con “content”). L’operazione in sé è banale:
+
+```sql
+ALTER TABLE comments RENAME COLUMN contents TO body;
+```
+
+Si esegue in locale, poi in produzione tramite pgAdmin. Subito dopo compaiono errori critici: l’**API** che crea i commenti costruisce ancora istruzioni INSERT che riferiscono la colonna **contents**. Il database ha solo **body**, quindi le query falliscono. La lezione è che **ogni modifica allo schema del database deve essere sincronizzata con i client** (API, app): va deployata una versione del codice che usi la nuova struttura **nello stesso momento** (o subito dopo) in cui si applica la modifica al DB.
+
+---
+
+## Finestra di tempo e downtime
+
+Anche volendo fare tutto insieme, il **rename** è istantaneo mentre il **deploy** dell’API può richiedere minuti. Si crea una finestra in cui il DB ha già la colonna `body` ma l’API in esecuzione usa ancora `contents`: in quel periodo le richieste che inseriscono commenti falliscono. Molte aziende gestiscono questo con **downtime pianificato** (es. “servizio sospeso dalle 2 alle 3”): si ferma l’applicazione, si applica la modifica al DB, si deploya la nuova versione, si riavvia. Se però esiste un **SLA** che richiede disponibilità quasi continua, quella finestra non è accettabile e servono tecniche per ridurla o eliminarla. Inoltre, in grandi organizzazioni il team database e il team che fa il deploy possono essere diversi: coordinare il momento esatto del cambio è un ulteriore problema.
+
+---
+
+## Code review senza la modifica al database
+
+Si suppone che, dopo aver ripristinato la colonna `contents` in produzione, il processo richieda: (1) modificare sia il DB sia il codice API; (2) far revisionare tutto da un altro sviluppatore. Si prepara una **code review** (es. su GitHub) con le modifiche al solo codice API che usa `body`. Non c’è nulla nella review che descriva la modifica al database. Un revisore fa checkout del codice, ha un’API che riferisce `body`, ma nel suo database locale la colonna si chiama ancora `contents`: ottiene errori del tipo “column body does not exist”. Si risolve con una nota tipo “esegui in pgAdmin: ALTER TABLE … RENAME …”. Il revisore approva, si fa merge e deploy. Più tardi il revisore **ripristina** localmente solo il codice (torna alla versione che usa `contents`) ma **non** ripristina lo schema del database (che ora ha `body`): il suo ambiente resta incoerente e le operazioni sui commenti falliscono. La lezione è che **la struttura del database deve essere legata in modo esplicito a una versione del codice**: chi fa checkout di una certa versione deve poter ottenere anche lo schema corretto, senza istruzioni manuali sparse o dimenticate.
+
+---
+
+## File di migration: up, down, apply, revert
+
+I **file di migration** (schema migration files) sono file che descrivono **una modifica precisa** allo schema (e, se previsto, anche ai dati). Contengono tipicamente due parti:
+
+- **Up (o upgrade):** istruzioni (spesso SQL) per **avanzare** lo schema (es. creare tabella, aggiungere colonna, rinominare colonna).
+- **Down (o rollback / downgrade):** istruzioni per **annullare** esattamente quanto fatto nell’up (es. eliminare tabella, rimuovere colonna, rinominare indietro).
+
+Si usa il termine **apply** (o “run migrations”) per eseguire la parte **up** di uno o più file; **revert** (o “rollback”) per eseguire la parte **down**, di solito a partire dall’ultima migration applicata. I file possono essere scritti in qualsiasi linguaggio (Python, Java, JavaScript, Go, ecc.); l’idea è indipendente dal linguaggio. Un progetto può avere **molte** migration; vengono applicate in un **ordine** determinato (es. da timestamp nel nome del file). Un nuovo membro del team può eseguire tutte le migration su un database vuoto (o allineato a una certa versione) e ottenere la struttura esatta prevista da quella versione del codice. Inoltre, se una migration non è corretta, si può fare revert, correggere il file e riapplicare.
+
+---
+
+## Come le migration risolvono le due lezioni
+
+**Lezione 1 (sincronizzare DB e client):** In fase di deploy si può far eseguire **automaticamente** le migration pendenti **nel momento** in cui la nuova versione dell’API è pronta a ricevere traffico. Così il cambio di schema e il passaggio al nuovo codice avvengono in sequenza controllata e la finestra in cui DB e API sono incoerenti si riduce o si elimina.
+
+**Lezione 2 (legare struttura DB al codice):** Nella code review si include il **file di migration** insieme al codice. Il revisore può applicare la migration sul proprio database locale, ottenere lo schema richiesto dalla nuova versione del codice, testare e poi eventualmente fare revert della migration per tornare allo schema “di produzione” e continuare a lavorare sul codice attuale. La modifica al DB è versionata insieme al codice.
+
+---
+
+## Scrivere le migration a mano in SQL
+
+Esistono librerie per ogni linguaggio (es. per Node.js **node-pg-migrate**, per Python Alembic, per Go golang-migrate, ecc.) che gestiscono l’ordine di esecuzione, la tabella che traccia le migration già applicate e i comandi apply/revert. Molte permettono di **generare** SQL o intere migration a partire da modelli o da differenze sullo schema: è consigliabile **non** affidarsi a questa generazione per le modifiche sensibili e **scrivere a mano le istruzioni SQL** nelle migration. In questo modo si ha il controllo esatto su vincoli, default, indici e tipi; le librerie si usano per lo “scaffolding” (definizione di up/down, esecuzione in ordine, connessione al DB).
+
+---
+
+## Esempio pratico: creare tabella e rinominare colonna
+
+Con una libreria come **node-pg-migrate** si crea un progetto Node, si installa il pacchetto e si configura uno script (es. `npm run migrate`). Si crea un database vuoto (es. **social_network**) e si genera la prima migration, ad esempio “create-table-comments”. Nel file, nella parte **up** si scrive SQL grezzo (tramite la funzione fornita dalla libreria, es. `pgm.sql(\`…\`)`):
+
+- **Up:** `CREATE TABLE comments (id SERIAL PRIMARY KEY, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(), contents VARCHAR(240) NOT NULL);`
+- **Down:** `DROP TABLE comments;`
+
+Si imposta la variabile d’ambiente **DATABASE_URL** (formato `postgres://user:password@localhost:5432/social_network`; su macOS con Postgres App spesso senza password). Si esegue **npm run migrate up**: la migration viene applicata, la tabella `comments` viene creata e la libreria registra l’esecuzione in una tabella interna (es. **migrations**). Eseguendo di nuovo `migrate up` non succede nulla (nessuna migration pendente). Con **migrate down** si esegue la parte **down** dell’ultima migration applicata (qui: DROP TABLE comments).
+
+Seconda migration, es. “rename-contents-to-body”:
+
+- **Up:** `ALTER TABLE comments RENAME COLUMN contents TO body;`
+- **Down:** `ALTER TABLE comments RENAME COLUMN body TO contents;`
+
+Dopo `migrate up` lo schema avrà la colonna `body`; con un altro `migrate down` si torna a `contents`.
+
+---
+
+## Schema migration vs data migration
+
+Una **schema migration** modifica solo la **struttura**: creare/eliminare tabelle o colonne, rinominare, cambiare tipi o vincoli. Una **data migration** sposta o trasforma **dati** tra colonne o tabelle (es. copiare valori da due colonne in una nuova, poi magari eliminare le vecchie). Un caso tipico: la tabella **posts** ha **latitude** e **longitude**; si vuole una sola colonna **location** di tipo **point** (due valori in una colonna). Strategia in tre passi: (1) aggiungere la colonna **location** (schema); (2) copiare i valori da latitude/longitude in location (dati); (3) eliminare le colonne latitude e longitude (schema). I passi 1 e 3 sono **schema migrations**; il passo 2 è una **data migration**. Mescolare schema e data in una sola migration, soprattutto dentro un’unica transazione, può creare problemi seri.
+
+---
+
+## Perché non fare tutto in una sola migration (con transazione)
+
+Se si mettono tutti e tre i passi in un unico file e si esegue la migration **dentro una transazione**, succede quanto segue. Apertura transazione: Postgres lavora su uno **snapshot** dei dati coerente con l’inizio della transazione. Aggiungere la colonna è veloce. Copiare milioni di righe da latitude/longitude a location può richiedere decine di minuti o ore. In quel lasso di tempo l’**applicazione** può continuare a inserire nuovi post (righe con latitude e longitude valorizzate). Quelle nuove righe **non** fanno parte dello snapshot della transazione di migration. Quando la transazione fa **COMMIT**, le modifiche vengono “mergeate”: le righe già presenti all’inizio hanno location valorizzata e le vecchie colonne vengono droppate; le righe inserite dall’API durante la migration non sono state elaborate dalla copia, quindi avranno **location** NULL e le colonne latitude/longitude saranno state eliminate. Risultato: **perdita di dati** e stato incoerente. Per questo **non** si mettono insieme in una sola migration transazionale un grosso spostamento di dati e la modifica dello schema che elimina le colonne sorgente.
+
+---
+
+## Flusso in cinque passi (schema + data)
+
+Per unire due colonne (es. latitude, longitude) in una (location) senza perdere dati e senza tenere una transazione aperta per ore, si spezza il lavoro in **cinque passi** distinti, con possibili pause (ore o giorni) tra l’uno e l’altro.
+
+1. **Schema migration:** aggiungere la colonna **location** (tipo point), **nullable** (per permettere valori NULL finché non si è fatto il backfill).
+2. **Deploy del client:** una nuova versione dell’API che, in creazione e aggiornamento post, scriva **sia** in latitude/longitude **sia** in location (es. calcolando il point da lat/lng). Da questo momento ogni nuovo post ha location valorizzata.
+3. **Backfill (data migration):** uno script (o una query eseguita a parte, non necessariamente dentro il framework di migration) che aggiorni tutte le righe con `location IS NULL` impostando `location` a partire da latitude e longitude (es. `UPDATE posts SET location = point(longitude, latitude) WHERE location IS NULL`). Lo script può essere in SQL puro o in linguaggio applicativo (JavaScript, Python, ecc.); in grandi tabelle si può usare batching (es. 5000 righe per transazione) per limitare lock e uso memoria.
+4. **Deploy del client:** nuova versione dell’API che legge e scrive **solo** la colonna location (non più latitude/longitude).
+5. **Schema migration:** eliminare le colonne latitude e longitude (es. `ALTER TABLE posts DROP COLUMN latitude, DROP COLUMN longitude`).
+
+A ogni passo l’applicazione resta utilizzabile; non si perde coerenza e non si tiene una transazione unica che blocca la tabella per ore.
+
+---
+
+## Lock e transazioni lunghe durante il backfill
+
+Quando una transazione modifica una riga, quella riga resta **bloccata** fino al COMMIT o ROLLBACK. Nessun’altra transazione può modificare la stessa riga in quel frangente. Se il backfill viene eseguito in **un’unica transazione** su milioni di righe, per tutta la durata dell’UPDATE le righe toccate (o l’intera tabella, a seconda del piano) restano bloccate: le richieste dell’API che aggiornano quei post **attendono** fino al termine della migration. In pgAdmin si può verificare: in una finestra `BEGIN; UPDATE posts SET latitude = 2 WHERE id = 1;` (senza COMMIT); in un’altra finestra `UPDATE posts SET latitude = 10 WHERE id = 1;` resta in attesa finché la prima transazione non viene chiusa. Per ridurre il tempo di blocco si può fare il backfill a **batch** (es. UPDATE su blocchi di 5000 righe e COMMIT dopo ogni blocco): ogni batch tiene i lock per meno tempo, ma non si ha più una singola transazione “tutto o niente”; in caso di errore a metà si è in uno stato parzialmente aggiornato e va gestito (riprovare, idempotenza dello script, ecc.).
+
+---
+
+## Riepilogo
+
+- **Schema migrations** = modifiche alla struttura del DB (tabelle, colonne, nomi, tipi). Fondamentali in team: vanno sincronizzate con i client e legate alla versione del codice.
+- **Lezione 1:** ogni cambio allo schema deve essere deployato insieme (o in sequenza controllata) con i client che usano quel schema; altrimenti si generano errori e possibili finestre di downtime.
+- **Lezione 2:** la struttura del DB deve essere riproducibile e versionata (file di migration nella code review) così che chi fa checkout di una versione possa avere lo schema corretto.
+- **File di migration:** sezione **up** (avanzare) e **down** (annullare); **apply** = eseguire up, **revert** = eseguire down. Scrivere le migration **a mano in SQL** quando possibile.
+- **Data migration** = spostare o trasformare dati tra colonne/tabelle. Non mescolarla con grosse modifiche di schema in una sola transazione: lo snapshot della transazione non vede le righe inserite nel frattempo e si rischia perdita di dati.
+- **Flusso consigliato** per unire colonne (es. lat/lng → location): (1) aggiungere colonna nuova nullable, (2) deploy che scrive in entrambe, (3) backfill su righe con valore NULL, (4) deploy che usa solo la nuova colonna, (5) migration che elimina le vecchie colonne. Tra un passo e l’altro può passare del tempo.
+- Durante un backfill massiccio, una transazione unica tiene lock a lungo; il batching riduce i lock ma rinuncia all’atomicità globale del singolo UPDATE.

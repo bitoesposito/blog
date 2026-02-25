@@ -1,0 +1,165 @@
+---
+title: "Viste e materialized views"
+description: "Risolvere il design a due tabelle con le viste; CREATE VIEW, OR REPLACE, DROP; materialized view per query costose e REFRESH"
+date: 2026-02-25
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 18
+---
+
+## Introduzione
+
+Un altro problema ricorrente è la necessità di unire **caption_tags** e **photo_tags** in quasi ogni query che lavora sui tag. In questo capitolo si affronta prima la query degli **utenti più popolari** (definiti come gli utenti taggati più spesso), che richiede ancora una volta un UNION tra le due tabelle. Poi si discute come “sistemare” il design senza toccare i dati: le **viste** permettono di definire una tabella logica (es. un’unica “tags”) riutilizzabile ovunque; le **materialized views** permettono di memorizzare il risultato di una query costosa e consultarlo senza rieseguirla, a patto di aggiornare i dati con **REFRESH** quando necessario.
+
+---
+
+## Query: utenti più popolari per numero di tag
+
+Si definiscono **più popolari** gli utenti che compaiono più spesso nei tag (caption o foto). Servono `users`, `caption_tags` e `photo_tags`. Strategia: unire tutte le occorrenze di tag in un’unica fonte, fare JOIN con `users`, raggruppare per utente e contare.
+
+Si usa di nuovo un **UNION ALL** tra le due tabelle di tag (solo la colonna `user_id` è necessaria per questo calcolo), si assegna un alias (es. `tags`) e si fa JOIN con `users` su `users.id = tags.user_id`. Si raggruppa per `username` (o `users.id`) e si conta il numero di righe con **COUNT(\*)**. Per avere i più popolari in cima si ordina per **COUNT(\*)** in ordine **DESC**.
+
+```sql
+SELECT users.username, COUNT(*) AS tag_count
+FROM users
+JOIN (
+    SELECT user_id FROM photo_tags
+    UNION ALL
+    SELECT user_id FROM caption_tags
+) AS tags ON tags.user_id = users.id
+GROUP BY users.username
+ORDER BY COUNT(*) DESC;
+```
+
+La query è corretta ma ripete la stessa subquery di unione ogni volta. Avere due tabelle separate (`caption_tags` e `photo_tags`) senza un vero vantaggio operativo porta a ripetere questa logica in molte query; è ragionevole considerarlo un **errore di design** e cercare una soluzione che non richieda di riscrivere tutte le query né di perdere riferimenti esistenti.
+
+---
+
+## Due modi di “unire” le tabelle
+
+Due approcci possibili: (1) unire fisicamente le tabelle in una sola; (2) definire una **vista** che espone l’unione come una tabella logica.
+
+**Soluzione 1: merge fisico.** Creare una tabella `tags`, copiare le righe con `INSERT INTO tags SELECT ... FROM photo_tags` e `INSERT INTO tags SELECT ... FROM caption_tags`, poi eliminare `photo_tags` e `caption_tags`. Due problemi importanti: (a) le due tabelle usano tipi **SERIAL** per l’ID, quindi è probabile che esistano **ID duplicati** (1, 2, 3, … in entrambe); non si possono copiare gli ID nella nuova tabella senza violare la chiave primaria, e ogni **foreign key** che puntava a `photo_tags.id` o `caption_tags.id` smetterebbe di essere valida. (b) Tutte le query e il codice applicativo che riferiscono `photo_tags` o `caption_tags` andrebbero aggiornati. Per questi motivi la soluzione del merge fisico è sconsigliata.
+
+**Soluzione 2: vista.** Una **vista** è una “tabella virtuale” definita da una query: non contiene dati propri, ma ogni volta che la si interroga viene eseguita la query sottostante. È concettualmente vicina a una **CTE**, con la differenza che la vista viene **creata una volta** e poi si può usare in qualsiasi query successiva, senza riscrivere la subquery. Le tabelle originali restano intatte: le query che usano ancora `photo_tags` o `caption_tags` continuano a funzionare, e in più si ha un unico punto (la vista) per chi vuole lavorare su “tutti i tag”.
+
+---
+
+## Creare e usare una vista: esempio `tags`
+
+La sintassi è **CREATE VIEW nome AS (query)**. La query può essere qualsiasi SELECT; nel nostro caso un’unione delle due tabelle di tag con le stesse colonne e, se serve, una colonna aggiuntiva per distinguere l’origine.
+
+Esempio con colonna **type** per distinguere photo tag da caption tag:
+
+```sql
+CREATE VIEW tags AS
+SELECT id, created_at, user_id, post_id, 'photo_tag' AS type
+FROM photo_tags
+UNION ALL
+SELECT id, created_at, user_id, post_id, 'caption_tag' AS type
+FROM caption_tags;
+```
+
+Dopo la creazione si può fare **SELECT \* FROM tags** oppure filtrare con **WHERE type = 'caption_tag'**. Nessun dato viene duplicato o spostato: la vista è solo un “involucro” sulla query. La query degli utenti più popolari diventa:
+
+```sql
+SELECT users.username, COUNT(*) AS tag_count
+FROM users
+JOIN tags ON tags.user_id = users.id
+GROUP BY users.username
+ORDER BY COUNT(*) DESC;
+```
+
+Risultato identico a prima, con codice più chiaro e senza ripetere la subquery di unione.
+
+---
+
+## Altro esempio: vista “ultimi N post”
+
+Le viste non servono solo per UNION: si può incapsulare qualsiasi query usata spesso. Esempio: i **dieci post più recenti** servono in molte schermate (autori, like, tag, hashtag, commenti, ecc.). Invece di ripetere `ORDER BY created_at DESC LIMIT 10` in ogni query, si definisce:
+
+```sql
+CREATE VIEW recent_posts AS
+SELECT * FROM posts
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+Poi, ad esempio per gli utenti che hanno creato quei post: **SELECT username FROM users JOIN recent_posts ON users.id = recent_posts.user_id**. La logica “10 post più recenti” resta in un solo posto e si riusa ovunque.
+
+---
+
+## Modificare e eliminare una vista
+
+Per cambiare la definizione di una vista esistente senza cancellarla: **CREATE OR REPLACE VIEW nome AS (nuova_query)**. Ad esempio, per passare da 10 a 15 post più recenti:
+
+```sql
+CREATE OR REPLACE VIEW recent_posts AS
+SELECT * FROM posts
+ORDER BY created_at DESC
+LIMIT 15;
+```
+
+Per rimuovere la vista: **DROP VIEW nome** (es. **DROP VIEW recent_posts**). Dopo il DROP, ogni riferimento alla vista genera errore. In pgAdmin le viste sono elencate sotto **Schemas → public → Views** (aggiornare con refresh se necessario).
+
+---
+
+## Materialized view: query costose e risultati memorizzati
+
+Una **vista normale** non memorizza risultati: a ogni SELECT sulla vista viene rieseguita la query sottostante. Una **materialized view** invece: (1) esegue la query **solo in certi momenti** (creazione e refresh); (2) **salva** il risultato; (3) quando si interroga la materialized view si leggono i **dati memorizzati**, senza rieseguire la query. Si usa quando la query è **molto costosa** (secondi o minuti) e i dati non devono essere aggiornati in tempo reale.
+
+Analogia con le CTE: la CTE semplice e la vista sono soprattutto strumenti di **leggibilità** e riuso; la CTE ricorsiva e la materialized view aggiungono **funzionalità** (ricorsione su grafi vs. caching di risultati pesanti).
+
+---
+
+## Esempio di query costosa: like per settimana (post vs commenti)
+
+Si vuole: per **ogni settimana** (dalla data del primo post/commento all’ultima), mostrare **quanti like** hanno ricevuto i **post** creati in quella settimana e **quanti like** hanno ricevuto i **commenti** creati in quella settimana. I like vanno cioè **assegnati alla settimana di creazione** del post o del commento, non alla data del like.
+
+Tabelle: **likes** (con `post_id` e `comment_id`; ogni like ha uno dei due valorizzato), **posts**, **comments**. Per ogni like bisogna risalire al post o al commento e usare la loro **created_at** per determinare la settimana.
+
+**JOIN:** Si parte da **likes** e si fa **LEFT JOIN** con **posts** su `posts.id = likes.post_id` e **LEFT JOIN** con **comments** su `comments.id = likes.comment_id`. Un **INNER JOIN** darebbe risultato vuoto perché in ogni riga di likes uno tra `post_id` e `comment_id` è NULL. Il **LEFT JOIN** mantiene tutte le righe di likes e “riempie” post o comment a seconda di quale ID è presente.
+
+**Settimana:** Si usa **date_trunc('week', timestamp)** per troncare la data alla settimana. La data da usare è quella del post o del commento: **COALESCE(posts.created_at, comments.created_at)** restituisce la prima non NULL. Quindi: **date_trunc('week', COALESCE(posts.created_at, comments.created_at)) AS week**.
+
+**Aggregazione:** **GROUP BY week**. Per contare i like sui post: **COUNT(posts.id)** (le righe in cui il like è su un post hanno `posts.id` valorizzato). Per i like sui commenti: **COUNT(comments.id)**. **COUNT** ignora i NULL, quindi si ottengono correttamente i due conteggi per settimana.
+
+La query completa può richiedere diversi secondi (o decine su dataset grandi) perché coinvolge join su tabelle grandi e aggregazioni. È un buon candidato per una materialized view.
+
+---
+
+## Creare e interrogare una materialized view
+
+Sintassi: **CREATE MATERIALIZED VIEW nome AS (query) WITH DATA**. **WITH DATA** indica di eseguire subito la query e memorizzare il risultato. Esempio:
+
+```sql
+CREATE MATERIALIZED VIEW weekly_likes AS
+SELECT
+    date_trunc('week', COALESCE(posts.created_at, comments.created_at)) AS week,
+    COUNT(posts.id) AS likes_for_posts,
+    COUNT(comments.id) AS likes_for_comments
+FROM likes
+LEFT JOIN posts ON posts.id = likes.post_id
+LEFT JOIN comments ON comments.id = likes.comment_id
+GROUP BY date_trunc('week', COALESCE(posts.created_at, comments.created_at));
+```
+
+Dopo la creazione, **SELECT \* FROM weekly_likes** restituisce gli stessi dati ma in modo molto più veloce (lettura da dati già materializzati), senza rieseguire join e aggregazioni.
+
+---
+
+## Aggiornare una materialized view: REFRESH
+
+I dati memorizzati in una materialized view **non** si aggiornano automaticamente quando si modificano `likes`, `posts` o `comments`. Restano “fotografie” fino a quando non si esegue un refresh esplicito.
+
+Per ricalcolare i dati: **REFRESH MATERIALIZED VIEW nome** (es. **REFRESH MATERIALIZED VIEW weekly_likes**). PostgreSQL riesegue la query sottostante e sostituisce il contenuto della materialized view. Dopo una modifica ai dati sottostanti (es. cancellazione di post o nuovi like), se si interroga la materialized view senza fare REFRESH si vedono ancora i valori vecchi; dopo il REFRESH si vedono i valori aggiornati.
+
+Le materialized view sono adatte a **report o dashboard** i cui dati possono essere aggiornati a intervalli (es. una volta al giorno o alla settimana) invece che in tempo reale. Per dati che cambiano continuamente e devono essere sempre aggiornati, una vista normale o una query diretta sono più adatte.
+
+---
+
+## Riepilogo
+
+- Ripetere **UNION** tra `caption_tags` e `photo_tags` in molte query suggerisce un design poco comodo; unire fisicamente le tabelle crea problemi di ID e foreign key e obbliga a riscrivere il codice.
+- **Viste:** **CREATE VIEW nome AS (query)**. Tabella virtuale riutilizzabile; a ogni accesso viene eseguita la query. **CREATE OR REPLACE VIEW** per modificare, **DROP VIEW** per eliminare. Utili per unire tabelle “logicamente” (es. vista `tags`) o per incapsulare query comuni (es. ultimi N post).
+- **Materialized view:** **CREATE MATERIALIZED VIEW nome AS (query) WITH DATA**. La query viene eseguita alla creazione (e ai refresh) e il risultato è memorizzato; interrogare la materialized view è veloce. **REFRESH MATERIALIZED VIEW nome** per aggiornare i dati. Adatte a query costose i cui risultati possono essere aggiornati a intervalli invece che in tempo reale.

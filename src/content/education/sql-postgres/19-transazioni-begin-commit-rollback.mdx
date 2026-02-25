@@ -1,0 +1,131 @@
+---
+title: "Transazioni: BEGIN, COMMIT e ROLLBACK"
+description: "Atomicità con l'esempio del bonifico; workspace isolato per connessione; commit, rollback, stato aborted e chiusura in caso di crash"
+date: 2026-02-26
+tags: ['formazione', 'sql', 'postgresql']
+authors: ['vitoesposito']
+order: 19
+---
+
+## Introduzione
+
+Le **transazioni** servono a garantire che un gruppo di operazioni venga trattato come un’unità: **tutte** le operazioni vengono applicate oppure **nessuna**. L’esempio classico (usato in quasi tutta la documentazione) è il **bonifico** tra due conti: prelevare da un conto e accreditare sull’altro devono avvenire insieme; se il processo si interrompe a metà, non deve restare “denaro in sospeso”. In questo capitolo si usa lo stesso scenario (tabella `accounts`, trasferimento da un conto all’altro) per introdurre **BEGIN**, **COMMIT**, **ROLLBACK**, l’isolamento tra connessioni e il comportamento in caso di errore o di perdita della connessione.
+
+---
+
+## Problema: due UPDATE che devono andare insieme
+
+Si immagina un’applicazione bancaria con una tabella **accounts** (nome del titolare, saldo). Un trasferimento di 50€ da Allison a Jia richiede due passi eseguibili solo dal database: (1) prelevare 50€ dal conto di Allison; (2) accreditare 50€ sul conto di Jia.
+
+In SQL si potrebbe scrivere due statement separati:
+
+```sql
+UPDATE accounts SET balance = balance - 50 WHERE name = 'Allison';
+UPDATE accounts SET balance = balance + 50 WHERE name = 'Jia';
+```
+
+Se il primo UPDATE viene eseguito e poi avviene un **crash** (server, rete, processo che si interrompe) prima del secondo, il saldo di Allison è già diminuito di 50€ ma quello di Jia non è aumentato. Il denaro non è più tracciato correttamente e il sistema è in uno stato inconsistente, difficile da recuperare senza logica applicativa ad hoc.
+
+L’obiettivo è quindi: **entrambi** gli UPDATE devono essere eseguiti **oppure nessuno**. Questo è esattamente ciò che le transazioni permettono di ottenere.
+
+---
+
+## Preparazione: tabella accounts e dati di test
+
+Per sperimentare si può creare una tabella `accounts` (anche nel database Instagram, senza legami con le altre tabelle) e inserire due conti:
+
+```sql
+CREATE TABLE accounts (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(20) NOT NULL,
+    balance INTEGER NOT NULL
+);
+
+INSERT INTO accounts (name, balance) VALUES
+    ('Jia', 100),
+    ('Allison', 100);
+```
+
+Opzionalmente si può aggiungere un **CHECK** su `balance` (es. `balance >= 0`) o un **DEFAULT 0**. Dopo l’INSERT, un `SELECT * FROM accounts` mostra due righe con saldo 100.
+
+---
+
+## Aprire una transazione: BEGIN
+
+Ogni finestra del Query Tool in pgAdmin (o ogni connessione da un’applicazione) è una **connessione** distinta al database. Tutte le connessioni vedono gli stessi dati (le stesse tabelle e righe), ma le modifiche fatte **dentro una transazione** sono visibili solo a quella connessione finché la transazione non viene chiusa.
+
+Per **aprire** una transazione si esegue il comando **BEGIN** (da solo, senza altre istruzioni). Dopo il BEGIN, in pgAdmin l’icona nella barra della finestra cambia e lo stato indica che la **sessione è in un blocco di transazione valido** (“idle in a valid transaction block”). Solo questa connessione è “dentro” la transazione; le altre restano nello stato normale.
+
+Un modo utile di pensare a cosa succede (senza entrare nei dettagli implementativi) è: la connessione che ha eseguito BEGIN ottiene una sorta di **workspace isolato**. Le modifiche successive (UPDATE, INSERT, DELETE) avvengono in questo workspace; le altre connessioni continuano a leggere e scrivere sul “pool” principale dei dati. In realtà PostgreSQL non copia fisicamente tutte le tabelle; è un modello mentale per capire l’**isolamento**.
+
+---
+
+## Isolamento: le modifiche non sono visibili agli altri
+
+Nella connessione che ha eseguito BEGIN si può eseguire il primo UPDATE:
+
+```sql
+UPDATE accounts SET balance = balance - 50 WHERE name = 'Allison';
+```
+
+Nella **stessa** connessione, un `SELECT * FROM accounts` mostrerà Allison con 50€ in meno. In un’**altra** finestra (altra connessione), uno stesso `SELECT * FROM accounts` mostrerà ancora Allison a 100€. Le modifiche in transazione non sono ancora state “pubblicate” al resto del sistema.
+
+Si può poi eseguire il secondo UPDATE nella stessa connessione:
+
+```sql
+UPDATE accounts SET balance = balance + 50 WHERE name = 'Jia';
+```
+
+Nella connessione in transazione si vedranno Allison 50 e Jia 150; nelle altre connessioni restano 100 e 100. Per rendere le modifiche definitive e visibili a tutti bisogna **chiudere** la transazione con **COMMIT**.
+
+---
+
+## Salvare le modifiche: COMMIT
+
+Eseguendo **COMMIT** (da solo) nella connessione che ha la transazione aperta, tutte le modifiche fatte in quella transazione vengono **applicate definitivamente** al database. Dopo il COMMIT, qualsiasi connessione che esegue `SELECT * FROM accounts` vedrà Allison 50 e Jia 150. La transazione è chiusa e la connessione torna a operare in modalità “normale” (senza workspace isolato).
+
+---
+
+## Annullare le modifiche: ROLLBACK
+
+Se invece, dopo BEGIN e alcuni UPDATE, si decide di **non** salvare le modifiche, si esegue **ROLLBACK**. ROLLBACK **scarta** tutto ciò che è stato fatto nella transazione corrente: il workspace viene eliminato e la connessione torna a vedere i dati del “pool” principale. Nessun UPDATE di quella transazione resta applicato.
+
+---
+
+## Errore in una statement: transazione in stato “aborted”
+
+Se durante una transazione (dopo BEGIN) si esegue una query che va in **errore** (es. `SELECT * FROM tabella_inesistente`), la transazione passa in stato **aborted** (abortita). Da quel momento, **qualsiasi** comando successivo nella stessa connessione viene rifiutato con un messaggio del tipo: *current transaction is aborted, commands ignored until end of transaction block*.
+
+Per usare di nuovo la connessione normalmente è necessario **chiudere** la transazione. Dato che è in stato di errore, non si può fare COMMIT (le modifiche non vengono comunque applicate in modo coerente); si deve eseguire **ROLLBACK**. Dopo il ROLLBACK la transazione è chiusa e si possono di nuovo eseguire query e aprire eventualmente una nuova transazione. Conviene ricordare questo messaggio: quando compare, la soluzione è eseguire ROLLBACK.
+
+---
+
+## Perdita della connessione: nessun commit automatico
+
+Se la **connessione** che ha una transazione aperta viene **terminata** (crash del client, chiusura della finestra, kill del processo, timeout), PostgreSQL rileva la disconnessione e **non** applica le modifiche di quella transazione. In pratica la transazione viene “buttata via”; non c’è COMMIT automatico.
+
+Si può simulare lo scenario del bonifico a metà: BEGIN, primo UPDATE (prelievo da Allison), poi si termina la connessione da pgAdmin (Dashboard, elenco connessioni, interruzione della connessione). Aprendo una nuova finestra e eseguendo `SELECT * FROM accounts`, i saldi restano 100 e 100: il prelievo non è mai stato reso permanente. È proprio questo comportamento che evita il “denaro perso” quando il server cade tra il primo e il secondo UPDATE: l’intera transazione viene scartata.
+
+---
+
+## I quattro modi di chiudere una transazione
+
+In sintesi, una transazione aperta con BEGIN può terminare in quattro modi:
+
+1. **COMMIT**: le modifiche vengono applicate al database e diventano visibili a tutte le connessioni.
+2. **ROLLBACK**: le modifiche vengono annullate; la connessione torna al dato “globale” senza alcun effetto della transazione.
+3. **Errore in una statement**: la transazione va in stato aborted; bisogna eseguire **ROLLBACK** prima di poter fare altre operazioni.
+4. **Connessione persa**: PostgreSQL chiude la transazione senza COMMIT; nessuna modifica viene salvata.
+
+Per garantire che due o più operazioni si comportino come un’unica unità (tutte o nessuna), si racchiudono tra **BEGIN** e **COMMIT**; in caso di errore o di decisione di annullare si usa **ROLLBACK**. In caso di crash della connessione, il database provvede a non rendere permanenti le modifiche non committate.
+
+---
+
+## Riepilogo
+
+- **Transazione**: insieme di operazioni che devono essere applicate **tutte** oppure **nessuna** (atomicità). Esempio tipico: bonifico (prelievo da un conto + accredito su un altro).
+- **BEGIN**: apre una transazione; la connessione lavora in uno spazio isolato dove le modifiche non sono visibili alle altre connessioni.
+- **COMMIT**: rende definitive le modifiche e le rende visibili a tutti.
+- **ROLLBACK**: annulla tutte le modifiche della transazione corrente e chiude la transazione.
+- Se una query va in errore dopo BEGIN, la transazione entra in stato **aborted**; è necessario eseguire **ROLLBACK** prima di continuare.
+- Se la connessione si interrompe, PostgreSQL non fa COMMIT; le modifiche della transazione aperta non vengono salvate, evitando stati inconsistenti (es. prelievo senza accredito).
