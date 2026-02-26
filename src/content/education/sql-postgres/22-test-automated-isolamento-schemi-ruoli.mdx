@@ -1,0 +1,98 @@
+---
+title: "Test automatici e isolamento con schemi e ruoli Postgres"
+description: "Jest in parallelo; conflitti su uno stesso DB; database di test separato; schemi e search_path; un schema per file di test; ruoli e cleanup"
+date: 2026-02-28
+tags: ['formazione', 'sql', 'postgresql', 'node', 'testing']
+authors: ['vitoesposito']
+order: 22
+---
+
+## Introduzione
+
+Aggiungere **test automatici** a un’API che usa Postgres richiede di risolvere un problema di **isolamento**: se più file di test vengono eseguiti **in parallelo** e tutti usano lo stesso database e la stessa tabella, le operazioni si intrecciano e i test falliscono in modo casuale. L’obiettivo di questo capitolo non è insegnare a scrivere test in sé, ma mostrare **due aspetti di Postgres** che permettono di isolare i test: l’uso di un **database di test** separato e, per l’esecuzione parallela, l’uso di **schemi** e **ruoli** in modo che ogni file di test lavori in uno schema dedicato. Si introducono anche il **search_path** e la pulizia (cleanup) di ruoli e schemi dopo i test.
+
+---
+
+## Il problema: test in parallelo sullo stesso database
+
+Un test runner come **Jest** può eseguire i file di test **in parallelo** (più file contemporaneamente) per ridurre i tempi. Se ogni file contiene test che leggono e scrivono sulla stessa tabella **users** nello stesso database (es. social_network), si creano conflitti. Esempio: il test “crea un utente e verifica che il conteggio sia aumentato di uno” fa una lettura del conteggio iniziale, poi una POST che crea un utente, poi una seconda lettura; ci si aspetta che la differenza sia 1. Se un altro file, in parallelo, crea un utente nello stesso intervallo, il conteggio finale può essere 2 (o più) e l’asserzione “differenza = 1” fallisce. I fallimenti diventano **non deterministici** (a volte uno, a volte due file falliscono). La soluzione è dare a ogni file di test un **ambiente di dati isolato**: o un database separato, o uno **schema** separato nello stesso database.
+
+---
+
+## Setup iniziale: beforeAll, afterAll, pool e database di test
+
+Quando si lanciano i test, non viene eseguito **index.js** (che avvia il server e chiama **pool.connect()**). Il codice dei test usa lo stesso **pool** e il **userRepo**; se il pool non ha mai chiamato **connect**, **pool._pool** è null e qualsiasi query genera errore (“cannot read property query of null”). Quindi in **beforeAll** si deve chiamare **pool.connect(config)** con le credenziali del database; Jest aspetta la promise restituita prima di eseguire i test. In **afterAll** si chiama **pool.close()** per chiudere le connessioni: altrimenti il processo Node resta in attesa e Jest segnala che non è uscito (problema rilevante in ambienti CI che si aspettano l’uscita del processo).
+
+Se i test usano lo **stesso** database usato in sviluppo (es. social_network), la tabella **users** può già contenere dati; un test che si aspetta “zero utenti all’inizio” fallisce. La soluzione è usare un **database dedicato ai test** (es. **social_network_test**): lo si crea in pgAdmin (o via script), si puntano i test a quel database nelle opzioni di connessione e si eseguono le **migration** contro quel database (stesso comando di migrate con DATABASE_URL che indica social_network_test). In questo modo sviluppo e test non condividono dati.
+
+---
+
+## Migrations sul database di test e primo test
+
+Sul database di test appena creato non ci sono tabelle: la prima query (es. **userRepo.count()**) fallisce con “relation users does not exist”. È necessario applicare le migration sul database di test (stesso `npm run migrate up` con DATABASE_URL che punta a social_network_test). Dopo di che, un test che verifica “conteggio iniziale, crea utente, conteggio finale e differenza = 1” può passare. Attenzione: **COUNT** in Postgres restituisce un tipo che può arrivare come stringa; se il test confronta con il numero 0 o 1, conviene usare **parseInt** sul risultato di count nel repository.
+
+---
+
+## Test ripetuti e dati residui
+
+Alla **seconda** esecuzione della suite, il test che assume “conteggio iniziale zero” può fallire: il primo run ha inserito un utente e non l’ha rimosso. Due approcci: (1) assumere che il database non sia vuoto e verificare solo che **la differenza** tra conteggio finale e iniziale sia 1 (più robusto per esecuzioni ripetute); (2) pulire i dati prima o dopo ogni test (es. DELETE FROM users in **beforeEach** o **afterEach**). L’approccio (1) permette di far passare i test senza pulizia, ma quando si aggiungono **più file** di test in parallelo si torna al problema di isolamento.
+
+---
+
+## Più file di test in parallelo: conflitto sulla stessa tabella
+
+Si duplicano il file di test (es. users.test.js, users-two.test.js, users-three.test.js) e si forza Jest a eseguirli in parallelo (opzione **--runInBand** disabilitata o equivalente). Eseguendo la suite, alcuni test falliscono in modo casuale: tutti e tre i file leggono lo stesso **users** nello stesso database, creano utenti “in contemporanea” e le asserzioni sulla differenza di conteggio non sono più valide. Serve **isolamento per file**: ogni file deve lavorare su dati che gli altri non modificano.
+
+---
+
+## Due strade: un database per file oppure uno schema per file
+
+**Opzione 1:** Creare un database di test diverso per ogni file (es. social_network_test_a, _b, _c) e far sì che ogni file si connetta al proprio. Pro: isolamento completo. Contro: per ogni nuovo file di test bisogna creare un nuovo database ed eseguire le migration; diventa pesante.
+
+**Opzione 2:** Usare un **unico** database di test e dare a ogni file di test un **schema** diverso. In Postgres uno **schema** è un contenitore di oggetti (tabelle, viste, ecc.) all’interno di uno stesso database, simile a un “namespace”. Il database ha per default lo schema **public**. Si possono creare altri schemi (es. **test_a**, **test_b**) e in ognuno creare una tabella **users** (e qualsiasi altra tabella necessaria). Le query di un file che lavora nello schema **test_a** vedono solo **test_a.users**; un altro file che lavora in **test_b** vede solo **test_b.users**. Si ottiene isolamento senza molti database.
+
+---
+
+## Schemi: creazione e riferimenti espliciti
+
+Per creare uno schema: **CREATE SCHEMA nome_schema**. Per creare una tabella in quello schema: **CREATE TABLE nome_schema.users (...)**. Per inserire o interrogare: **INSERT INTO nome_schema.users ...**, **SELECT * FROM nome_schema.users**. Se non si specifica lo schema, Postgres deve decidere **quale** schema usare; questa logica è governata dal **search_path**.
+
+---
+
+## search_path: quale schema usa Postgres “di default”
+
+Il parametro **search_path** (visibile con **SHOW search_path**) è una lista di schemi, ad esempio **"$user", public**. Significa: quando una query usa un nome di tabella **senza** prefisso di schema (es. **SELECT * FROM users**), Postgres cerca la tabella **users** nell’ordine indicato dal search_path. **$user** indica “lo schema con lo stesso nome dell’**utente** con cui è stata aperta la connessione” (il “role” in Postgres). Se non esiste uno schema con quel nome, si usa **public**. Quindi: se ci si connette al database come utente **mario** e esiste uno schema **mario**, la query **SELECT * FROM users** userà **mario.users**; altrimenti **public.users**. Impostando **SET search_path TO test, public** (nella stessa sessione), la ricerca non qualificata userà prima **test**, poi **public**. Questo permette di “reindirizzare” tutte le query di una connessione verso uno schema preciso **senza** riscrivere ogni query con il prefisso schema.
+
+---
+
+## Strategia: uno schema (e un ruolo) per file di test
+
+L’idea è: per ogni file di test, **generare un nome univoco** (es. stringa casuale), creare un **ruolo** (utente) Postgres con quel nome e una **schema** con lo stesso nome, autorizzata a quel ruolo. Poi **eseguire le migration** in quello schema (così si crea **schema_x.users**, ecc.) e infine **riconnettersi** al database **come quel ruolo**. Dato che il search_path di default include **$user**, tutte le query senza prefisso (es. **SELECT * FROM users**) useranno automaticamente lo **schema con lo stesso nome del ruolo**. File 1 usa ruolo/schema **abc**, file 2 ruolo/schema **xyz**: nessuna condivisione di tabelle. I passi concreti: (1) generare **roleName** (es. `'a' + randomBytes(4).toString('hex')` per evitare nomi che iniziano con numero); (2) connettersi con l’utente “root” (quello abituale); (3) **CREATE ROLE roleName WITH LOGIN PASSWORD '...'**; (4) **CREATE SCHEMA roleName AUTHORIZATION roleName**; (5) disconnettere il pool; (6) eseguire le migration **nello schema roleName** (la libreria di migration permette di indicare lo schema); (7) riconnettersi con **user: roleName, password: roleName**. Da quel momento tutte le query del pool vanno allo schema **roleName**.
+
+---
+
+## Identificatori e pg-format
+
+Per **CREATE ROLE** e **CREATE SCHEMA** servono **nomi** (identificatori), non valori letterali. Le query parametrizzate con **$1**, **$2** in Postgres sono pensate per **valori** (letterali); non si possono usare per sostituire identificatori (nome schema, nome ruolo). Concatenare stringhe (es. `` `CREATE ROLE ${roleName} ...` ``) in contesti di test non espone a input utente, ma è uno stile sconsigliato perché simile a codice vulnerabile a SQL injection. Il modulo **pg-format** permette di sostituire in sicurezza: **%I** per identificatori (nomi di schema, ruolo, tabella) e **%L** per letterali. Esempio: **format('CREATE ROLE %I WITH LOGIN PASSWORD %L', roleName, roleName)**. Così si evita la concatenazione diretta e si mantiene un pattern sicuro.
+
+---
+
+## Pulizia: eliminare schema e ruolo in afterAll
+
+Dopo l’esecuzione dei test, lo schema e il ruolo creati restano nel database; ripetendo la suite si accumulano molti schemi/ruoli. In **afterAll** (o in un metodo **context.close()**) conviene: (1) **pool.close()** per chiudere la connessione attuale; (2) **pool.connect(configRoot)** per riconnettersi con l’utente “root” (non si può eliminare un ruolo mentre si è connessi con quel ruolo); (3) **DROP SCHEMA roleName CASCADE**; (4) **DROP ROLE roleName**; (5) **pool.close()**. In questo modo ogni run crea e poi distrugge gli oggetti temporanei.
+
+---
+
+## Contesto condiviso e reset tra test
+
+La logica di setup (genera nome, crea ruolo/schema, migration, riconnetti) e di cleanup può essere estratta in una classe o modulo **Context**: ad esempio **Context.build()** che restituisce un oggetto contesto (con **roleName** e magari un metodo **close()**). Ogni file di test in **beforeAll** chiama **context = await Context.build()** e in **afterAll** **await context.close()**. Per avere dati puliti **tra un test e l’altro** nello stesso file, si può aggiungere **beforeEach** che esegue **DELETE FROM users** (e da altre tabelle se necessario) invece di ricreare tutto lo schema; è più veloce e sufficiente per la maggior parte dei test.
+
+---
+
+## Riepilogo
+
+- I test che toccano il database vanno **isolati** tra loro: stesso DB e stessa tabella in parallelo causano fallimenti casuali.
+- Usare un **database di test** separato (es. social_network_test) e applicare le migration su di esso; in **beforeAll** connettere il pool a quel DB, in **afterAll** chiudere il pool per permettere l’uscita del processo.
+- Per l’esecuzione **parallela** di più file di test, dare a ogni file un **schema** (e un **ruolo**) propri: generare un nome univoco, creare ruolo e schema con quel nome, eseguire le migration in quello schema, riconnettersi come quel ruolo così che il **search_path** ($user) indirizzi le query allo schema corretto.
+- Per i comandi DDL che usano nomi generati (ruolo, schema), usare **pg-format** (%I per identificatori, %L per letterali) invece della concatenazione di stringhe.
+- Dopo i test, **DROP SCHEMA ... CASCADE** e **DROP ROLE** (dopo essersi riconnessi come utente root) per non lasciare oggetti temporanei; opzionalmente **DELETE** dalle tabelle in **beforeEach** per uno stato pulito tra un test e l’altro.

@@ -1,0 +1,134 @@
+---
+title: "Node API, pool PG, repository e SQL injection"
+description: "Connessione a Postgres da Node con pg; pool vs client; pattern repository; parametri $1/$2 e prepared statements; rischio iniezione SQL"
+date: 2026-02-26
+tags: ['formazione', 'sql', 'postgresql', 'node']
+authors: ['vitoesposito']
+order: 21
+---
+
+## Introduzione
+
+In questo capitolo si applica quanto visto su SQL e Postgres in un’**applicazione reale**: una piccola API Node.js che si connette al database **social_network** e opera sulla tabella **users**. L’obiettivo non è costruire un’API completa, ma capire **come** un’applicazione si interfaccia al database: connessione tramite il modulo **pg**, uso di un **pool** di connessioni, **repository** come punto unico di accesso alla tabella, e gestione sicura dei valori forniti dall’utente per evitare **SQL injection**. Si assume una conoscenza di base di Express e delle API REST.
+
+---
+
+## Setup: migration e tabella users
+
+Il progetto Node può usare **node-pg-migrate** per lo schema. Una migration crea la tabella **users** con colonne: **id** (SERIAL PRIMARY KEY), **created_at** e **updated_at** (TIMESTAMPTZ DEFAULT NOW()), **username** (VARCHAR(30) NOT NULL), **bio** (VARCHAR(400)). La parte **down** fa DROP TABLE users. Dopo aver creato (o ricreato) il database social_network, si esegue **npm run migrate up** con la variabile d’ambiente **DATABASE_URL** impostata correttamente. In questo modo la struttura del DB è versionata e ripetibile.
+
+---
+
+## Express e route REST
+
+L’applicazione Express espone le risorse **users** con route REST tipiche: **GET /users** (lista), **GET /users/:id** (singolo), **POST /users** (creazione), **PUT /users/:id** (aggiornamento), **DELETE /users/:id** (eliminazione). L’app può essere costruita in un modulo separato (es. una funzione che restituisce l’istanza di Express) e montata da **index.js**: così si può riutilizzare la stessa app nei test collegandola a un database diverso. Il router delle users viene montato con **app.use('/users', usersRouter)**.
+
+---
+
+## Modulo pg: client e pool
+
+Il modulo **pg** (node-postgres) permette di connettersi a Postgres ed **eseguire SQL**; non costruisce query né fa validazione. È lo standard nel mondo Node e molte librerie (migrate, ORM) lo usano sotto il cofano.
+
+Si può creare un **client** (una connessione) oppure un **pool**. Un **client** esegue **una query alla volta**: con più richieste HTTP concorrenti che devono interrogare il DB, le query si accodano. Per un’API è quindi preferibile un **pool**: il pool mantiene un insieme di **client** e, a ogni richiesta di esecuzione di una query, assegna il lavoro a un client libero. L’unico caso in cui serve usare direttamente un client è quando si devono eseguire **transazioni** (più statement nella stessa connessione); per il resto l’uso del pool è identico (stessi metodi).
+
+---
+
+## Pool “wrappato” in una classe per i test
+
+In molti esempi si trova qualcosa come `const pool = new Pool(config)` esportato e usato ovunque. Se però si vogliono **test automatici** che usano un database diverso (es. un DB di test), oppure più database dalla stessa applicazione, un singolo pool creato all’avvio non permette di “riconnettere” facilmente altrove. Una soluzione è **avvolgere** il pool in una **classe** (es. `class Pool`): un’istanza con proprietà `_pool` e metodo **connect(options)** che crea un nuovo `new pg.Pool(options)` e lo assegna a `_pool`. Si esporta un’unica istanza di questa classe. Quando serve un altro database (es. in test), si chiama di nuovo **connect** con opzioni diverse. Il resto del codice usa sempre la stessa interfaccia (es. `pool.query(...)` delegato a `this._pool.query(...)`).
+
+---
+
+## Verifica della connessione all’avvio
+
+Alla prima creazione un **pool** non apre subito connessioni fisiche verso Postgres; la connessione avviene quando si esegue la prima query. Quindi se in **index.js** si chiama solo `pool.connect(config)` senza eseguire nulla, credenziali errate (host, porta, utente, password) non generano errore immediato. Per **validare** la connessione si può, dentro **connect**, dopo aver creato il pool, eseguire una query banale (es. `SELECT 1 + 1`) e restituire la promise risultante. In **index.js** si fa quindi `pool.connect(config).then(() => { /* crea app, app.listen(port) */ }).catch(err => ...)`: se la connessione fallisce, l’applicazione non si avvia. È un pattern comune anche in altre librerie Node per Postgres.
+
+---
+
+## Metodi del pool: connect, query, close
+
+Oltre a **connect(options)** si aggiungono:
+
+- **query(sql, values?)**: esegue la query; se presente, **values** è un array di valori da passare come parametri (vedi sotto). Delega a `this._pool.query(sql, values)`.
+- **close()**: chiude il pool (`this._pool.end()`). Utile nei test per rilasciare le connessioni al termine.
+
+L’applicazione usa sempre **pool.query(...)** per ogni accesso al database.
+
+---
+
+## Repository pattern
+
+Invece di chiamare **pool.query** direttamente dai route handler, si introduce un **repository** per la risorsa users: un unico punto (oggetto o classe) che incapsula tutte le operazioni sulla tabella **users**. Metodi tipici: **find()** (tutti gli utenti), **findById(id)**, **insert(username, bio)**, **update(id, username, bio)**, **delete(id)**. Ogni route handler delega al repository: ad esempio GET /users chiama **userRepo.find()** e invia il risultato al client. Il repository può essere implementato come oggetto con funzioni, come istanza di una classe con metodi d’istanza, o come classe con **metodi statici** (es. `UserRepo.find()`); la scelta è di stile. L’idea è: **un solo posto** dove si scrive l’SQL e si interpretano i risultati per la tabella users.
+
+---
+
+## find() e risultato della query
+
+Nel repository, **find()** esegue `SELECT * FROM users` tramite **pool.query(sql)**. Il modulo pg restituisce una promise che si risolve con un oggetto **result**; i dati veri e propri sono in **result.rows**, un array di oggetti (una riga per elemento). Quindi si fa ad esempio `const { rows } = await pool.query('SELECT * FROM users')` e si restituisce **rows** (eventualmente dopo una trasformazione). Il route GET /users riceve questo array e lo invia con **res.send(users)**.
+
+---
+
+## Snake_case del DB e camelCase in JavaScript
+
+Postgres e le convenzioni SQL usano spesso **snake_case** (es. **created_at**, **updated_at**). In JavaScript è più comune il **camelCase** (createdAt, updatedAt). Se si espongono i dati così come arrivano dal DB, nel codice si finisce per usare `user.created_at`, con stile incoerente. Tre approcci: (1) usare snake_case ovunque in JS (poco idiomatico); (2) rinominare le colonne nel DB (si perde la convenzione SQL); (3) **convertire** le chiavi dei risultati dopo ogni query da snake_case a camelCase. L’approccio (3) è quello consigliato: si scrive una funzione **toCamelCase(rows)** che, per ogni oggetto in **rows**, sostituisce ogni chiave del tipo `*_x` con la versione camelCase (es. created_at → createdAt). Si applica ai **rows** prima di restituirli dal repository, così in tutta l’API si usano sempre proprietà in camelCase.
+
+---
+
+## findById(id) e rischio SQL injection
+
+Per **GET /users/:id** si estrae **id** da **req.params** (stringa) e si chiama **userRepo.findById(id)**. La tentazione è costruire la query con concatenazione, ad esempio inserendo `id` in una stringa o in un template literal (es. `` `SELECT * FROM users WHERE id = ${id}` ``).
+
+oppure con template literal. Questo è **estremamente pericoloso**. Un utente malintenzionato può inviare, al posto dell’id, una stringa come **1; DROP TABLE users;** . L’applicazione costruirebbe una query che contiene due statement: una SELECT e una DROP TABLE. Postgres eseguirebbe entrambi e la tabella **users** verrebbe eliminata. Questo tipo di attacco si chiama **SQL injection**: input utente viene interpretato come parte del testo SQL invece che come dato. Non si deve **mai** concatenare o interpolare direttamente input utente (URL, body, header) dentro una stringa SQL.
+
+---
+
+## Query parametrizzate e prepared statements
+
+La soluzione corretta sono le **query parametrizzate**. Invece di inserire il valore nella stringa SQL, si usano **segnaposto** (**$1**, **$2**, …) e si passa un **secondo argomento** a **pool.query**: un array di valori. Esempio: `pool.query('SELECT * FROM users WHERE id = $1', [id])`. Il modulo pg invia a Postgres prima una **prepared statement** (il testo con $1, $2, …) e poi un comando di **execute** con i valori. Postgres interpreta quei valori **solo come dati** (numeri, stringhe, date), non come frammenti di SQL. Quindi se **id** fosse `"1; DROP TABLE users;"`, il database cercherebbe letteralmente una riga con id uguale a quella stringa, senza eseguire DROP TABLE. Il metodo **query** del pool deve quindi accettare **(sql, values)** e passare entrambi a **this._pool.query(sql, values)**.
+
+**Limite importante:** i segnaposto **$1**, **$2** possono essere usati solo per **valori** (letterali), non per **identificatori** (nomi di tabelle o colonne). Se si volesse scegliere dinamicamente il nome di una tabella o di una colonna da una stringa utente, le prepared statement non bastano e servono whitelist e controlli in applicazione.
+
+---
+
+## INSERT, UPDATE, DELETE e RETURNING
+
+Per **POST /users** il repository ha **insert(username, bio)**. La query è del tipo:
+
+```sql
+INSERT INTO users (username, bio) VALUES ($1, $2) RETURNING *;
+```
+
+L’array dei parametri è **[username, bio]**. La clausola **RETURNING \*** fa sì che Postgres restituisca le righe inserite (con id, created_at, updated_at, ecc.). Senza RETURNING, INSERT non restituisce dati. Il repository può quindi restituire la prima riga di **rows** (dopo toCamelCase) come “utente creato”.
+
+Per **PUT /users/:id** si usa **update(id, username, bio)** con:
+
+```sql
+UPDATE users SET username = $1, bio = $2 WHERE id = $3 RETURNING *;
+```
+
+Parametri **[username, bio, id]**. Se nessuna riga è aggiornata, **rows** è vuoto; il route può rispondere con 404.
+
+Per **DELETE /users/:id** si usa **delete(id)** con:
+
+```sql
+DELETE FROM users WHERE id = $1 RETURNING *;
+```
+
+Parametri **[id]**. **RETURNING \*** restituisce la riga eliminata; senza, la delete non restituirebbe l’oggetto utente e il route non potrebbe inviarlo nella risposta (e potrebbe erroneamente restituire 404 se si interpreta “nessuna riga” come “utente non trovato”).
+
+---
+
+## Test manuali
+
+Dopo aver avviato il server (es. **npm run start** con nodemon), si può provare l’API con **Postman** o con l’estensione **REST Client** in VS Code. GET /users su database vuoto restituisce **[].** Inserendo uno o due utenti da pgAdmin (INSERT INTO users (username, bio) VALUES …), GET /users restituisce l’elenco; GET /users/1 restituisce l’utente con id 1; richiesta a un id inesistente può restituire 404. POST con body JSON **{"username": "...", "bio": "..."}** crea un utente e restituisce il record; PUT e DELETE con id in URL aggiornano o rimuovono e restituiscono il record. Per verificare la protezione da SQL injection, una richiesta a GET /users/1;DROP TABLE users; non deve eseguire DROP: tipicamente si ottiene un errore di tipo (es. “invalid input syntax for type integer”) perché la stringa viene trattata come valore per **id**, non come SQL aggiuntivo.
+
+---
+
+## Riepilogo
+
+- **pg** è il modulo Node per connettersi a Postgres ed eseguire SQL; per un’API si usa un **pool** di connessioni, non un singolo client (eccetto per le transazioni).
+- Un pool “wrappato” in una classe con **connect**, **query** e **close** permette di riconnettersi a database diversi (utile per test) e di verificare la connessione all’avvio con una query semplice.
+- Il **repository** è il punto unico di accesso a una tabella (users): find, findById, insert, update, delete; i route handler chiamano il repository e inviano le risposte.
+- I risultati del DB in **snake_case** vanno convertiti in **camelCase** (funzione toCamelCase sui rows) per coerenza nel codice JavaScript.
+- **SQL injection** si evita **sempre** usando **query parametrizzate**: SQL con **$1**, **$2**, … e secondo argomento **array di valori**. Mai concatenare o interpolare input utente nella stringa SQL.
+- **INSERT/UPDATE/DELETE** possono restituire le righe interessate con **RETURNING \***; così l’API può rispondere con l’oggetto creato, aggiornato o eliminato.
