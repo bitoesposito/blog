@@ -1,0 +1,119 @@
+---
+title: "Introduzione a Nginx"
+description: "Cos'è Nginx, web server e reverse proxy: load balancing, routing, caching e architettura desiderata"
+date: 2026-03-02
+tags: ['formazione', 'nginx', 'devops']
+authors: ['vitoesposito']
+order: 1
+---
+
+## Introduzione
+
+**Nginx** è un web server open source scritto in C. Può essere usato per servire contenuti web, come **reverse proxy** e come **load balancer**. Questo capitolo introduce cos'è Nginx, quali problemi risolve e come si inserisce in un'architettura backend moderna.
+
+Obiettivo: avere chiarezza su web server e reverse proxy, sui casi d'uso (load balancing, routing, caching, API gateway) e sulla differenza tra architettura esposta direttamente e architettura con Nginx davanti.
+
+---
+
+## Cos'è Nginx
+
+### Web server
+
+Come **web server**, Nginx serve contenuti web. Ascolta su un endpoint HTTP (o HTTPS), comprende il protocollo HTTP e risponde con contenuti statici o dinamici (ad esempio tramite CGI o meccanismi simili).
+
+In questa veste, Nginx è il componente che riceve le richieste dei client e restituisce file HTML, CSS, JavaScript o risposte generate dall'applicazione.
+
+### Reverse proxy
+
+Nginx può essere configurato come **reverse proxy**: si pone tra internet e i tuoi server backend. Riceve le richieste dai client, le inoltra ai server appropriati e restituisce le risposte. Il client dialoga solo con Nginx; non conosce il server effettivo che ha elaborato la richiesta.
+
+In questo ruolo Nginx può:
+
+- **Bilanciare il carico** tra più backend
+- **Instradare** le richieste in base a path, host o intestazioni
+- **Terminare TLS** e opzionalmente parlare in HTTP con i backend
+- **Fare caching** delle risposte quando è possibile e sicuro
+- **Limitare la frequenza** delle richieste (rate limiting) e applicare politiche da **API gateway**
+
+Vediamo questi casi d'uso in dettaglio.
+
+---
+
+## Casi d'uso del reverse proxy
+
+### Load balancing
+
+Tutto il traffico arriva a un solo indirizzo (Nginx). Nginx non elabora da solo tutte le richieste: le distribuisce su più **backend** secondo un algoritmo (ad esempio round robin). Si ottiene un unico punto di ingresso e la possibilità di scalare aggiungendo o rimuovendo server backend.
+
+### Backend routing
+
+In base al path o ad altri elementi della richiesta, Nginx può inviare il traffico a gruppi diversi di server. Esempi:
+
+- `/app1` verso un insieme di server
+- `/app2` verso un altro
+- `/v1` e `/v2` per versioni diverse dell'API
+
+Il client vede un solo host; Nginx decide dove inoltrare ogni richiesta.
+
+### Caching
+
+Se due client fanno la stessa richiesta (e non ci sono vincoli di sicurezza che lo impediscono), Nginx può memorizzare la risposta del backend e rispondere al secondo client senza interrogare di nuovo il backend. Si riduce latenza e carico sui server applicativi.
+
+### API gateway
+
+Un reverse proxy può svolgere funzioni da **API gateway**: rate limiting, versioning delle API (instradamento per versione), autenticazione centralizzata. Il client parla con un unico ingresso; Nginx applica le regole e inoltra al backend corretto.
+
+---
+
+## Architettura attuale e architettura desiderata
+
+### Problema dell'architettura senza reverse proxy
+
+Supponiamo di avere un'applicazione in ascolto sulla porta 3001, in HTTP non cifrato, e un database. I client si connettono direttamente all'applicazione.
+
+Con l'aumento del carico si potrebbe pensare di:
+
+- aprire altre porte (3002, 3003, …) sulla stessa macchina
+- copiare il certificato TLS su ogni istanza
+- aggiungere altre macchine
+
+In questo scenario i client devono conoscere porte o indirizzi diversi, i certificati vanno distribuiti su ogni processo/macchina e, se un nodo cade, i client devono essere reindirizzati altrove. La gestione diventa complessa e poco scalabile.
+
+### Architettura con Nginx come reverse proxy
+
+Introducendo un **reverse proxy** (qui Nginx) davanti ai backend:
+
+1. **Un solo endpoint**: i client parlano solo con Nginx (es. HTTPS sulla porta 443).
+2. **TLS centralizzato**: il certificato e la terminazione TLS stanno su Nginx; i backend possono restare in HTTP (in rete privata) o in HTTPS, a seconda delle esigenze.
+3. **Load balancing**: Nginx distribuisce le richieste tra più istanze (es. round robin) e può escludere backend non raggiungibili.
+4. **Backend nascosti**: il client non sa quale backend ha effettivamente risposto; per il client l’unico interlocutore è Nginx.
+
+C’è un costo aggiuntivo in termini di hop e latenza, ma Nginx è progettato per essere molto efficiente. L’obiettivo è che il reverse proxy sia un componente di performance e sicurezza, non un collo di bottiglia.
+
+### Reverse proxy vs proxy
+
+Nel **proxy** classico il client usa un intermediario per raggiungere un server; il server vede la richiesta come proveniente dal proxy, non dal client. Nel **reverse proxy** è il server (l’insieme dei backend) che sta “dietro” il proxy: i backend vedono le richieste come provenienti da Nginx, non dal client originale. Il client, invece, crede di parlare con un unico server (Nginx).
+
+---
+
+## Front-end e back-end in Nginx
+
+In Nginx la terminologia è legata alla direzione del traffico:
+
+- **Front-end** (lato Nginx): tutto ciò che riguarda la **comunicazione con il client**. Ascolto sulle porte pubbliche, handshake TLS, lettura delle richieste HTTP, invio delle risposte ai client.
+- **Back-end** (lato Nginx): tutto ciò che riguarda la **comunicazione con i server upstream** (proxy, load balancing, connessioni verso le applicazioni).
+
+Quando si parla di “front-end Nginx” non si intende l’applicazione web nel browser, ma l’interfaccia di Nginx che accetta le connessioni dai client. Quando si parla di “back-end Nginx” si intende come Nginx si connette e parla con i server applicativi.
+
+Questa distinzione è utile per capire direttive e timeout: alcune riguardano il rapporto con il client, altre il rapporto con gli upstream.
+
+---
+
+## Prossimi passi
+
+Nei prossimi capitoli si approfondiscono:
+
+- la differenza tra **proxy layer 4** (TCP) e **layer 7** (HTTP) in Nginx
+- **TLS termination** e **TLS pass-through**
+- i **timeout** (client e upstream) e il loro uso per sicurezza e stabilità
+- un esempio pratico di configurazione: reverse proxy layer 7, HTTPS, TLS 1.3 e HTTP/2
