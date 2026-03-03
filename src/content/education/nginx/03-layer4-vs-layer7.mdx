@@ -1,0 +1,188 @@
+---
+title: "Proxy layer 4 vs layer 7 in Nginx"
+description: "Differenze tra proxy TCP (layer 4) e proxy applicativo (layer 7) nel modello OSI e in Nginx"
+date: 2026-03-02
+tags: ['formazione', 'nginx']
+authors: ['vitoesposito']
+order: 3
+---
+
+## Introduzione
+
+Per capire cosa può (e non può) fare Nginx su una connessione, è fondamentale distinguere tra:
+
+- **Proxy layer 4** (trasporto, tipicamente TCP)
+- **Proxy layer 7** (applicazione, es. HTTP, gRPC, WebSocket)
+
+Questa distinzione viene dal **modello OSI** e influisce direttamente su:
+
+- Quante informazioni Nginx vede del traffico
+- Che tipo di regole di routing si possono applicare
+- Se è possibile fare caching, riscritture e ispezioni dettagliate
+
+## Richiamo sul modello OSI
+
+In modo semplificato:
+
+- **Layer 3**: IP (indirizzi sorgente/destinazione)
+- **Layer 4**: TCP/UDP (porte, numeri di sequenza, controllo flusso)
+- **Layer 7**: protocolli applicativi (HTTP, gRPC, WebSocket, SSH, database, …)
+
+Il **layer 4** vede:
+
+- IP sorgente e destinazione
+- Porta sorgente e destinazione
+- Stato della connessione TCP (SYN, ACK, FIN, ecc.)
+
+Il **layer 7** vede:
+
+- Metodo HTTP, URL, header, corpo
+- Path e query string
+- Cookie
+- Altri metadati applicativi
+
+## Cosa vede un proxy layer 4
+
+Un **proxy layer 4** lavora “alla cieca” rispetto al contenuto applicativo:
+
+- Sa solo che esiste una connessione TCP tra un client e un server
+- Sa IP/porta sorgente e IP/porta destinazione
+- Può decidere **dove instradare** questa connessione
+
+In questo ruolo, Nginx:
+
+- Non interpreta HTTP, gRPC o altri protocolli a livello applicativo
+- Non sa se un pacchetto contiene una richiesta GET o un payload binario
+- Non può fare caching basato su URL o header
+
+È come un tubo che trasporta pacchetti TCP senza sapere cosa contengono.
+
+## Cosa vede un proxy layer 7
+
+Un **proxy layer 7** legge e interpreta il protocollo applicativo, ad esempio HTTP:
+
+- Conosce **metodo, path, query, header, cookie**
+- Può decidere il routing in base all’URL (`/api`, `/app`, `/v1`, `/v2`, …)
+- Può modificare richieste e risposte (header, body, status code)
+- Può **cache** le risposte per richieste ripetute
+
+Per fare tutto questo, Nginx deve:
+
+- Leggere il flusso TCP
+- Eventualmente **decrittare** TLS
+- Parsare il protocollo (es. HTTP/1.1, HTTP/2)
+
+Questo aggiunge un costo di CPU, ma abilita funzionalità molto più ricche.
+
+## Layer 4 e layer 7 in Nginx
+
+In Nginx la differenza si riflette in due contesti principali:
+
+- **`stream { ... }`** → proxy **layer 4** (tipicamente TCP)
+- **`http { ... }`** → proxy **layer 7** (HTTP e affini)
+
+Esempio semplificato di proxy TCP (layer 4) in Nginx:
+
+```nginx
+stream {
+	upstream postgres_backend {
+		server db1:5432;
+		server db2:5432;
+	}
+
+	server {
+		listen 5432;
+		proxy_pass postgres_backend;
+	}
+}
+```
+
+In questo caso:
+
+- Nginx non “capisce” il protocollo PostgreSQL
+- Non può riscrivere query o fare caching a livello SQL
+- Si limita a inoltrare i flussi TCP verso i backend definiti
+
+Esempio semplificato di proxy HTTP (layer 7):
+
+```nginx
+http {
+	upstream api_v1 {
+		server api-v1:3000;
+	}
+
+	upstream api_v2 {
+		server api-v2:3000;
+	}
+
+	server {
+		listen 80;
+		server_name api.miosito.it;
+
+		location /v1/ {
+			proxy_pass http://api_v1;
+		}
+
+		location /v2/ {
+			proxy_pass http://api_v2;
+		}
+	}
+}
+```
+
+Qui Nginx:
+
+- Capisce che una richiesta va su `/v1` o `/v2`
+- Può loggare metodo, path, status code
+- Può applicare regole diverse in base a path, header, cookie, ecc.
+
+## Vantaggi e limiti del proxy layer 4
+
+**Vantaggi**:
+
+- Non è necessario comprendere il protocollo applicativo
+- Può gestire protocolli custom o non supportati nativamente
+- Non è obbligatorio decrittare TLS (nel caso di passthrough)
+- Implementazione più semplice e overhead minore sul parsing
+
+**Limiti**:
+
+- Nessuna visibilità su URL, header, corpo
+- Impossibile fare caching basato sul contenuto
+- Routing molto limitato (in pratica solo in base a IP/porta)
+- Non si possono condividere in modo intelligente connessioni backend HTTP
+
+## Vantaggi e limiti del proxy layer 7
+
+**Vantaggi**:
+
+- Visibilità completa sul protocollo applicativo (es. HTTP)
+- Routing avanzato per path, host, header, cookie, query string
+- Caching di risposte idempotenti
+- Riscrittura di header e URL
+- Possibilità di terminare TLS e riusare connessioni backend
+
+**Limiti**:
+
+- È spesso necessario **terminare TLS** per leggere il contenuto
+- Overhead di CPU per parsing del protocollo e crittografia
+- Maggiore complessità di configurazione
+
+## Quando scegliere layer 4 o layer 7
+
+Alcune linee guida pratiche:
+
+- Se il protocollo è **HTTP/HTTPS** e servono routing, caching, riscritture → **layer 7**
+- Se il protocollo è un **database** (PostgreSQL, MySQL, ecc.) → tipicamente **layer 4**
+- Se si vuole massima **riservatezza end-to-end** e Nginx non deve vedere il contenuto → proxy layer 4 con **TLS passthrough**
+- Se Nginx deve fare da **API gateway**, proteggere e trasformare richieste → necessario **layer 7**
+
+## Riepilogo
+
+La distinzione tra proxy **layer 4** e **layer 7** in Nginx non è solo teorica:
+
+- A layer 4 Nginx è un “tubo intelligente” per connessioni TCP
+- A layer 7 Nginx è un vero e proprio **reverse proxy applicativo**
+
+Nei post successivi si vedrà come questa scelta si combina con le strategie di cifratura: **TLS termination** e **TLS passthrough**.
+

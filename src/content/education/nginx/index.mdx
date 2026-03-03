@@ -1,28 +1,42 @@
 ---
 title: "Nginx"
-description: "Appunti del corso su Nginx: web server, reverse proxy e load balancer"
+description: "Diario di apprendimento su Nginx"
 date: 2026-03-02
-tags: ['formazione', 'nginx', 'devops']
+tags: ['formazione', 'nginx']
 authors: ['vitoesposito']
 ---
 
-## Perché imparare Nginx?
+## Perché studiare Nginx
 
-**Nginx** è un web server open source scritto in C. Oltre a servire contenuti web, può essere usato come **reverse proxy** e **load balancer**. È uno degli strumenti più diffusi per esporre applicazioni in produzione, gestire traffico e terminare TLS.
+**Nginx** è uno dei web server e reverse proxy più utilizzati in produzione. Può servire contenuti statici, fare da **load balancer**, agire come **API gateway** e terminare connessioni **TLS** davanti a più backend applicativi.
 
-Questa serie è un'introduzione pratica: al termine sarai in grado di capire i fondamenti di Nginx, avviare un'istanza autonoma e proteggerla con un certificato valido.
+Capire come funziona Nginx significa capire come viaggiano realmente le richieste nella parte più critica di molte architetture backend: l’ingresso del traffico HTTP e TCP verso i servizi interni.
 
-## Cosa troverai negli articoli
+## Obiettivo del percorso
 
-Nei **sub-posts** vengono trattati in ordine:
+Questo percorso raccoglie appunti strutturati su:
 
-- Cos'è Nginx e quali problemi risolve (web server, reverse proxy, load balancing, routing, caching, API gateway)
-- Architettura attuale rispetto a quella desiderata e ruolo del reverse proxy
-- Differenza tra **proxy layer 4** e **layer 7** (modello OSI)
-- **TLS termination** e **TLS pass-through**: quando e come configurarli
-- **Timeout** in Nginx: front-end e back-end, protezione e uso efficiente delle risorse
-- Esempio pratico: avvio di un'istanza Nginx, reverse proxy layer 7, HTTPS, TLS 1.3, HTTP/2
+- **Concetti fondamentali di Nginx** come web server e reverse proxy
+- **Architetture con reverse proxy** e problemi che Nginx aiuta a risolvere
+- Differenza tra **proxy layer 4** e **proxy layer 7**
+- **TLS termination** e **TLS passthrough** con pro e contro
+- **Architettura interna** di Nginx, worker process e gestione delle connessioni
+
+L’obiettivo è costruire una base solida che permetta di:
+
+- Leggere una configurazione Nginx complessa e capirne l’intento
+- Progettare architetture più robuste e scalabili
+- Prendere decisioni consapevoli su sicurezza, performance e manutenibilità
 
 ## Struttura del diario
 
-Questo articolo funge da indice e diario di formazione. I capitoli successivi approfondiscono i singoli argomenti in modo autonomo, con esempi di configurazione e sintassi utilizzabile come riferimento.
+Come per gli altri argomenti di formazione, ci saranno **sub-posts** dedicati a singoli temi:
+
+- Introduzione a Nginx e ai principali casi d’uso
+- Problemi dell’architettura “diretta” e vantaggi del reverse proxy
+- Differenza tra layer 4 e layer 7 nel modello OSI
+- Strategie di gestione della cifratura: TLS termination e TLS passthrough
+- Internals di Nginx: worker, threading e gestione delle connessioni
+
+Ogni articolo è pensato per essere autonomo, ma letti in sequenza costruiscono una comprensione progressiva dell’ecosistema Nginx.
+

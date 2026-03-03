@@ -1,0 +1,198 @@
+---
+title: "TLS termination vs TLS passthrough in Nginx"
+description: "Come funziona TLS, cosa fa un reverse proxy durante la terminazione TLS e quando scegliere il passthrough end-to-end"
+date: 2026-03-02
+tags: ['formazione', 'nginx']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Introduzione
+
+Quando si espone un servizio su internet è quasi sempre necessario usare **TLS** per proteggere il traffico. Davanti ai backend spesso c’è Nginx, che può:
+
+- **Terminare** la connessione TLS
+- Oppure **lasciare passare** il traffico cifrato fino al backend (passthrough)
+
+Capire la differenza tra **TLS termination** e **TLS passthrough** è fondamentale per bilanciare:
+
+- Sicurezza
+- Performance
+- Flessibilità di routing e caching
+
+## Ripasso rapido su TLS
+
+**TLS** (Transport Layer Security) è il protocollo che protegge le comunicazioni, ad esempio dietro `https://`.
+
+Caratteristiche principali:
+
+- Usa **crittografia simmetrica** per i dati applicativi (stessa chiave su client e server)
+- Usa **crittografia asimmetrica** (chiave pubblica/privata) e algoritmi di **key exchange** (es. Diffie-Hellman) per negoziare in modo sicuro la chiave simmetrica
+- Si appoggia a certificati firmati da una **Certificate Authority (CA)** per autenticare il server
+
+Concetti importanti:
+
+- La chiave simmetrica **non** viene mai inviata in chiaro
+- I certificati servono a verificare **chi è** il server (es. `www.example.com`)
+- TLS protegge solo il tratto tra due estremi della connessione: client ↔ server (o client ↔ reverse proxy)
+
+## TLS termination: Nginx termina la connessione
+
+Con **TLS termination**:
+
+- Il client stabilisce una connessione TLS con Nginx
+- Nginx **decritta** il traffico
+- Nginx può:
+  - Leggere e modificare richieste e risposte
+  - Fare routing in base a URL, header, cookie
+  - Applicare caching
+- Nginx poi parla con il backend:
+  - In HTTP semplice
+  - Oppure in HTTPS (nuova connessione TLS separata)
+
+Schema tipico:
+
+- Client ↔︎ (TLS) ↔︎ **Nginx** ↔︎ (HTTP o TLS) ↔︎ Backend
+
+Vantaggi:
+
+- Nginx vede il traffico a **layer 7**
+- Possibilità di utilizzare tutte le funzionalità da reverse proxy HTTP
+- Gestione centralizzata dei certificati lato “pubblico”
+
+Svantaggi:
+
+- Nginx deve gestire le operazioni di **cripto** (CPU)
+- È necessario **condividere o generare certificati** per tutti i domini gestiti
+
+## TLS termination con backend HTTP o HTTPS
+
+Due scenari possibili:
+
+1. **Frontend HTTPS, backend HTTP**
+   - Tra client e Nginx il traffico è cifrato
+   - Tra Nginx e backend il traffico è in chiaro
+   - Adatto ad ambienti on-premise o reti interne ritenute sufficientemente sicure
+
+2. **Frontend HTTPS, backend HTTPS**
+   - Nginx decritta e poi **ri-critta** verso il backend
+   - Tra client e Nginx e tra Nginx e backend esistono **due canali TLS distinti**
+   - Preferibile in ambienti cloud o reti condivise
+
+Nel secondo caso Nginx:
+
+- Ha il proprio certificato per il lato pubblico
+- Deve fidarsi dei certificati dei backend (o usare CA interne)
+
+## TLS passthrough: Nginx non tocca il traffico
+
+Con **TLS passthrough**:
+
+- Nginx **non** termina la connessione TLS
+- Il client stabilisce TLS direttamente con il backend, anche se il traffico passa fisicamente da Nginx
+- Nginx si comporta come un proxy **layer 4**:
+  - Vede solo IP/porta
+  - Non vede URL, header, corpo
+
+Schema tipico:
+
+- Client ↔︎ (TLS end-to-end) ↔︎ **Nginx (TCP proxy)** ↔︎ Backend
+
+Vantaggi:
+
+- Maggiore sensazione di **privacy end-to-end**: Nginx non vede il contenuto
+- I certificati restano solo sui backend (non è necessario condividerne le chiavi private con Nginx)
+- Nginx può comunque bilanciare le connessioni TCP sui backend
+
+Svantaggi:
+
+- Nginx non può:
+  - Fare caching HTTP
+  - Fare routing avanzato in base a path, header, cookie
+  - Ispezionare o riscrivere le richieste
+- Il bilanciamento diventa meno “intelligente” (mancano informazioni di layer 7)
+
+## Esempi concettuali di configurazione
+
+### TLS termination in Nginx (HTTP layer 7)
+
+```nginx
+http {
+	upstream app_backend {
+		server app1:3001;
+		server app2:3001;
+	}
+
+	server {
+		listen 443 ssl;
+		server_name api.miosito.it;
+
+		ssl_certificate     /etc/nginx/certs/api.crt;
+		ssl_certificate_key /etc/nginx/certs/api.key;
+
+		location / {
+			proxy_pass http://app_backend;
+		}
+	}
+}
+```
+
+Qui:
+
+- Nginx termina TLS sulla porta 443
+- Il traffico verso i backend è HTTP (non cifrato)
+
+### TLS passthrough (stream layer 4)
+
+```nginx
+stream {
+	upstream tls_backends {
+		server app1:443;
+		server app2:443;
+	}
+
+	server {
+		listen 443;
+		proxy_pass tls_backends;
+	}
+}
+```
+
+Qui:
+
+- Nginx non configura `ssl` nel blocco `server` di `stream`
+- Il traffico TLS passa “indenne” verso i backend
+- Ogni backend presenta il proprio certificato al client
+
+## Quando scegliere termination o passthrough
+
+**Scegli TLS termination quando:**
+
+- Nginx deve agire come **API gateway** o reverse proxy HTTP completo
+- Servono:
+  - Routing per path/host/header
+  - Caching
+  - Riscritture di URL e header
+  - Rate limiting basato su informazioni applicative
+
+**Scegli TLS passthrough quando:**
+
+- Non si vuole o non si può condividere la chiave privata del certificato con Nginx
+- Si desidera che la cifratura resti **end-to-end** tra client e backend
+- Nginx deve solo distribuire connessioni TCP verso backend (ad esempio database o servizi HTTPS di terze parti)
+
+In pratica è comune usare:
+
+- **Termination** per servizi HTTP/HTTPS interni dove Nginx è parte fidata dell’infrastruttura
+- **Passthrough** per protocolli non HTTP o per scenari con requisiti di sicurezza end-to-end molto stringenti
+
+## Riepilogo
+
+La scelta tra **TLS termination** e **TLS passthrough** determina:
+
+- Se Nginx vede il traffico a **layer 7** (termination) oppure solo a **layer 4** (passthrough)
+- Quali funzionalità avanzate (routing, caching, riscritture) possono essere usate
+- Dove risiedono i certificati e chi conosce le chiavi private
+
+Una volta chiariti questi aspetti, è possibile progettare configurazioni coerenti con i requisiti di sicurezza, performance e manutenibilità del sistema.
+

@@ -1,0 +1,153 @@
+---
+title: "Architettura con Nginx come reverse proxy"
+description: "Dalla connessione diretta al backend a un'architettura con Nginx come reverse proxy e load balancer"
+date: 2026-03-02
+tags: ['formazione', 'nginx']
+authors: ['vitoesposito']
+order: 2
+---
+
+## Introduzione
+
+Prima di inserire Nginx in un’architettura, è utile chiarire:
+
+- Come appare un backend **senza** reverse proxy
+- Quali limiti emergono quando il traffico cresce
+- Come Nginx può risolvere questi problemi agendo da **reverse proxy** e **load balancer**
+
+## Architettura “diretta”: client → backend
+
+Immaginiamo un backend HTTP che ascolta su `http://server:3001`:
+
+- È esposto direttamente verso internet
+- I client conoscono l’host e la porta specifica
+- Il traffico è **in chiaro** (nessun TLS)
+
+Quando il carico cresce:
+
+- Si possono avviare altre istanze su porte diverse (`3002`, `3003`, …)
+- I client dovrebbero però conoscere tutte queste porte e decidere quale usare
+
+Questa soluzione diventa rapidamente:
+
+- **Fragile**: se un’istanza è down, i client che la usano falliscono
+- **Difficile da gestire**: i certificati TLS andrebbero copiati su ogni istanza
+- **Poco trasparente**: il client è troppo consapevole dei dettagli interni
+
+## Problemi principali dell’architettura diretta
+
+I punti deboli più importanti sono:
+
+- **Gestione dei certificati**: duplicare la configurazione TLS su molte istanze aumenta complessità e rischio di errore
+- **Scarsa flessibilità**: aggiungere o rimuovere backend implica coordinarsi con tutti i client
+- **Affidabilità limitata**: se un backend si guasta, i client devono “sapere” verso quale altro server spostarsi
+- **Superficie esposta ampia**: tutti i backend sono direttamente raggiungibili dall’esterno
+
+Serve un livello intermedio che:
+
+- Offra **un solo endpoint pubblico**
+- Isoli i backend dai client
+- Gestisca **bilanciamento, fallimenti, TLS e routing** in un unico punto
+
+## Introduzione del reverse proxy
+
+Inserendo Nginx davanti ai backend si ottiene:
+
+- I client parlano solo con `https://api.miosito.it` (Nginx)
+- Nginx parla con i backend interni (es. `http://app1:3001`, `http://app2:3001`, …)
+
+La comunicazione avviene così:
+
+1. Il client effettua una richiesta HTTPS verso Nginx
+2. Nginx termina la connessione TLS (se configurato per farlo)
+3. Nginx sceglie un backend in base alle regole di **load balancing**
+4. Nginx inoltra la richiesta al backend interno
+5. Il backend risponde a Nginx
+6. Nginx restituisce la risposta al client
+
+Il client vede **solo Nginx** come destinazione finale.
+
+## Vantaggi dell’architettura con reverse proxy
+
+### Endpoint unico e semplice
+
+- I client conoscono un solo host e una sola porta
+- I backend possono cambiare IP, porta o numero di istanze senza impattare i client
+
+### Scalabilità e disponibilità
+
+- È possibile aggiungere o rimuovere istanze backend **senza cambiare nulla lato client**
+- Nginx può escludere automaticamente backend non raggiungibili
+- Si possono usare algoritmi di **load balancing** (round-robin, least connections, ecc.)
+
+### Sicurezza
+
+- Solo Nginx è esposto a internet
+- I backend possono restare su rete privata non pubblicamente raggiungibile
+- Le politiche di sicurezza (rate limiting, blocco IP, header di sicurezza) si applicano in un punto centrale
+
+### Gestione centralizzata di TLS
+
+- I certificati sono installati e rinnovati su Nginx
+- I backend possono restare HTTP su rete interna oppure usare a loro volta HTTPS
+- È possibile scegliere tra **TLS termination** e **TLS passthrough**, come si vedrà in dettaglio in un post dedicato
+
+## Concetti di frontend e backend in Nginx
+
+Nel contesto Nginx è utile introdurre due termini:
+
+- **Frontend Nginx**: la parte che parla con i **client** (socket esposti, porte, protocolli)
+- **Backend Nginx**: la parte che parla con i **server a valle** (upstream, pool di connessioni, retry)
+
+Quando si dice che “Nginx ha un timeout sul frontend” si intende:
+
+- Un timeout applicato tra Nginx e il client
+
+Quando si parla di timeout sul backend:
+
+- Un timeout applicato tra Nginx e i server a valle
+
+Questa distinzione è importante, soprattutto quando si configurano:
+
+- Limiti di tempo sulle richieste dei client
+- Limiti di tempo sulle risposte dei backend
+
+## Esempio concettuale di configurazione
+
+Un esempio semplificato di Nginx come reverse proxy HTTP:
+
+```nginx
+http {
+	upstream app_backend {
+		server app1:3001;
+		server app2:3001;
+		server app3:3001;
+	}
+
+	server {
+		listen 80;
+		server_name api.miosito.it;
+
+		location / {
+			proxy_pass http://app_backend;
+		}
+	}
+}
+```
+
+Concetti chiave:
+
+- `upstream app_backend`: definisce un gruppo di backend
+- `server` in `http`: definisce il **frontend** HTTP esposto ai client
+- `proxy_pass`: inoltra la richiesta al gruppo di backend
+
+## Riepilogo
+
+Passare da una connessione diretta client → backend a un’architettura con Nginx come reverse proxy permette di:
+
+- Avere **un solo punto di ingresso** verso il sistema
+- Scalare e sostituire backend senza modificare i client
+- Centralizzare sicurezza, logging, TLS e bilanciamento
+
+Nei prossimi post si approfondiscono le differenze tra **proxy layer 4** e **proxy layer 7**, e come queste scelte influiscono su cosa Nginx può vedere e modificare delle richieste.
+

@@ -1,0 +1,180 @@
+---
+title: "Architettura interna di Nginx e gestione delle connessioni"
+description: "Master process, worker processes, threading, accettazione delle connessioni e relazione con i pattern di backend"
+date: 2026-03-02
+tags: ['formazione', 'nginx']
+authors: ['vitoesposito']
+order: 5
+---
+
+## Introduzione
+
+Per configurare Nginx in modo consapevole non basta conoscere la sintassi dei blocchi `server` o `location`. È importante capire **come Nginx gestisce processi, thread e connessioni**.
+
+In questo articolo si vedono:
+
+- La distinzione tra **master process** e **worker processes**
+- Come Nginx sfrutta i **core CPU**
+- Come vengono accettate e servite le connessioni
+- La relazione con alcuni **pattern architetturali** di threading lato backend
+
+## Master process e worker processes
+
+Quando Nginx parte:
+
+- Crea un **master process**
+- Il master legge il file di configurazione
+- Il master crea un certo numero di **worker processes**
+
+Il **master**:
+
+- Non gestisce direttamente le richieste
+- Coordina l’avvio, l’arresto e il reload dei worker
+- Gestisce operazioni di amministrazione (es. rileggere la configurazione)
+
+I **worker**:
+
+- Fanno il lavoro “vero”
+- Accettano connessioni
+- Leggono e scrivono sul socket
+- Parsano HTTP (se in contesto `http`) o gestiscono flussi TCP (in `stream`)
+
+## Numero di worker e CPU
+
+Per impostazione comune, Nginx utilizza:
+
+- **1 worker per core** CPU
+
+Questo approccio:
+
+- Riduce i **context switch** tra processi
+- Sfrutta al massimo le cache CPU (L1/L2)
+- Evita di creare troppi thread o processi in competizione
+
+Concetto chiave:
+
+- Ogni worker è progettato per restare quanto più possibile su un core
+- Più connessioni **condividono** lo stesso worker in modo cooperativo
+
+## Come vengono accettate le connessioni
+
+Quando un client apre una connessione TCP verso Nginx:
+
+- Il kernel gestisce il **three-way handshake** (SYN, SYN-ACK, ACK)
+- La connessione viene inserita in una coda interna (accept queue)
+- Un worker Nginx effettua una `accept()` per ottenere quella connessione
+
+Nel tempo sono stati usati diversi approcci:
+
+- Un solo thread che accetta e poi passa le connessioni ad altri (single acceptor)
+- Più worker che chiamano `accept()` sullo stesso socket condiviso (multiple acceptors)
+- **Socket sharding** con `SO_REUSEPORT`, dove più processi possono ascoltare sulla stessa porta e il kernel bilancia le connessioni fra le loro code di accept
+
+Le versioni moderne di Nginx usano socket sharding, che:
+
+- Riduce la contesa su un singolo socket condiviso
+- Permette al kernel di bilanciare le connessioni tra i worker
+
+## Reader, listener e acceptor: concetti utili
+
+Nel vocabolario di architetture backend è utile distinguere:
+
+- **Listener**: il processo che apre il socket e lo mette in ascolto su una porta
+- **Acceptor**: il thread o processo che chiama effettivamente `accept()`
+- **Reader (worker)**: il codice che legge lo **stream TCP** e lo traduce in richieste logiche (es. HTTP)
+
+In Nginx:
+
+- I worker sono tipicamente sia **acceptor** sia **reader**
+- Ogni worker mantiene molte connessioni e si alterna tra di esse usando **I/O asincrono** e meccanismi di event loop
+
+## Stream TCP vs richieste HTTP
+
+È importante ricordare che **TCP è uno stream di byte**, non un elenco di richieste:
+
+- Dal punto di vista del kernel, esiste solo un flusso di dati
+- Tocca al **reader** (Nginx) riconoscere:
+  - Dove inizia una richiesta
+  - Dove finisce
+  - Come parsare header, path, corpo
+
+Questo lavoro di parsing:
+
+- Richiede **CPU**
+- Avviene **per ogni richiesta**
+- È diverso a seconda del protocollo (HTTP/1.1, HTTP/2, HTTP/3, gRPC, …)
+
+Quando Nginx opera a **layer 4** (contesto `stream`):
+
+- Non effettua parsing di layer 7
+- Si limita a inoltrare bytes
+
+Quando opera a **layer 7** (contesto `http`):
+
+- Decritta (se TLS terminato)
+- Parsare il protocollo
+- Decide il routing e applica le direttive configurate
+
+## Pattern architetturali per thread e connessioni
+
+Nel mondo dei backend esistono vari **pattern** per gestire thread e connessioni:
+
+- **Single threaded**: un solo thread funge da listener, acceptor e reader (esempio classico: Node.js)
+- **Multi-thread con single acceptor**: un thread accetta tutte le connessioni e le passa a thread worker
+- **Multi-thread con multiple acceptors**: più thread chiamano `accept()` sullo stesso socket
+- **Message-based load balancing**: un thread legge e smista “messaggi logici” (richieste) ai worker
+- **Socket sharding (SO_REUSEPORT)**: più processi ascoltano sulla stessa porta con code di accept separate
+
+Nginx, nelle versioni moderne:
+
+- Si avvicina al modello **multi-process con socket sharding**
+- Avere **un worker per core** riduce il numero di contesti in competizione
+- Ogni worker gestisce molte connessioni contemporaneamente tramite event loop
+
+## Implicazioni pratiche di configurazione
+
+Capire l’architettura interna aiuta a ragionare su:
+
+- **Numero di worker** (`worker_processes`):
+  - Valori tipici: `auto` o pari al numero di core CPU
+  - Troppi worker non aiutano e possono peggiorare le performance
+
+- **Limiti di connessioni per worker** (`worker_connections`):
+  - Indicano quante connessioni simultanee un worker può gestire
+  - Il limite effettivo di connessioni totali è approssimativamente `worker_processes * worker_connections`
+
+- **Timeout frontend e backend**:
+  - Timeout lato client per evitare che connessioni lente saturino i worker
+  - Timeout lato backend per impedire che servizi lenti o bloccati consumino risorse a tempo indefinito
+
+## Collegamento con il design delle applicazioni backend
+
+Lato backend applicativo, i concetti sono simili:
+
+- Si deve decidere **quanti thread** usare
+- Come gestire **accettazione** delle connessioni
+- Come distribuire il lavoro tra thread o processi
+
+Nginx può essere visto come un **backend estremamente ottimizzato** per una singola responsabilità:
+
+- Gestire connessioni di rete
+- Parsare protocolli come HTTP
+- Smistare richieste verso i servizi che eseguono la logica di business
+
+Sapere come Nginx lavora “sotto il cofano” aiuta a:
+
+- Stimare i limiti realistici di throughput
+- Individuare colli di bottiglia (CPU vs I/O vs backend lenti)
+- Progettare applicazioni che collaborano bene con il reverse proxy
+
+## Riepilogo
+
+In questo articolo si è visto che:
+
+- Nginx utilizza un **master process** e più **worker processes**
+- Ogni worker gestisce molte connessioni sfruttando I/O asincrono e un event loop
+- Le versioni moderne usano **socket sharding** per distribuire le nuove connessioni tra i worker
+- Il parsing delle richieste a layer 7 è costoso ma necessario per avere funzionalità avanzate
+
+Questa comprensione è la base per ragionare in modo più maturo su configurazioni di performance, timeout e tuning di Nginx in ambienti reali.
+
