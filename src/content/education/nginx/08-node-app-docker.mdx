@@ -1,0 +1,150 @@
+---
+title: "Applicazione Node.js in container Docker"
+description: "Creare un'app Express che restituisce l'hostname, Dockerfile, build dell'immagine e avvio di più container"
+date: 2026-03-05
+tags: ['formazione', 'nginx', 'docker', 'node']
+authors: ['vitoesposito']
+order: 8
+---
+
+## Introduzione
+
+Per sperimentare il **load balancing** di Nginx verso più backend è utile avere più istanze di una stessa applicazione, distinguibili tra loro. Un modo semplice è far rispondere ogni istanza con il proprio **hostname**: così, quando Nginx bilancia le richieste, si vede da quale container arriva la risposta.
+
+In questo articolo si costruisce una piccola applicazione **Express** in Node.js, si crea un **Dockerfile** per imballarla in un’immagine, si esegue il **build** e si avviano più container con hostname diversi, **senza** esporre le loro porte sull’host. I container saranno poi raggiungibili da Nginx tramite una rete Docker condivisa.
+
+## Applicazione Express minima
+
+L’applicazione ascolta su una porta (es. 8080), risponde alle richieste GET su `/` con un messaggio che include l’hostname del container (o della macchina, se eseguita fuori da Docker).
+
+Struttura di progetto suggerita:
+
+```
+app/
+  package.json
+  index.js
+Dockerfile
+```
+
+**`package.json`** (minimo per Express):
+
+```json
+{
+  "name": "nodeapp",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}
+```
+
+**`index.js`**:
+
+```javascript
+const express = require('express')
+const os = require('os')
+
+const app = express()
+const port = 8080
+const hostname = os.hostname()
+
+app.listen(port, () => {
+  console.log(`Listening on port ${port} on ${hostname}`)
+})
+
+app.get('/', (req, res) => {
+  res.send(`Hello from ${hostname}`)
+})
+```
+
+- **`os.hostname()`**: restituisce l’hostname del sistema. In un container Docker coincide con l’hostname assegnato al container (`--hostname nodeapp1`, ecc.)
+- **Porta 8080**: scelta arbitraria; deve essere la stessa usata nell’`upstream` di Nginx in seguito
+
+Eseguendo in locale (`npm install` e `node index.js`) e aprendo `http://localhost:8080` si vede "Hello from …" con il nome della macchina. In container, il messaggio mostrerà l’hostname del container.
+
+## Dockerfile: immagine custom da Node
+
+Il Dockerfile definisce come costruire un’immagine che contiene Node.js, l’app e le dipendenze. I comandi **RUN** vengono eseguiti **durante il build**; **CMD** viene eseguito **all’avvio del container**.
+
+**`Dockerfile`** (nella directory che contiene `app/`):
+
+```dockerfile
+# Base: immagine ufficiale Node (variante leggera se disponibile, es. node:18-alpine)
+FROM node:18-alpine
+
+# Directory di lavoro nel container
+WORKDIR /home/node/app
+
+# Copia il contenuto della cartella app (package.json, index.js, ...)
+COPY app /home/node/app
+
+# Durante il build: installa le dipendenze
+RUN npm install
+
+# Comando eseguito quando il container parte
+CMD ["node", "index.js"]
+```
+
+Punti importanti:
+
+- **FROM**: si parte dall’immagine Node. Usare un tag specifico (es. `node:18-alpine`) in produzione per evitare sorprese con versioni future.
+- **WORKDIR**: tutte le istruzioni successive (e il processo avviato con CMD) usano questa directory come corrente.
+- **COPY**: i file dell’host vengono copiati nell’immagine al momento del build. Non si copiano `node_modules` se si esegue `npm install` nel container (meglio: `.dockerignore` per escludere `node_modules` dall’host).
+- **RUN npm install**: le dipendenze sono installate **nell’immagine**, così all’avvio del container non serve rifare l’installazione.
+- **CMD**: comando di default del container. Qui avvia il server Node. Non usare `RUN node index.js` perché RUN viene eseguito in fase di build, non a runtime.
+
+## Build dell’immagine
+
+Dalla directory che contiene il Dockerfile e la cartella `app`:
+
+```bash
+docker build -t nodeapp .
+```
+
+- **`-t nodeapp`**: assegna il tag (nome) `nodeapp` all’immagine. Opzionalmente si può usare un tag di versione, es. `-t nodeapp:1.0`
+- **`.`**: contesto di build (la directory corrente); Docker cerca qui un file chiamato `Dockerfile`
+
+Al termine, con `docker images` si vede l’immagine `nodeapp`.
+
+## Avviare i container senza esporre porte
+
+Per i backend che saranno raggiunti **solo da Nginx** (sulla rete Docker) non è necessario esporre porte sull’host. Si avviano più container dalla stessa immagine, ciascuno con un hostname diverso.
+
+Esempio per tre istanze:
+
+```bash
+docker run --name nodeapp1 --hostname nodeapp1 -d nodeapp
+docker run --name nodeapp2 --hostname nodeapp2 -d nodeapp
+docker run --name nodeapp3 --hostname nodeapp3 -d nodeapp
+```
+
+- **Nessun `-p`**: le porte restano interne alla rete Docker; dall’host non si accede direttamente a `nodeapp1:8080` a meno che non si pubblichi una porta (per i backend non è necessario e spesso è da evitare per ridurre la superficie esposta).
+- **Hostname**: servirà a Nginx per risolvere `nodeapp1`, `nodeapp2`, `nodeapp3` quando saranno sulla stessa rete.
+
+Per **testare** un singolo container si può temporaneamente pubblicare la porta:
+
+```bash
+docker run --name nodeapp1 --hostname nodeapp1 -p 8080:8080 -d nodeapp
+curl http://localhost:8080
+```
+
+La risposta conterrà l’hostname del container (es. un ID lungo se non si è impostato `--hostname`). Poi si può fermare e rimuovere il container e rilanciarlo senza `-p` quando si integra con Nginx.
+
+## Perché non esporre le porte dei backend
+
+In uno scenario con Nginx come unico punto di ingresso:
+
+- I client parlano solo con Nginx (es. porta 80 sull’host).
+- Nginx, dall’interno della rete Docker, contatta i backend sui loro hostname e porte (es. `nodeapp1:8080`).
+
+Se le porte dei backend sono esposte sull’host (`-p 8080:8080`, ecc.), diventano raggiungibili direttamente dall’esterno, aggirando Nginx. Per sviluppo locale può andare bene; in ambienti più controllati è preferibile lasciare i backend non pubblicati e raggiungibili solo dalla rete Docker.
+
+## Riepilogo
+
+- **App**: Express su porta 8080, risponde con `os.hostname()` per identificare l’istanza.
+- **Dockerfile**: FROM node, WORKDIR, COPY app, RUN npm install, CMD node index.js.
+- **Build**: `docker build -t nodeapp .`
+- **Run**: più container con `--hostname nodeapp1`, `nodeapp2`, … senza `-p`, così che siano visibili solo in rete Docker.
+
+Nel prossimo articolo si crea una **rete Docker custom**, si collegano Nginx e i container Node a questa rete e si configura Nginx come reverse proxy con **upstream** e **proxy_pass** verso i hostname dei backend.

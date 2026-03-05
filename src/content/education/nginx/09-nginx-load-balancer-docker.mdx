@@ -1,0 +1,136 @@
+---
+title: "Nginx come load balancer in Docker"
+description: "Rete Docker custom, upstream, proxy_pass e montaggio della configurazione Nginx nel container"
+date: 2026-03-05
+tags: ['formazione', 'nginx', 'docker', 'load-balancing']
+authors: ['vitoesposito']
+order: 9
+---
+
+## Introduzione
+
+Con Nginx in un container e più container Node sulla stessa rete Docker si può configurare Nginx come **reverse proxy layer 7** e **load balancer**: le richieste in ingresso sulla porta 80 del container Nginx vengono inoltrate a uno dei backend Node in base all’algoritmo di bilanciamento (di default round-robin).
+
+In questo articolo si crea una **rete Docker custom**, si collegano tutti i container a essa, si scrive un file di configurazione Nginx con **upstream** e **proxy_pass** e si monta tale file nel container Nginx al posto della configurazione predefinita.
+
+## Perché una rete Docker custom
+
+Di default i container finiscono nella rete **bridge** di Docker. Su alcune piattaforme (es. Mac) la risoluzione dei **hostname** tra container nella stessa rete bridge può non funzionare come previsto, e Nginx deve risolvere i nomi `nodeapp1`, `nodeapp2`, `nodeapp3` per contattare i backend.
+
+Creando una **rete custom** e collegandovi tutti i container (Nginx e Node), Docker fornisce un DNS interno: ogni container è raggiungibile dagli altri tramite nome (o hostname). In questo modo nella configurazione Nginx si possono usare direttamente i hostname dei backend.
+
+## Creare la rete e avviare i backend
+
+Creazione della rete (es. `backend_net`):
+
+```bash
+docker network create backend_net
+```
+
+Avvio dei container Node **sulla stessa rete**. Si può assegnare la rete alla creazione con `--network`:
+
+```bash
+docker run --name nodeapp1 --hostname nodeapp1 --network backend_net -d nodeapp
+docker run --name nodeapp2 --hostname nodeapp2 --network backend_net -d nodeapp
+docker run --name nodeapp3 --hostname nodeapp3 --network backend_net -d nodeapp
+```
+
+In alternativa, per container già esistenti:
+
+```bash
+docker network connect backend_net nodeapp1
+docker network connect backend_net nodeapp2
+docker network connect backend_net nodeapp3
+```
+
+Ogni backend resta in ascolto sulla porta **8080** interna al container; non serve pubblicare quella porta sull’host.
+
+## Configurazione Nginx: upstream e proxy_pass
+
+Si suppone di avere un file `nginx.conf` sull’host che sostituisce la configurazione predefinita di Nginx nel container. Path tipico della config di default nell’immagine ufficiale: `/etc/nginx/nginx.conf`. Per sostituire solo il file nel contesto `http` a volte si monta anche solo `/etc/nginx/conf.d/`; qui si monta l’intero `nginx.conf` per semplicità.
+
+Esempio di **nginx.conf** minimale per reverse proxy HTTP con load balancing:
+
+```nginx
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream nodebackend {
+        server nodeapp1:8080;
+        server nodeapp2:8080;
+        server nodeapp3:8080;
+    }
+
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://nodebackend/;
+        }
+    }
+}
+```
+
+Spiegazione:
+
+- **events**: blocco obbligatorio; `worker_connections` definisce il massimo di connessioni simultanee per worker (vedi articolo sull’architettura interna di Nginx).
+- **http**: contesto layer 7.
+- **upstream nodebackend**: definisce un gruppo di server (i tre container Node). Nginx risolverà i nomi `nodeapp1`, `nodeapp2`, `nodeapp3` tramite il DNS della rete Docker e bilancerà le richieste (default: round-robin).
+- **server**: blocco virtual server che ascolta sulla porta 80 (nel container).
+- **location /**: per le richieste a `/`, il traffico viene inoltrato a `http://nodebackend/`. La barra finale in `http://nodebackend/` è importante per la riscrittura del path (qui si passa la URI invariata).
+
+Con questa configurazione, Nginx deve poter risolvere i hostname dei backend: per questo tutti i container devono essere sulla stessa rete custom.
+
+## Montare la configurazione nel container Nginx
+
+Si avvia Nginx collegandolo alla rete `backend_net` e montando il file di configurazione dall’host:
+
+```bash
+docker run --name nginx --hostname ng1 \
+  -p 80:80 \
+  -v /percorso/completo/nginx.conf:/etc/nginx/nginx.conf:ro \
+  --network backend_net \
+  -d nginx
+```
+
+Sostituire `/percorso/completo/nginx.conf` con il path reale del file sull’host. L’opzione **`:ro`** monta il file in sola lettura.
+
+- **`-v ... :ro`**: il file `nginx.conf` dell’host sostituisce quello nel container; modifiche al file sull’host richiedono un reload (o restart) di Nginx per essere applicate.
+- **`--network backend_net`**: Nginx è sulla stessa rete dei Node e può risolvere `nodeapp1`, `nodeapp2`, `nodeapp3` e connettersi alla porta 8080.
+
+Se Nginx non si avvia, controllare i log:
+
+```bash
+docker logs nginx
+```
+
+Errori tipici: sintassi errata in `nginx.conf` o impossibilità di risolvere i hostname (container non sulla stessa rete).
+
+## Ordine di avvio consigliato
+
+1. Creare la rete: `docker network create backend_net`
+2. Avviare i backend: `docker run ... --network backend_net ... nodeapp` (per ogni istanza)
+3. Avviare Nginx con la config montata e `--network backend_net`
+
+Se Nginx parte prima dei backend, può comunque avviarsi; al primo utilizzo proverà a contattare i backend. Se i nomi non si risolvono perché i container non sono ancora in rete, verificare che tutti siano collegati a `backend_net` con `docker network inspect backend_net`.
+
+## Verificare il load balancing
+
+Aprendo nel browser `http://localhost` (o l’host e la porta pubblicata) e aggiornando più volte la pagina, la risposta dovrebbe alternarsi tra "Hello from nodeapp1", "Hello from nodeapp2", "Hello from nodeapp3" (in round-robin). Se il browser riusa la stessa connessione TCP, può essere che più richieste consecutive vadano allo stesso backend; aprendo in una nuova scheda o forzando nuovi collegamenti si vede meglio la rotazione.
+
+Il flusso è: client → host:80 → container Nginx:80 → Nginx sceglie un backend (es. nodeapp2:8080) → risposta → client.
+
+## Riepilogo comandi
+
+| Azione | Comando |
+|--------|--------|
+| Creare rete | `docker network create backend_net` |
+| Avviare backend | `docker run --name nodeapp1 --hostname nodeapp1 --network backend_net -d nodeapp` (e idem per nodeapp2, nodeapp3) |
+| Avviare Nginx con config | `docker run --name nginx -p 80:80 -v $(pwd)/nginx.conf:/etc/nginx/nginx.conf:ro --network backend_net -d nginx` |
+| Ispezionare rete | `docker network inspect backend_net` |
+| Log Nginx | `docker logs nginx` |
+
+## Prossimi passi
+
+Si è ottenuto un unico Nginx che bilancia il carico tra tre backend Node. Nel prossimo articolo si considera l’avvio di **due istanze Nginx** (es. su porte 80 e 81) e si accenna a come distribuire il traffico tra di esse (iptables, DNS o più host) senza introdurre un orchestratore come Kubernetes.

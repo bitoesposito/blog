@@ -1,0 +1,83 @@
+---
+title: "Due istanze Nginx e distribuzione del traffico"
+description: "Avviare un secondo container Nginx su porta diversa, collegarlo alla rete backend e cenni a iptables e DNS"
+date: 2026-03-05
+tags: ['formazione', 'nginx', 'docker', 'load-balancing']
+authors: ['vitoesposito']
+order: 10
+---
+
+## Introduzione
+
+Dopo aver configurato un singolo Nginx come load balancer verso i container Node, può sorgere l’esigenza di avere **più istanze Nginx** per ridondanza o per distribuire le connessioni in ingresso. In questo articolo si avvia un secondo container Nginx con la stessa configurazione (o quasi), esposto su una porta diversa, e si accenna a come si può distribuire il traffico tra le due istanze (iptables, DNS, più host).
+
+## Secondo container Nginx
+
+Si suppone che il primo Nginx sia già in esecuzione con nome `nginx`, hostname `ng1`, sulla rete `backend_net` e con porta pubblicata `80:80`. Per il secondo container servono:
+
+- Un **nome container** diverso (es. `nginx2`)
+- Un **hostname** diverso se si vuole identificarlo in rete (es. `ng2`)
+- Una **porta host** diversa (es. `81:80`), perché due processi non possono ascoltare sulla stessa porta dell’host
+- La **stessa rete** `backend_net` e, se si usa una config montata, lo stesso file di configurazione (o una copia)
+
+Esempio:
+
+```bash
+docker run --name nginx2 --hostname ng2 \
+  -p 81:80 \
+  -v /percorso/completo/nginx.conf:/etc/nginx/nginx.conf:ro \
+  --network backend_net \
+  -d nginx
+```
+
+Il secondo Nginx non può essere avviato con `--network backend_net` se la rete si specifica solo al primo run; in quel caso si crea il container e poi si collega alla rete:
+
+```bash
+docker network connect backend_net nginx2
+docker start nginx2
+```
+
+Dopo l’avvio:
+
+- `http://localhost:80` → primo Nginx (container `nginx`)
+- `http://localhost:81` → secondo Nginx (container `nginx2`)
+
+Entrambi risolvono `nodeapp1`, `nodeapp2`, `nodeapp3` e bilanciano le richieste verso i backend. Aggiornando la pagina su porta 80 e su porta 81 si vede in entrambi i casi l’alternanza tra i tre hostname Node.
+
+## Limitazioni con un solo host Docker
+
+Tutti i container (Nginx e Node) girano sullo **stesso host Docker**. Se l’host si spegne o Docker si arresta, l’intero stack non è raggiungibile. Per alta disponibilità reale servirebbero più host e un modo per indirizzare il traffico verso di essi (DNS, load balancer esterno, orchestratori).
+
+Con un solo host, due Nginx su porte diverse (80 e 81) permettono di:
+
+- Verificare che due istanze condividano la stessa config e gli stessi backend
+- Esporre un’istanza su 80 e una su 81 e poi usare un meccanismo esterno (es. iptables o un proxy) per distribuire le connessioni in ingresso
+
+## Distribuire le connessioni tra le due istanze (cenni)
+
+L’obiettivo è far sì che i client accedano a **una sola porta** (es. 80) e che il sistema invii le connessioni in modo alternato (o con altra politica) ai due Nginx (es. uno in ascolto sulla porta 80 del host, l’altro sulla 81). Due approcci sintetici:
+
+### Port mapping e iptables (Linux)
+
+Su Linux si può usare **iptables** (o nftables) per fare **DNAT**: le connessioni in arrivo su una porta (es. 80) vengono reindirizzate a porte diverse (es. 80 e 81) in base a regole che possono usare statistiche (es. ogni seconda connessione va alla porta 81). In questo modo un solo indirizzo e una sola porta pubblica ricevono il traffico, che viene poi distribuito tra i due container.
+
+**Nota importante**: a livello di **connessione TCP** (layer 4) non esiste il concetto di “richiesta HTTP”; si distribuiscono **connessioni**, non singole richieste. Una volta che una connessione è associata a un Nginx, tutto il traffico di quella connessione deve andare allo stesso Nginx, altrimenti la connessione si rompe. Le regole iptables vanno impostate in modo che tutte le risposte e i pacchetti della stessa connessione seguano lo stesso percorso (stateful).
+
+La configurazione esatta dipende dal sistema (iptables vs nftables, policy di default, ecc.) e esula dall’ambito di questo articolo; l’idea è: **porta pubblica unica** → regole che indirizzano le nuove connessioni alle porte 80 e 81 (o ai rispettivi container).
+
+### DNS e più record A
+
+Un altro approccio è esporre i due Nginx su **indirizzi o porte diverse** e usare il **DNS** per distribuire i client:
+
+- Due record A per lo stesso nome (es. `app.example.com` → IP1 e IP2): i client risolvono il nome e possono connettersi all’uno o all’altro a seconda del resolver e del round-robin DNS (se supportato).
+- Oppure due host con due IP pubblici diversi, ciascuno con Nginx sulla porta 80; il DNS restituisce entrambi gli IP e i client scelgono uno dei due.
+
+Anche qui si distribuiscono **connessioni** (ogni client sceglie un IP/porta), non singole richieste HTTP. Per bilanciamento più fine a livello di richiesta servirebbe un ulteriore layer (load balancer L7 davanti ai due Nginx, o un unico Nginx con più worker su più host gestiti da un orchestratore).
+
+## Riassunto pratico
+
+- **Secondo Nginx**: stesso ruolo del primo, nome/hostname/porta host diversi (es. `nginx2`, `ng2`, `-p 81:80`), stessa rete `backend_net` e stessa config (o equivalente).
+- **Due porte**: sull’host si hanno due punti di ingresso (80 e 81); i client possono usare l’una o l’altra manualmente, oppure si può introdurre un meccanismo (iptables, DNS, proxy) per distribuire le connessioni.
+- **Alta disponibilità**: con un solo host Docker non si ha vera HA; per scenari più avanzati si considerano più host e strumenti di orchestrazione (es. Kubernetes) o load balancer esterni.
+
+Questa serie di articoli su Nginx e Docker si conclude qui. Per approfondire le reti Docker (subnet, gateway, risoluzione hostname, reti interne) si può consultare la documentazione ufficiale Docker su networking o tutorial dedicati alle reti custom e al DNS interno.

@@ -1,0 +1,61 @@
+---
+title: "Nginx e Docker: introduzione"
+description: "Perché usare Docker per Nginx, concetti di immagine e container, e piano degli articoli pratici"
+date: 2026-03-05
+tags: ['formazione', 'nginx', 'docker']
+authors: ['vitoesposito']
+order: 6
+---
+
+## Introduzione
+
+Eseguire Nginx in locale richiede installazione e configurazione sul sistema operativo. Per riprodurre lo stesso ambiente su Mac, Windows e Linux senza modificare il sistema host, un approccio comune è usare **Docker**.
+
+In questa serie di articoli si vedrà come avviare Nginx in un container, servire contenuti custom, costruire un’applicazione Node.js containerizzata e infine configurare Nginx come **reverse proxy layer 7** con load balancing tra più container, il tutto gestito tramite Docker e reti custom.
+
+## Perché Docker per Nginx
+
+**Docker** è un runtime che permette di eseguire processi isolati (container) a partire da **immagini** che includono un filesystem e i binari necessari. Rispetto a una macchina virtuale completa, i container condividono il kernel dell’host e sono generalmente più leggeri.
+
+Vantaggi rilevanti per questo percorso:
+
+- **Portabilità**: le stesse istruzioni funzionano su Mac, Windows e Linux, a patto che Docker sia installato
+- **Isolamento**: Nginx e le applicazioni girano in container separati, senza installare pacchetti sul sistema
+- **Riproducibilità**: immagine e comandi definiscono l’ambiente in modo deterministico
+- **Rete**: è possibile creare reti Docker custom e far comunicare i container tramite **hostname** senza esporre tutte le porte all’esterno
+
+Non è obbligatorio usare Docker per imparare Nginx; è però un modo pratico per costruire un mini-ambiente (Nginx + più backend) senza dover configurare router o IP pubblici.
+
+## Immagine e container
+
+Due concetti da tenere distinti:
+
+- **Immagine**: template read-only da cui si creano i container. Contiene filesystem, runtime e applicazioni (es. Nginx o Node.js). In analogia con la programmazione a oggetti, l’immagine è come una **classe**.
+- **Container**: istanza in esecuzione creata a partire da un’immagine. Puoi averne molte dallo stesso template. Il container è come un **oggetto** creato dalla classe.
+
+Operazioni tipiche:
+
+- **Pull**: scaricare un’immagine da un registry (es. `docker pull nginx`)
+- **Run**: creare e avviare un container da un’immagine (es. `docker run nginx`)
+- **Build**: costruire una nuova immagine a partire da un Dockerfile (es. `docker build -t nodeapp .`)
+
+L’immagine ufficiale **nginx** include il binario Nginx e i path di configurazione e document root predefiniti. Avviando un container da essa si ottiene un’istanza Nginx funzionante senza installare nulla sull’host.
+
+## Cosa costruiremo negli articoli successivi
+
+Il percorso pratico è organizzato così:
+
+1. **Nginx in container – primo avvio**: avviare il container Nginx ufficiale, esporre la porta 80 sull’host, verificare la pagina di benvenuto e montare una cartella locale come document root (contenuto HTML custom).
+2. **App Node.js in Docker**: creare una piccola applicazione Express che restituisce l’hostname del container; scrivere un Dockerfile che parte dall’immagine Node, copia l’app, esegue `npm install` in build e avvia `node index.js` a runtime; avviare uno o più container con hostname distinti (es. `nodeapp1`, `nodeapp2`) **senza** esporre le loro porte all’esterno.
+3. **Rete Docker e load balancing**: creare una **rete custom** (es. `backend_net`), collegare Nginx e i container Node a questa rete, configurare Nginx con un blocco `upstream` e `proxy_pass` verso i hostname dei Node; montare il file di configurazione Nginx dall’host nel container. In questo modo Nginx fa da reverse proxy layer 7 e bilancia le richieste tra i backend.
+4. **Due istanze Nginx**: avviare un secondo container Nginx con la stessa configurazione (o quasi), esporlo su una porta diversa (es. 81); collegarlo alla stessa rete dei backend. Cenni su come si potrebbe fare load balancing tra le due istanze Nginx (iptables, DNS, più host) senza entrare in Kubernetes o orchestrazione complessa.
+
+Su Mac, l’accesso ai container tramite IP della rete bridge Docker non è sempre disponibile; esporre le porte con `-p` (publish) e accedere via `localhost` (o hostname della macchina) è l’approccio consigliato. Su Linux è possibile anche raggiungere i container tramite il loro IP nella rete bridge.
+
+## Prerequisiti
+
+- **Docker** installato e avviato (Docker Desktop su Mac/Windows, oppure engine su Linux)
+- Verifica rapida: `docker run hello-world` deve completare con messaggio di benvenuto
+- Editor di testo e terminale per creare Dockerfile, file di configurazione Nginx e script se necessario
+
+Nei prossimi articoli si parte dall’avvio del primo container Nginx e dalla gestione del contenuto statico tramite volumi.

@@ -1,0 +1,135 @@
+---
+title: "Nginx in container: primo avvio e contenuto custom"
+description: "Avviare il container Nginx ufficiale, esporre la porta 80 e montare una cartella locale come document root"
+date: 2026-03-05
+tags: ['formazione', 'nginx', 'docker']
+authors: ['vitoesposito']
+order: 7
+---
+
+## Introduzione
+
+In questo articolo si avvia un container Nginx usando l’immagine ufficiale, si espone la porta 80 sull’host e si monta una cartella locale nel path in cui Nginx serve i file statici. In questo modo Nginx nel container funziona come **web server** per contenuti che restano sull’host.
+
+## Verificare che Docker sia attivo
+
+Prima di avviare i container, conviene controllare che Docker risponda:
+
+```bash
+docker run hello-world
+```
+
+Se l’output include un messaggio di benvenuto da Docker, l’ambiente è pronto.
+
+## Avviare il container Nginx
+
+Comando base per creare e avviare un container dalla immagine **nginx**:
+
+```bash
+docker run --name nginx --hostname ng1 -p 80:80 -d nginx
+```
+
+Spiegazione dei parametri:
+
+- **`--name nginx`**: nome del container (utile per `docker stop nginx`, `docker logs nginx`, ecc.)
+- **`--hostname ng1`**: hostname assegnato al container; utile in reti Docker per indirizzare il container come `ng1` invece che per IP
+- **`-p 80:80`**: mappa la porta **80 dell’host** sulla porta **80 del container**. Il formato è `porta_host:porta_container`. Le richieste a `http://localhost:80` (o `http://<nome-host>:80`) vengono inoltrate alla porta 80 del container
+- **`-d`**: avvio in **detach**; il terminale non resta attaccato al container
+- **`nginx`**: nome dell’immagine (per default viene usato il tag `latest`)
+
+Per fissare una versione specifica di Nginx si può usare ad esempio `nginx:1.25` al posto di `nginx`.
+
+Dopo il run, con:
+
+```bash
+docker ps
+```
+
+si vede il container in esecuzione. Per verificare il servizio:
+
+```bash
+curl http://localhost:80
+```
+
+oppure aprire nel browser `http://localhost` (la porta 80 è implicita). La risposta è la pagina di benvenuto predefinita di Nginx.
+
+## Differenza tra nome container e hostname
+
+- **Nome container** (`--name nginx`): usato da Docker per riferirsi al container nei comandi (`docker stop nginx`, `docker inspect nginx`, ecc.)
+- **Hostname** (`--hostname ng1`): nome che il container ha “dentro” la rete; altri container sulla stessa rete possono raggiungerlo come `ng1` (risoluzione DNS interna Docker)
+
+Sono due identificativi distinti. Per l’accesso da **esterno** (dal browser sull’host) si usa l’host della macchina e la porta pubblicata (es. `http://localhost:80` o `http://miamacchina:80`).
+
+## Ispezionare il container
+
+Per vedere dettagli del container, inclusi IP e volumi montati:
+
+```bash
+docker inspect nginx
+```
+
+L’output è in JSON. Tra le informazioni utili: indirizzo IP nella rete bridge, gateway, eventuali mount. Su Linux, conoscendo l’IP del container (es. `172.17.0.2`), si può fare `curl http://172.17.0.2:80` se la rete bridge è accessibile dall’host. Su Mac/Windows spesso non lo è, quindi l’accesso avviene tramite `-p 80:80` e `localhost`.
+
+## Servire contenuto HTML dall’host (volume)
+
+Per default Nginx nel container serve i file dalla sua **document root** interna (nell’immagine ufficiale tipicamente `/usr/share/nginx/html`). Per servire invece una cartella che sta sull’host si usa un **volume** (bind mount).
+
+Esempio di struttura sul host:
+
+```
+nginx-docker/
+  html/
+    index.html
+```
+
+Contenuto minimo di `html/index.html`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head><title>Custom page</title></head>
+<body><h1>Hello, World</h1></body>
+</html>
+```
+
+Si ferma e si rimuove il container precedente (se ancora in esecuzione):
+
+```bash
+docker stop nginx
+docker rm nginx
+```
+
+Si riavvia un nuovo container montando la cartella locale in `/usr/share/nginx/html`:
+
+```bash
+docker run --name nginx --hostname ng1 \
+  -p 80:80 \
+  -v /percorso/completo/nginx-docker/html:/usr/share/nginx/html \
+  -d nginx
+```
+
+Sostituire `/percorso/completo/nginx-docker/html` con il path assoluto della cartella `html` sul proprio sistema (su Windows usare la sintassi Docker per i path).
+
+Parametro **`-v`** (volume):
+
+- **Sintassi**: `path_host:path_container`
+- **Effetto**: il contenuto di `path_host` è visibile nel container in `path_container`; Nginx legge e serve i file da lì. Le modifiche ai file sull’host sono subito visibili senza ricostruire l’immagine
+
+Dopo l’avvio, aprendo `http://localhost` nel browser si dovrebbe vedere la pagina custom. Se il browser mostra ancora la vecchia pagina, può essere cache: provare con un query string (es. `http://localhost/?v=1`) o ricaricare forzando l’aggiornamento.
+
+## Riepilogo comandi
+
+| Azione | Comando |
+|--------|--------|
+| Avvio con volume HTML | `docker run --name nginx --hostname ng1 -p 80:80 -v $(pwd)/html:/usr/share/nginx/html -d nginx` |
+| Elenco container | `docker ps` |
+| Stop | `docker stop nginx` |
+| Rimozione | `docker rm nginx` |
+| Ispezione | `docker inspect nginx` |
+| Log | `docker logs nginx` |
+
+Usare `$(pwd)/html` funziona se il comando viene eseguito dalla directory che contiene la cartella `html`.
+
+## Prossimi passi
+
+Con Nginx che serve contenuto statico dal host si ha un web server funzionante in container. Negli articoli successivi si introduce un’applicazione Node.js in Docker e si configura Nginx come reverse proxy con load balancing verso più container Node, usando una **rete Docker custom** e gli hostname per far comunicare i servizi.
