@@ -1,0 +1,411 @@
+---
+title: "Timeout frontend e backend in Nginx"
+description: "Panoramica dei principali timeout di Nginx tra client, proxy e upstream, con il loro impatto su risorse, sicurezza e stabilità"
+date: 2026-03-09
+tags: ['formazione', 'nginx', 'reverse-proxy', 'performance']
+authors: ['vitoesposito']
+order: 11
+---
+
+## Introduzione
+
+I **timeout** in Nginx sono una parte fondamentale della configurazione di un
+**reverse proxy**. Servono a impedire che client lenti, backend bloccati o
+connessioni inattive occupino risorse per troppo tempo, con effetti negativi su
+**stabilità**, **sicurezza** e capacità del sistema di servire nuove richieste.
+
+Quando si parla di timeout in Nginx, conviene distinguere due aree. La prima è
+il lato **frontend**, cioè tutto ciò che avviene tra **client** e **Nginx**.
+La seconda è il lato **backend**, cioè la comunicazione tra **Nginx** e i
+server **upstream**.
+
+In questo articolo analizziamo i principali timeout di entrambe le aree,
+capendo **quando scattano**, **che cosa proteggono** e **come ragionare sulla
+loro configurazione**.
+
+## Perché i timeout sono importanti
+
+Un proxy non deve limitarsi a inoltrare traffico. Deve anche decidere **quanto
+tempo è accettabile aspettare** prima di considerare una richiesta o una
+connessione non più sana.
+
+Timeout configurati bene aiutano a:
+
+- Limitare l’impatto di **client molto lenti** o comportamenti malevoli
+- Ridurre il rischio di attacchi come **Slowloris**
+- Evitare che richieste bloccate monopolizzino **socket**, **worker** e memoria
+- Rilevare più rapidamente backend lenti o non raggiungibili
+- Mantenere un equilibrio tra **robustezza** e **uso efficiente delle risorse**
+
+Il punto chiave è questo: un timeout troppo alto può lasciare risorse occupate
+inutilmente, mentre un timeout troppo basso può penalizzare client legittimi o
+backend lontani ma ancora funzionanti.
+
+## Timeout frontend
+
+I timeout frontend controllano il traffico tra il client e Nginx. Sono
+particolarmente importanti perché rappresentano il primo livello di protezione
+del proxy.
+
+### Panoramica dei timeout frontend
+
+| Direttiva | Cosa controlla | Default tipico |
+|-----------|----------------|----------------|
+| `client_header_timeout` | Tempo per ricevere gli header della richiesta | `60s` |
+| `client_body_timeout` | Tempo tra due letture riuscite del body | `60s` |
+| `send_timeout` | Tempo tra due scritture riuscite verso il client | `60s` |
+| `keepalive_timeout` | Durata di una connessione keep-alive inattiva | `75s` |
+| `lingering_timeout` | Tempo massimo di attesa per leggere e scartare dati residui del client | `5s` o configurazione dipendente dal contesto |
+| `resolver_timeout` | Tempo massimo per risolvere un nome DNS | `30s` |
+
+### `client_header_timeout`
+
+La direttiva **`client_header_timeout`** definisce il tempo massimo concesso al
+client per inviare gli **header HTTP** della richiesta.
+
+Se il client non completa l’invio degli header entro questo intervallo, Nginx
+interrompe la richiesta e restituisce in genere un **408 Request Timeout**.
+Questo timeout è utile contro client che aprono connessioni e inviano gli
+header molto lentamente per occupare risorse del proxy.
+
+Un caso tipico è un attacco **Slowloris**: il client invia gli header un byte
+alla volta, cercando di mantenere la connessione aperta il più a lungo
+possibile. Limitare il tempo disponibile per completare gli header riduce molto
+questo rischio.
+
+Esempio:
+
+```nginx
+http {
+    client_header_timeout 15s;
+}
+```
+
+In un contesto pubblico esposto su Internet, abbassare questo timeout rispetto
+al default può avere senso se si vuole essere più aggressivi verso client lenti
+o sospetti.
+
+### `client_body_timeout`
+
+La direttiva **`client_body_timeout`** riguarda il **body** della richiesta, ad
+esempio durante un upload.
+
+È importante notare un dettaglio: questo timeout non misura il tempo totale
+dell’intero upload, ma il tempo massimo **tra due letture riuscite** del body.
+Ogni volta che arrivano nuovi dati dal client, il timer riparte.
+
+Questo significa che Nginx tollera upload lunghi, ma non client che rimangono
+fermi troppo a lungo tra un blocco di dati e il successivo.
+
+Esempio:
+
+```nginx
+http {
+    client_body_timeout 20s;
+}
+```
+
+Questo timeout è utile sia per contenere client semplicemente lenti, sia per
+contrastare attacchi che cercano di tenere occupata la connessione inviando il
+body a velocità molto bassa.
+
+### `send_timeout`
+
+La direttiva **`send_timeout`** regola il tempo massimo tra due scritture
+riuscite della risposta **da Nginx verso il client**.
+
+Anche qui il timeout non riguarda l’intera risposta, ma il tempo tra due
+operazioni di scrittura riuscite. Se il client riceve la risposta troppo
+lentamente o smette di leggerla, Nginx non continuerà ad attendere
+indefinitamente.
+
+Esempio:
+
+```nginx
+http {
+    send_timeout 30s;
+}
+```
+
+Questa direttiva protegge il proxy da client che leggono la risposta troppo
+lentamente. Lasciare molte connessioni bloccate in scrittura verso client
+lenti può consumare risorse preziose senza portare beneficio.
+
+### `keepalive_timeout`
+
+Con **HTTP keep-alive** una singola connessione TCP può essere riutilizzata per
+più richieste. Questo evita di aprire e chiudere una connessione per ogni
+singola operazione, riducendo il costo degli handshake TCP.
+
+La direttiva **`keepalive_timeout`** indica per quanto tempo Nginx mantiene
+aperta una connessione **inattiva** prima di chiuderla.
+
+Esempio:
+
+```nginx
+http {
+    keepalive_timeout 15s;
+}
+```
+
+Un valore troppo alto aumenta il numero di connessioni inattive che restano
+aperte. Un valore troppo basso riduce i benefici del keep-alive e costringe i
+client a ristabilire più spesso la connessione.
+
+La scelta dipende molto dal tipo di traffico:
+
+- Su siti web con molte richieste ravvicinate, un keep-alive moderato è utile
+- Su sistemi con moltissimi client inattivi, può essere preferibile ridurlo
+
+### `lingering_timeout`
+
+La direttiva **`lingering_timeout`** entra in gioco quando Nginx ha deciso di
+chiudere la connessione ma vuole farlo in modo **graduale** e conforme al
+comportamento atteso dai protocolli di rete.
+
+In pratica, dopo aver deciso la chiusura, Nginx può restare per un certo tempo
+in attesa di ulteriori dati dal client. Se arrivano, li legge e li **scarta**,
+invece di elaborarli. Questo comportamento aiuta a evitare chiusure brusche che
+potrebbero generare stati anomali, reset o problemi osservabili dal lato client
+o da dispositivi intermedi.
+
+Esempio:
+
+```nginx
+http {
+    lingering_timeout 5s;
+}
+```
+
+Questo timeout lavora insieme al meccanismo di **lingering close** e serve a
+chiudere le connessioni in modo più pulito quando il client continua a inviare
+dati anche dopo che Nginx ha già deciso di terminare la richiesta.
+
+### `resolver_timeout`
+
+La direttiva **`resolver_timeout`** definisce il tempo massimo che Nginx è
+disposto ad attendere per la risoluzione **DNS** di un hostname.
+
+È rilevante quando Nginx deve risolvere nomi di host, ad esempio backend
+configurati per nome invece che per IP.
+
+Esempio:
+
+```nginx
+http {
+    resolver 8.8.8.8;
+    resolver_timeout 5s;
+}
+```
+
+Un valore troppo alto può rallentare il fallimento di richieste che dipendono
+da un DNS non raggiungibile o lento. In molti contesti, soprattutto interni o
+ben controllati, conviene usare valori piuttosto bassi.
+
+## Timeout backend
+
+I timeout backend regolano la comunicazione tra Nginx e i server **upstream**.
+Qui il problema non è più un client lento, ma un backend che non si connette,
+non riceve i dati, non risponde in tempo o costringe Nginx a tentativi ripetuti
+troppo lunghi.
+
+### Panoramica dei timeout backend
+
+| Direttiva | Cosa controlla | Default tipico |
+|-----------|----------------|----------------|
+| `proxy_connect_timeout` | Tempo per stabilire la connessione al backend | `60s` circa, con limite pratico inferiore a `75s` |
+| `proxy_send_timeout` | Tempo tra due scritture riuscite verso il backend | `60s` |
+| `proxy_read_timeout` | Tempo tra due letture riuscite dal backend | `60s` |
+| `keepalive_timeout` lato upstream | Tempo di inattività della connessione mantenuta verso il backend | dipende dalla configurazione |
+| `proxy_next_upstream_timeout` | Tempo massimo complessivo per tentare backend successivi | `0` disabilitato |
+
+### `proxy_connect_timeout`
+
+La direttiva **`proxy_connect_timeout`** definisce quanto tempo Nginx attende
+per **stabilire una connessione** con un backend.
+
+Se entro questo intervallo la connessione non viene aperta, Nginx considera il
+tentativo fallito. È un timeout molto importante per capire rapidamente se un
+upstream sia raggiungibile oppure no.
+
+Esempio:
+
+```nginx
+location / {
+    proxy_connect_timeout 2s;
+    proxy_pass http://backend;
+}
+```
+
+In una rete locale o in ambienti a bassa latenza, valori bassi sono spesso più
+ragionevoli del default. In ambienti distribuiti geograficamente o con backend
+molto distanti, un valore troppo basso rischia però di produrre falsi negativi.
+
+### `proxy_send_timeout`
+
+La direttiva **`proxy_send_timeout`** regola il tempo massimo tra due scritture
+riuscite **da Nginx verso il backend**.
+
+Questo succede, ad esempio, quando Nginx sta inoltrando il body di una richiesta
+al server upstream. Anche qui non si misura il tempo totale dell’intera
+trasmissione, ma la distanza temporale tra una scrittura riuscita e la
+successiva.
+
+Esempio:
+
+```nginx
+location /upload {
+    proxy_send_timeout 20s;
+    proxy_pass http://backend;
+}
+```
+
+Se Nginx non riesce a continuare a inviare dati al backend entro il timeout
+previsto, interrompe il tentativo. Questo evita che una singola richiesta resti
+bloccata troppo a lungo durante l’inoltro.
+
+### `proxy_read_timeout`
+
+La direttiva **`proxy_read_timeout`** stabilisce quanto tempo Nginx aspetta tra
+due letture riuscite della risposta **dal backend verso Nginx**.
+
+È uno dei timeout più importanti, perché controlla la fase in cui il backend ha
+già ricevuto la richiesta ma sta impiegando tempo per produrre o continuare a
+produrre la risposta.
+
+Esempio:
+
+```nginx
+location / {
+    proxy_read_timeout 10s;
+    proxy_pass http://backend;
+}
+```
+
+Per una normale pagina HTML o una API sincrona, un valore relativamente basso
+può essere sensato. Per scenari come **streaming**, **Server-Sent Events** o
+risposte lunghe con pause fisiologiche, questo timeout deve invece essere
+calibrato con molta più attenzione.
+
+### `proxy_next_upstream_timeout`
+
+Quando un backend fallisce, Nginx può tentare un altro server upstream, se la
+configurazione lo consente.
+
+La direttiva **`proxy_next_upstream_timeout`** limita il **tempo complessivo**
+durante il quale la stessa richiesta può essere passata a server successivi.
+
+Esempio:
+
+```nginx
+location / {
+    proxy_next_upstream error timeout http_502 http_503 http_504;
+    proxy_next_upstream_timeout 5s;
+    proxy_pass http://backend;
+}
+```
+
+Se questo limite non esiste, il proxy potrebbe continuare a riprovare più
+backend per troppo tempo. Impostare un tetto massimo aiuta a evitare che la
+richiesta resti in un ciclo di tentativi e fallimenti.
+
+### Keep-alive verso upstream
+
+Anche sul lato backend può essere utile mantenere connessioni TCP aperte e
+riutilizzabili verso gli upstream. L’obiettivo è lo stesso del frontend:
+ridurre il costo di creare continuamente nuove connessioni.
+
+Il vantaggio è evidente in sistemi ad alto traffico, ma esiste anche un costo:
+le connessioni inattive occupano comunque risorse sia su Nginx sia sul backend.
+
+Esempio semplificato:
+
+```nginx
+upstream backend {
+    server app1:8080;
+    server app2:8080;
+    keepalive 32;
+}
+```
+
+Quando si usano connessioni keep-alive verso gli upstream, i timeout vanno
+valutati insieme alla capacità del backend di gestire connessioni inattive.
+
+## Come ragionare sulla configurazione
+
+Non esiste un set di valori universale valido per tutti i sistemi. I timeout
+vanno scelti in base a:
+
+- **Tipo di client**: browser, app mobili, sistemi interni, partner esterni
+- **Tipo di richiesta**: upload, download, API brevi, streaming
+- **Latenza di rete**: LAN, WAN, multi-region
+- **Capacità del backend**: tempi normali di risposta, picchi e degradazioni
+- **Obiettivo di sicurezza**: tolleranza verso client lenti o necessità di
+  chiusura aggressiva
+
+Un approccio ragionevole è:
+
+1. partire dai default di Nginx
+2. misurare il traffico reale
+3. ridurre i timeout dove si osservano attese inutili
+4. aumentare solo quelli necessari per use case particolari come upload grandi
+   o stream lunghi
+
+## Esempio sintetico di configurazione
+
+Questo esempio mostra una configurazione essenziale con alcuni timeout espliciti:
+
+```nginx
+http {
+    client_header_timeout 15s;
+    client_body_timeout 20s;
+    send_timeout 30s;
+    keepalive_timeout 15s;
+    resolver 8.8.8.8;
+    resolver_timeout 5s;
+
+    upstream backend {
+        server app1:8080;
+        server app2:8080;
+        keepalive 32;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_connect_timeout 2s;
+            proxy_send_timeout 20s;
+            proxy_read_timeout 10s;
+            proxy_next_upstream error timeout http_502 http_503 http_504;
+            proxy_next_upstream_timeout 5s;
+            proxy_pass http://backend;
+        }
+    }
+}
+```
+
+I valori dell’esempio non sono “giusti” in assoluto. Servono a mostrare come le
+direttive si combinano per controllare in modo separato:
+
+- il comportamento del **client**
+- la durata delle **connessioni inattive**
+- il tempo concesso al **backend**
+- i **tentativi** verso upstream alternativi
+
+## Conclusione
+
+I timeout di Nginx non sono dettagli secondari di configurazione. Sono uno degli
+strumenti principali con cui si definisce il comportamento operativo del proxy
+in condizioni normali e in situazioni problematiche.
+
+Capire la differenza tra timeout frontend e backend permette di leggere meglio
+una configurazione Nginx e di prendere decisioni più consapevoli su
+**affidabilità**, **performance** e **sicurezza**.
+
+In sintesi:
+
+- I timeout frontend proteggono Nginx da client lenti o malevoli
+- I timeout backend proteggono Nginx da upstream lenti, bloccati o irraggiungibili
+- Quasi tutti i timeout lavorano **tra due operazioni riuscite**, non sull’intera durata totale
+- La configurazione corretta dipende sempre dal contesto reale del sistema
