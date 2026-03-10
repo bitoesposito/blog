@@ -1,0 +1,529 @@
+---
+title: "Nginx come web server, reverse proxy L7/L4 e terminazione TLS"
+description: "Installazione locale di Nginx, configurazione da zero come web server statico, reverse proxy layer 7 e layer 4, con abilitazione di TLS 1.3 e HTTP/2 tramite Let’s Encrypt"
+date: 2026-03-10
+tags: ['formazione', 'nginx', 'reverse-proxy', 'tls', 'docker']
+authors: ['vitoesposito']
+order: 12
+---
+
+## Introduzione
+
+Per comprendere davvero **Nginx** è utile vederlo all’opera in scenari completi:
+
+- come **web server statico**
+- come **reverse proxy layer 7** con più backend Node.js
+- come **proxy / load balancer layer 4**
+- come **terminatore TLS** che espone un sito pubblico con **TLS 1.3** e **HTTP/2**
+
+Questo articolo segue idealmente gli esempi in cui vengono creati i container `nodeapp` in Docker.
+Per i dettagli sulla creazione dell’immagine Node e dei container si può fare riferimento agli
+articoli precedenti dedicati a Docker; qui l’attenzione è sulla **configurazione di Nginx**.
+
+Obiettivo finale:
+
+- partire da un’installazione Nginx “pulita”
+- costruire passo passo una configurazione leggibile
+- capire come si passa da **localhost** a un **dominio pubblico** con certificato Let’s Encrypt
+
+## Installazione di Nginx (macOS con Homebrew)
+
+Su macOS è comodo installare Nginx tramite **Homebrew**:
+
+```bash
+brew install nginx
+```
+
+L’installazione crea:
+
+- il binario `nginx`
+- una configurazione predefinita (tipicamente in `/usr/local/etc/nginx/nginx.conf` o similare)
+- un server in ascolto su una porta di default (spesso 8080 o 8081)
+
+Per studiare Nginx conviene **non affidarsi alla configurazione di default**, ma scriverne una
+minimale da zero. Prima si può fare un backup del file esistente e poi sovrascriverlo.
+
+## Configurazione minima: web server statico
+
+Una configurazione Nginx layer 7 minima richiede:
+
+- il blocco **`events`** (anche vuoto, ma obbligatorio)
+- il blocco **`http`** (contesto layer 7)
+- almeno un blocco **`server`** con una direttiva **`listen`**
+
+Esempio di `nginx.conf` minimale:
+
+```nginx
+events {
+    worker_connections 1024;
+}
+
+http {
+    server {
+        listen 8080;
+    }
+}
+```
+
+Con questa configurazione Nginx è in ascolto sulla porta 8080, ma non sa ancora **da dove** servire
+contenuti statici.
+
+### Servire file statici con `root`
+
+Per servire contenuti statici (HTML, CSS, JavaScript, immagini) occorre indicare una directory
+radice tramite la direttiva **`root`** all’interno del blocco `server` (o di un blocco `location`).
+
+Supponiamo di avere:
+
+```text
+/Users/<utente>/Documents/nginx-course/
+  index.html
+```
+
+Allora si può scrivere:
+
+```nginx
+http {
+    server {
+        listen 8080;
+        root /Users/<utente>/Documents/nginx-course;
+    }
+}
+```
+
+Visitando `http://localhost:8080/` Nginx, non trovando altre regole, servirà il file
+`index.html` nella directory indicata.
+
+### Più “siti” con blocchi `location`
+
+All’interno di un `server` si possono definire **percorsi diversi** con blocchi `location`.
+
+Esempio di struttura:
+
+```text
+/Users/<utente>/Documents/nginx-course/
+  site1/index.html
+  site2/index.html
+```
+
+Configurazione:
+
+```nginx
+http {
+    server {
+        listen 8080;
+
+        # Root generale del server
+        root /Users/<utente>/Documents/nginx-course;
+
+        # / → index.html nella root
+        location / {
+            # usa la root di server
+        }
+
+        # /site1 → /Users/.../site1/index.html
+        location /site1 {
+            # root resta quella del server
+        }
+
+        # /site2 → /Users/.../site2/index.html
+        location /site2 {
+            # root resta quella del server
+        }
+    }
+}
+```
+
+Con questa configurazione:
+
+- `http://localhost:8080/` → `index.html` nella root
+- `http://localhost:8080/site1` → `site1/index.html`
+- `http://localhost:8080/site2` → `site2/index.html`
+
+### Statico da directory esterna con `location` dedicato
+
+A volte le risorse (es. immagini) risiedono in una directory **fuori** dalla root principale.
+
+Esempio:
+
+```text
+/Users/<utente>/Pictures/nginx-images/
+  postgres.png
+```
+
+Si può creare un `location` dedicato:
+
+```nginx
+http {
+    server {
+        listen 8080;
+        root /Users/<utente>/Documents/nginx-course;
+
+        location / {
+            # root principale
+        }
+
+        location /images {
+            root /Users/<utente>/Pictures/nginx-images;
+        }
+    }
+}
+```
+
+Richieste a:
+
+- `/images/postgres.png` → `/Users/<utente>/Pictures/nginx-images/postgres.png`
+
+Attenzione: il percorso effettivo è dato da `root` + parte di path dopo il prefisso `location`.
+
+### Regex e `return` per bloccare estensioni
+
+Con `location` è possibile usare **espressioni regolari** per intercettare pattern specifici, ad
+esempio per **bloccare il download** di tutti i file `.jpg` o `.jpeg`.
+
+Esempio:
+
+```nginx
+http {
+    server {
+        listen 8080;
+        root /Users/<utente>/Documents/nginx-course;
+
+        # Tutte le richieste che terminano con .jpg o .jpeg
+        location ~ \.(jpe?g)$ {
+            return 403;
+        }
+    }
+}
+```
+
+In questo modo:
+
+- `GET /foto.jpg` → **403 Forbidden**
+- `GET /foto.png` → servito normalmente (se esiste)
+
+Le regex nei blocchi `location` permettono controlli sofisticati sui path senza modificare il
+codice dell’applicazione.
+
+## Reverse proxy layer 7 con più backend Node.js
+
+Per usare Nginx come **reverse proxy layer 7** verso più backend Node.js si usano:
+
+- il contesto `http`
+- il blocco `upstream` per definire il gruppo di server
+- uno o più blocchi `server` con `proxy_pass`
+
+### Scenario di esempio
+
+Si considerano quattro applicazioni Node.js esposte sull’host (ad esempio tramite Docker) con le
+seguenti porte:
+
+- `localhost:2222`
+- `localhost:3333`
+- `localhost:4444`
+- `localhost:5555`
+
+Ogni app espone:
+
+- `/` → homepage che identifica l’istanza (es. “I am app 2222”)
+- `/app1` → sezione app1
+- `/app2` → sezione app2
+- `/admin` → area amministrativa
+
+### `upstream` e round-robin
+
+Per bilanciare il traffico in **round-robin** tra tutti i backend:
+
+```nginx
+http {
+    upstream all_backend {
+        server 127.0.0.1:2222;
+        server 127.0.0.1:3333;
+        server 127.0.0.1:4444;
+        server 127.0.0.1:5555;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://all_backend;
+        }
+    }
+}
+```
+
+Ogni richiesta a `http://localhost/` viene inoltrata a uno dei server in `all_backend` secondo
+round-robin (`1 → 2 → 3 → 4 → di nuovo 1 → ...`).
+
+### `ip_hash` e sticky session
+
+Se si usa l’algoritmo **`ip_hash`**, Nginx applica un hashing sull’IP del client per scegliere
+sempre lo stesso backend per quel client.
+
+```nginx
+upstream all_backend {
+    ip_hash;
+    server 127.0.0.1:2222;
+    server 127.0.0.1:3333;
+    server 127.0.0.1:4444;
+    server 127.0.0.1:5555;
+}
+```
+
+In questo caso ogni client viene “stickato” a un server. Questo approccio è talvolta usato per
+applicazioni **stateful in memoria**, anche se l’architettura moderna tende a privilegiare
+servizi **stateless**.
+
+### Due upstream distinti per `/app1` e `/app2`
+
+È possibile dividere le app in gruppi diversi e instradare in base al path:
+
+```nginx
+http {
+    upstream app1_backend {
+        server 127.0.0.1:2222;
+        server 127.0.0.1:3333;
+    }
+
+    upstream app2_backend {
+        server 127.0.0.1:4444;
+        server 127.0.0.1:5555;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://all_backend;
+        }
+
+        location /app1 {
+            proxy_pass http://app1_backend;
+        }
+
+        location /app2 {
+            proxy_pass http://app2_backend;
+        }
+    }
+}
+```
+
+In questo modo:
+
+- `/` continua a bilanciare su tutti i backend
+- `/app1` bilancia solo tra `2222` e `3333`
+- `/app2` bilancia solo tra `4444` e `5555`
+
+### Proteggere `/admin` dal traffico pubblico
+
+Per evitare che la sezione **admin** sia raggiungibile dalla porta pubblica (es. 80) ma resti
+accessibile solo tramite le porte interne (`2222`, `3333`, ...), si può bloccare il path a livello
+di Nginx:
+
+```nginx
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://all_backend;
+    }
+
+    location /admin {
+        return 403;
+    }
+}
+```
+
+In questo scenario:
+
+- `http://localhost/admin` → **403 Forbidden**
+- `http://localhost:2222/admin` (o porte interne) → ancora accessibile, ad esempio solo dalla
+  rete interna
+
+## Nginx come proxy / load balancer layer 4 (`stream`)
+
+Finora Nginx ha lavorato in **layer 7** (contesto `http`), leggendo le richieste HTTP e
+instradando in base al path. In alcuni casi serve invece un **proxy layer 4** (TCP puro), che
+non interpreta HTTP ma si limita a inoltrare connessioni.
+
+Per questo Nginx offre il contesto **`stream`**.
+
+### Differenza concettuale
+
+- In **layer 7** (HTTP):
+  - Nginx termina le connessioni TCP dal client
+  - apre a sua volta connessioni verso i backend
+  - legge e interpreta la richiesta HTTP (es. path, header)
+  - può decidere il backend in base alla URI
+
+- In **layer 4** (stream):
+  - Nginx non interpreta il protocollo applicativo
+  - riceve una connessione TCP dal client
+  - ne apre una verso un backend
+  - inoltra byte da una parte all’altra (TCP forwarding)
+
+Il vantaggio del layer 4 è che **qualsiasi protocollo** sopra TCP (HTTP, WebSocket, SMTP,
+protocolli custom) viene trattato allo stesso modo.
+
+### Esempio di configurazione `stream`
+
+Configurazione come proxy TCP con bilanciamento round-robin tra i quattro backend:
+
+```nginx
+stream {
+    upstream all_backend {
+        server 127.0.0.1:2222;
+        server 127.0.0.1:3333;
+        server 127.0.0.1:4444;
+        server 127.0.0.1:5555;
+    }
+
+    server {
+        listen 80;
+        proxy_pass all_backend;
+    }
+}
+```
+
+Nel contesto `stream`:
+
+- non esistono `location`
+- non si può usare `proxy_pass http://...` con path
+- la scelta del backend avviene **per connessione**, non per singola richiesta HTTP
+
+Se un browser mantiene la stessa connessione TCP (tipico con HTTP/1.1 e keep-alive), tutte le
+richieste successive viaggeranno verso lo **stesso** backend finché la connessione rimane aperta.
+
+Questo si vede bene usando strumenti come `telnet` o `nc`: ogni nuova connessione TCP viene
+inoltrata in round-robin a un backend diverso.
+
+## Esporre Nginx su Internet e DNS
+
+Per rendere il server accessibile da Internet in modo controllato occorrono:
+
+- un **router** o firewall che faccia **port forwarding**
+- un **dominio** o hostname DNS che punti all’IP pubblico
+
+### Port forwarding su router
+
+Configurazione tipica:
+
+- inoltrare la porta **80** pubblica verso la porta **80** della macchina che esegue Nginx
+- inoltrare la porta **443** pubblica verso la porta **443** della stessa macchina
+
+In questo modo:
+
+- `http://<IP_pubblico>` → arriva a Nginx (porta 80)
+- `https://<IP_pubblico>` → arriva a Nginx (porta 443)
+
+Questa operazione espone il server su Internet ed è delicata: è essenziale assicurarsi che
+Nginx sia configurato in modo sicuro.
+
+### Hostname DNS
+
+Per evitare di usare direttamente l’IP pubblico si può registrare un hostname tramite un
+servizio DNS (anche dinamico), ad esempio:
+
+- `nginx-test.dns.net` → punta all’IP pubblico della connessione
+
+Una volta propagato il record DNS, `http://nginx-test.dns.net/` raggiunge lo stesso server
+raggiungibile tramite IP pubblico.
+
+## TLS con Let’s Encrypt e certbot
+
+Per abilitare **HTTPS** con un certificato valido si può usare **Let’s Encrypt** tramite
+**certbot**.
+
+### Flusso semplificato
+
+1. Installare `certbot` (ad esempio via Homebrew su macOS).
+2. Arrestare temporaneamente Nginx se si usa la modalità standalone.
+3. Eseguire `certbot` indicando il dominio (es. `nginx-test.dns.net`).
+4. Certbot contatta Let’s Encrypt, verifica il controllo sul dominio e genera:
+   - il **certificate chain** (pubblico)
+   - la **private key**
+5. I file vengono salvati tipicamente in `/etc/letsencrypt/live/<dominio>/`.
+6. Nginx viene riconfigurato per usare questi file nelle direttive SSL.
+
+### Configurazione SSL in Nginx
+
+Esempio semplificato di `server` HTTPS:
+
+```nginx
+http {
+    server {
+        listen 443 ssl http2;
+        server_name nginx-test.dns.net;
+
+        ssl_certificate     /etc/letsencrypt/live/nginx-test.dns.net/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/nginx-test.dns.net/privkey.pem;
+
+        location / {
+            proxy_pass http://all_backend;
+        }
+    }
+}
+```
+
+Punti chiave:
+
+- `listen 443 ssl http2`:
+  - `443`: porta standard HTTPS
+  - `ssl`: attiva il TLS
+  - `http2`: abilita il protocollo **HTTP/2**
+- `ssl_certificate`: catena di certificati (incluso il certificato del sito)
+- `ssl_certificate_key`: chiave privata corrispondente
+
+Se la configurazione è corretta, visitando `https://nginx-test.dns.net/` il browser mostrerà
+una connessione **sicura** con certificato valido emesso da Let’s Encrypt.
+
+## Abilitare esplicitamente TLS 1.3 e HTTP/2
+
+Di default molte installazioni Nginx abilitano **TLS 1.2** e, a seconda della versione, possono
+non attivare **TLS 1.3**.
+
+Per forzare l’uso di TLS 1.3 si può aggiungere:
+
+```nginx
+server {
+    listen 443 ssl http2;
+
+    ssl_protocols TLSv1.3;
+    # ssl_ciphers può essere personalizzato per forzare solo suite moderne
+}
+```
+
+Con `ssl_protocols TLSv1.3;`:
+
+- i client che supportano solo TLS 1.2 non riusciranno a connettersi
+- la connessione utilizzerà sempre TLS 1.3, con:
+  - handshake più rapido (meno round-trip)
+  - ciphersuite moderne (es. basate su Diffie-Hellman effimero)
+
+Per **HTTP/2** è sufficiente mantenere `http2` nel `listen`:
+
+```nginx
+listen 443 ssl http2;
+```
+
+I browser moderni negozieranno automaticamente HTTP/2 tramite ALPN quando possibile.
+
+## Riepilogo
+
+In questo articolo Nginx è stato visto in più ruoli:
+
+- **Web server statico**: `root`, `location`, regex e codici di ritorno
+- **Reverse proxy layer 7**: `upstream`, `proxy_pass`, round-robin, `ip_hash`, path-based routing
+  e blocco selettivo di `/admin`
+- **Proxy / load balancer layer 4**: contesto `stream` e forwarding TCP trasparente
+- **Terminazione TLS**: integrazione con Let’s Encrypt, configurazione di certificato e chiave,
+  abilitazione di **TLS 1.3** e **HTTP/2**
+
+Capire questi aspetti permette di leggere e progettare configurazioni Nginx con maggiore
+consapevolezza, scegliendo di volta in volta:
+
+- se lavorare a livello di **HTTP** (layer 7) o **TCP** (layer 4)
+- come distribuire il traffico tra più backend
+- come esporre in sicurezza il servizio verso Internet.
+
