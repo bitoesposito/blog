@@ -1,0 +1,169 @@
+---
+title: "Scalare Nginx e WebSocket: domande frequenti"
+description: "Perché un singolo Nginx può saturarsi, quando e come scalare orizzontalmente, e quanti backend servono per N client WebSocket"
+date: 2026-03-12
+tags: ['formazione', 'nginx', 'scaling', 'websocket', 'load-balancing']
+authors: ['vitoesposito']
+order: 14
+---
+
+## Introduzione
+
+Due domande ricorrenti quando si usa Nginx come reverse proxy e load balancer sono:
+
+- **Scalare Nginx**: come gestire il caso in cui il traffico supera la capacità di un singolo nodo Nginx e come fare **scaling orizzontale**.
+- **WebSocket e backend**: se N client stabiliscono connessioni WebSocket verso Nginx, servono **esattamente N server** in backend o se ne possono usare meno.
+
+In questo articolo si affrontano entrambi i temi in modo sintetico: prima il **perché** un singolo Nginx può andare in sovraccarico, poi **quando** e **come** scalarlo, infine il rapporto tra numero di client WebSocket e numero di backend.
+
+## Perché un singolo Nginx può andare in sovraccarico
+
+Nginx non è “solo” un inoltro di byte: per ogni connessione e per ogni richiesta svolge lavoro che consuma **memoria** e **CPU**.
+
+### Connessioni e memoria
+
+Ogni **connessione TCP** in ingresso occupa risorse sul box che esegue Nginx:
+
+- buffer e strutture dati per la connessione
+- stato della connessione (sequenze, finestre, ritrasmissioni)
+
+Più client si connettono, più connessioni attive e più memoria riservata. Il limite configurabile è legato a `worker_connections` e al numero di worker, ma oltre una certa soglia la singola macchina non regge.
+
+### Parsing delle richieste (layer 7)
+
+In contesto **HTTP** (layer 7), Nginx deve:
+
+- leggere lo **stream di byte** sulla connessione TCP
+- capire dove inizia e dove finisce una **richiesta HTTP** (riga di richiesta, header, body, delimitatori)
+- applicare la logica di **routing** e **load balancing**
+
+Questo parsing ha un costo in CPU. Con molte connessioni e molte richieste al secondo, il carico si somma.
+
+### Terminazione TLS
+
+Se Nginx **termina TLS** (certificato e chiave privata su Nginx):
+
+- per ogni connessione HTTPS deve gestire **handshake TLS** e **cifratura/decifratura**
+- vengono usate **chiavi di sessione** (simmetriche) e strutture collegate
+- il costo dipende da cifrari e dimensione dei blocchi (AES, ChaCha20, ecc.)
+
+Anche con cifrari efficienti, a scale elevate il carico TLS contribuisce in modo significativo al sovraccarico.
+
+### Load balancing e connessioni verso il backend
+
+Per ogni richiesta ricevuta, Nginx deve:
+
+- scegliere un **backend** (round-robin, ip_hash, least_conn, ecc.)
+- aprire o riusare una **connessione TCP** verso quel backend
+- **inviare** la richiesta e **attendere** la risposta
+- **inviare** la risposta al client
+
+Questo ciclo si ripete per ogni richiesta; con migliaia di richieste al secondo, la singola macchina può diventare il collo di bottiglia.
+
+In sintesi: un singolo Nginx può andare in sovraccarico per **numero di connessioni**, **parsing HTTP**, **TLS** e **carico di inoltro verso i backend**. Quando si superano i limiti della macchina (CPU, memoria, numero di file descriptor), serve **scalare**.
+
+## Quando scalare: prima ottimizzare, poi aggiungere nodi
+
+Prima di introdurre più istanze Nginx conviene:
+
+- capire **perché** il singolo nodo è sotto stress (CPU, memoria, I/O, TLS)
+- verificare se si può **ridurre il carico** (cache, compressione, ottimizzazione della configurazione)
+- valutare se un **upgrade verticale** (più CPU/RAM sulla stessa macchina) sia sufficiente
+
+Scalare orizzontalmente introduce **complessità** (più IP, DNS, failover, coerenza della configurazione). Conviene farlo quando si è certi che un singolo box non basta più anche dopo ottimizzazioni ragionevoli.
+
+## Come scalare Nginx orizzontalmente
+
+Si considerano qui gli approcci più comuni per distribuire il traffico su **più istanze** Nginx che condividono gli stessi backend (o gruppi di backend).
+
+### Due o più IP: il client conosce le istanze
+
+Approccio diretto:
+
+- **Nginx 1** su IP1, **Nginx 2** su IP2 (e eventualmente altri)
+- I **client** conoscono entrambi gli indirizzi (configurazione dell’app, URL multipli, ecc.)
+- Il **bilanciamento** tra Nginx1 e Nginx2 è fatto dal **client** (a quale IP connettersi)
+
+È semplice da spiegare e da mettere in piedi. Lo svantaggio è che la logica di scelta e di failover ricade sul client; non c’è un unico punto di ingresso “trasparente”.
+
+### DNS: un nome che risolve a più IP
+
+Si configura un **record DNS** (es. tipo A o AAAA) in modo che un **singolo nome** (es. `app.example.com`) risolva a **più indirizzi IP**:
+
+- il client fa una richiesta DNS e riceve due (o più) IP
+- il client sceglie uno degli IP per connettersi (in genere il primo, o in base a politiche del SO/resolver)
+- opzionalmente si usano **record geolocalizzati** o **DNS-based load balancing** per restituire IP diversi a seconda della provenienza (es. client in India → IP di un datacenter in India; client in California → IP in California)
+
+In questo modo:
+
+- si ha un **unico nome** da pubblicizzare
+- le istanze Nginx possono essere **geograficamente distribuite**
+- ogni regione può avere i propri backend (o repliche) e crescere in modo più isolato, a patto che l’applicazione sia **stateless** o che lo stato sia gestito in modo distribuito (database, cache, ecc.)
+
+### Virtual IP e VRRP (active-passive)
+
+Un altro approccio usa un **indirizzo IP virtuale** condiviso tra due (o più) macchine e il protocollo **VRRP** (Virtual Router Redundancy Protocol):
+
+- due macchine partecipano al **gruppo VRRP** e condividono lo **stesso IP virtuale**
+- una macchina è **attiva** (master), l’altra **passiva** (backup)
+- a livello di rete (ARP, MAC), le richieste dirette all’IP virtuale arrivano a entrambe le macchine, ma solo l’**attiva** risponde e processa il traffico
+- la **passiva** riceve i pacchetti ma li **scarta** finché non diventa attiva
+- in caso di guasto dell’attiva, la passiva diventa attiva e inizia a rispondere (failover)
+
+In questo modo si ottiene **alta disponibilità** (HA) con un solo IP pubblico: non si raddoppia il throughput, ma si evita il single point of failure. Per **bilanciamento attivo-attivo** su più IP si possono usare due gruppi VRRP (es. IP1 attivo su macchina A, IP2 attivo su macchina B) in modo che il traffico sia distribuito tra le due macchine.
+
+Strumenti come **Keepalived** implementano VRRP e sono spesso usati insieme a Nginx per questo tipo di setup.
+
+## Riepilogo sugli approcci di scaling
+
+| Approccio | Cosa fa | Pro | Contro |
+|-----------|---------|-----|--------|
+| Più IP, client li conosce | Client sceglie a quale Nginx connettersi | Semplice | Logica e failover sul client |
+| DNS con più A record | Un nome → più IP; client/resolver scelgono | Un solo nome, possibile geo-routing | Comportamento dipende da DNS e client |
+| Virtual IP + VRRP | Stesso IP su due macchine, una attiva | HA, un solo IP, failover automatico | Di base active-passive, non raddoppia la capacità |
+
+La scelta dipende da requisiti di **capacità**, **disponibilità** e **semplicità operativa**. In molti ambienti si combinano DNS con più record e, dove serve HA locale, VRRP.
+
+## WebSocket: servono N backend per N client?
+
+Domanda tipica: se **N client** stabiliscono una connessione WebSocket verso Nginx, servono **esattamente N server** in backend?
+
+Risposta breve: **no**. Il numero di backend necessari **non** è legato 1:1 al numero di client; dipende dal **tipo di carico** e dalle **risorse** di ogni backend.
+
+### Perché non 1:1
+
+Con un proxy **layer 4** (contesto `stream`):
+
+- ogni **connessione TCP** dal client a Nginx viene inoltrata a **uno e un solo** backend
+- non si può “spezzare” la stessa connessione su più backend (i segmenti TCP di una singola connessione devono andare allo stesso processo, altrimenti il protocollo si rompe)
+- quindi: **una connessione client → una connessione backend** dedicata
+
+Ma:
+
+- **più client** possono essere serviti dallo **stesso** backend: ogni backend può gestire **molte** connessioni WebSocket in parallelo
+- il numero di connessioni che un backend regge dipende da: CPU, memoria, I/O, tipo di messaggi (chat leggera vs elaborazione pesante)
+
+Quindi: **N client non implicano N backend**. Si può avere, ad esempio, 1000 client e 10 backend (in media 100 connessioni per backend), oppure 100 client e 2 backend, a seconda del carico per connessione.
+
+### Cosa determina quante connessioni regge un backend
+
+- **Carico per connessione**: una chat testuale è in genere **I/O bound** (poco CPU per messaggio); un backend può gestire molte connessioni. Un gioco che fa calcoli pesanti per ogni messaggio è più **CPU bound** e potrebbe richiedere più istanze.
+- **Memoria**: ogni connessione WebSocket tiene stato (buffer, eventuale sessione). Troppe connessioni su una sola macchina possono saturare la RAM.
+- **Throughput**: se ogni connessione invia/riceve molti messaggi al secondo, il backend può diventare il collo di bottiglia (CPU o rete).
+
+Non esiste una formula universale: servono **stime** e **prove** (load test, metriche su CPU/memoria/latenza) per dimensionare il numero di backend.
+
+### Sintesi pratica
+
+- **N client WebSocket** non richiedono **N backend**.
+- Un singolo backend può servire **molti** client, a patto che il carico (CPU, memoria, I/O) resti entro i limiti della macchina.
+- Il dimensionamento dipende da: tipo di applicazione (chat, gaming, feed), risorse per connessione e obiettivi di latenza e disponibilità.
+- Per alta disponibilità e capacità si aggiungono backend e si lascia che Nginx (L4 o L7) distribuisca le **nuove connessioni** tra di essi (round-robin o altro algoritmo). Le connessioni già stabilite restano legate allo stesso backend.
+
+## Conclusione
+
+- Un singolo Nginx può andare in sovraccarico per **connessioni**, **parsing HTTP**, **TLS** e **carico verso i backend**. Prima di scalare conviene **ottimizzare** e capire il collo di bottiglia.
+- Per **scalare Nginx** orizzontalmente si possono usare: più IP con client che scelgono, **DNS con più record A** (anche geo), **Virtual IP e VRRP** per HA active-passive.
+- Per i **WebSocket**, il numero di backend non deve essere uguale al numero di client: un backend può gestire molte connessioni; il dimensionamento dipende dal carico (CPU/memoria/I/O) e va validato con prove e metriche.
+
+Queste risposte offrono una base per ragionare su capacità, ridondanza e dimensionamento quando si usa Nginx come reverse proxy e load balancer.
