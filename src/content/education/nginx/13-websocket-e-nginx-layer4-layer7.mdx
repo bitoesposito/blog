@@ -1,0 +1,467 @@
+---
+title: "WebSocket e Nginx: layer 4, layer 7 e scaling"
+description: "Come funzionano i WebSocket, differenza tra proxy layer 4 e layer 7 in Nginx e strategie pratiche per scalare connessioni full‑duplex"
+date: 2026-03-11
+tags: ['formazione', 'nginx', 'websocket', 'reverse-proxy']
+authors: ['vitoesposito']
+order: 13
+---
+
+## Introduzione
+
+I **WebSocket** sono un protocollo pensato per la comunicazione **full‑duplex** tra client e server:
+una singola connessione TCP bidirezionale attraverso cui entrambe le parti possono inviare messaggi
+in qualunque momento.
+
+La loro popolarità nasce da due fattori:
+
+- compatibilità con l’**ecosistema HTTP** (upgrade dalla porta 80/443, supporto nei browser)
+- capacità di mantenere **connessioni persistenti** per chat, notifiche, feed in tempo reale, logging,
+  multiplayer leggero e simili
+
+Dal punto di vista dell’architettura, però, i WebSocket sono **stateful**: una volta stabilita la
+connessione, tutte le comunicazioni devono rimanere agganciate allo **stesso backend**. Questo rende
+la **scalabilità** più complessa rispetto a HTTP stateless.
+
+In questo articolo si vedono:
+
+- come funziona il protocollo WebSocket (handshake e messaggi)
+- la differenza tra **proxy layer 4** e **proxy layer 7** in Nginx
+- una semplice implementazione di server WebSocket in Node.js
+- esempi di configurazione Nginx per WebSocket in **stream (L4)** e **http (L7)**
+
+## Dal modello HTTP al modello WebSocket
+
+### HTTP/1.0: una connessione per ogni richiesta
+
+Nel modello originario di **HTTP/1.0** il flusso era:
+
+1. Il client apre una connessione TCP al server
+2. Invia una richiesta, ad esempio:
+   - `GET /index.html HTTP/1.0`
+3. Il server risponde con la pagina richiesta
+4. La connessione TCP viene **chiusa**
+
+Per ogni immagine, script o risorsa statica la pagina doveva aprire una **nuova connessione** TCP,
+con relativo handshake (eventuale handshake TLS incluso). Con le pagine moderne questo costo è
+diventato rapidamente insostenibile.
+
+### HTTP/1.1 e keep-alive
+
+Con **HTTP/1.1** è stato introdotto il meccanismo di **keep-alive**:
+
+- una singola connessione TCP può servire **più richieste/risposte**
+- si evita il continuo apri/chiudi di connessioni
+
+Il flusso tipico diventa:
+
+1. apertura connessione TCP
+2. richiesta `GET /index.html`
+3. risposta con HTML
+4. richiesta `GET /image1.png` sulla **stessa** connessione
+5. risposta con l’immagine
+6. … e così via, finché client o server decidono di chiudere
+
+Pur migliorando l’efficienza, il modello resta **request/response**: il server non può iniziare a
+mandare dati spontaneamente al client (a meno di pattern particolari come long‑polling o SSE).
+
+### WebSocket: connessione full‑duplex
+
+I WebSocket partono da una normale connessione HTTP/1.1 e la **“promuovono”** a canale full‑duplex.
+
+Caratteristiche principali:
+
+- un solo handshake HTTP per ogni connessione WebSocket
+- dopo l’upgrade, il canale non segue più le regole request/response
+- sia client sia server possono inviare messaggi in qualsiasi momento
+- il canale rimane aperto finché una delle due parti chiude
+
+Questo modello è ideale per:
+
+- **chat** bidirezionali
+- **feed** in tempo reale (notifiche, log, aggiornamenti)
+- **multiplayer leggero** (invio di input più che di flussi video pesanti)
+
+Il rovescio della medaglia è che ogni connessione WebSocket rappresenta una **sessione stateful**
+stabile tra client e backend.
+
+## Handshake WebSocket
+
+### Upgrade HTTP → WebSocket
+
+Un WebSocket inizia come una normale richiesta HTTP/1.1 con un header speciale di **upgrade**.
+
+Esempio semplificato di richiesta:
+
+```http
+GET /chat HTTP/1.1
+Host: example.com
+Connection: Upgrade
+Upgrade: websocket
+Sec-WebSocket-Key: <chiave-base64>
+Sec-WebSocket-Version: 13
+Origin: https://example.com
+Sec-WebSocket-Protocol: chat, superchat
+```
+
+Il client chiede esplicitamente al server di **cambiare protocollo** sulla stessa connessione TCP,
+da HTTP a WebSocket.
+
+Se il server accetta:
+
+```http
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: <valore-calcolato>
+Sec-WebSocket-Protocol: chat
+```
+
+Dopo il codice **101 Switching Protocols**:
+
+- la connessione **non** segue più il modello request/response di HTTP
+- diventa un canale di messaggi WebSocket con framing proprio
+
+Da questo momento ogni lato può:
+
+- inviare messaggi (testuali o binari)
+- riceverli
+- chiudere la connessione quando necessario
+
+## Use case tipici dei WebSocket
+
+Alcuni scenari classici:
+
+- **Chat**: messaggi brevi, bidirezionali, con latenza ridotta
+- **Feed live**: notifiche, stream di log, aggiornamenti di stato
+- **Dashboard real‑time**: grafici, metriche, alert
+- **Multiplayer leggero**: scambio di input e stato di gioco a bassa latenza
+
+Per flussi pesanti e tolleranti alla perdita (es. video in tempo reale), in genere è preferibile
+basarsi su **UDP/WebRTC** più che su WebSocket/TCP.
+
+## Layer 4 vs layer 7: cosa vede il proxy
+
+Per capire come Nginx gestisce i WebSocket è fondamentale distinguere tra:
+
+- **proxy layer 4** (contesto `stream`)
+- **proxy layer 7** (contesto `http`)
+
+### Cosa vede un proxy layer 4 (TCP)
+
+Al **layer 4** (TCP) il proxy vede:
+
+- **indirizzo IP sorgente** e **destinazione**
+- **porta sorgente** e **porta destinazione**
+- lo **stato** delle connessioni TCP (SYN, ACK, FIN, sequenze, ritrasmissioni)
+
+Non interpreta il payload applicativo:
+
+- può inoltrare i byte, ma **non conosce** HTTP, WebSocket, gRPC, ecc.
+- se il traffico è cifrato (es. TLS), vede solo byte opachi
+
+Un proxy layer 4 è quindi un **“tunnel TCP intelligente”**:
+
+- decide dove inoltrare la connessione
+- non guarda contenuto, header, path o messaggi WebSocket
+
+### Cosa vede un proxy layer 7 (HTTP)
+
+Al **layer 7** (contesto `http` in Nginx) il proxy:
+
+- termina la connessione TLS lato client
+- decifra il traffico HTTP
+- vede:
+  - **metodo** (`GET`, `POST`, ...)
+  - **path** (`/chat`, `/app`, `/admin`)
+  - **header HTTP**
+  - **body**
+
+Questo permette di:
+
+- instradare in base a **URI**, header, cookie, query string
+- applicare logica applicativa (filtrare, riscrivere, bloccare)
+- decidere dinamicamente il backend in base al contenuto
+
+Per i WebSocket, un proxy layer 7:
+
+- deve **gestire l’upgrade HTTP → WebSocket**
+- di fatto crea **due connessioni WebSocket**:
+  - una tra client e Nginx
+  - una tra Nginx e backend
+- ha la possibilità di **ispezionare e modificare** i messaggi (se supportato)
+
+## Server WebSocket minimale in Node.js
+
+Per gli esempi si usa un semplice server WebSocket in Node.js che:
+
+- ascolta su una porta specificata a riga di comando
+- risponde a ogni messaggio indicando la porta su cui è in ascolto
+
+Struttura:
+
+```text
+index.js
+package.json
+```
+
+`package.json` minimale:
+
+```json
+{
+  "name": "ws-demo",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "websocket": "^1.0.0"
+  }
+}
+```
+
+`index.js` (semplificato, concettuale):
+
+```javascript
+const http = require('http')
+const WebSocketServer = require('websocket').server
+
+const port = process.argv[2] || 8080
+
+const httpServer = http.createServer()
+httpServer.listen(port, () => {
+  console.log(`Listening on ${port}`)
+})
+
+const wsServer = new WebSocketServer({ httpServer })
+
+wsServer.on('request', request => {
+  const connection = request.accept(null, request.origin)
+
+  connection.on('message', message => {
+    const text = message.utf8Data
+    console.log(`Received: ${text} on ${port}`)
+
+    connection.send(`Received "${text}" on ${port}`)
+  })
+})
+```
+
+Avvio di più istanze:
+
+```bash
+node index.js 2222 &
+node index.js 3333 &
+node index.js 4444 &
+node index.js 5555 &
+```
+
+In questo modo si hanno **quattro backend** WebSocket distinti, utili per testare il load balancing.
+
+## Nginx come proxy WebSocket layer 4 (`stream`)
+
+Nel ruolo di **proxy layer 4**, Nginx:
+
+- lavora nel contesto `stream`
+- si limita a inoltrare connessioni TCP
+- non interpreta HTTP né WebSocket
+
+### Concetto di tunnel TCP
+
+Flusso semplificato:
+
+1. Il client apre una connessione TCP a Nginx (es. `ws://localhost:80`)
+2. Nginx seleziona un backend (es. `127.0.0.1:2222`) e apre una connessione TCP
+3. Tutti i byte ricevuti dal client vengono inoltrati al backend
+4. Tutti i byte dal backend vengono inoltrati al client
+5. La connessione è **dedicata**: finché è viva, quel client parla sempre con quello stesso backend
+
+Questo è vero indipendentemente dal protocollo:
+
+- HTTP semplice
+- HTTPS (TLS end‑to‑end tra client e backend)
+- WebSocket sopra HTTP o HTTPS
+
+### Esempio di configurazione `stream`
+
+```nginx
+stream {
+    upstream ws_backends {
+        server 127.0.0.1:2222;
+        server 127.0.0.1:3333;
+        server 127.0.0.1:4444;
+        server 127.0.0.1:5555;
+    }
+
+    server {
+        listen 80;
+        proxy_pass ws_backends;
+    }
+}
+```
+
+Caratteristiche:
+
+- ogni **nuova connessione TCP** in arrivo su `:80` viene bilanciata (round‑robin) verso uno dei
+  backend
+- una volta scelta la destinazione, la connessione resta **fissata** a quel backend
+- qualsiasi WebSocket aperto su quella connessione userà sempre lo stesso server
+
+Vantaggi:
+
+- implementazione semplice
+- compatibile con traffico cifrato end‑to‑end (TLS terminato direttamente sul backend)
+- Nginx non deve conoscere i dettagli del protocollo
+
+Limitazioni:
+
+- impossibile instradare per **path** (`/chat`, `/app`, ecc.)
+- impossibile applicare logica su header HTTP o payload dei messaggi
+- una porta frontale (es. 80) non può servire contemporaneamente HTTP e WebSocket in modo diverso
+
+## Nginx come proxy WebSocket layer 7 (`http`)
+
+Con un proxy **layer 7**, Nginx:
+
+- lavora nel contesto `http`
+- termina HTTP (e di solito TLS) lato client
+- gestisce l’upgrade WebSocket
+- crea una **seconda** connessione verso il backend (HTTP + upgrade)
+
+### Routing in base al path
+
+Scenario:
+
+- `GET /` → pagina HTML statica
+- `GET /ws-app` → WebSocket verso `app_backend`
+- `GET /ws-chat` → WebSocket verso `chat_backend`
+
+Configurazione di base:
+
+```nginx
+http {
+    upstream app_backend {
+        server 127.0.0.1:2222;
+        server 127.0.0.1:3333;
+    }
+
+    upstream chat_backend {
+        server 127.0.0.1:4444;
+        server 127.0.0.1:5555;
+    }
+
+    server {
+        listen 80;
+
+        # Homepage HTTP normale
+        location / {
+            root /percorso/alla/cartella;
+            index index.html;
+        }
+
+        # WebSocket "app"
+        location /ws-app {
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header Host $host;
+
+            proxy_pass http://app_backend;
+        }
+
+        # WebSocket "chat"
+        location /ws-chat {
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header Host $host;
+
+            proxy_pass http://chat_backend;
+        }
+    }
+}
+```
+
+Punti chiave:
+
+- `proxy_http_version 1.1` è necessario perché l’upgrade WebSocket richiede HTTP/1.1
+- `proxy_set_header Upgrade $http_upgrade` e `Connection "Upgrade"` ricreano gli header
+  necessari all’upgrade lato backend
+- `proxy_pass http://app_backend` e `proxy_pass http://chat_backend` indirizzano a gruppi
+  diversi di server in base al path
+
+Vantaggi:
+
+- possibilità di servire **HTTP e WebSocket sulla stessa porta** (es. 80 o 443)
+- routing avanzato in base a path, header, ecc.
+- possibilità di avere backend diversi per `/ws-app` e `/ws-chat`
+
+Limitazioni:
+
+- Nginx deve terminare HTTP (e spesso TLS), quindi non si ha più cifratura end‑to‑end trasparente
+  fino al backend
+- configurazione più articolata rispetto a un semplice tunnel L4
+
+## Scaling e stickiness delle connessioni WebSocket
+
+Le connessioni WebSocket sono **intrinsecamente stateful**:
+
+- una volta stabilita la connessione, il server mantiene stato associato (sessione, utente, stanza
+  di chat, ecc.)
+- non è possibile spostare “a caldo” una singola connessione da un backend a un altro senza
+  interromperla
+
+Conseguenze:
+
+- il **bilanciamento** avviene a livello di **connessione**, non di singolo messaggio
+- se servono N connessioni concorrenti, i backend devono poterle **sostenere in memoria**
+
+Strategie tipiche:
+
+- tenere lo stato più possibile fuori dal processo (database, cache, message broker)
+- usare il load balancer (L4 o L7) per distribuire le connessioni tra più istanze
+- in caso di vero bisogno di “sticky session”, usare:
+  - algoritmi come `ip_hash` (a livello HTTP)
+  - o identificatori di sessione nel protocollo, gestiti dall’applicazione
+
+## Quando usare L4 e quando L7 per WebSocket
+
+Sintesi pratica:
+
+- **Layer 4 (stream)**:
+  - ideale quando si vuole un **tunnel TCP generico**
+  - compatibile con cifratura **end‑to‑end** (TLS fino al backend)
+  - configurazione semplice, poche direttive
+  - nessun routing per path o header, nessuna ispezione del payload
+
+- **Layer 7 (http)**:
+  - necessario quando si vuole **condividere porta** tra HTTP e WebSocket
+  - indispensabile per instradare in base a **URI** (`/ws-app`, `/ws-chat`, `/admin`, …)
+  - consente logica applicativa (blocco di certi path, header, ecc.)
+  - richiede terminazione HTTP/TLS su Nginx
+
+La scelta dipende da:
+
+- requisiti di **sicurezza** (end‑to‑end vs TLS terminato dal proxy)
+- necessità di **routing avanzato**
+- semplicità desiderata nella configurazione
+
+## Conclusione
+
+I WebSocket sono uno strumento potente per abilitare funzionalità real‑time, ma introducono:
+
+- **stato di connessione** sul backend
+- esigenze specifiche di **bilanciamento** e **scaling**
+
+Nginx può supportare questo scenario:
+
+- come **proxy layer 4**, fungendo da tunnel TCP bilanciato per connessioni end‑to‑end
+- come **proxy layer 7**, terminando HTTP/TLS e gestendo l’upgrade WebSocket con routing avanzato
+
+Comprendere:
+
+- come avviene l’handshake
+- cosa vede il proxy a livello 4 e a livello 7
+- come vengono distribuite e mantenute le connessioni
+
+permette di progettare architetture più robuste per chat, dashboard real‑time e servizi che fanno
+un uso intensivo di WebSocket, scegliendo consapevolmente tra semplicità (L4) e flessibilità (L7).
+
