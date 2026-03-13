@@ -1,0 +1,236 @@
+---
+title: "Architettura interna di Nginx: processi, socket e connessioni"
+description: "Come Nginx gestisce processi worker, socket, code del kernel e connessioni HTTP/TCP, con cenni a sicurezza e alle scelte architetturali moderne"
+date: 2026-03-13
+tags: ['formazione', 'nginx', 'architettura', 'performance', 'sicurezza']
+authors: ['vitoesposito']
+order: 15
+---
+
+## Introduzione
+
+Per capire perché Nginx scala così bene come **web server** e **reverse proxy**, è fondamentale
+capire **come gestisce processi, socket e connessioni**.
+
+In questo articolo si vedono:
+
+- l’architettura a **processi master/worker**
+- come il kernel gestisce **socket**, **code SYN/ACCEPT** e **file descriptor**
+- come un worker elabora una **richiesta HTTP**
+- perché il modello a più worker ha **limiti** (es. connection pool separati) e come si stanno
+  evolvendo le architetture (es. Cloudflare Pingora)
+- una breve nota di **sicurezza** su malware che sfruttano Nginx come “contenitore” di codice malevolo
+
+## Processi master e worker in Nginx
+
+Quando si avvia Nginx, viene creato un **processo master** che:
+
+- legge il file di configurazione
+- crea eventuali processi “di servizio” (es. per la gestione della cache su disco)
+- crea uno o più **worker process**
+- monitora i worker e li riavvia in caso di crash
+
+I **worker process** sono quelli che:
+
+- accettano **connessioni** dai client
+- leggono e interpretano le **richieste HTTP**
+- inoltrano le richieste ai **backend** (reverse proxy / load balancing)
+- scrivono le **risposte** verso i client
+
+In modalità predefinita (`worker_processes auto;`), Nginx crea un numero di worker pari (o
+proporzionale) al numero di **core CPU** disponibili. L’idea è avere una buona corrispondenza tra:
+
+- un **worker** e
+- un **core** o thread hardware su cui il worker può girare in modo continuativo
+
+Questo approccio funziona molto bene finché:
+
+- il carico per worker è ragionevolmente bilanciato
+- le risorse condivise (es. connection pool verso i backend) non diventano un collo di bottiglia
+
+## Socket, connessioni e code del kernel
+
+Quando un worker “ascolta” su una porta (es. `listen 80;`), il kernel crea un **socket di ascolto**
+associato a:
+
+- un **indirizzo IP** (es. `127.0.0.1` o `0.0.0.0` per tutte le interfacce)
+- una **porta** (es. `80` per HTTP)
+
+Internamente, il kernel associa a quel socket due concetti fondamentali:
+
+- una **SYN queue** (coda per le connessioni in fase di handshake TCP)
+- una **ACCEPT queue** (coda per le connessioni che hanno completato l’handshake e sono pronte)
+
+### Handshake TCP e gestione delle code
+
+Flusso semplificato dell’**handshake a tre vie**:
+
+1. Il client invia un **SYN** verso l’IP/porta di Nginx.
+2. Il kernel riceve il SYN, verifica che esista un socket in **listen** su quell’IP/porta e
+   inserisce l’entry nella **SYN queue**.
+3. Il kernel risponde con **SYN-ACK**.
+4. Il client risponde con **ACK** finale.
+5. A questo punto la connessione è **stabilita**: il kernel sposta l’entry dalla SYN queue alla
+   **ACCEPT queue**.
+6. Un worker Nginx chiama `accept()` sul socket di ascolto:
+   - il kernel estrae una connessione dall’ACCEPT queue
+   - crea un **file descriptor** per quella connessione
+   - il worker ora ha un **FD dedicato** per leggere/scrivere su quella connessione
+
+Se un backend (processo Nginx) **non chiama `accept()` abbastanza velocemente**, la ACCEPT queue
+può **riempirsi**:
+
+- nuove connessioni non possono essere completate
+- i client vedono **time‑out** o errori di connessione
+
+Il parametro **backlog** (passato a `listen()` e configurabile anche da Nginx) controlla la dimensione
+delle code, ma non sostituisce una gestione efficiente delle accettazioni.
+
+### File descriptor e code di invio/ricezione
+
+Per ogni connessione accettata:
+
+- il kernel assegna un **file descriptor** (FD) al worker
+- vengono gestiti internamente buffer/codici di:
+  - **ricezione** (dati che arrivano dal client e attendono di essere letti)
+  - **invio** (dati che il worker ha scritto e devono essere inviati sulla rete)
+
+Il worker:
+
+- chiama `read()`/`recv()` per leggere dal buffer di ricezione
+- chiama `write()`/`send()` per scrivere nel buffer di invio
+
+Il kernel **non “spinge” direttamente** i dati al worker: si limita a segnalare che ci sono dati
+disponibili (es. via `epoll`, `kqueue`, ecc.) e spetta al worker leggerli.
+
+## Come un worker elabora una richiesta HTTP
+
+Supponiamo di avere due client connessi a due worker diversi:
+
+- Client A ↔ Worker 3
+- Client B ↔ Worker 4
+
+### Richiesta gestita da Worker 3
+
+Flusso semplificato:
+
+1. Il client A invia la richiesta HTTP (es. `GET /index.html HTTP/1.1`).
+2. I byte arrivano nel **buffer di ricezione** del kernel per quella connessione.
+3. Worker 3 viene notificato che il FD è leggibile e chiama `read()`.
+4. I dati vengono copiati dallo spazio kernel allo **spazio utente** del worker.
+5. Worker 3:
+   - decifra (se c’è TLS) e
+   - **parsa** il protocollo HTTP (metodo, path, header, ecc.)
+6. Se Nginx funge da:
+   - **web server**: legge il file da disco (es. `index.html`) o da cache e costruisce la risposta
+   - **reverse proxy**: inoltra la richiesta verso un **backend** (es. upstream HTTP)
+7. Worker 3 scrive la risposta HTTP sul FD della connessione.
+8. I byte vanno nel buffer di **invio**, il kernel li trasmette al client.
+
+Ogni passaggio è influenzato da:
+
+- versione HTTP (`1.0`, `1.1`, `2`, `3`)
+- presenza o meno di **TLS**
+- dimensione e frequenza delle richieste/risposte
+
+HTTP/2 e HTTP/3, ad esempio, richiedono parsing più complesso rispetto a HTTP/1.1.
+
+### Connessioni verso i backend e pooling
+
+Quando Nginx fa da **reverse proxy**, ogni worker stabilisce **connessioni verso i backend**:
+
+- in genere mantiene un **connection pool** di connessioni keep‑alive
+- per ogni richiesta:
+  - sceglie una connessione libera dal pool (o ne crea una nuova)
+  - invia la richiesta
+  - legge la risposta
+
+Un limite importante dell’architettura “storica” di Nginx è che:
+
+- ogni **worker** ha il **proprio pool** di connessioni verso gli upstream
+- i pool **non sono condivisi** tra i worker
+
+Conseguenze:
+
+- è possibile che un worker debba **aprire una nuova connessione** verso un backend pur avendone
+  altre libere ma “parcheggiate” nei pool di altri worker
+- a scale enormi (moltissimi worker, moltissime richieste) la gestione ottimale dei pool diventa
+  complessa
+
+## Oltre Nginx: esempio Cloudflare e Pingora
+
+Cloudflare ha usato Nginx per anni come:
+
+- **reverse proxy** frontale
+- **layer di caching**
+- **terminatore TLS** per enormi volumi di traffico
+
+Con il tempo sono emerse alcune **limitazioni architetturali** per il loro caso d’uso estremo:
+
+- impossibilità di **condividere facilmente** i connection pool verso gli upstream tra più processi
+  worker
+- difficoltà a implementare in modo pulito feature custom (retry sofisticati, policy di failover,
+  protocolli particolari) senza forzare troppo il modello di Nginx
+
+Per questo hanno scelto di sviluppare un proxy proprietario, **Pingora**, con caratteristiche come:
+
+- modello basato su **thread** invece che solo processi
+- **connection pool condivisi** tra tutti i thread
+- possibilità di implementare in modo più naturale:
+  - HTTP/2 e gRPC verso i backend
+  - logiche di retry e failover personalizzate
+
+Questo non rende Nginx “sbagliato”, ma mostra come alcune scelte architetturali (processi + pool
+isolati) funzionino molto bene fino a un certo livello, e poi richiedano una revisione quando i
+volumi e i requisiti diventano estremi.
+
+## Nota di sicurezza: malware e iniezione in Nginx
+
+Una comprensione chiara dell’architettura di Nginx è utile anche sul fronte **sicurezza**.
+
+Sono stati osservati malware (es. **“nginRAT”**) che:
+
+- si iniettano all’interno di un **processo Nginx legittimo**
+- sfruttano meccanismi come variabili d’ambiente (`LD_PRELOAD`) e debugging per caricarsi nello
+  spazio di processo di Nginx
+- una volta all’interno del worker, possono:
+  - leggere la stessa memoria del processo
+  - accedere a file di configurazione
+  - potenzialmente esfiltrare segreti (es. **chiavi private TLS**)
+
+In genere questi trojan richiedono **già** una compromissione preliminare (es. un RAT che scarica e
+carica il modulo malevolo). Se un attaccante può eseguire codice sul server:
+
+- è già in grado di fare danni gravi
+- usare Nginx come “contenitore” nascosto è un modo per **mimetizzarsi** tra processi legittimi
+
+Buone pratiche:
+
+- limitare i permessi del processo Nginx (utente dedicato, `chroot` dove possibile)
+- evitare di conservare chiavi sensibili in chiaro oltre il necessario
+- preferire configurazioni esplicite (es. `nginx -c /percorso/config`) e directory di configurazione
+  con permessi restrittivi
+- monitorare processi e binari per individuare anomalie
+
+## Conclusione
+
+L’architettura di Nginx si basa su pochi concetti chiave:
+
+- un **master** che coordina uno o più **worker**
+- worker che accettano connessioni da **code del kernel** (SYN/ACCEPT) e le trasformano in
+  **file descriptor**
+- una pipeline che parte dalla **connessione TCP**, passa per il **parsing HTTP**, e arriva a
+  **backend** e cache
+
+Capire questi meccanismi aiuta a:
+
+- leggere meglio la configurazione
+- diagnosticare **colli di bottiglia** (accettazione, parsing, TLS, backend)
+- valutare come e quando ha senso scalare, cambiare modello (processi vs thread) o introdurre
+  componenti personalizzati
+- ragionare in modo più consapevole sulle **superfici di attacco** (malware, injection, accesso a
+  chiavi e configurazioni)
+
+Questi concetti tornano ovunque si lavori con reverse proxy ad alte prestazioni, non solo con Nginx,
+ma anche con soluzioni moderne ispirate (o alternative) come Pingora, Envoy e simili.
+
