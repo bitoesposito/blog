@@ -1,10 +1,10 @@
-# llms.txt for blog.vitoesposito.it
+# llms.txt for vitoesposito.it
 
 ## About
 Blog personale di Vito Esposito dove scrive e condivide idee e pensieri sullo sviluppo software, design e altro.
 
 ## Site Information
-- **URL**: https://blog.vitoesposito.it
+- **URL**: https://vitoesposito.it
 - **Language**: Italian (it-IT)
 - **Author**: vitoesposito
 - **Description**: Blog personale in cui scrivo e condivido le mie idee e pensieri sullo sviluppo software, design e altro.

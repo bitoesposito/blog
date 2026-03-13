@@ -19,7 +19,7 @@ import { pluginLineNumbers } from '@expressive-code/plugin-line-numbers'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  site: 'https://blog.vitoesposito.it',
+  site: 'https://vitoesposito.it',
   trailingSlash: 'ignore',
   integrations: [
     expressiveCode({
@@ -80,7 +80,7 @@ export default defineConfig({
   server: {
     port: 1234,
     host: true,
-    allowedHosts: ['blog.vitoesposito.it', 'localhost', '0.0.0.0'],
+    allowedHosts: ['vitoesposito.it', 'localhost', '0.0.0.0'],
   },
   devToolbar: {
     enabled: false,
