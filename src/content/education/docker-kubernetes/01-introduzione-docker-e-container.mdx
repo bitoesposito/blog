@@ -1,0 +1,167 @@
+---
+title: "Introduzione a Docker e ai container"
+description: "Cosa sono i container, che problema risolvono e perché Docker è diventato lo standard per crearli e gestirli"
+date: 2026-03-13
+tags: ['formazione', 'docker', 'container']
+authors: ['vitoesposito']
+order: 1
+---
+
+## Cosa sono i container
+
+In ambito software un **container** è un’unità standardizzata che contiene:
+
+- **codice dell’applicazione**
+- **runtime** necessario (es. Node.js, Python, Java)
+- **tool e dipendenze** minime per eseguire quel codice
+
+L’idea chiave è che lo stesso container, eseguito su macOS, Windows o Linux (ovunque giri Docker o un
+runtime equivalente), si comporta **sempre allo stesso modo**. Non dipende più dalle versioni di
+runtime installate sulla macchina host, né dalla sua configurazione locale.
+
+Docker è il tool che ha reso pratica e diffusa questa idea:
+
+- fornisce un formato standard per descrivere e costruire container (**Dockerfile → image → container**)
+- espone un set di comandi semplici per **creare, eseguire, fermare e ispezionare** container
+- si appoggia a funzionalità offerte dal kernel (namespaces, cgroups, file system copy-on-write) per
+  garantire **isolamento** e gestione efficiente delle risorse
+
+## Analogìa: il cestino da pic-nic
+
+Una prima analogia utile è quella del **cestino da pic‑nic**:
+
+- contiene **tutto** ciò che serve per mangiare all’aperto: cibo, piatti, posate
+- puoi portarlo ovunque senza preoccuparti di cosa troverai sul posto
+- se lo presti a un amico, farà **lo stesso pic‑nic** (niente sorprese)
+
+Un container gioca lo stesso ruolo:
+
+- porta con sé **codice**, **runtime** e **strumenti** necessari
+- non dipende dal fatto che sulla macchina host sia installata la versione “giusta”
+- produce sempre lo stesso comportamento, se l’input è lo stesso
+
+## Analogìa: il container di spedizione
+
+Anche il container fisico da nave o camion è una buona metafora:
+
+- è un formato **standard** (dimensioni, punti di aggancio, modalità di carico)
+- contiene merci isolate dalle altre
+- può avere requisiti speciali (es. refrigerazione) incapsulati al suo interno
+- può essere spostato da una nave a un camion senza “spacchettare” il contenuto
+
+I container software sono simili:
+
+- hanno un **formato standard** (image → container)
+- isolano il contenuto (processi, file system, rete logica)
+- possono contenere ciò che serve per casi d’uso particolari (tool CLI, servizi interni, agent)
+- possono essere spostati tra host e ambienti diversi senza cambiare il contenuto
+
+## Perché servono davvero i container
+
+Gli esempi teorici sono utili, ma i container risolvono problemi molto concreti.
+
+### 1. Dev vs prod: “funziona sulla mia macchina”
+
+Scenario classico:
+
+- in sviluppo hai **Node.js 14.3**
+- in produzione il server ha ancora **Node.js 12**
+- usi una feature (es. `top-level await`) supportata solo da 14.3
+
+Risultato:
+
+- in locale tutto funziona
+- in produzione l’applicazione fallisce in modo spesso poco chiaro
+
+Con un container:
+
+- **blocchi la versione** di Node dentro l’immagine (es. `node:18-alpine`)
+- il codice gira **sempre** con quella versione, in sviluppo e in produzione
+- l’ambiente applicativo è **reproducibile** e portabile
+
+### 2. Ambienti diversi nello stesso team
+
+In un team è normale avere:
+
+- sviluppatori con versioni diverse di runtime e tool
+- macchine diverse (OS, configurazioni, path)
+
+Senza container:
+
+- si perdono tempo e concentrazione a “sincronizzare ambienti”
+- bug legati solo ad alcuni ambienti diventano difficili da riprodurre
+
+Con i container:
+
+- l’ambiente applicativo è descritto in un **Dockerfile**
+- tutti eseguono la **stessa immagine**
+- i problemi legati a versioni e configurazioni locali si riducono drasticamente
+
+### 3. Più progetti, versioni in conflitto
+
+Su una stessa macchina puoi avere:
+
+- un progetto che richiede **Python 2.x**
+- un altro che richiede **Python 3.x**
+- uno che usa **Node 12**, un altro **Node 20**
+
+Gestire tutto a livello di sistema operativo porta a:
+
+- uso di version manager multipli
+- comandi per “switchare versione” prima di cambiare progetto
+- rischio di errori se si dimentica di cambiare contesto
+
+Con i container:
+
+- ogni progetto porta con sé la **propria versione** del runtime
+- passare da un progetto all’altro significa **avviare un container diverso**
+- la macchina host resta più pulita e meno “carica” di runtime
+
+## Perché non basta una virtual machine
+
+Le **virtual machine (VM)** risolvono in parte lo stesso problema:
+
+- hai un sistema operativo “ospite” (guest) completo (es. Linux) che gira sopra l’host
+- puoi installare in quella VM tutto ciò che serve al progetto
+
+Funziona, ma ha limiti importanti:
+
+- ogni VM contiene **un intero sistema operativo**:
+  - occupa **molta memoria** e **molto spazio disco**
+  - avviare la VM richiede tempo (boot completo del sistema guest)
+- più VM in parallelo → più overhead
+- spesso si finisce a **duplicare** tante parti identiche (stesso OS, stessi tool)
+
+Con i container:
+
+- non si virtualizza l’intero sistema operativo
+- si sfrutta il kernel dell’host, isolando **processi**, **file system** e **rete**
+- le immagini sono molto più **leggere** e veloci da avviare rispetto a una VM
+
+Riassumendo:
+
+- VM: ottime quando serve un **sistema completo** separato (es. per test di OS diversi)
+- Container: ottimi quando serve isolare e rendere riproducibile un’**applicazione**
+
+## Docker come strumento per i container
+
+Docker non è l’unico modo per creare container, ma è diventato lo **standard di fatto** perché:
+
+- fornisce un **daemon** (Docker Engine) che gestisce:
+  - immagini
+  - container
+  - networking
+  - volumi
+- espone una **CLI** (`docker`) con comandi semplici e coerenti
+- definisce un formato di **image** e un modo dichiarativo per costruirle (**Dockerfile**)
+- integra un registry pubblico (**Docker Hub**) e supporta registry privati
+
+A livello pratico, nel lavoro quotidiano con Docker si usano tre concetti fondamentali:
+
+- **Dockerfile**: file di testo che descrive come costruire un’immagine
+- **image**: “stampino” immutabile da cui vengono creati i container
+- **container**: istanza in esecuzione di un’immagine
+
+Nei capitoli successivi questi concetti verranno approfonditi con esempi pratici, partendo
+dall’installazione di Docker e dall’esecuzione del **primo container**.
+
