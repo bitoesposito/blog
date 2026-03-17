@@ -1,0 +1,360 @@
+---
+title: "Dati, volumi e persistenza"
+description: "Tipi di dati in immagini e container, volumi nominati e anonimi, bind mount per lo sviluppo, variabili d'ambiente e build arguments"
+date: 2026-03-17
+tags: ['formazione', 'docker', 'volumi', 'persistenza']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Tre tipi di dati
+
+In immagini e container non esiste un unico tipo di dato. Distinguere tra **codice applicativo**, **dati temporanei** e **dati permanenti** è essenziale per capire quali strumenti usare e quali problemi si possono incontrare.
+
+### Codice applicativo e ambiente
+
+Il **codice sorgente** e l’**ambiente** in cui l’applicazione gira (runtime, dipendenze) sono aggiunti all’immagine in fase di **build** tramite il Dockerfile. Una volta costruita l’immagine, quel contenuto è **immutabile**: le immagini sono read-only.
+
+Questo è voluto. L’applicazione in esecuzione non deve modificare il proprio sorgente; tenerlo nell’immagine e in sola lettura è coerente con questo principio.
+
+### Dati temporanei
+
+I **dati temporanei** sono quelli prodotti a runtime (es. input utente in memoria, file di lavoro) che non devono sopravvivere allo spegnimento del container. Sono **read-write** e vivono nello **strato read-write** che Docker aggiunge al container sopra l’immagine.
+
+Docker combina il filesystem dell’immagine con le modifiche registrate in questo strato per ottenere il filesystem effettivo del container. I dati restano **dentro** il container; non sono sull’host.
+
+### Dati permanenti
+
+I **dati permanenti** (es. account utente, feedback salvati, database) devono **persistere** anche se il container viene fermato o rimosso. Sono anch’essi read-write, ma vanno conservati **fuori** dal container, tipicamente tramite **volumi**.
+
+Senza volumi, tutto ciò che il container scrive nel proprio filesystem viene perso alla rimozione del container.
+
+## App di esempio: feedback Node.js
+
+Per vedere in pratica i tre tipi di dati si può usare una piccola app Node.js che:
+
+- espone un form per inserire feedback
+- salva il feedback in un file temporaneo, poi lo copia in una cartella finale se il file non esiste già
+- usa cartelle `temp` (temporanea) e `feedback` (permanente)
+
+Struttura tipica:
+
+- `server.js`: server Express, gestione form e scrittura file
+- `pages/`: HTML serviti dal server
+- `public/`: file statici (es. CSS)
+- `temp/` e `feedback/`: inizialmente vuote, usate dall’app
+
+Dockerfile di base per dockerizzare l’app:
+
+```dockerfile
+FROM node:14
+WORKDIR /app
+
+COPY package.json .
+RUN npm install
+
+COPY . .
+
+EXPOSE 80
+CMD ["node", "server.js"]
+```
+
+Build ed esecuzione:
+
+```bash
+docker build -t feedback-node .
+docker run -d --rm -p 3000:80 --name feedback-app feedback-node
+```
+
+L’app è raggiungibile su `localhost:3000`. I file creati in `feedback/` esistono **solo dentro il container**; sulla macchina host la cartella locale `feedback` resta vuota perché non c’è alcun legame tra filesystem host e filesystem del container dopo la copia iniziale fatta in build.
+
+## Il problema: dati persi alla rimozione del container
+
+Se il container viene **fermato** e poi **riavviato** (stesso container), i file scritti nel container restano. Se invece il container viene **rimosso** (o creato con `--rm` e poi fermato), tutti i dati scritti nello strato read-write del container **vengono persi**.
+
+Un nuovo container dalla stessa immagine parte con un filesystem pulito: l’immagine non è stata modificata, quindi non contiene i file creati dal container precedente.
+
+In molti casi (aggiornamento codice, nuovo deploy, riavvio con `--rm`) i container vengono proprio **ricreati**. Senza un meccanismo di persistenza, i dati “permanenti” dell’applicazione andrebbero persi. La soluzione è usare **volumi**.
+
+## Volumi: concetto base
+
+I **volumi** in Docker sono **cartelle sull’host** (gestite o meno da Docker) che vengono **montate** (mappate) su percorsi **dentro il container**. Non sono una copia una tantum come `COPY`: c’è un **collegamento continuo** tra il percorso nel container e la cartella sull’host.
+
+- Scrittura nel percorso montato nel container → dati scritti sull’host.
+- I dati restano sull’host anche se il container viene rimosso.
+
+I volumi permettono quindi di **persistere** dati e, a seconda del tipo, di condividere o esporre cartelle dell’host al container.
+
+## Volumi anonimi vs volumi nominati
+
+Docker offre due tipi di volumi “gestiti” (creati e gestiti da Docker):
+
+| Tipo | Creazione | Sopravvive alla rimozione del container? | Uso tipico |
+|------|------------|-------------------------------------------|------------|
+| **Anonimo** | `VOLUME` nel Dockerfile o `-v /path/in/container` (senza nome) | No | Dati temporanei, oppure “bloccare” una sottocartella (es. `node_modules`) |
+| **Nominato** | `-v nome:/path/in/container` con un nome scelto da noi | Sì | Dati che devono persistere tra rimozioni/ricreazioni del container |
+
+Con i volumi anonimi Docker assegna un nome interno lungo e non leggibile; il volume è legato al container e viene rimosso quando il container viene rimosso (con `--rm` la rimozione avviene allo stop). Con i volumi **nominati** il volume è un oggetto separato: sopravvive allo stop e alla rimozione del container e può essere riusato da altri container.
+
+### VOLUME nel Dockerfile (anonimo)
+
+Nel Dockerfile si può dichiarare un percorso che sarà montato come volume:
+
+```dockerfile
+VOLUME ["/app/feedback"]
+```
+
+Questo crea un **volume anonimo** per quel percorso. Non si può dare un nome né specificare il percorso sull’host; Docker sceglie dove salvare i dati. In più, i volumi anonimi non sopravvivono alla rimozione del container, quindi da soli **non** risolvono il problema della persistenza dei dati “permanenti”.
+
+Per i dati che devono restare dopo la rimozione del container servono i **volumi nominati**, che si configurano solo a **runtime** con `docker run`.
+
+### Volumi nominati con `docker run`
+
+I volumi nominati si creano e si usano con l’opzione **`-v`** (o `--volume`) in `docker run`:
+
+```bash
+docker run -d --rm -p 3000:80 --name feedback-app \
+  -v feedback:/app/feedback \
+  feedback-node
+```
+
+Sintassi: **`nome_volume:percorso_nel_container`**.
+
+- `feedback`: nome del volume (Docker lo crea se non esiste).
+- `/app/feedback`: percorso nel container dove il volume è montato.
+
+Dopo `docker stop feedback-app` (e quindi la rimozione per `--rm`), il volume `feedback` resta. Rilanciando un nuovo container con lo stesso `-v feedback:/app/feedback`, i dati in `/app/feedback` sono ancora presenti.
+
+Verifica volumi:
+
+```bash
+docker volume ls
+docker volume inspect feedback
+```
+
+`inspect` mostra, tra l’altro, il **Mountpoint** sull’host (spesso dentro l’ambiente virtuale di Docker, non un percorso che si usa direttamente).
+
+### Nota sul codice: rename e volumi
+
+Se l’app usa `fs.rename()` per spostare un file da una cartella temporanea a quella finale (es. da `temp` a `feedback`), con un volume montato su `/app/feedback` può comparire l’errore **"cross-device link not permitted"**: il rename non funziona tra “dispositivi” diversi (filesystem del container vs volume).
+
+Soluzione: usare **copia + cancellazione** invece di rename:
+
+```javascript
+// Invece di fs.rename(tempFilePath, finalFilePath)
+await fs.promises.copyFile(tempFilePath, finalFilePath)
+await fs.promises.unlink(tempFilePath)
+```
+
+Poi si ricostruisce l’immagine per includere questa modifica.
+
+## Bind mount: condividere cartelle dell’host
+
+Oltre ai volumi gestiti da Docker esiste il **bind mount**: si mappa un **percorso noto sull’host** a un percorso nel container. È lo stesso meccanismo concettuale (cartella host ↔ percorso nel container), ma il percorso host lo sceglie chi esegue `docker run`.
+
+Sintassi con `-v`:
+
+```bash
+-v /percorso/assoluto/sulla/host:/percorso/nel/container
+```
+
+Esempio tipico in sviluppo: montare la cartella del progetto nell’`/app` del container così che le modifiche al codice siano subito visibili nel container senza rebuild:
+
+```bash
+docker run -d --rm -p 3000:80 --name feedback-app \
+  -v feedback:/app/feedback \
+  -v "C:\Users\...\progetto-feedback:/app" \
+  feedback-node
+```
+
+Sulla macchina host è necessario che Docker abbia accesso a quella cartella (su Docker Desktop: **Settings → Resources → File sharing**; su Windows con WSL2 spesso non serve configurare nulla; con Docker Toolbox va condivisa la cartella come da documentazione).
+
+### Bind mount e sovrascrittura di `/app`
+
+Montando l’intera cartella progetto su `/app`, il contenuto **dell’host** sostituisce quello che nel container era stato creato in build (incluso `node_modules` generato da `npm install`). Se sull’host non c’è `node_modules` (o è incompleto), l’app nel container può fallire con errori tipo "Cannot find module 'express'".
+
+Docker **non** sovrascrive le cartelle dell’host con il contenuto del container; in caso di “sovrapposizione” vince il mount: qui il bind mount su `/app` nasconde il contenuto originale di `/app` nel container, inclusi i `node_modules` installati in build.
+
+### Anonymous volume per proteggere `node_modules`
+
+Si può dire a Docker di usare un **volume separato** (anonimo) per una **sottocartella** più specifica. Docker applica la regola: **il percorso più lungo/specifico ha priorità**.
+
+Quindi:
+
+- bind mount: `... :/app` (intero progetto sull’host → `/app`)
+- anonymous volume: `/app/node_modules` (nessun nome prima dei due punti)
+
+Risultato: per `/app/node_modules` non viene usato il contenuto dell’host ma un volume (anonimo) che può essere popolato dal contenuto già presente nel container (quello creato con `npm install` in build). In questo modo `node_modules` resta quello dell’immagine e il bind mount su `/app` non lo sovrascrive.
+
+Esempio di `docker run` completo in sviluppo:
+
+```bash
+docker run -d --rm -p 3000:80 --name feedback-app \
+  -v feedback:/app/feedback \
+  -v /path/assoluto/progetto:/app \
+  -v /app/node_modules \
+  feedback-node
+```
+
+L’ultima riga `-v /app/node_modules` crea un volume anonimo per quella sottocartella. In questo scenario gli anonymous volume sono utili proprio per “escludere” `node_modules` dal bind mount.
+
+### Modifiche al codice e riavvio
+
+- Modifiche a **file HTML/CSS** (o altri asset serviti dal server): con il bind mount sono subito visibili al container; basta ricaricare la pagina.
+- Modifiche a **server.js** (o altro codice eseguito da Node): il processo Node ha già caricato il vecchio codice; per vedere le modifiche bisogna **riavviare il container** (o il solo processo server), non basta il reload del browser.
+
+In sviluppo si può usare **nodemon** per riavviare automaticamente il server al cambio dei file. In `package.json`:
+
+```json
+{
+  "scripts": {
+    "start": "nodemon server.js"
+  },
+  "devDependencies": {
+    "nodemon": "2.0.4"
+  }
+}
+```
+
+Nel Dockerfile il comando diventa:
+
+```dockerfile
+CMD ["npm", "start"]
+```
+
+Dopo `npm install` e rebuild, il container userà nodemon e le modifiche a `server.js` verranno applicate al prossimo restart automatico.
+
+**Nota per Windows/WSL2**: se le modifiche ai file non vengono rilevate da nodemon, conviene tenere il progetto nel **filesystem Linux** (WSL2) e non in quello Windows, così gli eventi di modifica file arrivano correttamente al container.
+
+## Volumi in sola lettura
+
+Per un bind mount usato solo per fornire codice all’app (es. `/app` in sviluppo), si può impedire che il **container** scriva in quella cartella montata, lasciando all’host la sola possibilità di modifica. Si aggiunge **`:ro`** (read-only) dopo il percorso nel container:
+
+```bash
+-v /path/host:/app:ro
+```
+
+Il container non potrà scrivere in `/app`. Se l’app deve comunque scrivere in sottocartelle (es. `temp`, `feedback`), queste vanno gestite con **altri** volumi (anonimi o nominati) su percorsi più specifici, ad esempio:
+
+- `-v feedback:/app/feedback` (nominato, read-write)
+- `-v /app/temp` (anonimo per i file temporanei)
+
+Le definizioni più specifiche (`/app/feedback`, `/app/temp`) hanno priorità sul mount generale `/app:ro`, quindi quelle cartelle restano scrivibili dal container.
+
+## Comandi per i volumi
+
+I volumi gestiti da Docker (anonimi e nominati) si gestiscono con `docker volume`:
+
+```bash
+docker volume ls                    # elenca i volumi
+docker volume create nome-volume    # crea un volume (opzionale; docker run lo crea se serve)
+docker volume inspect nome-volume  # dettagli (Mountpoint, opzioni, ecc.)
+docker volume rm nome-volume        # rimuove un volume (solo se non usato da container)
+docker volume prune                 # rimuove tutti i volumi non usati
+```
+
+I **bind mount** non compaiono in `docker volume ls` perché non sono volumi gestiti da Docker, ma percorsi dell’host.
+
+Rimuovere un volume elimina **tutti i dati** in esso contenuti. Creare di nuovo un volume con lo stesso nome non ripristina i dati precedenti.
+
+## Perché mantenere COPY nel Dockerfile
+
+Anche quando in sviluppo si usa un bind mount che monta l’intero progetto su `/app`, nel Dockerfile ha senso **mantenere** `COPY . .` (e la struttura con `COPY package.json` + `RUN npm install` + `COPY . .`).
+
+In **produzione** normalmente non si usa un bind mount verso i sorgenti dell’host: il container deve essere autonomo e basato su un’immagine che contiene già uno snapshot del codice. Quell’immagine si ottiene proprio con le istruzioni di COPY e RUN nel Dockerfile. Il bind mount è uno strumento per lo **sviluppo**; per i deploy si costruiscono immagini “complete” e si usano al massimo volumi (nominati) per i dati persistenti.
+
+## File .dockerignore
+
+L’istruzione `COPY . .` copia tutto il contesto di build (la cartella dove si lancia `docker build`) nell’immagine. Con **`.dockerignore`** si escludono file e cartelle da questa copia, in modo simile a `.gitignore` per Git.
+
+Esempio di contenuto:
+
+```
+node_modules
+Dockerfile
+.git
+```
+
+In questo modo:
+
+- una eventuale cartella `node_modules` sull’host non viene copiata nell’immagine (resta solo quella creata da `RUN npm install`);
+- Dockerfile e `.git` non entrano nell’immagine, riducendo contesto e dimensione.
+
+Si possono aggiungere altre voci (log, cache, file di ambiente locali, ecc.) che non servono per l’esecuzione dell’app nel container.
+
+## Variabili d’ambiente a runtime
+
+Le **variabili d’ambiente** sono disponibili nel processo in esecuzione nel container. Permettono di configurare l’applicazione senza modificare il codice né ricostruire l’immagine.
+
+### Dichiarazione nel Dockerfile
+
+Nel Dockerfile si possono dichiarare variabili con valori di default usando **ENV**:
+
+```dockerfile
+ENV PORT=80
+EXPOSE $PORT
+```
+
+`$PORT` viene sostituito da Docker in fase di build per le istruzioni che lo supportano (come `EXPOSE`). A runtime, l’applicazione può leggere `process.env.PORT` (in Node) o l’equivalente nel proprio linguaggio.
+
+### Impostazione a runtime
+
+Con **`-e`** (o **`--env`**) si sovrascrivono o si impostano variabili quando si avvia il container:
+
+```bash
+docker run -d --rm -p 3000:8000 -e PORT=8000 --name feedback-app feedback-node
+```
+
+L’app userà la porta 8000; la mappatura `-p 3000:8000` espone quella porta sull’host.
+
+Per molte variabili si può usare un file (es. `.env`) e passarlo con **`--env-file`**:
+
+```bash
+docker run -d --rm -p 3000:8000 --env-file .env --name feedback-app feedback-node
+```
+
+**Sicurezza**: non inserire segreti (password, chiavi) direttamente nel Dockerfile; finirebbero nell’immagine e sarebbero visibili con `docker history`. Meglio passarli solo a runtime con `-e` o `--env-file`, e non committare file con segreti nel repository.
+
+## Build arguments (ARG)
+
+Gli **ARG** sono variabili usate **solo durante il build** dell’immagine. Non sono disponibili a runtime nell’applicazione; servono per rendere il Dockerfile parametrizzabile.
+
+Esempio: valore di default per la porta da esporre, da usare in un’istruzione ENV:
+
+```dockerfile
+ARG DEFAULT_PORT=80
+ENV PORT=$DEFAULT_PORT
+EXPOSE $PORT
+```
+
+Valore di default 80; in build si può sovrascrivere con **`--build-arg`**:
+
+```bash
+docker build -t feedback-node:web-app .
+docker build -t feedback-node:dev --build-arg DEFAULT_PORT=8000 .
+```
+
+Si ottengono due immagini (tag diversi) con default di porta diversi, senza toccare il Dockerfile.
+
+**Posizionamento**: le istruzioni ARG e ENV aggiungono layer; se cambiano, tutti i layer successivi vengono ricostruiti. Conviene mettere ARG/ENV vicino alle istruzioni che li usano, per non invalidare inutilmente cache di layer precedenti (es. `RUN npm install`).
+
+## Riepilogo
+
+| Meccanismo | Scopo | Sopravvive alla rimozione container? | Percorso host |
+|------------|--------|---------------------------------------|---------------|
+| **Volume anonimo** | Dati temporanei; escludere sottocartelle da bind mount (es. `node_modules`) | No | Gestito da Docker |
+| **Volume nominato** | Dati persistenti (DB, file utente, feedback) | Sì | Gestito da Docker |
+| **Bind mount** | Condividere codice/cartelle note (es. sviluppo) | Sì (è una cartella host) | Scelto dall’utente |
+
+Sintassi `-v` a colpo d’occhio:
+
+- **Anonimo**: `-v /path/nel/container`
+- **Nominato**: `-v nome_volume:/path/nel/container`
+- **Bind mount**: `-v /path/assoluto/host:/path/nel/container` (opzionale `:ro`)
+
+In aggiunta:
+
+- **ENV** e **`-e` / `--env-file`** per configurare l’app a runtime.
+- **ARG** e **`--build-arg`** per parametrizzare il build dell’immagine.
+
+Questi strumenti permettono di gestire dati persistenti, sviluppo con codice aggiornato senza rebuild continui, e configurazione flessibile di immagini e container.
