@@ -1,0 +1,150 @@
+---
+title: "Networking tra container e accesso alle risorse"
+description: "Come funziona la comunicazione tra container, tra container e host, e verso il web in Docker"
+date: 2026-03-18
+tags: ['formazione', 'docker', 'networking', 'container']
+authors: ['vitoesposito']
+order: 5
+---
+
+## Perché il networking è un concetto chiave
+
+Con **networking in Docker** si intende il modo in cui un’app dentro un container:
+- trova una destinazione
+- stabilisce una connessione di rete
+- scambia dati (es. HTTP o protocolli di database)
+
+Dopo aver chiarito immagini e persistenza, questa è la base per collegare componenti reali: API, database e servizi.
+Qui vediamo quali sono gli scenari più comuni (web, host machine, container multipli) e come risolverli in modo affidabile.
+
+L’obiettivo è che tu sappia usare **`host.docker.internal`** per la macchina host e **reti Docker** per far comunicare container tra loro, evitando dipendenze da IP hardcodati.
+Alla fine del capitolo dovresti anche saper distinguere quando serve pubblicare porte con `-p` e quando no.
+
+## I tre scenari principali di comunicazione
+
+### Container → Web (API esterne)
+
+Se un’app in container invia richieste HTTP verso un sito o un’API esterna, in genere non serve alcuna configurazione extra.
+Dal punto di vista dell’app, la richiesta esce dal container verso Internet come qualsiasi altra richiesta di rete.
+
+Un caso comune è un’API Node in container che usa `axios` o `fetch` per chiamare un servizio pubblico.
+In questo scenario i nomi host (es. `swapi.dev`) sono risolti normalmente dal sistema di rete del container.
+
+### Container → Host machine (servizi locali)
+
+Un errore molto frequente è assumere che `localhost` nel container coincida con `localhost` dell’host.
+In realtà, `localhost` nel container punta al container stesso (o meglio: allo spazio di rete del container), non alla macchina host.
+
+Su macOS e Windows Docker fornisce un indirizzo speciale: **`host.docker.internal`**.
+Quando il codice nel container usa questo host, Docker lo traduce nell’indirizzo corretto dell’host visto dal container.
+
+Esempio: un container con un’app Node prova a connettersi a un database MongoDB installato direttamente sull’host.
+Con `host.docker.internal` la connessione torna a funzionare senza cambiare come Docker avvia il container.
+
+> Nota: su Linux la disponibilità di `host.docker.internal` può variare; in quel caso esistono alternative che dipendono dalla configurazione Docker.
+
+### Container → Container (servizi separati)
+
+Quando si spezza un’app in più container (best practice: “uno per compito”), serve un modo stabile per farli parlare tra loro.
+Qui entra in gioco il **networking tra container**, basato su:
+
+- una **rete Docker** comune
+- una risoluzione dei nomi che permette di raggiungere un servizio usando il suo **nome container**
+
+Invece di hardcodare un IP (che cambia), si usa un hostname come `mongodb` (che corrisponde al nome del container o del servizio).
+Docker si occupa di tradurre quel nome nell’IP corretto, ma solo per le connessioni che avvengono “dalla rete” del container.
+
+## Mental model: cosa risolve Docker e quando
+
+È utile separare due idee:
+
+1. **La configurazione dell’app** (stringhe come `MONGO_URL`, hostnames, porte) rimane nel codice.
+2. **La risoluzione del nome** avviene quando l’app effettua una connessione di rete.
+
+Quindi Docker non “riscrive” automaticamente il codice.
+Docker rende disponibili le informazioni di rete nel contesto del container (DNS interno e routing), e l’app usa quelle informazioni per raggiungere la destinazione.
+
+Se una richiesta non esce dal container (ad esempio resta nel browser) Docker non interviene.
+
+## Networking tra container con una rete Docker dedicata
+
+### 1. Creare la rete
+
+Docker non crea reti “custom” automaticamente.
+Se si vuole una rete condivisa tra più container, la si crea esplicitamente:
+
+```bash
+docker network create favorites-net
+```
+
+Per verificarla:
+
+```bash
+docker network ls
+```
+
+### 2. Avviare i container sulla stessa rete
+
+Quando avvii i container, la stessa rete deve essere specificata per entrambi.
+Esempio tipico:
+
+```bash
+docker run -d --name mongodb --network favorites-net mongo
+```
+
+e poi:
+
+```bash
+docker run -d --rm \
+  --name favorites \
+  --network favorites-net \
+  -p 3000:3000 favorites-node
+```
+
+Qui `-p 3000:3000` serve perché stiamo esponendo l’API verso l’host (o verso l’esterno).
+Il container `mongodb`, invece, è raggiunto solo da `favorites` dentro la rete, quindi non serve pubblicare porte.
+
+### 3. Usare il nome del container come hostname
+
+Se il container database si chiama `mongodb`, dal punto di vista di un container collegato alla stessa rete l’hostname `mongodb` risolve verso l’IP corretto.
+
+Nel codice l’app può quindi puntare a una URL del tipo:
+
+```text
+mongodb://mongodb:27017/favorites
+```
+
+Il vantaggio è che l’IP reale può cambiare senza rompere l’app: non serve rebuild legati all’IP.
+
+## Porte: quando serve `-p` e quando no
+
+- Se vuoi chiamare un servizio dal tuo computer (es. con Postman verso `localhost`), serve pubblicare una porta con `-p`.
+- Se un servizio è raggiunto solo da un altro container dentro la stessa rete Docker, di solito non serve `-p`.
+
+Questo dettaglio aiuta a ridurre esposizione non necessaria e semplifica la topologia.
+
+## Network drivers: quali opzioni esistono
+
+Le reti Docker possono usare diversi **driver**.
+Il driver predefinito è **`bridge`**, e nel contesto tipico dei progetti locali è quello più usato.
+
+Oltre a `bridge`, Docker supporta:
+
+- **`host`**: riduce l’isolamento tra container e host, e “condivide” in modo più diretto lo spazio di rete.
+- **`overlay`**: collega container distribuiti su più daemon Docker; di norma è legato a Swarm.
+- **`macvlan`**: permette di assegnare un indirizzo MAC custom, utile in scenari speciali dove il container deve sembrare una macchina “fisica” sulla LAN.
+- **`none`**: disabilita completamente la rete per un container.
+
+Per creare una rete con un driver specifico:
+
+```bash
+docker network create --driver bridge my-net
+```
+
+## Esercizi correlati
+
+1. Crea due container di test sulla stessa rete Docker e verifica che uno possa raggiungere l’altro usando il nome del container come hostname.
+2. Ripeti l’esperimento senza `--network` e osserva cosa cambia quando provi a contattare l’altro container.
+3. Prova a sostituire `mongodb` con `localhost` nel codice di connessione: identifica l’errore e spiegane la causa in termini di “localhost nel container”.
+4. Usa `host.docker.internal` per collegarti a un servizio dell’host (es. un endpoint HTTP o un database locale), e confronta il comportamento con un collegamento diretto.
+
