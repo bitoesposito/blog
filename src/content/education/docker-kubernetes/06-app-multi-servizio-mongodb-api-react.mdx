@@ -1,0 +1,342 @@
+---
+title: "App multi-servizio con Docker: MongoDB, API e React"
+description: "Sviluppo con tre container Docker collegati: persistenza, autenticazione MongoDB, networking e live reload"
+date: 2026-03-19
+tags: ['formazione', 'docker', 'mongodb', 'react', 'api']
+authors: ['vitoesposito']
+order: 6
+---
+
+## Perché costruire un’app multi-servizio
+
+Molte applicazioni reali non sono “un solo container, una sola cosa”.
+Spesso servono più servizi che collaborano: un **database**, un **backend**
+e un **frontend** che mostra la UI.
+
+Qui vediamo come mettere insieme questi blocchi in un ambiente di sviluppo
+con **Docker**, così da riutilizzare ciò che già funziona singolarmente
+(immagini, container, volumi e networking) in un setup unico e realistico.
+
+## Architettura della demo
+
+La demo usa tre building block, ognuno con responsabilità precise.
+
+### MongoDB (database)
+
+Serve per salvare i dati dell’app (es. “goals”).
+Dato che un container può essere fermato o ricreato, il database deve usare
+una persistenza fuori dal filesystem del container.
+
+### Backend Node.js (REST API)
+
+Espone endpoint che accettano e restituiscono dati in formato JSON.
+Inoltre scrive file di log: anche questa scrittura deve rimanere disponibile
+oltre la vita del container.
+
+### Frontend React (SPA nel browser)
+
+È una **single page application** servita da un development server.
+La logica di chiamata all’API avviene nel **browser**, quindi il networking
+tra container funziona in modo diverso rispetto al codice eseguito nel container.
+
+## Obiettivo di sviluppo
+
+Durante lo sviluppo servono tre comportamenti.
+
+1. **Persistenza dati**: i dati del database non devono sparire.
+2. **Scrittura sicura**: i log del backend devono sopravvivere alla rimozione
+   del container.
+3. **Live reload**: cambi al codice su host devono riflettersi automaticamente.
+
+Per ottenere tutto, useremo:
+
+- **volumi** per persistere dati
+- **bind mount** per riflettere modifiche al codice
+- **nodemon** per riavviare il backend quando cambia il file server.js/app.js
+- una **rete Docker** per far comunicare container tra loro in modo stabile
+
+## Servizio MongoDB: persistenza e autenticazione
+
+### Persistenza con volume nominato
+
+Quando MongoDB gira in un container, i dati stanno dentro filesystem del container.
+Senza un volume esterno, i dati spariscono se il container viene rimosso.
+
+Per questo si monta un **volume nominato** sul percorso interno usato dall’immagine
+MongoDB, in genere `/data/db`.
+
+Esempio di avvio (sviluppo):
+
+```bash
+docker volume create mongodb-data
+docker run -d --name mongodb --rm \
+  --network goals-net \
+  -v mongodb-data:/data/db \
+  -e MONGO_INITDB_ROOT_USERNAME=max \
+  -e MONGO_INITDB_ROOT_PASSWORD=secret \
+  mongo
+```
+
+### Autenticazione con env vars MongoDB
+
+Le immagini MongoDB supportano la creazione iniziale di un utente root tramite:
+
+- `MONGO_INITDB_ROOT_USERNAME`
+- `MONGO_INITDB_ROOT_PASSWORD`
+
+Una volta attiva l’autenticazione, il backend deve connettersi fornendo
+utente e password nella connection string.
+In caso di errori di accesso, serve anche verificare `authSource`.
+
+Nel formato usato tipicamente:
+
+```text
+mongodb://username:password@mongodb:27017/<db>?authSource=admin
+```
+
+Nota pratica: se la connection string usa credenziali diverse da quelle
+inizializzate nel container MongoDB, la connessione fallisce.
+Anche `authSource` deve essere coerente con l’utente creato.
+
+## Servizio Backend Node.js: Dockerfile, log e live reload
+
+### Dockerfile del backend
+
+Il backend è un’app Node.js/Express con porta interna `80`.
+In sviluppo conviene avviare con `nodemon` per riavviare automaticamente al change.
+
+Dockerfile finale (semplificato e orientato a sviluppo):
+
+```dockerfile
+FROM node:14
+WORKDIR /app
+
+COPY package.json .
+RUN npm install
+
+COPY . .
+
+EXPOSE 80
+CMD ["npm", "start"]
+```
+
+### package.json: nodemon e script start
+
+`nodemon` va aggiunto in `devDependencies` e lo script `start` deve usare nodemon.
+
+Esempio:
+
+```json
+{
+  "scripts": {
+    "start": "nodemon app.js"
+  },
+  "devDependencies": {
+    "nodemon": "2.0.4"
+  }
+}
+```
+
+Se i cambi al codice non vengono riflessi, significa che il processo Node non
+si sta riavviando: `nodemon` è la soluzione più diretta in questo contesto.
+
+### Volume per i log
+
+Il backend scrive file nella cartella `/app/logs` (dentro il container).
+Se non si persiste questa cartella su host, i log spariscono quando si ricrea il container.
+
+Uso consigliato: volume nominato sui log.
+
+```bash
+-v goals-logs:/app/logs
+```
+
+### Bind mount del codice + volume anonimo per node_modules
+
+Per aggiornare il backend senza rebuild dell’immagine, serve un bind mount sul codice.
+Però montare l’intero `/app` dall’host sovrascrive anche `node_modules` presenti nell’immagine.
+
+Per evitare che `node_modules` venga “cancellato” dal contenuto dell’host, si aggiunge un
+**anonymous volume** su `/app/node_modules` così da dare priorità al volume interno.
+
+Combinazione tipica:
+
+```bash
+-v "<PERCORSO_ASSOLUTO_BACKEND>:/app" \
+-v /app/node_modules \
+-v goals-logs:/app/logs
+```
+
+Il percorso assoluto varia dalla macchina: deve essere una cartella del progetto backend su host.
+
+### Variabili d’ambiente per MongoDB
+
+Codificare username e password nella connection string complica la manutenzione.
+In Docker conviene iniettare questi valori in runtime con `ENV` + `-e`.
+
+Nel Dockerfile si possono dichiarare default:
+
+```dockerfile
+ENV MONGODB_USERNAME=root
+ENV MONGODB_PASSWORD=secret
+```
+
+Nel codice Node si usa:
+
+```javascript
+const username = process.env.MONGODB_USERNAME
+const password = process.env.MONGODB_PASSWORD
+const mongoUrl = `mongodb://${username}:${password}@mongodb:27017/goals?authSource=admin`
+```
+
+Così l’app lavora con credenziali coerenti senza rebuild ogni volta.
+
+### docker run backend (development)
+
+Supponendo una rete Docker `goals-net` già creata:
+
+```bash
+docker run -d --name goals-backend --rm \
+  --network goals-net \
+  -p 80:80 \
+  -e MONGODB_USERNAME=max \
+  -e MONGODB_PASSWORD=secret \
+  -v goals-logs:/app/logs \
+  -v "<PERCORSO_ASSOLUTO_BACKEND>:/app" \
+  -v /app/node_modules \
+  goals-backend-image
+```
+
+Con questa configurazione:
+
+- il backend legge il codice aggiornato dall’host
+- `nodemon` riavvia quando cambia `app.js`/file server
+- i log rimangono disponibili
+- MongoDB è raggiunto come hostname `mongodb` dentro la rete Docker
+
+## Servizio Frontend React: Dockerfile e bind mount
+
+### Dockerfile del frontend
+
+Il frontend è una SPA servita da un development server.
+Anche qui si costruisce un’immagine partendo da Node, perché l’ecosistema React richiede strumenti JS.
+
+Dockerfile minimo di sviluppo:
+
+```dockerfile
+FROM node:14
+WORKDIR /app
+
+COPY package.json .
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+### Perché serve `-it` con questo setup React
+
+In alcuni template, il server di sviluppo si ferma se non riceve input sul terminale.
+In questi casi si usa `docker run -it` per mantenere il processo vivo.
+
+Questa scelta non riguarda il “routing” o il networking, ma la modalità di esecuzione del processo dev server.
+
+### Bind mount del codice frontend
+
+Per avere live reload, si monta sul container la cartella sorgenti del frontend (es. `src/`).
+In questo modo `node_modules` non viene sovrascritto e non serve aggiungere una gestione extra come per il backend.
+
+Esempio (bind mount della cartella `src`):
+
+```bash
+docker run -d -it --name goals-frontend --rm \
+  -p 3000:3000 \
+  -v "<PERCORSO_ASSOLUTO_FRONTEND_SRC>:/app/src" \
+  goals-frontend-image
+```
+
+Dopo aver modificato un componente React, il browser mostra subito la variazione dopo la ricostruzione del bundle.
+
+## Networking pragmatico: rete Docker e pitfall del browser
+
+### Rete Docker per container-to-container
+
+Per far comunicare MongoDB e backend in modo stabile, si usa una rete dedicata.
+
+1. Creazione:
+
+```bash
+docker network create goals-net
+```
+
+2. Avvio dei container sulla rete:
+
+- MongoDB: `--network goals-net`
+- Backend: `--network goals-net`
+
+In questa configurazione il backend raggiunge MongoDB con l’hostname `mongodb`,
+senza dover conoscere IP e senza pubblicare porte al host.
+
+### Pubblicare porte: quando serve `-p`
+
+`-p` ha un significato: rendere una porta del container disponibile all’host e quindi al browser,
+a strumenti locali e a client esterni.
+
+MongoDB spesso non necessita di `-p` dentro la rete.
+Il backend invece deve essere raggiungibile dal frontend quando le chiamate arrivano dal browser.
+
+### Pitfall: container names non risolvono nel browser
+
+Quando la SPA React gira nel browser, il codice che chiama l’API è eseguito lato client.
+Docker non interviene nel browser: un hostname come `goals-backend` non viene risolto dal DNS del browser.
+
+Il risultato tipico è un errore del tipo “name not resolved” o “connection refused”.
+
+La mitigazione in questo contesto è:
+
+- pubblicare la porta del backend sull’host (es. `-p 80:80`)
+- usare come URL nell’app React l’indirizzo `http://localhost/...`
+
+In altre architetture (proxy, reverse proxy, build-time env per base URL) si può automatizzare la gestione,
+ma per questa demo lo scenario “semplice e corretto” è quello con `localhost` + porta pubblica.
+
+## Ottimizzare l’immagine: .dockerignore
+
+In sviluppo conviene ridurre i tempi di build evitando di copiare cartelle inutili.
+Il problema più comune è copiare `node_modules` dall’host nell’immagine, anche quando vengono già installati via `npm install` dentro Docker.
+
+Un `.dockerignore` tipico:
+
+```
+node_modules
+.git
+Dockerfile
+```
+
+Con questo filtro l’immagine viene buildata più velocemente e contiene solo dipendenze coerenti con l’ambiente Docker.
+
+## Migliorare l’esperienza di sviluppo
+
+Questo setup risolve i problemi chiave (persistenza, comunicazione e live reload),
+ma richiede più comandi `docker run` e alcune opzioni da ricordare.
+
+Ogni container ha:
+
+- volumi specifici
+- bind mount mirati
+- settaggi env
+- networking e porte dedicate
+
+In seguito, l’obiettivo diventa semplificare la creazione di tutto il progetto multi-servizio con un singolo comando
+e ridurre il rischio di avviare container con configurazione incompleta.
+
+## Esercizi correlati
+
+1. Avvia la rete `goals-net` e verifica che il backend raggiunga MongoDB usando `mongodb` come hostname.
+2. Cambia `-p` del backend e osserva cosa succede alle chiamate della SPA React.
+3. Elimina un volume dei log e verifica che i file di log non siano più presenti.
+4. Modifica una route nel backend e verifica che `nodemon` riavvii il server dentro al container.
+5. Prova a montare l’intera cartella backend su `/app` senza `-v /app/node_modules` e osserva l’errore di dipendenze mancanti.
+
