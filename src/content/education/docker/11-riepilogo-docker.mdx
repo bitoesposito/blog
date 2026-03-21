@@ -1,0 +1,99 @@
+---
+title: "Riepilogo: concetti core di Docker"
+description: "Immagini e container, volumi e reti, Compose, uso locale vs deploy e trade-off tra controllo e servizi gestiti"
+date: 2026-03-30
+tags: ['formazione', 'docker', 'riepilogo']
+authors: ['vitoesposito']
+order: 11
+---
+
+## Scopo di questo capitolo
+
+Questo capitolo **riassume** le idee principali del percorso su **Docker** e **container**: cosa sono, come si usano in locale, cosa cambia in **deploy**, quali strumenti ricorrere. Utile come punto di verifica prima di approfondimenti successivi o altri argomenti infrastrutturali.
+
+## Due pilastri: immagini e container
+
+### Container
+
+Un **container** è un ambiente **isolato** che esegue un processo (o un insieme strettamente coordinato) con **codice** e **runtime** necessari. La pratica consigliata è **un compito principale per container** (es. un web server, un database, un worker): container piccoli e focalizzati sono più semplici da ragionare, aggiornare e ripetere.
+
+I container possono **scrivere** dati nel proprio filesystem, ma quel filesystem, salvo uso di **volumi**, è in genere legato alla vita del container: alla **rimozione** del container i dati nello strato read-write vanno persi. Da qui l’associazione informale a comportamento **stateless** a livello di storage, mitigato dai volumi.
+
+### Immagini
+
+Le **immagini** sono **template immutabili** (read-only): descrivono filesystem e metadati (es. comando predefinito). Non “girano” da sole; da un’immagine si creano uno o più **container**, ciascuno con il proprio strato read-write sopra l’immagine. Le modifiche runtime **non** riscrivono l’immagine.
+
+Le immagini si costruiscono con un **Dockerfile** (istruzioni a **layer**, con **cache**) oppure si **scaricano** da un **registry** (es. Docker Hub), dove comunque qualcuno le ha buildate a partire da un Dockerfile o da pipeline equivalenti.
+
+## Comandi fondamentali
+
+| Comando | Ruolo |
+|---------|--------|
+| **`docker build`** | Costruisce un’immagine dal Dockerfile; il **contesto** è la cartella (path finale del comando) da cui partono `COPY` / contesto di build |
+| **`docker run`** | Avvia un container da un’immagine; opzioni ricorrenti: `--name`, `-d`, `--rm`, `-p`, `-v`, `-e`, `--network` |
+| **`docker tag`** | Assegna un nome/tag compatibile col registry prima del push |
+| **`docker push` / `docker pull`** | Pubblica o scarica immagini; su Docker Hub il nome è spesso `utente/repository:tag` |
+
+Il **tag** permette di versionare la stessa “linea” di immagine (es. `node:18` vs `node:20`).
+
+## Dati: bind mount, volumi nominati e anonimi
+
+| Meccanismo | Percorso host | Uso tipico |
+|------------|---------------|------------|
+| **Bind mount** | Noto (si sceglie la cartella) | Sviluppo: codice e config aggiornati sull’host visibili nel container |
+| **Volume nominato** | Gestito da Docker (path opaco) | Persistenza: dati che devono sopravvivere alla rimozione/ricreazione del container |
+| **Volume anonimo** | Come sopra, senza nome stabile | Escludere sottocartelle dal bind mount (es. `node_modules`), o dati temporanei legati al container |
+
+In **produzione** su host remoti i **bind mount** verso cartelle di sviluppo locale **non** sono adatti: l’immagine dovrebbe contenere (o recuperare in modo controllato) ciò che serve, tipicamente tramite **`COPY`** in build o volumi gestiti dal provider.
+
+## Reti e comunicazione tra container
+
+I container sono **isolati** per default. Per parlare tra loro senza hardcodare **IP** (che cambiano), si usa una **rete Docker** condivisa: sulla stessa rete, il **nome del container** (o del servizio in Compose) funziona come **hostname** risolto dal DNS interno di Docker.
+
+Il traffico verso l’esterno (es. API pubbliche) richiede in genere meno configurazione rispetto al solo traffico tra container sulla stessa macchina.
+
+## Docker Compose
+
+**Docker Compose** descrive in un file (es. `docker-compose.yml`) più **servizi**, porte, volumi, variabili d’ambiente e reti. **`docker compose up`** avvia lo stack; **`docker compose down`** lo ferma e rimuove le risorse create secondo la definizione.
+
+È particolarmente utile per **progetti multi-container** in locale e per evitare comandi `docker run` lunghissimi. Per il **deploy in cloud** il file Compose raramente basta da solo: i provider gestiti richiedono metadati aggiuntivi (risorse, bilanciamento, identità, policy).
+
+## Due contesti d’uso: locale e remoto
+
+### Sul proprio computer (sviluppo)
+
+Docker offre ambienti **riproducibili** e **isolati** tra progetti (versioni diverse di runtime, dipendenze, porte). Molti team usano Docker **solo** in sviluppo, senza deploy containerizzato: resta comunque un valore forte.
+
+### Su host remoti (deploy)
+
+Gli stessi principi valgono: ciò che funziona nel container in locale può funzionare sul server **se** l’immagine è coerente e la configurazione di rete/secrets è corretta. Aggiornare spesso significa **sostituire** il container con uno nuovo basato su un’immagine aggiornata (pipeline di build → registry → pull/run o automazione sul provider).
+
+## Deploy: punti da ricordare
+
+- **Niente bind mount “da laptop”** in produzione: l’app deve poter partire solo dall’immagine (e da config/secrets inject a runtime).
+- **Progetti grandi o multi-container** possono richiedere **più macchine** o servizi gestiti; `docker run` e Compose da soli non scalano automaticamente su più host senza ulteriori strumenti.
+- **Multi-stage build**: utile quando serve una fase di **build** (es. frontend) e un’immagine finale minimale che serve solo gli artefatti (es. static files + Nginx).
+- **Database**: in produzione si valutano spesso **servizi gestiti** (backup, HA, patching) inoltre o al posto di un solo container DB autocostruito, salvo competenze operative dedicate.
+
+## Trade-off: controllo vs servizio gestito
+
+| Approccio | Controllo | Responsabilità |
+|-----------|-----------|----------------|
+| **VM propria + Docker installato** | Massimo | OS, firewall, patch, monitoring, sicurezza |
+| **Piattaforma gestita** (es. ECS, servizi analoghi) | Minore | Molta operatività delegata al provider; regole e costi specifici |
+
+Per molti team di sviluppo, un servizio **gestito** riduce il carico operativo; chi ha competenze di **amministrazione** e **cloud** può preferire il controllo fine su VM e rete.
+
+## Dopo questo percorso
+
+Quando carico, disponibilità e numero di host crescono, Docker sul singolo nodo lascia spesso il passo a **piattaforme di orchestrazione** e pipeline dedicate: le competenze acquisite su immagini, reti, volumi e limiti di Compose restano la base per capire qualunque ambiente che esegua container.
+
+Se qualche punto di questo riepilogo non è chiaro, conviene rileggere il capitolo dedicato (volumi, networking, Compose, deploy).
+
+## Esercizi di consolidamento
+
+1. Spiegare a voce la differenza tra **immagine** e **container** e perché l’immagine non cambia quando il container scrive file.
+2. Scrivere un esempio minimo di `docker run` con `-p`, `--name` e volume **nominato**.
+3. Elencare quando usare **bind mount** vs **volume nominato** in sviluppo.
+4. Disegnare (anche su carta) tre container sulla stessa **rete Docker** con nomi usati come hostname.
+5. Elencare tre motivi per cui in produzione si evitano bind mount verso il proprio progetto locale.

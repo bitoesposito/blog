@@ -1,0 +1,34 @@
+---
+title: "Docker e container"
+description: "Diario di apprendimento su container, immagini Docker, networking, volumi, Compose e deploy"
+date: 2026-03-13
+tags: ['formazione', 'docker', 'container']
+authors: ['vitoesposito']
+---
+
+## Perché studiare Docker
+
+Applicazioni moderne significano ambienti complessi: più servizi, linguaggi diversi, dipendenze che cambiano, ambienti di sviluppo e produzione che raramente coincidono.
+
+**Docker** e i **container** servono a creare unità standardizzate che includono **codice, runtime e tool necessari**, così che l’applicazione si comporti nello stesso modo ovunque venga eseguita, dalla macchina di sviluppo al server.
+
+Il percorso copre il ciclo completo che interessa nella pratica quotidiana: **immagini e Dockerfile**, **esecuzione e configurazione** dei container, **dati e volumi**, **reti** tra servizi, **Docker Compose** per progetti multi-container, pattern come gli **utility container**, esempi applicativi (Node, React, stack PHP/Laravel) e infine **deploy** su host remoti e piattaforme gestite, con i relativi trade-off tra controllo e responsabilità operativa.
+
+## Obiettivo del percorso
+
+Questo percorso raccoglie appunti strutturati per:
+
+- comprendere cosa sono **container** e **immagini** e come si relazionano
+- confrontare container e **virtual machine** dove utile
+- saper **costruire** immagini, **eseguire** container e usarne le principali opzioni (`-p`, volumi, reti, variabili d’ambiente)
+- gestire **persistenza** e **condivisione di codice** in sviluppo senza compromettere immagini di produzione
+- orchestrare più servizi in locale con **Compose**
+- orientarsi nel **deploy** (registry, sicurezza di rete, servizi cloud, database gestiti, build multi-stage per frontend)
+
+L’obiettivo è usare **Docker** in modo consapevole nei progetti reali, sia **solo in sviluppo** sia fino alla messa in esercizio in ambiente remoto.
+
+## Struttura del diario
+
+I capitoli sono **sub-post** dedicati a singoli temi (installazione, immagini, volumi, networking, app multi-servizio, Compose, utility container, esempi avanzati, deploy, riepilogo).
+
+Ogni articolo può essere letto da solo; in sequenza costruiscono una visione progressiva di Docker e dei container.
