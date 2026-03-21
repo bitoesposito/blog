@@ -1,0 +1,168 @@
+---
+title: "Utility container: ambiente senza applicazione avviata"
+description: "Container usati come ambiente per eseguire comandi (npm, PHP, ecc.) con bind mount, ENTRYPOINT, exec e docker compose run"
+date: 2026-03-23
+tags: ['formazione', 'docker', 'utility-container', 'compose']
+authors: ['vitoesposito']
+order: 8
+---
+
+## Cosa si intende per utility container
+
+**Utility container** non è un termine ufficiale nella documentazione Docker. Serve qui per descrivere un uso ricorrente: un container che **non** avvia un’applicazione long-running (API, frontend, database), ma fornisce un **ambiente** (runtime, tool) con cui si esegue **un comando** scelto al momento, spesso in combinazione con un **bind mount** verso una cartella del progetto sull’host.
+
+Fino a questo punto il focus è stato su **container applicativi**: immagine costruita con Dockerfile, avvio con `docker run` o Compose, processo principale che resta in esecuzione. Resta il caso d’uso centrale di Docker.
+
+In parallelo, lo stesso motore può essere usato per **automatizzare task** (scaffolding, install dipendenze, CLI) **senza installare** Node, npm, PHP, Composer, ecc. globalmente sulla macchina host.
+
+## Il problema che risolvono
+
+Molti linguaggi richiedono tool per **creare** un progetto (`npm init`, generatori Laravel, ecc.). Senza Docker, quei tool vanno installati sull’host. Con un utility container si esegue lo stesso comando **dentro** un’immagine che già contiene l’ambiente.
+
+Il vantaggio è particolare quando lo stack locale sarebbe pesante (PHP, estensioni, versioni multiple). Anche per Node, il pattern resta utile per uniformare versioni e ridurre dipendenze sull’host.
+
+## `docker run` con immagine Node: modalità interattiva
+
+L’immagine ufficiale **node** può avviarsi in modalità interattiva (`-it`): il processo predefinito espone una shell REPL di Node. Senza `-it`, il container può uscire subito.
+
+Uscita tipica: **Ctrl+C** (a volte due volte) termina il processo e il container si ferma.
+
+## `docker exec` su un container in esecuzione
+
+**`docker exec`** esegue un comando **aggiuntivo** in un container **già in eseguzione**, senza sostituire il processo principale definito da `CMD` / `ENTRYPOINT`.
+
+Sintassi base:
+
+```bash
+docker exec -it NOME_CONTAINER npm init
+```
+
+Senza **`-i`** e **`-t`**, comandi che richiedono input (come `npm init` interattivo) possono terminare subito o non ricevere input dal terminale.
+
+Esempio d’uso: ispezionare file, leggere log, lanciare una shell di debug mentre l’app principale continua a girare.
+
+## Sovrascrivere il comando di avvio: argomenti dopo il nome immagine
+
+Con **`docker run`**, tutto ciò che segue il **nome dell’immagine** sostituisce il **`CMD`** predefinito dell’immagine (se non c’è `ENTRYPOINT` che lo modifica).
+
+Esempio concettuale:
+
+```bash
+docker run -it -v "<PERCORSO_PROGETTO>:/app" -w /app node:14-alpine npm init
+```
+
+Qui non si avvia la REPL di Node: si esegue **`npm init`**. Al termine, il processo finisce e il container **si arresta**.
+
+Questa sintassi è la chiave per i task “una tantum” dentro un ambiente containerizzato.
+
+## Dockerfile minimale per utility image
+
+Un’immagine dedicata può essere molto snella:
+
+```dockerfile
+FROM node:14-alpine
+WORKDIR /app
+```
+
+Nessun `CMD` obbligatorio: il comando viene passato a `docker run` (o tramite Compose). **`WORKDIR /app`** fa sì che i comandi partano da quella directory, coerente con il bind mount su `/app`.
+
+Build ed esecuzione:
+
+```bash
+docker build -t node-util .
+docker run -it --rm -v "<PERCORSO_ASSOLUTO_CARTELLA>:/app" node-util npm init
+```
+
+Con **`--rm`** il container viene rimosso alla fine del comando, evitando accumulo di container fermi.
+
+Il **bind mount** fa sì che `package.json` creato nel container appaia nella cartella del progetto sull’host.
+
+## `ENTRYPOINT` vs `CMD`: comando fisso e argomenti aggiunti
+
+Nel Dockerfile, **`CMD`** può essere **sostituito** dagli argomenti dopo il nome immagine in `docker run`.
+
+**`ENTRYPOINT`** definisce l’eseguibile (o lo script) fisso; ciò che si passa dopo il nome immagine viene **appeso** come argomenti all’entrypoint.
+
+Esempio: entrypoint `npm`, argomenti da riga comando solo `init` o `install`:
+
+```dockerfile
+FROM node:14-alpine
+WORKDIR /app
+ENTRYPOINT ["npm"]
+```
+
+Dopo rebuild:
+
+```bash
+docker run -it --rm -v "<PERCORSO>:/app" mynpm init
+docker run -it --rm -v "<PERCORSO>:/app" mynpm install express --save
+```
+
+Vantaggi:
+
+- comandi più corti e meno errori di battitura
+- immagine “specializzata” su una CLI (es. solo `npm`)
+
+Attenzione: con bind mount, un comando distruttivo nel container può **riflettersi sull’host**. Restringere l’entrypoint riduce il rischio di lanciare per errore comandi arbitrari.
+
+## Docker Compose: un solo servizio “npm”
+
+Compose è utile anche con **un** servizio, per non riscrivere ogni volta volumi, `stdin_open` / `tty` e build.
+
+Esempio schematico:
+
+```yaml
+version: "3.8"
+
+services:
+  npm:
+    build: .
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+```
+
+Il Dockerfile nella stessa cartella può contenere `ENTRYPOINT ["npm"]` e `WORKDIR /app`.
+
+### `docker compose up` non è l’ideale per utility one-shot
+
+**`docker compose up`** avvia i servizi come processi “da tenere su”. Se l’entrypoint è solo `npm` senza sottocomando, il comportamento può essere ambiguo o poco utile.
+
+Per eseguire **un singolo comando** contro la definizione del servizio si usa:
+
+```bash
+docker compose run --rm npm init
+```
+
+- **`run`**: crea un container per il servizio `npm`, esegue il comando indicato (`init` viene appeso a `ENTRYPOINT npm`), poi esce.
+- **`--rm`**: rimuove il container al termine. Senza `--rm`, i container lasciati da `run` si accumulano (verificabili con `docker ps -a`).
+
+Analogamente: `docker compose run --rm npm install express --save`.
+
+### Confronto rapido
+
+| Comando | Uso tipico |
+|---------|------------|
+| **`docker compose up`** | Avviare servizi che restano in esecuzione |
+| **`docker compose run`** | Eseguire un task una tantum su un servizio (utility) |
+| **`docker compose exec`** | Eseguire comandi in un servizio **già avviato** con `up` |
+
+## Permessi su Linux
+
+Su Linux, file creati nel container possono risultare di proprietà di un utente diverso da quello dell’host, a seconda di come Docker mappa UID/GID. Nei progetti con utility container e bind mount conviene documentare o automatizzare utente/gruppo (es. opzioni `user` in Compose o build) secondo le esigenze del team. I dettagli dipendono da distro e configurazione Docker.
+
+## Riepilogo
+
+- I **container applicativi** eseguono il processo principale dell’app.
+- Gli **utility container** forniscono un **ambiente** per comandi CLI, spesso con **bind mount** verso il progetto locale.
+- Argomenti dopo il nome immagine in **`docker run`** sostituiscono il **`CMD`** (salvo interazione con **`ENTRYPOINT`**).
+- **`ENTRYPOINT ["npm"]`** permette di passare solo sottocomandi (`init`, `install`, …).
+- **`docker compose run --rm`** è adatto ai task one-shot senza lasciare container orfani.
+
+## Esercizi correlati
+
+1. Creare un’immagine con solo `FROM` + `WORKDIR`, generare `package.json` con `docker run` e bind mount, verificare il file sull’host.
+2. Aggiungere `ENTRYPOINT ["npm"]` e confrontare `docker run ... init` con `docker run ... npm init` senza entrypoint.
+3. Definire il servizio `npm` in Compose ed eseguire `docker compose run --rm npm init` con e senza `--rm`, osservando `docker ps -a`.
+4. Avviare un container in background e usare `docker exec -it` per un comando interattivo; confrontare con `docker run` one-shot.

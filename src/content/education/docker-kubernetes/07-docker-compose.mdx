@@ -1,0 +1,230 @@
+---
+title: "Docker Compose: orchestrare più container"
+description: "File docker-compose.yml, servizi, volumi nominati, build, env, depends_on e comandi up/down per applicazioni multi-container"
+date: 2026-03-21
+tags: ['formazione', 'docker', 'docker-compose', 'yaml']
+authors: ['vitoesposito']
+order: 7
+---
+
+## Cos'è Docker Compose
+
+**Docker Compose** è uno strumento dell’ecosistema Docker che consente di descrivere in un **unico file di configurazione** (tipicamente `docker-compose.yml`) più **servizi** (container), con porte, volumi, variabili d’ambiente e reti, e di avviarli o arrestarli con **pochi comandi** invece di ripetere lunghe sequenze di `docker build` e `docker run`.
+
+Compose **non sostituisce** i **Dockerfile** per le immagini custom: lavora **insieme** a essi tramite l’opzione `build`. **Non sostituisce** immagini e container: sotto il cofano continua a usare Docker Engine; semplifica solo la gestione.
+
+Compose è pensato soprattutto per **più container sulla stessa macchina host**. Non è lo strumento principale per orchestrare container distribuiti su **più host** (per quello si guarda a soluzioni di orchestrazione su cluster).
+
+## Perché usarlo
+
+In un progetto con database, API e frontend, senza Compose si accumulano comandi lunghi: creazione rete, `docker run` con `-v`, `-e`, `-p`, `--network`, ecc. Compose consente di:
+
+- **versionare** la configurazione insieme al codice
+- **condividere** lo stesso setup con il team
+- avviare l’intero stack con **`docker compose up`** (o `docker-compose up` a seconda dell’installazione)
+- spegnere e rimuovere i container con **`docker compose down`**
+
+Compose è utile anche con **un solo servizio**, se si preferisce mantenere bind mount e opzioni in un file invece che in comandi ripetuti nel terminale.
+
+## Il file Compose: struttura base
+
+Il file è in formato **YAML**: l’**indentazione** definisce la gerarchia; errori di spazi possono rendere il file invalido.
+
+### Versione della specifica Compose
+
+In cima al file si può indicare la **versione dello schema Compose** (es. `3.8`). Non è la versione dell’applicazione: indica quali chiavi e comportamenti Compose riconosce. La documentazione ufficiale elenca le versioni disponibili e le opzioni supportate.
+
+**Nota**: nelle versioni recenti di Docker si usa spesso **Compose V2** integrato come sottocomando `docker compose` (con spazio). In ambienti più datati può comparire ancora il binario `docker-compose` (con trattino). I concetti restano gli stessi.
+
+### La chiave `services`
+
+Sotto `services` si definiscono i **servizi**: ogni voce corrisponde a un container (o a un gruppo di repliche in scenari avanzati). I **nomi** scelti qui (es. `mongodb`, `backend`, `frontend`) sono i **nomi di servizio** usati dalla **rete interna** di Compose: nel codice dell’API si può raggiungere il database con l’hostname `mongodb` anche se il **nome effettivo del container** generato da Docker è diverso.
+
+## Volumi nominati a livello root
+
+I **volumi nominati** usati nei servizi vanno dichiarati anche nella sezione **`volumes`** al livello superiore del file (stesso livello di `services`), con sintassi del tipo:
+
+```yaml
+volumes:
+  data:
+```
+
+Il valore può essere vuoto: serve a dichiarare che Compose deve gestire quel volume nominato. **Bind mount** e **volumi anonimi** non si elencano qui.
+
+Se due servizi usano lo **stesso** nome di volume nominato, **condividono** lo stesso storage sull’host.
+
+## Esempio: MongoDB
+
+Traduzione tipica del precedente `docker run` per MongoDB:
+
+```yaml
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo
+    volumes:
+      - data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: max
+      MONGO_INITDB_ROOT_PASSWORD: secret
+
+volumes:
+  data:
+```
+
+- **`image`**: immagine ufficiale o da registry (come in `docker run mongo`).
+- **`volumes`**: elenco con `-`; per un volume nominato `data` montato su `/data/db` la sintassi è `data:/data/db`, analoga a `-v data:/data/db`.
+- **`environment`**: variabili per il container; alternativa con lista e `VAR=valore`.
+
+### Variabili da file
+
+Per non mettere segreti nel file principale (e poter escludere il file dal controllo versione), si usa **`env_file`**:
+
+```yaml
+  mongodb:
+    image: mongo
+    env_file:
+      - ./env/mongo.env
+```
+
+Il percorso è relativo alla posizione del file Compose.
+
+### Rete predefinita
+
+Compose crea una **rete predefinita** per il progetto e collega tutti i servizi dello stesso file. Spesso **non** serve dichiarare `networks` per far parlare `backend` e `mongodb` tra loro: basta usare il **nome del servizio** come hostname. Si può comunque definire una rete custom e assegnarla ai servizi se serve integrarsi con reti esistenti.
+
+## Esempio: backend con build
+
+Per un’API Node con Dockerfile nella cartella `backend`:
+
+```yaml
+  backend:
+    build: ./backend
+    ports:
+      - "80:80"
+    volumes:
+      - logs:/app/logs
+      - ./backend:/app
+      - /app/node_modules
+    env_file:
+      - ./env/backend.env
+    depends_on:
+      - mongodb
+```
+
+- **`build`**: percorso della cartella che contiene il `Dockerfile` (contesto di build). Forma estesa: `build: { context: ./backend, dockerfile: Dockerfile-dev }` se il file ha un nome diverso da `Dockerfile`. Sotto `build` si possono passare **`args`** per corrispondere a `ARG` nel Dockerfile.
+- **`ports`**: elenco `"HOST:CONTAINER"` (es. `"80:80"`).
+- **`volumes`**: volume nominato `logs`, bind mount `./backend` → `/app`, volume anonimo su `/app/node_modules` (stessa logica del capitolo su volumi e bind mount).
+- **`depends_on`**: ordina l’avvio rispetto ad altri servizi; **non** garantisce che MongoDB sia già “pronto ad accettare connessioni”, ma evita di avviare il backend prima che il servizio `mongodb` sia creato.
+- Aggiungere **`logs:`** sotto `volumes:` a livello root, come per `data`.
+
+## Esempio: frontend React (dev server)
+
+Per il dev server che richiede modalità interattiva (`-it` con `docker run`):
+
+```yaml
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+    stdin_open: true
+    tty: true
+```
+
+- **`stdin_open: true`** e **`tty: true`** riproducono l’effetto di **`-i`** e **`-t`** (apertura stdin e pseudo-TTY), necessari in alcuni setup del server di sviluppo React.
+- Opzionale: **`depends_on: [backend]`** se si vuole esplicitare la dipendenza logica dall’API.
+
+## Comandi principali
+
+Dalla directory che contiene `docker-compose.yml`:
+
+```bash
+docker compose up
+```
+
+Avvia i servizi in **foreground** (log aggregati); **Ctrl+C** li arresta.
+
+```bash
+docker compose up -d
+```
+
+Avvio in **background** (detached).
+
+```bash
+docker compose down
+```
+
+Ferma e **rimuove** i container (e la rete predefinita del progetto). I **volumi nominati** **non** vengono rimossi di default, così i dati del database restano.
+
+```bash
+docker compose down -v
+```
+
+Rimuove anche i **volumi** dichiarati nel Compose (attenzione: **perdita dati** persistenti).
+
+### Forzare la build
+
+- **`docker compose up --build`**: forza la ricostruzione delle immagini definite con `build` prima dell’avvio.
+- **`docker compose build`**: costruisce solo le immagini da Dockerfile, **senza** avviare i container.
+
+Compose riusa le immagini esistenti quando non rileva necessità di rebuild; `--build` serve quando si vuole forzare.
+
+## Nomi progetto, servizio e container
+
+Compose usa il **nome della cartella del progetto** (o il nome impostato con `-p`) come prefisso: rete e volumi possono apparire come `nomeprogetto_default`, `nomeprogetto_data`, ecc.
+
+Il **nome del container** in esecuzione è spesso del tipo `nomeprogetto_backend_1`, non solo `backend`. Per le **connessioni tra container** nella rete Compose si usano i **nomi di servizio** (`mongodb`, `backend`), non necessariamente il nome completo del container.
+
+Per forzare un nome container fisso:
+
+```yaml
+  mongodb:
+    container_name: mongodb
+```
+
+Utile in alcuni casi; in altri i nomi generati evitano conflitti se si lanciano più progetti.
+
+## Installazione su Linux
+
+Su **macOS** e **Windows** con Docker Desktop, Compose è in genere già disponibile. Su **Linux** può essere necessario installare Compose separatamente; la procedura ufficiale è descritta nella documentazione Docker (download del binario, permessi di esecuzione, eventualmente symlink). Verifica con:
+
+```bash
+docker compose version
+```
+
+## Sintassi YAML: liste e mappe
+
+- Con **più elementi** in lista (porte, volumi, `env_file`) si usa **`-`** all’inizio di ogni elemento.
+- Con **coppie chiave/valore** sotto `environment` si può usare la forma mappa (`CHIAVE: valore`) senza trattini.
+
+## Cosa Compose non risolve da solo
+
+- **Segreti**: preferire `env_file` esclusi dal repository e non committare password in chiaro.
+- **Prontezza del database**: `depends_on` non equivale a “database pronto”; in scenari critici servono healthcheck o script di attesa.
+- **Produzione**: lo stesso file può essere punto di partenza, ma immagini, bind mount e dev server vanno adattati a pipeline e deploy reali.
+
+## Riepilogo
+
+| Elemento | Ruolo |
+|----------|--------|
+| **`services`** | Definisce i container dell’applicazione |
+| **`image` / `build`** | Immagine predefinita o build da Dockerfile |
+| **`ports`** | Pubblicazione porte host ↔ container |
+| **`volumes`** (servizio) | Bind mount, volumi nominati, anonimi |
+| **`volumes`** (root) | Dichiarazione volumi nominati |
+| **`environment` / `env_file`** | Configurazione runtime |
+| **`depends_on`** | Ordine di creazione tra servizi |
+| **`stdin_open` / `tty`** | Equivalente di `-it` per servizi che lo richiedono |
+
+Compose resta uno **strumento aggiuntivo**: si possono continuare a usare `docker ps`, `docker volume ls`, `docker logs` sui container avviati da Compose.
+
+## Esercizi correlati
+
+1. Convertire tre `docker run` manuali in un unico `docker-compose.yml` e verificare `up` / `down`.
+2. Eseguire `docker compose down` con e senza `-v` e osservare la persistenza dei dati MongoDB.
+3. Usare `docker compose up --build` dopo una modifica al Dockerfile e confrontare il comportamento senza `--build`.
+4. Aggiungere `container_name` a un servizio e verificare il nome in `docker ps`.
+5. Spostare le credenziali MongoDB in `env/mongo.env` e collegarle con `env_file`.
