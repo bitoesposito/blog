@@ -1,0 +1,76 @@
+---
+title: 'Addressing business needs: dati, mappe e condivisione'
+description: 'Come un GIS integra dati business, supporta decisioni operative con mappe e analisi, e abilita la condivisione tramite Web GIS.'
+date: 2026-04-07
+tags: ['formazione', 'gis', 'esri']
+authors: ['vitoesposito']
+order: 5
+---
+
+## Introduzione
+
+Un GIS non serve solo a “disegnare mappe”. Il valore emerge quando i dati business vengono **spazializzati**, analizzati e poi condivisi in modo controllato, così da supportare decisioni operative.
+
+In questo capitolo vediamo come collegare formati dati comuni a una mappa, come usare la visualizzazione per migliorare le priorità di intervento, e come distribuire risultati e dataset con un Web GIS.
+
+## Integrare dati business in una mappa
+
+Un GIS può consumare dati provenienti da sistemi aziendali diversi e aggiungerli come **layer**. La chiave è la presenza di campi che contengono informazione di **posizione**, ad esempio:
+
+- **indirizzi**
+- **CAP/codici postali**
+- **coordinate** \(x,y\)
+
+Questo consente di prendere formati eterogenei e renderli “mappabili”. Esempi tipici:
+
+- un file **JSON** con codici postali
+- un file **Excel** con indirizzi
+- un file **CSV** con coordinate \(x,y\)
+
+Una volta collocati nello spazio, questi dati diventano interrogabili con strumenti GIS di visualizzazione e analisi.
+
+## Usare le mappe per migliorare il decision-making
+
+L’integrazione dei dati business in un GIS abilita strumenti spaziali per **visualizzare** informazioni su mappa e trasformarle in decisioni più efficaci.
+
+### Scenario: gestione guasti per una società elettrica
+
+Immagina di gestire le squadre di riparazione di una società elettrica. Dopo un forte temporale, arrivano numerose segnalazioni di blackout.
+
+In un flusso tradizionale, le segnalazioni vengono inserite in un database e le squadre intervengono “in ordine di arrivo”. Questo approccio tende a essere lento e poco efficiente, perché non evidenzia le aree di maggiore bisogno.
+
+Con le capacità di **mapping and visualization** puoi invece mappare ogni segnalazione in base alla sua posizione. La mappa rende immediatamente visibili **concentrazioni** e **pattern**.
+
+Per verificare e quantificare questi pattern, puoi applicare **spatial analytics**: i risultati aiutano a identificare le aree con più clienti colpiti e a **prioritizzare** gli interventi dove l’impatto è maggiore.
+
+Sul campo, le squadre aggiornano lo stato del guasto da dispositivi mobili. Le modifiche sincronizzano con il GIS centrale e possono alimentare una dashboard che mostra lo stato complessivo dell’evento in tempo reale.
+
+## Come presentare una mappa: statico vs dinamico
+
+Dopo aver aggiunto i dati e costruito la mappa, è importante scegliere il formato di presentazione più adatto. I due formati principali sono **statico** e **dinamico**.
+
+| Formato | Cosa permette | Esempi tipici |
+|---|---|---|
+| **Mappa statica** | Visualizzazione senza interazione. L’utente può leggere la mappa ma non esplorarla. | Stampe, immagini, PDF scaricabili o allegati via email. |
+| **Mappa dinamica** | Visualizzazione interattiva. L’utente può esplorare la mappa cliccando o toccando, a seconda del dispositivo. | Web map, web app, dashboard. |
+
+La scelta dipende dal contesto: una mappa statica è utile per comunicazione “a prova di contesto” (stampa, documenti), mentre una mappa dinamica è più adatta quando serve esplorazione, aggiornamento continuo o collaborazione.
+
+## Condivisione di dati e mappe con Web GIS
+
+Se la mappa viene pubblicata come web map o web app, oppure se serve condividere direttamente i dati, un **Web GIS portal** consente di distribuire contenuti all’interno di un’organizzazione e verso l’esterno.
+
+Due opzioni comuni per il portale Web GIS sono:
+
+- **ArcGIS Online**
+- **ArcGIS Enterprise**
+
+Un aspetto fondamentale è il controllo degli accessi: puoi decidere se rendere i contenuti disponibili a persone **interne**, a persone di **altre organizzazioni**, oppure al **pubblico**.
+
+### Scenario: ridistribuzione degli studenti in un distretto scolastico
+
+Un pianificatore scolastico deve preparare una proposta di riassegnazione per ridurre il sovraffollamento in un liceo. Il piano deve essere condiviso con direzione, consiglio scolastico e pubblico.
+
+In un flusso tradizionale, il pianificatore produce mappe PDF, le invia via email, le pubblica sul sito e stampa copie cartacee. Questo genera inefficienze e, quando arrivano modifiche durante le discussioni, aumenta il rischio di confusione tra versioni.
+
+Con un Web GIS, la mappa può essere pubblicata e condivisa come **un’unica applicazione web**, mantenendo gli stakeholder aggiornati rispetto all’ultima versione disponibile e rendendo più semplice scoprire e usare l’informazione spaziale per collaborazione e decisioni.
