@@ -1,0 +1,121 @@
+---
+title: 'Componenti di un GIS e informazioni geografiche'
+description: 'Una guida ai cinque componenti di un GIS e al concetto di informazione geografica come unione tra attributi e posizione.'
+date: 2026-04-07
+tags: ['formazione', 'gis', 'esri']
+authors: ['vitoesposito']
+order: 1
+---
+
+## Introduzione
+
+Un **GIS** fornisce strumenti per risolvere **problemi spaziali**, cioè problemi in cui la posizione è una parte fondamentale della risposta. Per farlo, non basta “una mappa”: serve un sistema completo, fatto di tecnologia, dati e processi.
+
+In questo capitolo vediamo i **cinque componenti** di un GIS e un concetto centrale: l’**informazione geografica**, che nasce dall’unione tra *attributi* e *posizione*.
+
+L’obiettivo è capire quali pezzi devono essere presenti per ottenere analisi affidabili e come riconoscere la componente geografica dentro documenti e dataset comuni.
+
+## I cinque componenti di un GIS
+
+Un GIS è composto da cinque elementi: **hardware**, **software**, **data**, **people** e **workflows**. Ogni componente contribuisce al sistema che permette di prendere decisioni migliori.
+
+### Hardware
+
+L’**hardware** è l’infrastruttura su cui il GIS viene eseguito. Include server centralizzati, computer desktop e dispositivi mobili come smartphone o tablet.
+
+Questi dispositivi rendono possibile **creare**, **condividere** e **usare** informazione geografica nei contesti operativi, dal lavoro d’ufficio al lavoro sul campo.
+
+### Software
+
+Il **software GIS** fornisce funzioni e strumenti per **archiviare**, **analizzare** e **visualizzare** dati geografici.
+
+Inoltre include gli strumenti per **inserire**, **manipolare** e **interrogare** i dati (ad esempio filtri, query spaziali e interrogazioni per attributi).
+
+### Data
+
+I **dati GIS** sono dati che contengono informazione di **posizione**: indirizzi, CAP/codici postali, coordinate \(x,y\) e altre forme di riferimento spaziale.
+
+Un GIS gestisce e integra l’informazione geografica con dati provenienti da altre fonti, così da abilitare visualizzazioni e analisi.
+
+### People
+
+Le **persone** usano il software GIS per svolgere attività sui dati. Possono includere amministratori di sistema, analisti, cartografi e operatori sul campo.
+
+Un GIS ha poco valore senza utenti che **gestiscano** il sistema e definiscano come applicarlo a problemi reali.
+
+### Workflows
+
+I **workflows** sono piani strutturati e regole operative, spesso formalizzate come processi ripetibili. Un’organizzazione definisce workflow per aumentare l’efficienza e rendere le attività coerenti e misurabili.
+
+In pratica, i workflow trasformano “strumenti e dati” in un modo stabile di lavorare: cosa si fa, in che ordine, con quali controlli e quali risultati attesi.
+
+## Informazione geografica: attributi e posizione
+
+L’**informazione geografica** è composta da due tipi di informazione:
+
+- **Attributi** (*attribute information*): descrivono caratteristiche non spaziali, come ID, nomi e valori.
+- **Posizione** (*location information*): descrive dove un oggetto si trova sulla Terra, ad esempio coordinate \(x,y\), un indirizzo o un punto di interesse.
+
+Separatamente, ciascun pezzo è incompleto. Insieme, permettono di rappresentare correttamente un oggetto su una mappa e di analizzarlo.
+
+### Esempio: “trovare casa di Paul”
+
+Immagina che Paul e Greg abbiano deciso di incontrarsi a casa di Paul. Per aiutare Greg, Paul fornisce questa informazione:
+
+- **Attributi**: “Casa blu, a un piano”
+
+Questa descrizione aiuta Greg a riconoscere l’edificio *quando è vicino*, ma non gli permette di arrivarci. Per la navigazione serve la posizione:
+
+- **Posizione**: “Lawyers Road 323”
+
+Unendo descrizione e indirizzo ottieni **informazione geografica**: un elemento che può essere posizionato in modo univoco su una mappa e condiviso con altri.
+
+## Come riconoscere l’informazione geografica nei documenti
+
+L’informazione geografica può apparire in formati diversi (testo, moduli, dataset). Un metodo pratico è separare sempre:
+
+- cosa descrive l’oggetto (**attributi**)
+- dove si trova (**posizione**)
+
+### Scenario 1: certificato di nascita
+
+**Domanda**: quali due informazioni di *posizione* si trovano in un certificato di nascita?
+
+- **Risposta attesa**:
+  - **Place of birth**
+  - **Mother’s place of birth**
+
+### Scenario 2: patente di guida
+
+**Domanda**: quali quattro informazioni di *attributo* si trovano in una patente di guida?
+
+- **Risposta attesa**:
+  - **Name**
+  - **Date of birth**
+  - **Height**
+  - **ID number**
+
+**Nota**: l’**Address** è informazione di *posizione*, non un attributo.
+
+### Scenario 3: rapporto di incidente stradale
+
+**Domanda**: quali due informazioni di *posizione* si trovano in un crash report?
+
+- **Risposta attesa**:
+  - **City/town**
+  - **Driver’s address**
+
+### Scenario 4: sito web aziendale
+
+**Domanda**: quale informazione di *posizione* si trova tipicamente in una pagina “Contact us”?
+
+- **Risposta attesa**:
+  - **Company address**
+
+## Perché questo importa in un GIS
+
+Molte analisi falliscono non per il software, ma per una definizione debole di cosa rappresentano i dati. Distinguere **attributi** e **posizione** aiuta a:
+
+- evitare ambiguità (oggetti “simili” ma in luoghi diversi)
+- rendere i dati integrabili tra fonti differenti
+- costruire mappe e analisi ripetibili, quindi verificabili
