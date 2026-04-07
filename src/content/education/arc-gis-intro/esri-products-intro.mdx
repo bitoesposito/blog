@@ -1,0 +1,61 @@
+---
+title: 'Prodotti Esri (ArcGIS): componenti principali e casi d’uso'
+description: 'Una panoramica dei principali componenti del sistema ArcGIS e di come vengono combinati per supportare flussi di lavoro GIS reali.'
+date: 2026-04-07
+tags: ['formazione', 'gis', 'esri']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Introduzione
+
+**ArcGIS** è un sistema che permette alle organizzazioni di sfruttare le capacità di un GIS. Usando i prodotti ArcGIS è possibile **creare**, **gestire**, **condividere**, **visualizzare** e **analizzare** dati spaziali, mantenendo contenuti e processi coerenti tra persone e dispositivi diversi.
+
+In questo capitolo vediamo i componenti principali del sistema e come si integrano in uno scenario realistico.
+
+## Componenti principali del sistema ArcGIS
+
+### ArcGIS Online
+
+**ArcGIS Online** è una distribuzione **cloud** di **Web GIS** per mapping e analisi. È accessibile ovunque ci siano connessione Internet e un dispositivo (desktop o mobile).
+
+Il punto di forza è la possibilità di connettere **persone**, **luoghi** e **dati** tramite mappe interattive, condividendo insight con gruppi specifici o con il pubblico.
+
+### ArcGIS Enterprise
+
+**ArcGIS Enterprise** è un **Web GIS** distribuito all’interno del perimetro dell’organizzazione, tipicamente **dietro firewall**. Include strumenti per creare mappe, analizzare dati, risolvere problemi e condividere informazione geospaziale con controllo amministrativo e requisiti di sicurezza più stringenti.
+
+### ArcGIS Pro
+
+**ArcGIS Pro** è un’applicazione **desktop** per gestione dati, visualizzazione e analisi di contenuti **2D** e **3D**. Include strumenti cartografici avanzati per produrre mappe destinate a stampa, app, dashboard e web.
+
+È strettamente integrata con il sistema ArcGIS: contenuti e dataset possono essere condivisi e riutilizzati tra ArcGIS Online e ArcGIS Enterprise.
+
+### ArcGIS mobile apps
+
+ArcGIS include un insieme di app “location-based” per operare in mobilità: navigazione, raccolta dati, tracciamento posizione, condivisione e altro.
+
+Queste app sono particolarmente utili per attività sul campo, sia in modalità **connessa** sia in modalità **disconnessa**, con sincronizzazione quando la rete torna disponibile.
+
+## Esempio: organizzazione per la conservazione del territorio
+
+Consideriamo un’organizzazione che gestisce molte aree di conservazione e deve monitorare ogni sito per mantenerlo protetto. Il lavoro richiede un volume elevato di **raccolta** e **gestione** dati.
+
+Un’architettura tipica combina più prodotti:
+
+- **ArcGIS Enterprise** come base Web GIS: centralizza i contenuti e abilita accesso condiviso ai dati.
+- Un amministratore IT gestisce l’ambiente: controlla log e performance e garantisce che gli utenti possano visualizzare, raccogliere, analizzare e condividere dati GIS.
+- Operatori sul campo usano **app mobile** per raccogliere foto e descrizioni delle condizioni onsite. I dati sincronizzano verso l’enterprise GIS, così il personale d’ufficio può accedervi subito.
+- Un responsabile di gruppo usa una **dashboard web** per monitorare attività e localizzazione del team, anche senza competenze GIS avanzate.
+- Un profilo GIS specializzato usa un’app desktop (ad esempio **ArcGIS Pro**) per analisi più complesse (come analisi d’uso del suolo) e per produrre layout cartografici, poi condivisi come mappe narrative verso stakeholder esterni.
+
+Il risultato è un passaggio da workflow cartacei a un sistema con **dati condivisi in tempo reale**, che riduce tempi di attesa e migliora la qualità decisionale perché le persone lavorano sempre sull’informazione più aggiornata.
+
+## Guida rapida: quale prodotto usare
+
+Una regola pratica è legare la scelta al vincolo principale del problema.
+
+- **Hosting e controllo**: se serve un Web GIS gestito internamente e non esposto a Internet, il riferimento è **ArcGIS Enterprise**.
+- **Cartografia e analisi avanzata**: se servono strumenti desktop per analisi e prodotti cartografici completi \(stampa, layout, 2D/3D\), il riferimento è **ArcGIS Pro**.
+- **Condivisione pubblica e semplicità**: se serve una mappa online condivisibile facilmente con il pubblico, il riferimento è **ArcGIS Online**.
+- **Raccolta e operatività sul campo**: se serve acquisire dati e lavorare in mobilità, il riferimento sono le **ArcGIS mobile apps**, integrate con Web GIS per sincronizzazione e accesso condiviso.
