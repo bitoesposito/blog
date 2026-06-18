@@ -13,31 +13,44 @@ export default defineConfig({
   integrations: [mdx(), sitemap(), react()],
 
   fonts: [
-      {
-          provider: fontProviders.local(),
-          name: 'Atkinson',
-          cssVariable: '--font-atkinson',
-          fallbacks: ['sans-serif'],
-          options: {
-              variants: [
-                  {
-                      src: ['./src/assets/fonts/atkinson-regular.woff'],
-                      weight: 400,
-                      style: 'normal',
-                      display: 'swap',
-                  },
-                  {
-                      src: ['./src/assets/fonts/atkinson-bold.woff'],
-                      weight: 700,
-                      style: 'normal',
-                      display: 'swap',
-                  },
-              ],
+    {
+      provider: fontProviders.local(),
+      name: 'Geist',
+      cssVariable: '--font-geist',
+      fallbacks: ['sans-serif'],
+      options: {
+        variants: [
+          {
+            src: ['./src/assets/fonts/GeistVF.woff2'],
+            weight: '100 900',
+            style: 'normal',
+            display: 'swap',
           },
+        ],
       },
-	],
+    },
+    {
+      provider: fontProviders.local(),
+      name: 'Geist Mono',
+      cssVariable: '--font-geist-mono',
+      fallbacks: ['monospace'],
+      options: {
+        variants: [
+          {
+            src: ['./src/assets/fonts/GeistMonoVF.woff2'],
+            weight: '100 900',
+            style: 'normal',
+            display: 'swap',
+          },
+        ],
+      },
+    },
+  ],
 
   vite: {
     plugins: [tailwindcss()],
+    ssr: {
+      noExternal: ['lucide-react'],
+    },
   },
 });
