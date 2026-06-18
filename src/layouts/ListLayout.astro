@@ -1,0 +1,72 @@
+---
+import Head from "../components/Head.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { Breadcrumbs, type Crumb } from "../components/ui/breadcrumb";
+import { Paginator } from "../components/ui/paginator";
+import { SITE } from "../consts";
+import type { IconName } from "../components/ui/icon";
+
+interface Props {
+  title: string;
+  description?: string;
+  currentPage?: number;
+  totalPages?: number;
+  /** Prefisso URL per la paginazione, es. "/blog". Derivato automaticamente dall'URL se omesso. */
+  baseUrl?: string;
+}
+
+const {
+  title,
+  description = SITE.description,
+  currentPage = 1,
+  totalPages = 1,
+  baseUrl,
+} = Astro.props;
+
+const SEGMENT_MAP: Record<string, { label: string; icon: IconName }> = {
+  blog: { label: "Blog", icon: "library-big" },
+  projects: { label: "Progetti", icon: "folder-git-2" },
+  education: { label: "Formazione", icon: "graduation-cap" },
+};
+
+const pathSegments = Astro.url.pathname.replace(/\/$/, "").split("/").filter(Boolean);
+const knownSegments = pathSegments.filter((s) => s in SEGMENT_MAP);
+
+// Deriva baseUrl dal primo segmento noto se non passato esplicitamente
+const resolvedBaseUrl = baseUrl ?? (knownSegments[0] ? `/${knownSegments[0]}` : "/");
+
+const crumbs: Crumb[] = knownSegments.map((segment, index) => {
+  const { label, icon } = SEGMENT_MAP[segment];
+  const isCurrentPage = index === knownSegments.length - 1 && currentPage <= 1;
+  return { label, icon, href: isCurrentPage ? undefined : `/${segment}` };
+});
+
+if (currentPage > 1) {
+  crumbs.push({ label: `Pagina ${currentPage}`, icon: "book-copy" });
+}
+---
+
+<!doctype html>
+<html lang="it">
+  <head>
+    <Head title={title} description={description} />
+  </head>
+  <body>
+    <Header />
+    <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 lg:px-0 py-4">
+      <Breadcrumbs items={crumbs} />
+
+      <slot />
+
+      {totalPages > 1 && (
+        <Paginator
+          currentPage={currentPage}
+          totalPages={totalPages}
+          baseUrl={resolvedBaseUrl}
+        />
+      )}
+    </main>
+    <Footer />
+  </body>
+</html>

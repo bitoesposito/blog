@@ -42,7 +42,10 @@ function Icon({ name, className, ...props }: IconProps) {
       ? customIcons[name as keyof typeof customIcons]
       : lucideIcons[toPascalCase(name)]
 
-  if (!Component) return null
+  if (!Component) {
+    if (import.meta.env.DEV) console.warn(`Icon: nome sconosciuto "${name}"`)
+    return null
+  }
 
   return <Component className={cn("size-4", className)} aria-hidden="true" {...props} />
 }

@@ -25,13 +25,13 @@ export const SITE: Site = {
   locale: 'it-IT',
   featuredPostCount: 3,
   featuredProjectCount: 3,
-  postsPerPage: 5,
   featuredEducationCount: 3,
+  postsPerPage: 5,
 }
 
 export const NAV_LINKS: SocialLink[] = [
   {
-    href: '/',
+    href: '/blog',
     label: 'blog',
   },
   {
