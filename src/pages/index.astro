@@ -1,20 +1,212 @@
 ---
-import Head from '../components/Head.astro';
-import Footer from '../components/Footer.astro';
-import Header from '../components/Header.astro';
-import { SITE, NAV_LINKS } from '../consts';
+import { getCollection } from "astro:content";
+import Head from "../components/Head.astro";
+import Footer from "../components/Footer.astro";
+import Header from "../components/Header.astro";
+import { Link } from "../components/ui/link";
+import { buttonVariants } from "../components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../components/ui/card";
+import { Tags } from "../components/ui/tags";
+import { formatDate, readingTime } from "../lib/post";
+import { SITE } from "../consts";
+
+const posts = (await getCollection("blog"))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, SITE.featuredPostCount);
+
+const projects = (await getCollection("projects"))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, SITE.featuredProjectCount);
+
+const education = (await getCollection("education"))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, SITE.featuredEducationCount);
 ---
 
 <!doctype html>
-<html lang="en">
-	<head>
-		<Head title={SITE.title} description={SITE.description} />
-	</head>
-	<body>
-		<Header />
-		<main class="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-4">
-			<p>{NAV_LINKS[0].label}</p>
-		</main>
-		<Footer />
-	</body>
+<html lang="it">
+  <head>
+    <Head title={SITE.title} description={SITE.description} />
+  </head>
+  <body>
+    <Header />
+    <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 lg:px-0 py-4">
+      <!-- HERO -->
+      <section
+        id="hero"
+        class="flex flex-col sm:flex-row gap-3 py-5 justify-between sm:items-center"
+      >
+        <div class="flex flex-col">
+          <h1 class="font-light uppercase">Vito Esposito</h1>
+          <h1 class="text-2xl font-bold">DEVELOPER & DESIGNER</h1>
+        </div>
+        <div class="flex gap-3 whitespace-nowrap">
+          <Link
+            href="https://github.com/bitoesposito"
+            icon="github"
+            external
+            aria-label="GitHub"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            GitHub
+          </Link>
+          <Link
+            href="https://www.linkedin.com/in/vitoespo/"
+            icon="linkedin"
+            external
+            aria-label="LinkedIn"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            LinkedIn
+          </Link>
+          <Link
+            href="/CV.pdf"
+            icon="FileText"
+            aria-label="Curriculum"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Curriculum
+          </Link>
+        </div>
+      </section>
+
+      <!-- ULTIMI POST -->
+      <section id="latest-posts" class="flex flex-col gap-3">
+        <div class="flex gap-3 justify-between">
+          <h2 class="text-2xl font-bold">Ultimi post</h2>
+          <Link
+            href="/blog"
+            className={buttonVariants({ variant: "outline" })}
+            icon="ArrowRight"
+          >
+            Vedi tutti
+          </Link>
+        </div>
+        <div class="flex flex-col">
+          {posts.length === 0 && (
+            <p class="text-muted-foreground">Nessun post disponibile al momento.</p>
+          )}
+          {
+            posts.map((post) => (
+              <a href={`/blog/${post.id}`} class="block">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg leading-[1.25]">{post.data.title}</CardTitle>
+                    {post.data.description && (
+                      <CardDescription className="line-clamp-3 leading-[1.25]">
+                        {post.data.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="flex sm:flex-row flex-col justify-between gap-3">
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                      <time class="whitespace-nowrap" datetime={post.data.pubDate.toISOString()}>
+                        {formatDate(post.data.pubDate)}
+                      </time>
+                      <span aria-hidden="true">|</span>
+                      <span class="whitespace-nowrap">{readingTime(post.body)}</span>
+                    </div>
+                    <Tags tags={post.data.tags} max={2} />
+                  </CardContent>
+                </Card>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+
+      <!-- ULTIMI PROGETTI -->
+      <section id="latest-projects" class="flex flex-col gap-3">
+        <div class="flex gap-3 justify-between">
+          <h2 class="text-2xl font-bold">Ultimi progetti</h2>
+          <Link
+            href="/projects"
+            className={buttonVariants({ variant: "outline" })}
+            icon="ArrowRight"
+          >
+            Vedi tutti
+          </Link>
+        </div>
+        <div class="flex flex-col">
+          {projects.length === 0 && (
+            <p class="text-muted-foreground">Nessun progetto disponibile al momento.</p>
+          )}
+          {
+            projects.map((project) => (
+              <a href={`/projects/${project.id}`} class="block">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg leading-[1.25]">{project.data.title}</CardTitle>
+                    {project.data.description && (
+                      <CardDescription className="line-clamp-3 leading-[1.25]">
+                        {project.data.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-1">
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                      <time datetime={project.data.pubDate.toISOString()}>
+                        {formatDate(project.data.pubDate)}
+                      </time>
+                    </div>
+                    <Tags tags={project.data.tags} max={2} />
+                  </CardContent>
+                </Card>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+      
+      <!-- FORMAZIONE RECENTE -->
+      <section id="latest-education" class="flex flex-col gap-3">
+        <div class="flex gap-3 justify-between">
+          <h2 class="text-2xl font-bold">Formazione recente</h2>
+          <Link
+            href="/education"
+            className={buttonVariants({ variant: "outline" })}
+            icon="ArrowRight"
+          >
+            Vedi tutti
+          </Link>
+        </div>
+        <div class="flex flex-col">
+          {education.length === 0 && (
+            <p class="text-muted-foreground">Nessuna formazione disponibile al momento.</p>
+          )}
+          {
+            education.map((edu) => (
+              <a href={`/education/${edu.id}`} class="block">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg leading-[1.25]">{edu.data.title}</CardTitle>
+                    {edu.data.description && (
+                      <CardDescription className="line-clamp-3 leading-[1.25]">
+                        {edu.data.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-1">
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                      <time datetime={edu.data.pubDate.toISOString()}>
+                        {formatDate(edu.data.pubDate)}
+                      </time>
+                    </div>
+                    <Tags tags={edu.data.tags} max={2} />
+                  </CardContent>
+                </Card>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+    </main>
+    <Footer />
+  </body>
 </html>

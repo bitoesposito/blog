@@ -1,11 +1,11 @@
 ---
-import { getCollection } from 'astro:content';
-import Head from '../../components/Head.astro';
-import Footer from '../../components/Footer.astro';
-import Header from '../../components/Header.astro';
-import { SITE, NAV_LINKS } from '../../consts';
+import { getCollection } from "astro:content";
+import Head from "../../components/Head.astro";
+import Footer from "../../components/Footer.astro";
+import Header from "../../components/Header.astro";
+import { SITE, NAV_LINKS } from "../../consts";
 
-const projects = (await getCollection('projects')).sort(
+const blog = (await getCollection("blog")).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
 ---
@@ -18,25 +18,26 @@ const projects = (await getCollection('projects')).sort(
 	<body>
 		<Header />
 		<main class="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-4">
-			{projects.length === 0 && (
+			{blog.length === 0 && (
 				<p class="text-muted-foreground">Nessun post disponibile al momento.</p>
 			)}
+			
 			<div class="flex flex-col gap-4">
-				{projects.map((project) => (
+				{blog.map((post) => (
 				<article class="flex flex-col">
 					<h2 class="text-xl font-bold">
-						<a href={`/projects/${project.id}`} class="hover:underline">
-							{project.data.title}
+						<a href={`/blog/${post.id}`} class="hover:underline">
+							{post.data.title}
 						</a>
 					</h2>
 					<p class="text-sm text-muted-foreground">
-						{project.data.pubDate.toLocaleDateString('en-US', {
+						{post.data.pubDate.toLocaleDateString('en-US', {
 							year: 'numeric',
 							month: 'long',
 							day: 'numeric',
 						})}
 					</p>
-					<p>{project.data.description}</p>
+					<p>{post.data.description}</p>
 				</article>
 			))}
 			</div>

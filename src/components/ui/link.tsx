@@ -1,11 +1,10 @@
 import { cva, type VariantProps } from "class-variance-authority"
-import { MessageCircleQuestion } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { icons } from "./button"
+import { Icon, type IconName } from "./icon"
 
 const linkVariants = cva(
-  "inline-flex gap-2 items-center transition-colors duration-300 ease-in-out text-foreground/70 hover:text-foreground cursor-pointer text-md",
+  "inline-flex cursor-pointer items-center gap-2 text-foreground/70 transition-colors duration-300 ease-in-out hover:text-foreground",
   {
     variants: {
       underline: {
@@ -24,7 +23,7 @@ interface LinkProps
     VariantProps<typeof linkVariants> {
   href: string
   external?: boolean
-  icon?: keyof typeof icons
+  icon?: IconName
 }
 
 function Link({
@@ -38,8 +37,6 @@ function Link({
   children,
   ...props
 }: LinkProps) {
-  const Icon = icon ? (icons[icon] ?? MessageCircleQuestion) : null
-
   const finalAriaLabel =
     external && ariaLabel ? `${ariaLabel} (si apre in una nuova finestra)` : ariaLabel
   const finalTitle =
@@ -55,7 +52,7 @@ function Link({
       className={cn(linkVariants({ underline, className }))}
       {...props}
     >
-      {Icon && <Icon className="size-4" aria-hidden="true" />}
+      {icon && <Icon name={icon} />}
       {children}
       {external && !ariaLabel && (
         <span className="sr-only"> (si apre in una nuova finestra)</span>

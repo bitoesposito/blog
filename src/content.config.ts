@@ -14,7 +14,38 @@ const blog = defineCollection({
 			pubDate: z.coerce.date(),
 			updatedDate: z.coerce.date().optional(),
 			heroImage: z.optional(image()),
+			tags: z.array(z.string()).default([]),
 		}),
 });
 
-export const collections = { blog };
+const projects = defineCollection({
+	loader: glob({ base: './src/content/projects', pattern: '**/*.{md,mdx}' }),
+	schema: ({ image }) =>
+		z.object({
+			title: z.string(),
+			description: z.string(),
+			pubDate: z.coerce.date(),
+			updatedDate: z.coerce.date().optional(),
+			heroImage: z.optional(image()),
+			tags: z.array(z.string()).default([]),
+			link: z.string().url().optional(),
+			repository: z.string().url().optional(),
+		}),
+});
+
+const education = defineCollection({
+	loader: glob({ base: './src/content/education', pattern: '**/*.{md,mdx}' }),
+	schema: ({ image }) =>
+		z.object({
+			title: z.string(),
+			description: z.string(),
+			pubDate: z.coerce.date(),
+			updatedDate: z.coerce.date().optional(),
+			heroImage: z.optional(image()),
+			tags: z.array(z.string()).default([]),
+			institution: z.string().optional(),
+			link: z.string().url().optional(),
+		}),
+});
+
+export const collections = { blog, projects, education };

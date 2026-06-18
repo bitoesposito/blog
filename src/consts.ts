@@ -5,6 +5,7 @@ export type Site = {
   author: string
   locale: string
   featuredPostCount: number
+  featuredProjectCount: number
   postsPerPage: number
   featuredEducationCount: number
 }
@@ -22,7 +23,8 @@ export const SITE: Site = {
   href: 'https://vitoesposito.it',
   author: 'vitoesposito',
   locale: 'it-IT',
-  featuredPostCount: 2,
+  featuredPostCount: 3,
+  featuredProjectCount: 3,
   postsPerPage: 5,
   featuredEducationCount: 3,
 }

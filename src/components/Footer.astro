@@ -1,27 +1,19 @@
 ---
 import { Link } from "./ui/link";
-import { SOCIAL_LINKS } from "../consts";
 
 const today = new Date();
 ---
 
-<footer class="mx-auto flex max-w-3xl justify-between gap-2 px-4 py-4 text-sm">
+<footer class="mx-auto flex max-w-3xl justify-between gap-2 px-4 lg:px-0 py-4 text-sm">
 	<span>
 		&copy; {today.getFullYear()} Tutti i diritti riservati. ·
 		<Link href="/privacy-policy">Privacy Policy</Link>
 	</span>
 
 	<div class="flex gap-2">
-		{
-			SOCIAL_LINKS.map(({ href, label, icon }) => (
-				<Link
-					href={href}
-					aria-label={label}
-					title={label}
-					icon={icon as any}
-					external
-				/>
-			))
-		}
+		<Link href="https://github.com/bitoesposito" aria-label="GitHub" title="GitHub" icon="github" external />
+		<Link href="https://www.linkedin.com/in/vitoespo/" aria-label="LinkedIn" title="LinkedIn" icon="linkedin" external />
+		<Link href="mailto:info@vitoesposito.it" aria-label="Email" title="Email" icon="mail" external />
+		<Link href="/rss.xml" aria-label="RSS" title="RSS" icon="rss" />
 	</div>
 </footer>
