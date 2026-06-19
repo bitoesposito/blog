@@ -1,0 +1,241 @@
+---
+title: "Ambiente di sviluppo Laravel/PHP con Docker Compose"
+description: "Nginx, PHP-FPM, MySQL, utility container Composer/Artisan/npm, contesto di build, bind mount e snapshot nell’immagine"
+pubDate: 2026-03-26
+tags: ['formazione', 'docker', 'compose', 'laravel', 'php', 'nginx']
+authors: ['vitoesposito']
+order: 9
+---
+
+## Perché questo capitolo non è “solo Laravel”
+
+Non serve saper scrivere codice **Laravel** o **PHP** per seguire gli argomenti qui: l’obiettivo è mostrare un **setup multi-container** realistico con **Docker Compose**, più Dockerfile, **contesti di build**, **bind mount**, servizi **applicativi** e **utility container**.
+
+**Laravel** e l’ecosistema **PHP** sono un esempio utile perché lo stack locale richiede più pezzi rispetto a molti progetti Node: non basta un runtime, serve anche un **web server** che invochi l’interprete PHP e spesso un **database SQL**.
+
+## Node.js vs PHP (modello mentale)
+
+Con **Node.js** l’applicazione e il server che gestisce le richieste HTTP sono in genere **nello stesso processo** (o nello stesso progetto Node).
+
+Con **PHP** tipicamente:
+
+- un **web server** (es. **Nginx**) riceve la richiesta HTTP
+- per le richieste a file PHP, il server dialoga con **PHP-FPM** (interprete PHP in ascolto su una porta, es. **9000**)
+- il codice dell’applicazione (es. Laravel) viene eseguito nell’ambiente PHP
+
+Da qui nasce la necessità di **almeno due container applicativi** (Nginx + PHP) oltre al database.
+
+## Architettura obiettivo (sei servizi)
+
+### Tre container applicativi (sempre accesi in sviluppo)
+
+| Servizio Compose | Ruolo |
+|------------------|--------|
+| **server** (Nginx) | Espone HTTP verso l’host, instrada le richieste PHP verso PHP-FPM |
+| **php** | PHP-FPM + estensioni necessarie a Laravel, esegue il codice in `/var/www/html` |
+| **mysql** | Database **MySQL** raggiungibile dagli altri servizi sulla rete Compose |
+
+### Tre utility container (comandi one-shot)
+
+| Servizio | Strumento | Uso tipico |
+|----------|-----------|------------|
+| **composer** | **Composer** | `create-project`, installazione dipendenze PHP |
+| **artisan** | **Artisan** (CLI Laravel) | `migrate`, comandi di manutenzione |
+| **npm** | **npm** | asset frontend usati da Laravel |
+
+I utility container si usano con **`docker compose run --rm`**, come nel capitolo sugli utility container.
+
+## Convenzione directory: `/var/www/html`
+
+Nella documentazione delle immagini **PHP** e negli esempi **Nginx**, la radice del sito è spesso **`/var/www/html`**. Conviene usare **la stessa cartella** in tutti i servizi che devono leggere il codice: bind mount della cartella progetto host (es. `./src`) su `/var/www/html` nel container.
+
+## Servizio Nginx (`server`)
+
+Immagine ufficiale, tag leggero, es. `nginx:stable-alpine`.
+
+- **`ports`**: es. `"8000:80"` per raggiungere l’app da `localhost:8000`.
+- **Configurazione custom**: si monta un file di configurazione dall’host.
+
+**Errore frequente**: montare il file sbagliato su `/etc/nginx/nginx.conf`. Nelle immagini Nginx ufficiali la configurazione aggiuntiva va spesso in **`/etc/nginx/conf.d/default.conf`** (file che viene incluso nella configurazione globale). Montare lì il proprio `default.conf` (o equivalente) evita che Nginx esca subito all’avvio.
+
+Il contenuto del file Nginx deve:
+
+- servire i file dalla root web (in Laravel di solito la cartella **`public`** dentro il progetto)
+- inoltrare le richieste PHP a **PHP-FPM** tramite **FastCGI**, puntando al **nome del servizio** PHP (es. `php:9000`) sulla rete interna Compose, **non** passando dall’host.
+
+Comunicazione **container → container** sulla stessa rete **non** richiede `-p` sulla porta 9000 del PHP: basta che Nginx usi la porta **esposta internamente** dall’immagine PHP-FPM (tipicamente **9000**).
+
+## Servizio PHP (`php`): Dockerfile custom
+
+L’immagine **`php:7.4-fpm-alpine`** (o versione successiva supportata) fornisce **PHP-FPM**. Laravel richiede estensioni aggiuntive, installabili con gli script forniti dall’immagine:
+
+```dockerfile
+FROM php:7.4-fpm-alpine
+WORKDIR /var/www/html
+RUN docker-php-ext-install pdo pdo_mysql
+```
+
+Non è obbligatorio un `CMD` finale: se non si sovrascrive, resta il comando predefinito dell’immagine base (**FPM in ascolto**), che è quanto serve quando Nginx inoltra le richieste.
+
+### Build in Compose con Dockerfile non standard
+
+Se il file si chiama ad esempio `php.dockerfile` dentro `./dockerfiles`:
+
+```yaml
+  php:
+    build:
+      context: ./dockerfiles
+      dockerfile: php.dockerfile
+```
+
+Se in seguito il Dockerfile esegue **`COPY`** di cartelle che stanno **fuori** da `./dockerfiles` (es. `./src`), il **`context`** deve essere la **radice del progetto** (dove sta `docker-compose.yml`), e il percorso del Dockerfile diventa relativo a quel contesto, es. `dockerfiles/php.dockerfile`.
+
+### Bind mount del codice sorgente
+
+Per lo sviluppo:
+
+```yaml
+    volumes:
+      - ./src:/var/www/html:delegated
+```
+
+Il suffisso **`:delegated`** (dove supportato) ottimizza la coerenza host↔container in scrittura; non è obbligatorio.
+
+## Servizio MySQL (`mysql`)
+
+Immagine ufficiale `mysql:5.7` (o tag scelto). Le variabili d’ambiente (database iniziale, utente, password) sono documentate su Docker Hub; conviene metterle in un file **`env/mysql.env`** e referenziarlo con **`env_file`**.
+
+Nel file **`.env` di Laravel** (generato dopo `composer create-project`), la connessione al DB deve allinearsi a quei valori. Il campo **host** del database non deve essere un IP arbitrario dell’host: deve essere il **nome del servizio** Compose (es. **`mysql`**) perché la connessione parte dal container PHP.
+
+## Creare il progetto con Composer (utility)
+
+Dockerfile basato su immagine **composer**, con **`ENTRYPOINT`** che fissa il programma e flag ricorrenti:
+
+```dockerfile
+FROM composer:latest
+WORKDIR /var/www/html
+ENTRYPOINT ["composer", "--ignore-platform-reqs"]
+```
+
+In Compose, bind mount di `./src` su `/var/www/html`.
+
+Creazione progetto (esempio concettuale; il nome del pacchetto va preso dalla documentazione Laravel aggiornata):
+
+```bash
+docker compose run --rm composer create-project laravel/laravel .
+```
+
+L’**entrypoint** è già `composer`, quindi non si ripete `composer` nel comando. Il punto finale crea il progetto nella directory di lavoro del container, che coincide con `./src` sull’host grazie al bind mount.
+
+## Far servire il codice anche a Nginx
+
+Il container **PHP** vede i file, ma le richieste HTTP arrivano prima a **Nginx**. Serve un **secondo bind mount** sul servizio `server` che monti **`./src`** (o la root del progetto Laravel) su **`/var/www/html`**, coerente con la root configurata in Nginx (inclusa la sottocartella `public` se la config lo richiede).
+
+## Avvio selettivo e dipendenze
+
+Non sempre si vogliono avviare tutti i servizi (es. non ha senso tenere su **composer** come daemon). Si può eseguire:
+
+```bash
+docker compose up -d server php mysql
+```
+
+In alternativa, sul servizio **`server`** si definisce:
+
+```yaml
+    depends_on:
+      - php
+      - mysql
+```
+
+Così un `docker compose up -d server` avvia anche **php** e **mysql**.
+
+Per ricostruire immagini dopo modifiche ai Dockerfile:
+
+```bash
+docker compose up -d --build server
+```
+
+`--build` forza la rivalutazione delle immagini custom; se i layer non sono cambiati, la build resta veloce grazie alla cache.
+
+## Artisan e npm: stesso codice, override in Compose
+
+**Artisan** è uno script PHP eseguito con il binario `php`. Si può riusare la **stessa immagine** del servizio `php` e, **solo per il servizio utility**, impostare in YAML:
+
+```yaml
+  artisan:
+    build:
+      context: .
+      dockerfile: dockerfiles/php.dockerfile
+    entrypoint: ["php", "/var/www/html/artisan"]
+    volumes:
+      - ./src:/var/www/html
+```
+
+Poi:
+
+```bash
+docker compose run --rm artisan migrate
+```
+
+**npm**: immagine **Node**, con `working_dir` e `entrypoint` definiti nel Compose (oppure in un Dockerfile dedicato, a scelta):
+
+```yaml
+  npm:
+    image: node:14
+    working_dir: /var/www/html
+    entrypoint: ["npm"]
+    volumes:
+      - ./src:/var/www/html
+```
+
+### Dockerfile vs chiavi Compose (`entrypoint`, `working_dir`)
+
+È possibile impostare **`entrypoint`** e **`working_dir`** nel file Compose senza Dockerfile aggiuntivo. Utile per configurazioni minime. Per **`RUN`**, **`COPY`** e logica di build complessa serve comunque un **Dockerfile**.
+
+Preferenza personale: Dockerfile dedicati rendono esplicite le intenzioni e tengono lo YAML più snello; Compose è comodo per piccoli aggiustamenti su immagini base.
+
+## Sviluppo (bind mount) vs deploy (snapshot nell’immagine)
+
+I **bind mount** sono ideali in **sviluppo**: il codice sull’host è quello visto dal container. In **produzione** su un server remoto quelle cartelle locali **non esistono**: il container deve contenere (o scaricare in modo controllato) ciò che serve.
+
+Pattern ibrido comune:
+
+1. Nel **Dockerfile** di Nginx (o PHP) si fa **`COPY`** di configurazione e/o codice (`COPY src .`, copia di `nginx.conf` rinominata in `default.conf`, ecc.).
+2. In sviluppo si **mantengono** i bind mount per vedere subito le modifiche.
+3. Per un deploy “solo immagine”, si possono **commentare** temporaneamente i bind mount e verificare che l’app funzioni solo con quanto copiato in build.
+
+### Contesto di build quando si copia dal progetto
+
+Se il Dockerfile di Nginx referenzia cartelle `nginx/` e `src/` nella root del progetto, il **`context`** della build del servizio `server` deve essere **`.`** (root progetto), non solo `./dockerfiles`:
+
+```yaml
+  server:
+    build:
+      context: .
+      dockerfile: dockerfiles/nginx.dockerfile
+```
+
+Altrimenti `COPY nginx/...` o `COPY src/...` fallisce perché fuori dal contesto.
+
+### Permessi scrittura Laravel (PHP-FPM)
+
+Con solo bind mount, i permessi sul host spesso “funzionano”. Se il codice vive solo nell’immagine (senza mount), l’utente predefinito dell’immagine PHP (es. **`www-data`**) può non avere diritto di scrittura su `/var/www/html`, e Laravel fallisce in cache/log/view. Una mitigazione tipica in Dockerfile è **`chown`** ricorsivo verso quell’utente sulla cartella del progetto. I dettagli dipendono da versione immagine e distro.
+
+Su **Linux**, con utility container che creano file montati sull’host, possono emergere problemi di **UID/GID**. In quel caso si allineano utenti tra immagini (creazione utente dedicato, istruzione `USER`) secondo le linee guida del team o della documentazione Docker.
+
+## Riepilogo comandi
+
+| Obiettivo | Comando tipico |
+|-----------|----------------|
+| Creare il progetto Laravel | `docker compose run --rm composer create-project ... .` |
+| Avviare stack web + DB | `docker compose up -d --build server` (con `depends_on`) oppure elencare `server php mysql` |
+| Migrazioni DB | `docker compose run --rm artisan migrate` |
+| Fermare e rimuovere container | `docker compose down` |
+
+## Esercizi correlati
+
+1. Correggere un mount Nginx su `nginx.conf` spostandolo in `conf.d/default.conf` e verificare l’avvio del container `server`.
+2. Impostare `DB_HOST=mysql` nel `.env` di Laravel e verificare la connessione con `artisan migrate`.
+3. Avviare solo `server` con `depends_on` e controllare con `docker compose ps` che `php` e `mysql` siano partiti.
+4. Spostare il `context` della build PHP da `./dockerfiles` a `.` dopo aver aggiunto `COPY src` nel Dockerfile e osservare la differenza in caso di errore “file outside context”.
+5. Confrontare `docker compose up` completo vs avvio selettivo dei tre servizi applicativi.

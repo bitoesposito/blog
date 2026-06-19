@@ -1,0 +1,62 @@
+---
+import { Icon } from "./ui/icon";
+
+interface Props {
+  base: string;
+  root: {
+    id: string;
+    title: string;
+    readingTime: string;
+    combined: string;
+    current: boolean;
+  };
+  chapters: { id: string; title: string; readingTime: string; current: boolean }[];
+}
+
+const { base, root, chapters } = Astro.props;
+
+const item = "flex items-start gap-2 rounded-md px-2 py-1.5 text-sm no-underline transition-colors";
+const active = "bg-muted font-medium text-foreground";
+const inactive = "text-muted-foreground hover:bg-muted/50 hover:text-foreground";
+---
+
+<aside class="col-start-3 row-start-2 hidden xl:block">
+  <nav
+    data-sidebar-scroll
+    aria-label="Contenuti del corso"
+    class="sticky top-20 mr-auto ml-8 flex max-h-[calc(100vh-6rem)] max-w-80 flex-col gap-1 overflow-y-auto pb-6"
+  >
+    <a
+      href={`${base}/${root.id}`}
+      data-current={root.current ? "true" : undefined}
+      class:list={[item, root.current ? active : inactive]}
+    >
+      <Icon name="book-open-text" className="mt-0.5 size-4 shrink-0" />
+      <span class="flex min-w-0 flex-col">
+        <span class="line-clamp-2">{root.title}</span>
+        <span class="text-xs text-muted-foreground">
+          {root.readingTime}
+          {root.combined !== root.readingTime && ` · ${root.combined} totale`}
+        </span>
+      </span>
+    </a>
+
+    <ul class="m-0 flex list-none flex-col gap-1 border-l border-border p-0 pl-2">
+      {chapters.map((c) => (
+        <li>
+          <a
+            href={`${base}/${c.id}`}
+            data-current={c.current ? "true" : undefined}
+            class:list={[item, c.current ? active : inactive]}
+          >
+            <Icon name="file-text" className="mt-0.5 size-4 shrink-0" />
+            <span class="flex min-w-0 flex-col">
+              <span class="line-clamp-2">{c.title}</span>
+              <span class="text-xs text-muted-foreground">{c.readingTime}</span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</aside>

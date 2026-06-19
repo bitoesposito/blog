@@ -1,7 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import ListLayout from "../../layouts/ListLayout.astro";
-import { PostCard } from "../../components/ui/post-card";
+import ProjectCard from "../../components/ProjectCard.astro";
 import { groupByYear } from "../../lib/post";
 import { SITE } from "../../consts";
 
@@ -21,15 +21,15 @@ const years = groupByYear(projects);
           <h2 id={`year-proj-${year}`} class="font-bold">
             {year}
           </h2>
-          <div class="flex flex-col">
+          <div class="flex flex-col gap-4">
             {items.map((project) => (
-              <PostCard
+              <ProjectCard
                 href={`/projects/${project.id}`}
                 title={project.data.title}
                 description={project.data.description}
                 pubDate={project.data.pubDate}
-                body={project.body}
                 tags={project.data.tags}
+                image={project.data.heroImage}
               />
             ))}
           </div>

@@ -45,6 +45,8 @@ const education = defineCollection({
 			tags: z.array(z.string()).default([]),
 			institution: z.string().optional(),
 			link: z.string().url().optional(),
+			// Ordina i capitoli (subpost) all'interno di un corso.
+			order: z.number().optional(),
 		}),
 });
 

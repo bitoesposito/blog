@@ -1,0 +1,33 @@
+---
+// Lista dei link dell'indice, condivisa tra la sidebar di sinistra (xl+) e la
+// barra ripiegabile in alto (< xl). Lo stato attivo è gestito via JS in
+// ContentLayout, che imposta aria-current="true" sul link della sezione corrente.
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  items: Heading[];
+}
+
+const { items } = Astro.props;
+---
+
+<ul class="m-0 list-none p-0">
+  {items.map((h: Heading) => (
+    <li>
+      <a
+        href={`#${h.slug}`}
+        data-heading={h.slug}
+        class:list={[
+          "block py-1 text-sm leading-snug text-muted-foreground no-underline transition-colors hover:text-foreground aria-[current=true]:font-medium aria-[current=true]:text-foreground",
+          h.depth === 3 && "pl-3",
+        ]}
+      >
+        {h.text}
+      </a>
+    </li>
+  ))}
+</ul>

@@ -18,6 +18,8 @@ interface PostCardProps {
   tags?: string[]
   /** Numero massimo di tag mostrati (default 2). */
   maxTags?: number
+  /** Numero di lezioni del corso: se presente mostra "N lezioni". */
+  chapters?: number
 }
 
 function PostCard({
@@ -28,6 +30,7 @@ function PostCard({
   body,
   tags = [],
   maxTags = 2,
+  chapters,
 }: PostCardProps) {
   return (
     <a href={href} className="block">
@@ -49,6 +52,12 @@ function PostCard({
               <>
                 <span aria-hidden="true">|</span>
                 <span className="whitespace-nowrap">{readingTime(body)}</span>
+              </>
+            )}
+            {chapters != null && chapters > 0 && (
+              <>
+                <span aria-hidden="true">|</span>
+                <span className="whitespace-nowrap">{chapters} lezioni</span>
               </>
             )}
           </div>

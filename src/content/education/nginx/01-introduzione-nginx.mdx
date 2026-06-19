@@ -1,0 +1,128 @@
+---
+title: "Introduzione a Nginx"
+description: "Cos'è Nginx, quando usarlo e principali casi d'uso come web server, reverse proxy, load balancer e API gateway"
+pubDate: 2026-03-02
+tags: ['formazione', 'nginx']
+authors: ['vitoesposito']
+order: 1
+---
+
+## Introduzione
+
+**Nginx** è un web server open source scritto in C che può funzionare anche come **reverse proxy**, **load balancer** e **API gateway**. È progettato per gestire un numero elevato di connessioni concorrenti con un uso efficiente di CPU e memoria.
+
+In molti sistemi moderni Nginx è il primo componente che riceve il traffico in ingresso, davanti alle applicazioni vere e proprie. Comprendere il suo ruolo è fondamentale per chi progetta e mantiene architetture backend.
+
+## Nginx come web server
+
+Nel ruolo di **web server**, Nginx:
+
+- Ascolta su una o più porte HTTP/HTTPS
+- Serve **contenuti statici** (HTML, CSS, JavaScript, immagini, asset vari)
+- Può eseguire o delegare contenuti **dinamici** tramite CGI o applicazioni a valle
+
+In questo scenario Nginx:
+
+- Riceve una richiesta HTTP dal client
+- Interpreta metodo, URL, header e corpo
+- Trova il file corrispondente (se contenuto statico) o inoltra la richiesta a un gestore dinamico
+- Restituisce la risposta HTTP al client
+
+Molte applicazioni semplici possono essere servite interamente da Nginx come web server statico.
+
+## Nginx come reverse proxy
+
+Il caso d’uso più potente è Nginx come **reverse proxy**. In questo ruolo:
+
+- Nginx è esposto verso internet
+- I **backend** (API, microservizi, applicazioni) restano “dietro” Nginx e non sono direttamente accessibili dai client
+
+Il reverse proxy:
+
+- Riceve le richieste dei client
+- Può **modificare** o arricchire la richiesta (header, path, autenticazione)
+- Decide **a quale backend** inoltrare la richiesta
+- Riceve la risposta dal backend
+- Eventualmente la **trasforma o la cache** e la invia al client
+
+Dal punto di vista del client, esiste **un solo endpoint pubblico**: Nginx.
+
+## Casi d’uso principali
+
+### Load balancer
+
+Uno dei casi più comuni è usare Nginx come **load balancer**:
+
+- I client inviano tutte le richieste a Nginx
+- Nginx distribuisce le richieste su più backend (ad esempio `app1`, `app2`, `app3`)
+- Se un backend è down, Nginx può **escluderlo** dal bilanciamento
+
+Benefici:
+
+- Scalabilità orizzontale più semplice
+- Possibilità di sostituire o aggiornare backend senza esporli direttamente
+- Gestione centralizzata del traffico in ingresso
+
+### Backend routing (API gateway base)
+
+Nginx può fare da **router** verso backend diversi in base a:
+
+- **Path** (es. `/app1` → backend A, `/app2` → backend B)
+- **Versione API** (es. `/v1` → vecchio backend, `/v2` → nuovo backend)
+- Altri criteri come host, header, cookie
+
+Questo ricorda il concetto di **API gateway**:
+
+- Tutti i client parlano con un unico endpoint logico
+- Il gateway decide quale servizio interno chiamare
+- È possibile introdurre facilmente **versioning**, **migrazioni progressive** e **canary release**
+
+### Caching
+
+Poiché tutte le richieste passano da Nginx, è possibile:
+
+- **Cachare risposte** che si ripetono spesso
+- Evitare di colpire i backend quando una risposta è già nota
+- Ridurre **latenza** e **carico** sui servizi a valle
+
+Esempio tipico:
+
+- Il client A chiede `/articoli/123`
+- Il backend genera la risposta e Nginx la memorizza
+- Il client B chiede la stessa risorsa, Nginx può rispondere direttamente dalla cache
+
+## Nginx come punto centrale di controllo
+
+Mettere Nginx davanti ai backend permette di centralizzare:
+
+- **Rate limiting** (limitare il numero di richieste per client)
+- **Autenticazione preliminare** (ad esempio con JWT, header custom, IP allowlist)
+- **Logging e osservabilità** (log uniformi in un solo punto di ingresso)
+- **Sicurezza** (filtri su path, header, user-agent, IP)
+
+Molte di queste funzionalità hanno senso solo se esiste un **punto di ingresso unico** al sistema, ruolo che Nginx svolge molto bene.
+
+## Proxy vs reverse proxy
+
+È utile distinguere:
+
+- **Proxy “classico”**: il client configura un proxy e tutte le richieste verso internet passano da lì. I server vedono il **proxy** come client.
+- **Reverse proxy**: i client credono di parlare direttamente con il server “finale”, ma in realtà parlano con Nginx. I backend vedono **Nginx** come client.
+
+Nel caso del reverse proxy:
+
+- I server a valle non vedono direttamente gli IP reali dei client (a meno di header come `X-Forwarded-For`)
+- Le regole di sicurezza, routing e caching si applicano nel punto centrale (Nginx)
+
+## Riepilogo
+
+In sintesi, Nginx può essere usato come:
+
+- **Web server** per contenuti statici e semplici applicazioni
+- **Reverse proxy** per nascondere e proteggere i backend
+- **Load balancer** per distribuire il carico tra più istanze
+- **API gateway semplice** per routing, versioning e rate limiting
+- **Cache intermedia** per ridurre latenza e carico sui servizi interni
+
+Nei prossimi articoli si entra nel dettaglio di come Nginx si inserisce in un’architettura esistente e quali problemi aiuta a risolvere.
+

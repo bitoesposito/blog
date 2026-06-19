@@ -21,7 +21,7 @@ export const SITE: Site = {
   description:
     'blog personale in cui scrivo e condivido le mie idee e pensieri sullo sviluppo software, design e altro.',
   href: 'https://vitoesposito.it',
-  author: 'vitoesposito',
+  author: 'Vito Esposito',
   locale: 'it-IT',
   featuredPostCount: 3,
   featuredProjectCount: 3,

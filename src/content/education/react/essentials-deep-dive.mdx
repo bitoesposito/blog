@@ -1,0 +1,744 @@
+---
+title: 'Approfondimento sui Concetti Essenziali di React'
+description: "Un'analisi approfondita di JSX, componenti, props e state management, con focus su pattern avanzati e best practices per scrivere codice React efficace"
+pubDate: 2025-12-18
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Introduzione
+
+Questo approfondimento esplora come funzionano JSX, componenti, props e state management in React: la compilazione di JSX in `React.createElement`, fragments per evitare wrapper, forwarding props, state lifting, derived state, two-way binding e aggiornamenti immutabili.
+
+## JSX: Sotto il Cofano
+
+JSX è una sintassi che permette di scrivere codice HTML-like all'interno di JavaScript, ma è importante capire che JSX non è codice JavaScript standard. Il browser non può eseguire direttamente JSX: è necessario un processo di compilazione che trasforma il codice JSX in codice JavaScript valido.
+
+### React.createElement: L'Alternativa Non-JSX
+
+Tecnicamente, è possibile costruire applicazioni React senza usare JSX. React espone il metodo `createElement` che permette di creare elementi e componenti usando solo JavaScript standard.
+
+```jsx
+// Codice JSX
+function App() {
+  return (
+    <div>
+      <h1>Titolo</h1>
+      <p>Contenuto</p>
+    </div>
+  );
+}
+
+// Equivalente senza JSX usando React.createElement
+function App() {
+  return React.createElement(
+    'div',
+    null, // props
+    React.createElement('h1', null, 'Titolo'),
+    React.createElement('p', null, 'Contenuto')
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Come funziona React.createElement</summary>
+<div class="px-4 pb-4">
+
+Il metodo `React.createElement` accetta tre parametri principali:
+
+1. **Tipo di elemento**: Può essere una stringa (per elementi HTML incorporati come `'div'`, `'h1'`) o un riferimento a un componente personalizzato (una funzione)
+2. **Props**: Un oggetto contenente tutte le proprietà da passare all'elemento o componente
+3. **Children**: Gli elementi figli, che possono essere stringhe, numeri, altri elementi creati con `createElement`, o array di questi
+
+```jsx
+// Esempio con props e children
+React.createElement(
+  'button',           // tipo
+  { onClick: handler }, // props
+  'Clicca qui'        // children
+);
+
+// Esempio con componente personalizzato
+React.createElement(Header, { title: 'Titolo' });
+```
+
+Questo approccio è più verboso rispetto a JSX. Il processo di compilazione trasforma JSX in chiamate a `React.createElement`.
+
+</div>
+</details>
+
+## Fragments: Evitare Elementi Wrapper Inutili
+
+Una limitazione importante di JSX è che ogni espressione JSX deve avere un **singolo elemento radice**. Non è possibile restituire più elementi fratelli direttamente, perché questo violerebbe la regola che una funzione può restituire solo un valore.
+
+```jsx
+// ❌ Questo non funziona
+function Component() {
+  return (
+    <h1>Titolo</h1>
+    <p>Contenuto</p>
+  );
+}
+
+// ✅ Questo funziona, ma aggiunge un div extra nel DOM
+function Component() {
+  return (
+    <div>
+      <h1>Titolo</h1>
+      <p>Contenuto</p>
+    </div>
+  );
+}
+```
+
+Aggiungere un `div` wrapper risolve il problema sintattico ma introduce un elemento HTML non necessario nel DOM, che può causare problemi con CSS, semantica HTML e performance.
+
+### Soluzione: React Fragments
+
+React fornisce un componente speciale chiamato `Fragment` che permette di raggruppare elementi senza aggiungere nodi al DOM.
+
+```jsx
+import React from 'react';
+
+function Component() {
+  return (
+    <React.Fragment>
+      <h1>Titolo</h1>
+      <p>Contenuto</p>
+    </React.Fragment>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Sintassi breve dei Fragments</summary>
+<div class="px-4 pb-4">
+
+Nei progetti React moderni, è possibile usare una sintassi ancora più breve usando tag vuoti:
+
+```jsx
+// Sintassi breve (non richiede import)
+function Component() {
+  return (
+    <>
+      <h1>Titolo</h1>
+      <p>Contenuto</p>
+    </>
+  );
+}
+```
+
+Questa sintassi è equivalente a `<React.Fragment>` ma più concisa. I fragments permettono di raggruppare elementi senza aggiungere nodi al DOM. Se si ha bisogno di applicare props (come `className` o `id`) al wrapper, si deve usare `<React.Fragment>` invece della sintassi breve.
+
+</div>
+</details>
+
+## Suddivisione dei Componenti
+
+Ogni componente dovrebbe avere una singola responsabilità. Quando un componente gestisce troppe cose diverse, diventa difficile da mantenere. Si suddivide quando c'è ripetizione di markup, troppe responsabilità, riesecuzioni non necessarie, o quando il file diventa troppo grande.
+
+Quando si suddivide un componente, si può farlo per funzionalità (ogni funzionalità distinta diventa un componente separato), per riutilizzabilità (se una parte viene usata più volte), o per isolamento dello stato (se una parte ha il proprio stato indipendente).
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Isolamento delle istanze di componenti</summary>
+<div class="px-4 pb-4">
+
+Un concetto cruciale da capire è che ogni volta che si usa un componente, React crea una **nuova istanza isolata** di quel componente. Anche se due componenti condividono la stessa funzione componente, le loro istanze sono completamente indipendenti.
+
+```jsx
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div>
+      <p>{count}</p>
+      <button onClick={() => setCount(count + 1)}>Incrementa</button>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <>
+      <Counter /> {/* Istanza 1: stato isolato */}
+      <Counter /> {/* Istanza 2: stato isolato */}
+    </>
+  );
+}
+```
+
+Ogni `<Counter />` ha il proprio stato `count` completamente indipendente. Questo isolamento permette di costruire componenti riutilizzabili complessi senza interferenze tra istanze.
+
+</div>
+</details>
+
+## Forwarding Props: Rendere i Componenti Flessibili
+
+Quando si crea un componente wrapper attorno a un elemento HTML incorporato, spesso si vuole permettere di passare props aggiuntive a quell'elemento sottostante. Il pattern di **forwarding props** (o props proxy) permette di inoltrare automaticamente tutte le props non gestite esplicitamente.
+
+### Il Problema
+
+Immaginiamo un componente `Section` che wrappa un elemento `<section>`:
+
+```jsx
+function Section({ title, children }) {
+  return (
+    <section>
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+```
+
+Se si vuole aggiungere un `id` o una `className` al `<section>`, bisognerebbe gestirli manualmente:
+
+```jsx
+// Approccio manuale (non scalabile)
+function Section({ title, children, id, className }) {
+  return (
+    <section id={id} className={className}>
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+```
+
+Questo approccio non scala perché per ogni nuovo attributo HTML bisogna aggiungere un nuovo parametro.
+
+### Soluzione: Rest Properties e Spread Operator
+
+JavaScript fornisce la sintassi delle **rest properties** per raccogliere props rimanenti, e lo **spread operator** per distribuirle:
+
+```jsx
+function Section({ title, children, ...props }) {
+  return (
+    <section {...props}>
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+// Utilizzo: tutte le props extra vengono inoltrate automaticamente
+<Section title="Titolo" id="sezione-1" className="highlight">
+  Contenuto
+</Section>
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Come funziona il forwarding</summary>
+<div class="px-4 pb-4">
+
+Il processo di forwarding props funziona in due passaggi:
+
+**1. Raccolta delle props rimanenti (rest properties)**
+```jsx
+function Component({ prop1, prop2, ...rest }) {
+  // prop1 e prop2 sono estratti esplicitamente
+  // rest contiene tutte le altre props come oggetto
+}
+```
+
+La sintassi `...rest` raccoglie tutte le proprietà dell'oggetto props che non sono state destrutturate esplicitamente in un nuovo oggetto chiamato `rest`.
+
+**2. Distribuzione delle props (spread operator)**
+```jsx
+<element {...rest} />
+```
+
+Lo spread operator `{...rest}` distribuisce tutte le proprietà dell'oggetto `rest` come attributi sull'elemento.
+
+**Esempio completo:**
+```jsx
+function Button({ children, variant, ...props }) {
+  return (
+    <button className={`btn btn-${variant}`} {...props}>
+      {children}
+    </button>
+  );
+}
+
+// Utilizzo
+<Button variant="primary" onClick={handler} disabled>
+  Clicca
+</Button>
+
+// Risultato: il button avrà onClick e disabled inoltrati automaticamente
+```
+
+Questo pattern è utile per componenti wrapper che devono supportare tutti gli attributi HTML standard.
+
+</div>
+</details>
+
+## Props Default Values: Valori Predefiniti
+
+Spesso si vuole che un componente abbia valori predefiniti per alcune props, in modo che possa essere usato senza specificare tutti i parametri. JavaScript permette di definire valori predefiniti direttamente nella destrutturazione.
+
+### Sintassi dei Valori Predefiniti
+
+```jsx
+function Button({ variant = 'primary', size = 'medium', children }) {
+  return (
+    <button className={`btn btn-${variant} btn-${size}`}>
+      {children}
+    </button>
+  );
+}
+
+// Utilizzo senza specificare variant e size
+<Button>Clicca</Button> {/* variant='primary', size='medium' */}
+
+// Utilizzo con valori personalizzati
+<Button variant="secondary" size="large">Clicca</Button>
+```
+
+I valori predefiniti rendono le props opzionali senza dover gestire `undefined` nel codice.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Valori predefiniti con componenti dinamici</summary>
+<div class="px-4 pb-4">
+
+Un caso d'uso interessante è quando si vuole permettere di specificare dinamicamente quale elemento HTML o componente usare come wrapper:
+
+```jsx
+function Container({ as: Component = 'div', children, ...props }) {
+  // Component può essere una stringa (elemento HTML) o un componente
+  return <Component {...props}>{children}</Component>;
+}
+
+// Utilizzo con elemento HTML
+<Container as="section" id="main">Contenuto</Container>
+
+// Utilizzo con componente personalizzato
+<Container as={CustomWrapper} className="special">Contenuto</Container>
+```
+
+Per elementi HTML incorporati si passa una stringa, per componenti personalizzati si passa il riferimento alla funzione componente. Il nome della variabile deve iniziare con maiuscola quando viene usata come componente JSX.
+
+</div>
+</details>
+
+## State Lifting: Condividere lo Stato tra Componenti
+
+Quando più componenti hanno bisogno di accedere alle stesse informazioni o reagire agli stessi cambiamenti di stato, lo stato deve essere "sollevato" (lifted) al componente antenato comune più vicino che ha accesso a tutti i componenti che ne hanno bisogno.
+
+### Il Problema dello Stato Locale
+
+Immaginiamo di avere due componenti che devono condividere informazioni:
+
+```jsx
+function Player({ name }) {
+  const [isActive, setIsActive] = useState(false);
+  // Come fa GameBoard a sapere quale giocatore è attivo?
+}
+
+function GameBoard() {
+  // Come sa quale simbolo usare quando si clicca una casella?
+}
+```
+
+Se ogni componente gestisce il proprio stato, non c'è modo di sincronizzarli. Lo stato deve essere sollevato al componente comune più vicino che ha accesso a tutti i componenti che ne hanno bisogno.
+
+### Soluzione: Sollevare lo Stato
+
+Lo stato viene gestito nel componente comune più vicino e passato come props:
+
+```jsx
+function App() {
+  // Stato sollevato qui perché sia Player che GameBoard ne hanno bisogno
+  const [activePlayer, setActivePlayer] = useState('X');
+  
+  return (
+    <>
+      <Player name="Giocatore 1" symbol="X" isActive={activePlayer === 'X'} />
+      <Player name="Giocatore 2" symbol="O" isActive={activePlayer === 'O'} />
+      <GameBoard 
+        activePlayerSymbol={activePlayer}
+        onSquareClick={() => setActivePlayer(prev => prev === 'X' ? 'O' : 'X')}
+      />
+    </>
+  );
+}
+```
+
+
+## Derived State: Calcolare invece di Memorizzare
+
+Un principio fondamentale nello sviluppo React è **derivare il maggior numero possibile di informazioni dallo stato esistente**, invece di memorizzare ogni possibile valore come stato separato. Questo riduce la complessità e previene inconsistenze.
+
+### Il Problema dello Stato Ridondante
+
+Immaginiamo di gestire un gioco che traccia i turni:
+
+```jsx
+// Approccio con stato ridondante
+const [gameTurns, setGameTurns] = useState([]);
+const [gameBoard, setGameBoard] = useState(initialBoard);
+const [activePlayer, setActivePlayer] = useState('X');
+```
+
+Questo approccio può portare a inconsistenze (gameBoard e gameTurns potrebbero non corrispondere) e richiede aggiornamenti multipli per ogni azione.
+
+### Soluzione: Derivare lo Stato
+
+Invece di memorizzare tutto, si memorizza solo la fonte di verità e si derivano gli altri valori:
+
+```jsx
+// Fonte di verità unica
+const [gameTurns, setGameTurns] = useState([]);
+
+// Valori derivati (calcolati, non memorizzati)
+const gameBoard = deriveGameBoard(gameTurns);
+const activePlayer = deriveActivePlayer(gameTurns);
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Come derivare lo stato</summary>
+<div class="px-4 pb-4">
+
+**Pattern per derivare lo stato:**
+
+```jsx
+function App() {
+  const [gameTurns, setGameTurns] = useState([]);
+  
+  // Funzione helper per derivare il tabellone di gioco
+  function deriveGameBoard(turns) {
+    const board = [
+      [null, null, null],
+      [null, null, null],
+      [null, null, null]
+    ];
+    
+    // Applica ogni turno al tabellone
+    for (const turn of turns) {
+      board[turn.row][turn.col] = turn.player;
+    }
+    
+    return board;
+  }
+  
+  // Funzione helper per derivare il giocatore attivo
+  function deriveActivePlayer(turns) {
+    if (turns.length === 0) return 'X';
+    const lastTurn = turns[0]; // ultimo turno
+    return lastTurn.player === 'X' ? 'O' : 'X';
+  }
+  
+  // Valori derivati calcolati ad ogni render
+  const gameBoard = deriveGameBoard(gameTurns);
+  const activePlayer = deriveActivePlayer(gameTurns);
+  
+  return (
+    <GameBoard board={gameBoard} activePlayer={activePlayer} />
+  );
+}
+```
+
+Derivare lo stato garantisce una sola fonte di verità e evita inconsistenze. Si deriva quando un valore può essere calcolato da un altro stato e il calcolo è semplice. Quando il calcolo è costoso, si usa `useMemo`.
+
+</div>
+</details>
+
+## Two-Way Binding: Sincronizzare Input e Stato
+
+Il **two-way binding** (legame bidirezionale) è un pattern comune per gestire input di form in React. Consiste nel sincronizzare il valore mostrato nell'input con lo stato del componente, permettendo sia la lettura che la scrittura.
+
+### Pattern Base del Two-Way Binding
+
+```jsx
+function InputComponent() {
+  const [value, setValue] = useState('');
+  
+  function handleChange(event) {
+    setValue(event.target.value);
+  }
+  
+  return (
+    <input 
+      type="text" 
+      value={value}           // Legge dallo stato
+      onChange={handleChange} // Scrive nello stato
+    />
+  );
+}
+```
+
+### Come Funziona
+
+1. **Leggere dallo stato**: Il prop `value` imposta il valore visualizzato nell'input
+2. **Scrivere nello stato**: L'evento `onChange` viene attivato ogni volta che l'utente modifica l'input
+3. **Aggiornamento**: `event.target.value` contiene il nuovo valore inserito dall'utente
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Dettagli sull'oggetto event</summary>
+<div class="px-4 pb-4">
+
+Quando si gestisce un evento in React, si riceve automaticamente un oggetto `event` che contiene informazioni sull'evento:
+
+```jsx
+function handleChange(event) {
+  // event.target: riferimento all'elemento che ha emesso l'evento (l'input)
+  // event.target.value: il valore corrente dell'input
+  // event.type: tipo di evento ('change', 'click', etc.)
+  
+  const newValue = event.target.value;
+  setValue(newValue);
+}
+```
+
+`event.target` si riferisce all'elemento DOM che ha emesso l'evento, `event.target.value` contiene il valore inserito dall'utente. L'oggetto event viene fornito automaticamente da React.
+
+**Esempio con multiple input:**
+```jsx
+function Form() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  
+  function handleNameChange(event) {
+    setName(event.target.value);
+  }
+  
+  function handleEmailChange(event) {
+    setEmail(event.target.value);
+  }
+  
+  return (
+    <form>
+      <input 
+        type="text" 
+        value={name} 
+        onChange={handleNameChange} 
+        placeholder="Nome"
+      />
+      <input 
+        type="email" 
+        value={email} 
+        onChange={handleEmailChange} 
+        placeholder="Email"
+      />
+    </form>
+  );
+}
+```
+
+</div>
+</details>
+
+### Differenza tra `value` e `defaultValue`
+
+È importante capire la differenza tra `value` e `defaultValue`:
+
+- **`value`**: Crea un **controlled component**. Il valore è controllato da React e deve essere aggiornato tramite `onChange`
+- **`defaultValue`**: Crea un **uncontrolled component**. Il valore iniziale viene impostato, ma poi il browser gestisce le modifiche
+
+```jsx
+// Controlled component (two-way binding completo)
+<input value={state} onChange={handler} />
+
+// Uncontrolled component (solo valore iniziale)
+<input defaultValue="valore iniziale" />
+```
+
+## Immutability: Aggiornare Stato di Oggetti e Array
+
+Quando lo stato contiene oggetti o array, è **fondamentale** aggiornarli in modo **immutabile**, creando nuove copie invece di modificare quelle esistenti. Questo è una best practice cruciale in React.
+
+### Perché l'Immutabilità è Importante
+
+In JavaScript, oggetti e array sono **valori di riferimento**. Quando si assegna un oggetto a una variabile, la variabile contiene un riferimento alla posizione in memoria, non una copia dell'oggetto.
+
+```jsx
+const original = { name: 'Test' };
+const reference = original; // Stesso riferimento in memoria
+
+reference.name = 'Modificato';
+console.log(original.name); // 'Modificato' - anche original è cambiato!
+```
+
+### Aggiornare Array in Modo Immutabile
+
+```jsx
+// ❌ SBAGLIATO: modifica l'array originale
+function addItem(items) {
+  items.push('nuovo item'); // Modifica l'array originale
+  return items;
+}
+
+// ✅ CORRETTO: crea un nuovo array
+function addItem(items) {
+  return [...items, 'nuovo item']; // Nuovo array con spread operator
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Pattern comuni per aggiornamenti immutabili</summary>
+<div class="px-4 pb-4">
+
+**Array:**
+
+```jsx
+const [items, setItems] = useState([]);
+
+// Aggiungere elemento
+setItems([...items, newItem]);
+
+// Rimuovere elemento
+setItems(items.filter(item => item.id !== idToRemove));
+
+// Aggiornare elemento
+setItems(items.map(item => 
+  item.id === idToUpdate 
+    ? { ...item, property: newValue }
+    : item
+));
+
+// Aggiungere in posizione specifica
+setItems([
+  ...items.slice(0, index),
+  newItem,
+  ...items.slice(index)
+]);
+```
+
+**Oggetti:**
+
+```jsx
+const [user, setUser] = useState({ name: 'Test', age: 25 });
+
+// Aggiornare proprietà
+setUser({ ...user, age: 26 });
+
+// Aggiungere proprietà
+setUser({ ...user, email: 'test@example.com' });
+
+// Rimuovere proprietà
+const { password, ...userWithoutPassword } = user;
+setUser(userWithoutPassword);
+```
+
+**Array di oggetti (nidificati):**
+
+```jsx
+const [board, setBoard] = useState([
+  [null, null, null],
+  [null, null, null],
+  [null, null, null]
+]);
+
+// Aggiornare elemento in array multidimensionale
+setBoard(prevBoard => {
+  return prevBoard.map((row, rowIndex) => {
+    if (rowIndex !== targetRow) return row;
+    
+    return row.map((cell, colIndex) => {
+      if (colIndex !== targetCol) return cell;
+      return newValue;
+    });
+  });
+});
+```
+
+L'immutabilità è importante perché React confronta i riferimenti per determinare se lo stato è cambiato. Modificare direttamente può causare bug sottili.
+
+</div>
+</details>
+
+## Funzioni di Aggiornamento dello Stato: La Forma Funzionale
+
+Quando si aggiorna lo stato basandosi sul valore precedente dello stesso stato, è **fortemente raccomandato** usare la **forma funzionale** della funzione di aggiornamento, passando una funzione invece di un valore diretto.
+
+### Il Problema dell'Aggiornamento Diretto
+
+```jsx
+const [count, setCount] = useState(0);
+
+function increment() {
+  setCount(count + 1); // Usa il valore corrente di count
+}
+```
+
+Questo approccio ha problemi quando si aggiorna lo stato più volte in sequenza o quando gli aggiornamenti sono programmati (non istantanei).
+
+### Soluzione: Forma Funzionale
+
+```jsx
+const [count, setCount] = useState(0);
+
+function increment() {
+  setCount(prevCount => prevCount + 1); // Usa sempre l'ultimo valore
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Perché React programma gli aggiornamenti</summary>
+<div class="px-4 pb-4">
+
+React non aggiorna lo stato istantaneamente ma programma gli aggiornamenti per essere eseguiti in futuro, permettendo di ottimizzare le performance raggruppando aggiornamenti.
+
+**Esempio del problema:**
+
+```jsx
+function problematicIncrement() {
+  setCount(count + 1); // Programma: count = 0 + 1 = 1
+  setCount(count + 1); // Programma: count = 0 + 1 = 1 (usa ancora il vecchio valore!)
+  // Risultato: count diventa 1, non 2
+}
+
+function correctIncrement() {
+  setCount(prev => prev + 1); // Programma: prev = 0, nuovo = 1
+  setCount(prev => prev + 1); // Programma: prev = 1, nuovo = 2
+  // Risultato: count diventa 2 ✅
+}
+```
+
+Si usa la forma funzionale sempre quando il nuovo stato dipende dal vecchio stato, quando si aggiorna lo stato più volte in sequenza, o quando si aggiornano array/oggetti basandosi su valori precedenti. Non è necessario quando si imposta un valore completamente nuovo e indipendente.
+
+```jsx
+// Non necessario (valore indipendente)
+setName('Nuovo nome');
+
+// Necessario (dipende dal vecchio valore)
+setCount(prev => prev + 1);
+setIsEditing(prev => !prev);
+```
+
+</div>
+</details>
+
+### Pattern Comuni con Forma Funzionale
+
+```jsx
+// Toggle booleano
+const [isOpen, setIsOpen] = useState(false);
+setIsOpen(prev => !prev);
+
+// Incremento/decremento
+const [count, setCount] = useState(0);
+setCount(prev => prev + 1);
+setCount(prev => prev - 1);
+
+// Aggiornare array
+const [items, setItems] = useState([]);
+setItems(prev => [...prev, newItem]);
+
+// Aggiornare oggetto
+const [user, setUser] = useState({ name: '', age: 0 });
+setUser(prev => ({ ...prev, name: 'Nuovo nome' }));
+```
+
+## Riepilogo
+
+**JSX** viene compilato in `React.createElement`. **Fragments** (`<>...</>` o `<React.Fragment>`) permettono di raggruppare elementi senza aggiungere nodi al DOM.
+
+**Forwarding props** usa rest properties (`...props`) e spread operator (`{...props}`) per inoltrare automaticamente props non gestite esplicitamente. I **valori predefiniti** si definiscono nella destrutturazione: `{ prop = 'default' }`.
+
+**State lifting**: quando più componenti hanno bisogno delle stesse informazioni, lo stato viene sollevato al componente comune più vicino. **Derived state**: invece di memorizzare valori ridondanti, si derivano calcolandoli dallo stato esistente.
+
+**Two-way binding** sincronizza input con stato: `value={state}` legge dallo stato, `onChange` scrive nello stato. `event.target.value` contiene il valore inserito dall'utente.
+
+**Immutability**: quando si aggiornano oggetti e array, si creano nuove copie invece di modificare quelle esistenti usando spread operator (`[...array]`, `{...object}`). **Forma funzionale**: quando lo stato dipende dal valore precedente, si usa `setState(prev => newValue)` invece di `setState(newValue)`.

@@ -1,0 +1,206 @@
+---
+title: "Installazione di Docker e primo container"
+description: "Panoramica dell’installazione di Docker su macOS, Windows e Linux, differenze tra Docker Desktop e Toolbox, e creazione del primo container di test"
+pubDate: 2026-03-13
+tags: ['formazione', 'docker', 'installazione']
+authors: ['vitoesposito']
+order: 2
+---
+
+## Cosa installa davvero Docker
+
+Indipendentemente dalla piattaforma, l’obiettivo è avere a disposizione:
+
+- il **Docker Engine** (daemon che gestisce immagini, container, rete, volumi)
+- la **CLI** `docker` (il comando che useremo in terminale)
+
+In aggiunta ci sono strumenti che semplificano l’uso su sistemi non Linux:
+
+- **Docker Desktop** (per macOS e Windows moderni)
+- **Docker Toolbox** (soluzione legacy per sistemi che non supportano Docker Desktop)
+
+Su **Linux**, il kernel espone già le primitive necessarie ai container, quindi si installa
+direttamente il **Docker Engine** tramite il package manager (apt, dnf, pacman, …).
+
+## Installazione: panoramica per piattaforma
+
+### macOS
+
+Su macOS moderno (hardware ≥ 2010, versioni recenti di macOS):
+
+- si installa **Docker Desktop for Mac**
+- Docker Desktop:
+  - installa il **Docker Engine**
+  - fornisce un’**interfaccia grafica minimale**
+  - espone la **CLI** `docker` nel terminale
+
+Concetti chiave:
+
+- l’icona della **balena** nella barra dei menu indica che Docker è in esecuzione
+- molti comandi falliscono con errori “cannot connect to the Docker daemon” se Docker non è avviato
+- nella GUI si può controllare:
+  - se Docker parte all’avvio
+  - quante risorse può usare (CPU, RAM, disco)
+
+Su macOS più vecchi, dove Docker Desktop non è supportato, si può usare **Docker Toolbox**:
+
+- crea una **virtual machine Linux** (via VirtualBox)
+- installa il Docker Engine dentro quella VM
+- espone una shell (“Docker Quickstart Terminal”) preconfigurata per parlare con quella VM
+
+### Windows
+
+Su **Windows 10/11** con i requisiti soddisfatti:
+
+- si installa **Docker Desktop for Windows**
+- Docker Desktop utilizza:
+  - **Hyper-V** o
+  - **WSL 2** (Windows Subsystem for Linux v2)
+
+In pratica:
+
+- si abilita Hyper-V o WSL 2 (a seconda di edizione e guida ufficiale)
+- si installa Docker Desktop
+- la CLI `docker` è disponibile nel **Prompt dei comandi**, in **PowerShell** o nel terminale preferito
+
+Anche qui:
+
+- Docker deve essere **in esecuzione** (balena nella system tray) per poter usare la CLI
+- la GUI permette di configurare:
+  - integrazione con WSL 2
+  - risorse allocate alla VM Linux che ospita Docker
+
+Su versioni più vecchie di Windows o dove non è possibile usare Docker Desktop:
+
+- si può usare **Docker Toolbox**
+- come su macOS, Toolbox crea una **VM Linux** via VirtualBox
+- si lavora principalmente dentro la shell “Docker Quickstart Terminal”
+
+### Linux
+
+Su Linux l’installazione è più diretta:
+
+- si aggiungono i repository ufficiali Docker (o si usa il package manager della distribuzione)
+- si installa il **Docker Engine**
+- si abilita e si avvia il servizio (`systemctl enable --now docker`, a seconda della distro)
+
+Dopo l’installazione:
+
+- la CLI `docker` è disponibile in qualsiasi shell
+- si può configurare l’utente per eseguire `docker` senza `sudo` (aggiungendolo al gruppo `docker`)
+
+## Verificare l’installazione
+
+Indipendentemente dalla piattaforma, una volta installato Docker si può verificare con:
+
+```bash
+docker version
+docker info
+```
+
+Se Docker è installato e il daemon è in esecuzione, questi comandi mostreranno le versioni del client
+e del server e qualche informazione sull’ambiente.
+
+In caso di errore:
+
+- controllare che **Docker Desktop sia avviato** (su macOS/Windows)
+- verificare che il servizio **docker** sia attivo (su Linux)
+
+## Il primo container
+
+Per fare un test rapido si possono usare immagini già pronte, ma è utile fin da subito vedere
+l’intero flusso:
+
+1. scrivere una piccola applicazione di esempio (qui un server HTTP minimal in Node.js)
+2. creare una **Dockerfile** per definire l’immagine
+3. costruire l’immagine (`docker build`)
+4. eseguire un container basato su quell’immagine (`docker run`)
+
+### Esempio di applicazione (Node.js)
+
+Immaginiamo un file `app.mjs` molto semplice che:
+
+- espone un server HTTP sulla **porta 3000**
+- risponde con una stringa tipo “Hi there!” a ogni richiesta
+
+Normalmente, per eseguirlo in locale servirebbe:
+
+- installare **Node.js** sulla macchina host
+- installare eventuali dipendenze (`npm install`)
+- avviare l’app con `node app.mjs`
+
+Con Docker si sposta tutto questo lavoro **dentro il container**.
+
+### Dockerfile di base
+
+Un possibile `Dockerfile` minimale per questo scenario potrebbe:
+
+- partire da un’immagine base di Node.js (`FROM node:18-alpine`)
+- impostare una directory di lavoro nel container (`WORKDIR /app`)
+- copiare i file del progetto (`COPY ...`)
+- installare le dipendenze (`RUN npm install`)
+- esporre la porta 3000 (`EXPOSE 3000`)
+- definire il comando di avvio (`CMD ["node", "app.mjs"]`)
+
+In sintesi, il Dockerfile descrive **come costruire** l’ambiente necessario a eseguire il codice.
+
+### Costruire l’immagine
+
+Dal terminale, posizionandosi nella directory che contiene il Dockerfile:
+
+```bash
+docker build -t my-first-app .
+```
+
+- `-t my-first-app` assegna un nome leggibile all’immagine
+- `.` indica di usare la directory corrente come contesto di build
+
+Al termine, `my-first-app` comparirà in `docker images`.
+
+### Eseguire il container
+
+Per avviare un container basato sull’immagine:
+
+```bash
+docker run -p 3000:3000 my-first-app
+```
+
+Qui:
+
+- `-p 3000:3000` pubblica la porta **3000 del container** sulla porta **3000 dell’host**
+- di default il processo del container occupa il terminale finché non viene interrotto
+
+Se tutto è configurato correttamente, visitando `http://localhost:3000` si dovrebbe vedere la risposta
+dell’applicazione (“Hi there!” o simile).
+
+Per fermare il container:
+
+- interrompere il processo nel terminale (es. `CTRL+C`), oppure
+- in un altro terminale:
+
+```bash
+docker ps          # per vedere i container in esecuzione
+docker stop <nome-o-id-container>
+```
+
+## Docker Engine, Docker Hub e strumenti correlati
+
+Già in questo primo esempio compaiono alcuni concetti che torneranno spesso:
+
+- **Docker Engine**: il servizio che riceve i comandi `docker`, costruisce immagini e gestisce container
+- **registri di immagini**:
+  - **Docker Hub** è il registry pubblico di default
+  - esistono anche registry privati (self‑hosted o managed)
+- **Docker Compose**:
+  - strumento che useremo più avanti per descrivere e avviare **più container** insieme
+  - utile per progetti che includono, ad esempio, API, frontend e database
+
+Nei prossimi capitoli questi ingredienti verranno scomposti con calma:
+
+- differenza precisa tra **immagine** e **container**
+- struttura dettagliata di un **Dockerfile**
+- gestione di **dati** e **volumi**
+- networking tra più container
+
+L’obiettivo è arrivare a usare Docker come strumento quotidiano, non solo per esempi didattici.
+

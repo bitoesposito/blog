@@ -1,0 +1,771 @@
+---
+title: 'Linked Lists'
+description: 'Introduzione alle Linked Lists, una struttura dati fondamentale per comprendere le strutture dati'
+pubDate: 2025-11-12
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 3
+---
+
+## Introduzione
+
+Le **linked lists** (liste collegate) sono una struttura dati fondamentale che differisce dagli array in alcuni aspetti chiave. Comprendere le linked lists è essenziale per capire come funzionano molte altre strutture dati più complesse.
+
+## Confronto con gli array
+
+Le linked lists differiscono dagli array in alcuni aspetti fondamentali:
+
+1. **Nessun indice**: gli array hanno indici che permettono l'accesso diretto agli elementi, le linked lists no
+2. **Memoria non contigua**: gli array sono memorizzati in posizioni contigue in memoria, le linked lists possono essere sparse ovunque
+3. **Puntatori**: ogni elemento in una linked list punta al successivo, creando una catena di nodi
+
+## Struttura delle Linked Lists
+
+### Componenti principali
+
+Una linked list è composta da:
+
+- **Head**: variabile che punta al primo elemento della lista
+- **Tail**: variabile che punta all'ultimo elemento della lista
+- **Nodi**: ogni elemento contiene un valore e un puntatore al nodo successivo
+- **Null terminated**: l'ultimo nodo punta a `null`, indicando la fine della lista
+
+```javascript
+// Rappresentazione grafica di una linked list
+//  [11] → [3] → [23] → [7] → null
+//    ↑                  ↑
+//  Head                Tail
+```
+
+Ogni nodo punta al successivo, creando una catena. L'ultimo nodo punta a `null`, da qui il termine "null terminated list".
+
+### Struttura interna dei nodi
+
+Per capire come funziona una linked list, dobbiamo guardare cosa c'è realmente "sotto il cofano".
+
+#### Cosa è un nodo
+
+Un nodo non è solo il valore che vediamo nella rappresentazione grafica. Un nodo è un **oggetto** composto da:
+
+- **value**: il valore memorizzato nel nodo
+- **next**: un puntatore al nodo successivo (o `null` se è l'ultimo)
+
+```javascript
+// Rappresentazione grafica (semplificata)
+// [7] → [4] → null
+
+// Struttura reale in memoria
+{
+  value: 7,
+  next: {
+    value: 4,
+    next: null
+  }
+}
+```
+
+#### Come funziona il puntamento
+
+Quando diciamo che un nodo "punta" a un altro, stiamo in realtà impostando la proprietà `next` di un nodo per riferirsi all'oggetto del nodo successivo.
+
+```javascript
+// Il nodo con valore 7 punta al nodo con valore 4
+// facendo in modo che 7.next sia uguale all'oggetto del nodo 4
+node7.next = node4; // Questo è come "puntare" al nodo successivo
+```
+
+#### Struttura completa di una linked list
+
+Una linked list è quindi un insieme di oggetti annidati:
+
+```javascript
+// Esempio: [11] → [3] → [23] → [7] → null
+{
+  head: {
+    value: 11,
+    next: {
+      value: 3,
+      next: {
+        value: 23,
+        next: {
+          value: 7,
+          next: null
+        }
+      }
+    }
+  },
+  tail: {
+    value: 7,
+    next: null
+  },
+  length: 4
+}
+```
+
+`head` punta al primo oggetto nodo, mentre `tail` punta all'ultimo oggetto nodo. Entrambi sono riferimenti (puntatori) agli stessi oggetti nella catena.
+
+## Complessità temporale (Big O)
+
+Prima di implementare i metodi, analizziamo la complessità temporale delle operazioni principali sulle linked lists per capire quando usarle.
+
+### Operazioni di aggiunta
+
+- **Push** (fine): O(1) - abbiamo già un puntatore all'ultimo nodo (`tail`)
+- **Unshift** (inizio): O(1) - abbiamo già un puntatore al primo nodo (`head`)
+- **Insert** (mezzo): O(n) - dobbiamo iterare fino alla posizione desiderata
+
+### Operazioni di rimozione
+
+- **Pop** (fine): O(n) - dobbiamo iterare per trovare il penultimo nodo
+- **Shift** (inizio): O(1) - abbiamo già un puntatore al primo nodo (`head`)
+- **Remove** (mezzo): O(n) - dobbiamo iterare fino alla posizione desiderata
+
+### Operazioni di accesso
+
+- **Lookup by Index**: O(n) - dobbiamo partire da `head` e iterare
+- **Lookup by Value**: O(n) - dobbiamo iterare confrontando ogni valore
+
+**Nota importante**: Negli array possiamo accedere a un indice in **O(1)**, nelle linked lists dobbiamo sempre iterare. Questo è una differenza fondamentale.
+
+### Confronto Linked Lists vs Array
+
+Ecco una tabella comparativa delle complessità temporali:
+
+| Operazione | Linked List | Array |
+|------------|-------------|-------|
+| **Push** (fine) | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Pop** (fine) | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Shift** (inizio) | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Unshift** (inizio) | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Insert** (mezzo) | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Delete** (mezzo) | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+| **Lookup by Index** | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | <span class="text-green-600 dark:text-green-400 font-semibold">O(1)</span> |
+| **Lookup by Value** | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> | <span class="text-red-600 dark:text-red-400 font-semibold">O(n)</span> |
+
+**Legenda**: <span class="text-green-600 dark:text-green-400 font-semibold">Verde</span> = O(1) efficiente | <span class="text-red-600 dark:text-red-400 font-semibold">Rosso</span> = O(n) meno efficiente
+
+**Nota**: Le operazioni evidenziate mostrano dove una struttura dati è più efficiente dell'altra. Le linked lists sono migliori per operazioni all'inizio (shift/unshift), mentre gli array sono migliori per pop e lookup by index.
+
+### Quando usare Linked Lists
+
+Le linked lists sono migliori quando:
+- Devi **aggiungere/rimuovere spesso dall'inizio**: `unshift` e `shift` sono O(1) invece di O(n) degli array
+- Non hai bisogno di **lookup by index** frequente
+
+Gli array sono migliori quando:
+- Devi **accedere spesso per indice** (lookup by index): O(1) vs O(n) delle linked lists
+- Devi **rimuovere dalla fine**: `pop` è O(1) vs O(n) delle linked lists
+
+La scelta dipende dalle operazioni che esegui più frequentemente. Considera la **Big O** delle operazioni principali per il tuo caso d'uso specifico.
+
+## Implementazione
+
+### Classe Node
+
+Prima di implementare la linked list, creiamo una classe separata per i nodi. Questo ci permette di riutilizzare il codice di creazione dei nodi in più metodi (constructor, push, unshift, insert).
+
+```javascript
+// Classe per creare un singolo nodo
+class Node {
+  constructor(value) {
+    // Assegna il valore passato al costruttore
+    this.value = value;
+    // Inizialmente il nodo non punta a nulla
+    this.next = null;
+  }
+}
+
+// Esempio di utilizzo
+const newNode = new Node(4);
+// Crea un oggetto: { value: 4, next: null }
+```
+
+**Perché una classe separata?** I metodi `constructor`, `push`, `unshift` e `insert` hanno tutti bisogno di creare nuovi nodi. Invece di riscrivere il codice ogni volta, usiamo la classe `Node`.
+
+### Costruttore della LinkedList
+
+Il costruttore inizializza una linked list con il primo nodo:
+
+```javascript
+class LinkedList {
+  constructor(value) {
+    // Crea il primo nodo con il valore passato
+    const newNode = new Node(value);
+    
+    // Head punta al primo nodo (il nuovo nodo appena creato)
+    this.head = newNode;
+    
+    // Tail punta allo stesso nodo di head (quando c'è un solo nodo)
+    // Equivale a: this.tail = newNode
+    this.tail = this.head;
+    
+    // La lista inizia con lunghezza 1
+    this.length = 1;
+  }
+}
+
+// Esempio di utilizzo
+const myLinkedList = new LinkedList(4);
+// Crea una linked list con un nodo di valore 4
+// head e tail puntano entrambi a questo nodo
+// length = 1
+```
+
+**Spiegazione del costruttore**:
+1. **Crea il primo nodo**: `new Node(value)` crea un oggetto con `value` e `next: null`
+2. **Imposta head**: `this.head = newNode` fa sì che `head` punti al nuovo nodo
+3. **Imposta tail**: `this.tail = this.head` fa sì che `tail` punti allo stesso oggetto di `head` (quando c'è un solo nodo, sono la stessa cosa)
+4. **Inizializza length**: `this.length = 1` perché abbiamo creato un nodo
+
+**Risultato in memoria**:
+
+```javascript
+{
+  head: { value: 4, next: null },
+  tail: { value: 4, next: null },  // punta allo stesso oggetto di head
+  length: 1
+}
+```
+
+`head` e `tail` sono entrambi riferimenti allo stesso oggetto nodo. Quando aggiungeremo altri nodi, `tail` verrà aggiornato per puntare all'ultimo nodo della catena.
+
+## Operazioni di aggiunta
+
+### Push - Aggiungere alla fine
+
+Aggiunge un nodo alla fine della lista. **Complessità: O(1)**
+
+**Logica**:
+1. Crea un nuovo nodo
+2. L'ultimo nodo punta al nuovo nodo (`tail.next = newNode`)
+3. `tail` viene aggiornato per puntare al nuovo nodo
+
+**Edge case**: Se la lista è vuota, `head` e `tail` puntano entrambi al nuovo nodo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+push(value) {
+  // Crea il nuovo nodo
+  const newNode = new Node(value);
+  
+  // Se la lista è vuota, head e tail puntano al nuovo nodo
+  if (!this.head) {
+    this.head = newNode;
+    this.tail = newNode;
+  } else {
+    // L'ultimo nodo punta al nuovo nodo
+    this.tail.next = newNode;
+    // Tail viene aggiornato per puntare al nuovo nodo
+    this.tail = newNode;
+  }
+  
+  // Incrementa la lunghezza
+  this.length++;
+  return this; // Ritorna l'intera linked list
+}
+```
+
+</div>
+</details>
+
+### Unshift - Aggiungere all'inizio
+
+Aggiunge un nodo all'inizio della lista. **Complessità: O(1)**
+
+**Logica**:
+1. Crea un nuovo nodo
+2. Il nuovo nodo punta al nodo attualmente puntato da `head`
+3. `head` viene aggiornato per puntare al nuovo nodo
+
+**Edge case**: Se la lista è vuota, `head` e `tail` puntano entrambi al nuovo nodo.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+unshift(value) {
+  // Crea il nuovo nodo
+  const newNode = new Node(value);
+  
+  // Se la lista è vuota, head e tail puntano al nuovo nodo
+  if (!this.head) {
+    this.head = newNode;
+    this.tail = newNode;
+  } else {
+    // Il nuovo nodo punta al primo nodo attuale
+    newNode.next = this.head;
+    // Head viene aggiornato per puntare al nuovo nodo
+    this.head = newNode;
+  }
+  
+  // Incrementa la lunghezza
+  this.length++;
+  return this;
+}
+```
+
+</div>
+</details>
+
+### Insert - Inserire in una posizione specifica
+
+Inserisce un nuovo nodo all'indice specificato. **Complessità: O(n)**
+
+**Logica**:
+1. **Edge cases**:
+   - Indice 0: usa `unshift`
+   - Indice = length: usa `push`
+   - Indice non valido: ritorna `undefined`
+2. Trova il nodo precedente all'indice desiderato
+3. Il nuovo nodo punta al nodo che era all'indice
+4. Il nodo precedente punta al nuovo nodo
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+insert(index, value) {
+  // Edge case: inserimento all'inizio
+  if (index === 0) return this.unshift(value);
+  
+  // Edge case: inserimento alla fine
+  if (index === this.length) return this.push(value);
+  
+  // Edge case: indice non valido
+  if (index < 0 || index > this.length) return undefined;
+  
+  // Crea il nuovo nodo
+  const newNode = new Node(value);
+  
+  // Trova il nodo precedente all'indice desiderato
+  const temp = this.get(index - 1);
+  
+  // Il nuovo nodo punta al nodo che era all'indice
+  newNode.next = temp.next;
+  // Il nodo precedente punta al nuovo nodo
+  temp.next = newNode;
+  
+  // Incrementa la lunghezza
+  this.length++;
+  
+  return true;
+}
+```
+
+</div>
+</details>
+
+## Operazioni di rimozione
+
+### Pop - Rimuovere dalla fine
+
+Rimuove l'ultimo nodo dalla lista e lo ritorna. **Complessità: O(n)**
+
+**Logica**:
+1. Trova il penultimo nodo (iterando da `head`)
+2. Aggiorna `tail` per puntare al penultimo nodo
+3. Imposta `tail.next = null` per rimuovere l'ultimo nodo
+4. Ritorna il nodo rimosso
+
+**Edge cases**:
+- Lista vuota: ritorna `undefined`
+- Un solo nodo: dopo la rimozione, `head` e `tail` devono puntare a `null`
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+pop() {
+  // Se la lista è vuota, ritorna undefined
+  if (this.length === 0) {
+    return undefined;
+  }
+  
+  // Due variabili per iterare: temp (ultimo nodo) e pre (penultimo nodo)
+  let temp = this.head;
+  let pre = this.head;
+  
+  // Itera fino alla fine: quando temp.next è null, temp è l'ultimo nodo
+  while (temp.next) {
+    pre = temp;        // pre diventa il nodo precedente
+    temp = temp.next;  // temp si sposta al nodo successivo
+  }
+  
+  // Aggiorna tail per puntare al penultimo nodo
+  this.tail = pre;
+  // Rimuove il collegamento all'ultimo nodo
+  this.tail.next = null;
+  
+  // Decrementa la lunghezza
+  this.length--;
+  
+  // Edge case: se dopo la rimozione la lista è vuota
+  if (this.length === 0) {
+    this.head = null;
+    this.tail = null;
+  }
+  
+  // Ritorna il nodo rimosso
+  return temp;
+}
+```
+
+</div>
+</details>
+
+### Shift - Rimuovere dall'inizio
+
+Rimuove il primo nodo dalla lista e lo ritorna. **Complessità: O(1)**
+
+**Logica**:
+1. Sposta `head` al nodo successivo (`head = head.next`)
+2. Rimuove il collegamento del primo nodo (`temp.next = null`)
+3. Ritorna il nodo rimosso
+
+**Edge cases**:
+- Lista vuota: ritorna `undefined`
+- Un solo nodo: dopo la rimozione, `tail` deve puntare a `null`
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+shift() {
+  // Se la lista è vuota, ritorna undefined
+  if (!this.head) return undefined;
+  
+  // Salva il riferimento al primo nodo
+  let temp = this.head;
+  // Sposta head al nodo successivo
+  this.head = this.head.next;
+  // Rimuove il collegamento del nodo rimosso
+  temp.next = null;
+  
+  // Decrementa la lunghezza
+  this.length--;
+  
+  // Edge case: se dopo la rimozione la lista è vuota
+  if (this.length === 0) {
+    this.tail = null;
+  }
+  
+  // Ritorna il nodo rimosso
+  return temp;
+}
+```
+
+</div>
+</details>
+
+### Remove - Rimuovere da una posizione specifica
+
+Rimuove il nodo all'indice specificato e lo ritorna. **Complessità: O(n)**
+
+**Logica**:
+1. **Edge cases**:
+   - Indice 0: usa `shift`
+   - Indice = length - 1: usa `pop`
+   - Indice non valido: ritorna `undefined`
+2. Trova il nodo precedente a quello da rimuovere
+3. Il nodo precedente punta al nodo successivo a quello rimosso
+4. Rimuove il collegamento del nodo rimosso
+5. Ritorna il nodo rimosso
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+remove(index) {
+  // Edge case: rimozione dall'inizio
+  if (index === 0) return this.shift();
+  
+  // Edge case: rimozione dalla fine
+  if (index === this.length - 1) return this.pop();
+  
+  // Edge case: indice non valido
+  if (index < 0 || index >= this.length) return undefined;
+  
+  // Trova il nodo precedente a quello da rimuovere
+  const before = this.get(index - 1);
+  // Il nodo da rimuovere (più efficiente di usare get di nuovo)
+  const temp = before.next;
+  
+  // Il nodo precedente punta al nodo successivo a quello rimosso
+  before.next = temp.next;
+  // Rimuove il collegamento del nodo rimosso
+  temp.next = null;
+  
+  // Decrementa la lunghezza
+  this.length--;
+  
+  // Ritorna il nodo rimosso
+  return temp;
+}
+```
+
+</div>
+</details>
+
+## Operazioni di accesso e modifica
+
+### Get - Ottenere un nodo per indice
+
+Ritorna il nodo all'indice specificato. **Complessità: O(n)**
+
+**Logica**:
+1. Valida l'indice (deve essere >= 0 e < length)
+2. Itera dalla testa fino all'indice desiderato
+3. Ritorna il nodo trovato
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+get(index) {
+  // Valida l'indice: deve essere valido
+  if (index < 0 || index >= this.length) {
+    return undefined;
+  }
+  
+  // Parte dalla testa
+  let temp = this.head;
+  
+  // Itera fino all'indice desiderato
+  for (let i = 0; i < index; i++) {
+    temp = temp.next; // Sposta temp al nodo successivo
+  }
+  
+  // Ritorna il nodo all'indice specificato
+  return temp;
+}
+```
+
+</div>
+</details>
+
+### Set - Modificare il valore di un nodo
+
+Cambia il valore del nodo all'indice specificato. **Complessità: O(n)**
+
+**Logica**:
+1. Usa il metodo `get` per trovare il nodo
+2. Se il nodo esiste, aggiorna il suo valore
+3. Ritorna `true` se l'operazione è riuscita, `false` altrimenti
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+set(index, value) {
+  // Usa get per trovare il nodo all'indice specificato
+  let temp = this.get(index);
+  
+  // Se il nodo esiste, aggiorna il valore
+  if (temp) {
+    temp.value = value;
+    return true; // Operazione riuscita
+  }
+  
+  // Se l'indice non è valido, ritorna false
+  return false;
+}
+```
+
+</div>
+</details>
+
+## Operazioni speciali
+
+### Reverse - Invertire la lista
+
+Inverte l'ordine dei nodi nella lista. **Complessità: O(n)**
+
+**Logica**:
+1. Scambia `head` e `tail`
+2. Itera attraverso la lista invertendo le direzioni dei puntatori
+3. Usa tre variabili: `temp` (nodo corrente), `next` (prossimo nodo), `prev` (nodo precedente)
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Mostra implementazione</summary>
+<div class="px-4 pb-4">
+
+```javascript
+reverse() {
+  // Scambia head e tail
+  let temp = this.head;
+  this.head = this.tail;
+  this.tail = temp;
+  
+  // Variabili per iterare e invertire i puntatori
+  let next = temp.next; // Prossimo nodo dopo temp
+  let prev = null;      // Nodo precedente (inizia da null)
+  
+  // Itera attraverso tutta la lista
+  for (let i = 0; i < this.length; i++) {
+    // Salva il prossimo nodo prima di modificare temp.next
+    next = temp.next;
+    // Inverte il puntatore: temp punta al nodo precedente
+    temp.next = prev;
+    // prev si sposta al nodo corrente
+    prev = temp;
+    // temp si sposta al prossimo nodo
+    temp = next;
+  }
+  
+  return this;
+}
+```
+
+</div>
+</details>
+
+## Implementazione completa
+
+Ecco il codice completo delle classi `Node` e `LinkedList`:
+
+```javascript
+// Classe per creare un singolo nodo
+class Node {
+  constructor(value) {
+    this.value = value;
+    this.next = null;
+  }
+}
+
+// Classe per la linked list
+class LinkedList {
+  constructor(value) {
+    const newNode = new Node(value);
+    this.head = newNode;
+    this.tail = this.head;
+    this.length = 1;
+  }
+
+  push(value) {
+    const newNode = new Node(value);
+    if (!this.head) {
+      this.head = newNode;
+      this.tail = newNode;
+    } else {
+      this.tail.next = newNode;
+      this.tail = newNode;
+    }
+    this.length++;
+    return this;
+  }
+
+  pop() {
+    if (this.length === 0) return undefined;
+    let temp = this.head;
+    let pre = this.head;
+    while (temp.next) {
+      pre = temp;
+      temp = temp.next;
+    }
+    this.tail = pre;
+    this.tail.next = null;
+    this.length--;
+    if (this.length === 0) {
+      this.head = null;
+      this.tail = null;
+    }
+    return temp;
+  }
+
+  unshift(value) {
+    const newNode = new Node(value);
+    if (!this.head) {
+      this.head = newNode;
+      this.tail = newNode;
+    } else {
+      newNode.next = this.head;
+      this.head = newNode;
+    }
+    this.length++;
+    return this;
+  }
+
+  shift() {
+    if (!this.head) return undefined;
+    let temp = this.head;
+    this.head = this.head.next;
+    temp.next = null;
+    this.length--;
+    if (this.length === 0) {
+      this.tail = null;
+    }
+    return temp;
+  }
+
+  get(index) {
+    if (index < 0 || index >= this.length) return undefined;
+    let temp = this.head;
+    for (let i = 0; i < index; i++) {
+      temp = temp.next;
+    }
+    return temp;
+  }
+
+  set(index, value) {
+    let temp = this.get(index);
+    if (temp) {
+      temp.value = value;
+      return true;
+    }
+    return false;
+  }
+
+  insert(index, value) {
+    if (index === 0) return this.unshift(value);
+    if (index === this.length) return this.push(value);
+    if (index < 0 || index > this.length) return undefined;
+    const newNode = new Node(value);
+    const temp = this.get(index - 1);
+    newNode.next = temp.next;
+    temp.next = newNode;
+    this.length++;
+    return true;
+  }
+
+  remove(index) {
+    if (index === 0) return this.shift();
+    if (index === this.length - 1) return this.pop();
+    if (index < 0 || index >= this.length) return undefined;
+    const before = this.get(index - 1);
+    const temp = before.next;
+    before.next = temp.next;
+    temp.next = null;
+    this.length--;
+    return temp;
+  }
+
+  reverse() {
+    let temp = this.head;
+    this.head = this.tail;
+    this.tail = temp;
+    let next = temp.next;
+    let prev = null;
+    for (let i = 0; i < this.length; i++) {
+      next = temp.next;
+      temp.next = prev;
+      prev = temp;
+      temp = next;
+    }
+    return this;
+  }
+}
+```
+
+## Esercizi e problemi comuni
+
+Per praticare e approfondire le linked lists, consulta la sezione dedicata agli [**esercizi e problemi comuni**](/blog/formazione-data-structure-e-algorithms/linked-lists-esercizi)

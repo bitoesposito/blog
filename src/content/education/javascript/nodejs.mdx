@@ -1,0 +1,876 @@
+---
+title: "Node.js: JavaScript Fuori dal Browser"
+description: "Ambiente Node.js, file system, server HTTP, Express.js, REST API e integrazione con database MongoDB"
+pubDate: 2026-02-17
+tags: ['formazione', 'javascript']
+authors: ['vitoesposito']
+order: 21
+---
+
+## Introduzione
+
+Node.js è un ambiente di esecuzione JavaScript che permette di eseguire codice JavaScript al di fuori del browser. Utilizza il motore V8 di Chrome arricchito con API specifiche per operazioni lato server come accesso al file system, creazione di server HTTP e comunicazione con database.
+
+In questo capitolo si approfondiscono:
+
+- **Node.js vs Browser**: differenze tra gli ambienti
+- **Moduli Node.js**: sintassi `require` e `module.exports`
+- **File System**: leggere e scrivere file
+- **Server HTTP**: creare server con il modulo `http`
+- **Express.js**: framework per applicazioni web
+- **REST API**: creare endpoint per scambiare dati JSON
+- **Database MongoDB**: integrazione base con MongoDB
+
+---
+
+## Node.js vs Browser
+
+### Cos'è Node.js
+
+Node.js è essenzialmente il motore JavaScript V8 di Chrome estratto dal browser e arricchito con API specifiche per l'ambiente server. Questo permette di eseguire JavaScript al di fuori del browser, aprendo possibilità completamente nuove rispetto al tradizionale JavaScript lato client.
+
+### Differenze Principali
+
+**Browser**:
+- **API disponibili**: DOM per manipolare HTML, `fetch` per richieste HTTP, `localStorage` per storage locale, `window` come oggetto globale
+- **Esecuzione**: il codice viene eseguito nel browser dell'utente, direttamente sulla macchina del visitatore
+- **Scopo principale**: creare interfacce utente interattive e reattive
+
+**Node.js**:
+- **API disponibili**: file system per leggere/scrivere file, modulo `http` per creare server, moduli core per operazioni di sistema
+- **Esecuzione**: il codice viene eseguito su un server o sulla macchina locale dello sviluppatore
+- **Scopo principale**: creare server web, script utility, tooling per sviluppo, applicazioni backend
+
+### Cosa Rimane Uguale
+
+La sintassi JavaScript base è completamente identica tra browser e Node.js:
+
+- Dichiarazione di variabili (`const`, `let`, `var`)
+- Definizione di funzioni, classi, oggetti
+- Metodi degli array (`map`, `filter`, `reduce`, ecc.)
+- Gestione asincrona (`async/await`, Promises)
+- Tutte le funzionalità core del linguaggio JavaScript
+
+Questo significa che tutto ciò che si è imparato sul linguaggio JavaScript stesso è applicabile anche in Node.js. La differenza sta solo nelle API disponibili e nell'ambiente di esecuzione.
+
+### Eseguire Script Node.js
+
+Per eseguire un file JavaScript con Node.js, si usa il comando `node` seguito dal nome del file:
+
+```bash
+node app.js
+```
+
+Node.js legge il file JavaScript specificato, lo esegue e termina quando il codice è completato. Se il codice avvia un server o un processo continuo, Node.js rimane in esecuzione finché il processo non viene terminato manualmente.
+
+---
+
+## Moduli Node.js
+
+### Sistema di Moduli
+
+Node.js utilizza un sistema di moduli basato su CommonJS, diverso dai moduli ES6 utilizzati nel browser. Questo sistema permette di organizzare il codice in file separati e riutilizzabili, importando funzionalità quando necessario.
+
+### Sintassi Import/Export
+
+**Importare un modulo**:
+
+Node.js usa `require()` per importare moduli. Il comportamento varia in base al tipo di modulo:
+
+```javascript
+const fs = require('fs');              // Modulo core (built-in)
+const express = require('express');     // Pacchetto npm installato
+const myModule = require('./myModule'); // File locale (percorso relativo)
+```
+
+Quando si importa un modulo core o un pacchetto npm, si specifica solo il nome. Per file locali, bisogna usare un percorso relativo che inizi con `./` o `../`.
+
+**Esportare da un modulo**:
+
+Per rendere disponibili funzioni, oggetti o valori ad altri file, si usa `module.exports`:
+
+```javascript
+// Esportare un singolo valore (funzione, oggetto, ecc.)
+module.exports = myFunction;
+
+// Esportare un oggetto con più proprietà
+module.exports = {
+  function1: myFunction1,
+  function2: myFunction2
+};
+
+// Esportare multipli valori aggiungendo proprietà
+module.exports.function1 = myFunction1;
+module.exports.function2 = myFunction2;
+```
+
+La differenza principale con i moduli ES6 è che `module.exports` può essere assegnato direttamente, mentre con ES6 si usa `export` prima della dichiarazione.
+
+### Moduli Core
+
+Node.js include molti moduli built-in disponibili senza installazione. Questi moduli forniscono funzionalità fondamentali per operazioni comuni:
+
+- **`fs`**: operazioni sul file system (leggere, scrivere, gestire file e cartelle)
+- **`http`**: creare server HTTP e gestire richieste/risposte
+- **`path`**: utilità per lavorare con percorsi di file e directory
+- **`url`**: parsing e manipolazione di URL
+- **`crypto`**: funzionalità crittografiche per hash, cifratura, ecc.
+
+Questi moduli sono sempre disponibili e non richiedono installazione tramite npm. Basta importarli con `require()`.
+
+---
+
+## File System
+
+### Accesso al File System
+
+Una delle capacità principali di Node.js è l'accesso al file system della macchina su cui viene eseguito. Questa funzionalità non è disponibile nel browser per motivi di sicurezza, ma in Node.js è essenziale per molte operazioni server-side.
+
+Il modulo `fs` fornisce metodi per leggere, scrivere e gestire file e directory.
+
+### Scrivere un File
+
+Il metodo `writeFile()` permette di scrivere dati in un file:
+
+```javascript
+const fs = require('fs');
+
+fs.writeFile('data.txt', 'Contenuto del file', (err) => {
+  if (err) {
+    console.error('Errore:', err);
+    return;
+  }
+  console.log('File scritto con successo');
+});
+```
+
+**Parametri**:
+- **Primo argomento**: percorso del file (relativo o assoluto)
+- **Secondo argomento**: contenuto da scrivere (stringa o Buffer)
+- **Terzo argomento**: callback che viene eseguita al completamento
+
+Se il file non esiste, viene creato. Se esiste già, viene sovrascritto.
+
+### Leggere un File
+
+Il metodo `readFile()` permette di leggere il contenuto di un file:
+
+```javascript
+const fs = require('fs');
+
+fs.readFile('data.txt', 'utf8', (err, data) => {
+  if (err) {
+    console.error('Errore:', err);
+    return;
+  }
+  console.log('Contenuto:', data);
+});
+```
+
+**Parametri**:
+- **Primo argomento**: percorso del file da leggere
+- **Secondo argomento**: encoding (tipicamente `'utf8'` per testo)
+- **Terzo argomento**: callback con `err` e `data`
+
+**Importante**: senza specificare l'encoding, `readFile()` restituisce un `Buffer` (oggetto binario) invece di una stringa. Specificare `'utf8'` per ottenere testo leggibile.
+
+### Operazioni Asincrone
+
+Tutte le operazioni del file system sono asincrone per default. Questo significa che Node.js non blocca l'esecuzione mentre legge o scrive file, permettendo al server di gestire altre richieste contemporaneamente.
+
+### Metodi Sincroni (da Evitare)
+
+Esistono versioni sincrone dei metodi (`writeFileSync`, `readFileSync`) che bloccano l'esecuzione fino al completamento dell'operazione. Questi metodi sono utili solo per script semplici o operazioni di inizializzazione. In produzione, soprattutto in server web, vanno evitati perché bloccano l'intero processo Node.js.
+
+---
+
+## Server HTTP Base
+
+### Creare un Server con Node.js
+
+Il modulo `http` di Node.js permette di creare server HTTP che possono ricevere richieste e inviare risposte. Questo è il modo più base per creare un server web con Node.js, senza framework aggiuntivi.
+
+### Creare un Server
+
+```javascript
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.write('<h1>Hello World</h1>');
+  res.end();
+});
+
+server.listen(3000, () => {
+  console.log('Server in ascolto su porta 3000');
+});
+```
+
+**Spiegazione**:
+- `http.createServer()` crea un nuovo server HTTP
+- La funzione passata viene eseguita per ogni richiesta in arrivo
+- `req` (request) contiene informazioni sulla richiesta ricevuta
+- `res` (response) permette di configurare e inviare la risposta
+- `server.listen()` avvia il server sulla porta specificata
+
+Una volta avviato, il server rimane in esecuzione e ascolta richieste sulla porta configurata. Per fermarlo, premere `Ctrl+C` nel terminale.
+
+### Parsing del Body (Metodo Manuale)
+
+Quando si riceve una richiesta POST con dati nel body, bisogna parsare manualmente questi dati. Il body arriva in "chunks" (frammenti) per efficienza:
+
+```javascript
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  let body = [];
+  
+  // Evento 'data': ogni chunk di dati ricevuto
+  req.on('data', (chunk) => {
+    body.push(chunk);
+  });
+  
+  // Evento 'end': tutti i dati sono stati ricevuti
+  req.on('end', () => {
+    body = Buffer.concat(body).toString();
+    const parsedData = parseBody(body); // Logica di parsing personalizzata
+    res.end(JSON.stringify(parsedData));
+  });
+});
+```
+
+**Problemi di questo approccio**:
+- Parsing manuale complesso e propenso a errori
+- Gestione errori verbosa e ripetitiva
+- Difficile scalare con molti endpoint diversi
+- Nessuna astrazione per routing o middleware
+
+Per questi motivi, nella pratica si preferisce usare framework come Express.js che semplificano notevolmente queste operazioni.
+
+---
+
+## Express.js
+
+### Cos'è Express.js
+
+Express.js è il framework più popolare per Node.js. Semplifica la creazione di server web e applicazioni backend, gestendo automaticamente molte operazioni complesse come il parsing del body, il routing e la gestione degli errori.
+
+### Installazione
+
+Prima di usare Express, bisogna inizializzare un progetto npm e installare il pacchetto:
+
+```bash
+npm init -y
+npm install express
+```
+
+Il flag `-y` accetta automaticamente i valori di default per `package.json`.
+
+### Setup Base
+
+Dopo l'installazione, Express può essere importato e utilizzato:
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.listen(3000, () => {
+  console.log('Server in ascolto su porta 3000');
+});
+```
+
+Chiamare `express()` restituisce un'applicazione Express che può essere configurata con middleware e routes. `app.listen()` avvia il server, esattamente come `server.listen()` nel modulo `http` nativo.
+
+### Middleware
+
+Express è un framework basato su middleware: funzioni che vengono eseguite in sequenza per ogni richiesta. Ogni middleware può modificare la richiesta o la risposta, oppure terminare la catena inviando una risposta.
+
+```javascript
+app.use((req, res, next) => {
+  // Logica middleware
+  console.log('Richiesta ricevuta');
+  next(); // Passa al middleware successivo
+});
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'text/html');
+  next();
+});
+
+app.use((req, res) => {
+  res.send('<h1>Hello World</h1>');
+});
+```
+
+**Flusso di esecuzione**:
+1. La richiesta arriva al primo middleware registrato con `app.use()`
+2. Il middleware esegue la sua logica e chiama `next()` per passare al successivo
+3. Il processo continua fino all'ultimo middleware
+4. Se un middleware invia una risposta con `res.send()` o `res.json()`, la catena si ferma e la risposta viene inviata al client
+
+Il parametro `next` è una funzione che deve essere chiamata per continuare la catena di middleware. Se non viene chiamata, la richiesta rimane bloccata.
+
+### Body Parsing
+
+Una delle funzionalità più utili di Express è il parsing automatico del body delle richieste. Invece di gestire manualmente i chunk di dati, si può usare il middleware `body-parser`.
+
+**Installazione**:
+```bash
+npm install body-parser
+```
+
+**Utilizzo**:
+```javascript
+const bodyParser = require('body-parser');
+
+// Parsing JSON: per richieste con Content-Type: application/json
+app.use(bodyParser.json());
+
+// Parsing form data: per dati URL-encoded (form HTML)
+app.use(bodyParser.urlencoded({ extended: false }));
+
+// Ora req.body contiene automaticamente i dati parsati
+app.post('/submit', (req, res) => {
+  console.log(req.body); // Oggetto JavaScript con i dati parsati
+  res.json({ success: true });
+});
+```
+
+Dopo aver registrato questi middleware, tutti i dati inviati nel body delle richieste vengono automaticamente parsati e resi disponibili in `req.body` come oggetto JavaScript. L'opzione `extended: false` usa il parser standard di Node.js, mentre `extended: true` permette dati più complessi ma è meno sicuro.
+
+**Nota**: nelle versioni recenti di Express (4.16+), `express.json()` e `express.urlencoded()` sono built-in e non richiedono `body-parser` separato.
+
+### Routes
+
+Le routes permettono di definire come rispondere a richieste specifiche basate sul metodo HTTP e sul percorso URL. Express fornisce metodi per ogni metodo HTTP comune.
+
+```javascript
+// GET route: recuperare dati
+app.get('/users', (req, res) => {
+  res.json({ users: [] });
+});
+
+// POST route: creare nuove risorse
+app.post('/users', (req, res) => {
+  const newUser = req.body;
+  // Logica per salvare l'utente
+  res.json({ id: 123 });
+});
+
+// Route con parametri dinamici
+app.get('/users/:id', (req, res) => {
+  const userId = req.params.id;
+  res.json({ user: { id: userId } });
+});
+```
+
+**Parametri dinamici**: usando `:id` nel percorso, Express cattura il valore e lo rende disponibile in `req.params.id`. Questo permette di creare routes flessibili che possono gestire ID diversi.
+
+**Metodi disponibili**: `app.get()`, `app.post()`, `app.put()`, `app.patch()`, `app.delete()`, `app.use()` (per qualsiasi metodo).
+
+### Router Separato
+
+Per progetti più grandi, è buona pratica organizzare le routes in file separati. Express fornisce `express.Router()` per creare router modulari.
+
+**routes/users.js**:
+```javascript
+const express = require('express');
+const router = express.Router();
+
+// Queste routes sono relative al percorso base '/users'
+router.get('/', (req, res) => {
+  res.json({ users: [] });
+});
+
+router.get('/:id', (req, res) => {
+  res.json({ user: { id: req.params.id } });
+});
+
+module.exports = router;
+```
+
+**app.js**:
+```javascript
+const usersRoutes = require('./routes/users');
+
+// Tutte le routes definite in users.js saranno disponibili sotto /users
+app.use('/users', usersRoutes);
+```
+
+Questo approccio permette di:
+- Organizzare il codice in moduli logici
+- Mantenere `app.js` pulito e leggibile
+- Facilitare la manutenzione e il testing
+- Riusare lo stesso router con percorsi base diversi se necessario
+
+---
+
+## Template Engine: EJS
+
+### Cos'è un Template Engine
+
+I template engine permettono di generare HTML dinamicamente sul server, inserendo dati JavaScript in file HTML. Questo è utile per creare pagine che cambiano in base ai dati del server senza dover costruire HTML manualmente con stringhe.
+
+### Installazione e Configurazione
+
+EJS (Embedded JavaScript) è uno dei template engine più popolari per Express:
+
+```bash
+npm install ejs
+```
+
+Dopo l'installazione, bisogna configurare Express per usare EJS:
+
+```javascript
+app.set('view engine', 'ejs');
+app.set('views', 'views'); // Cartella dove sono i template
+```
+
+La prima riga dice a Express di usare EJS come engine di default. La seconda specifica la cartella dove cercare i file template.
+
+### Template Base
+
+I file template hanno estensione `.ejs` e contengono HTML con sintassi speciale per inserire dati dinamici:
+
+**views/index.ejs**:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>App</title>
+</head>
+<body>
+  <h1>Hello <%= username %></h1>
+</body>
+</html>
+```
+
+La sintassi `<%= username %>` viene sostituita con il valore della variabile `username` quando il template viene renderizzato.
+
+### Rendering
+
+Per renderizzare un template e inviarlo come risposta:
+
+```javascript
+app.get('/', (req, res) => {
+  res.render('index', { username: 'Vito' });
+});
+```
+
+`res.render()` prende il nome del template (senza estensione) e un oggetto con i dati da passare al template. Express cerca `index.ejs` nella cartella `views` e sostituisce le variabili con i valori forniti.
+
+**Sintassi EJS comune**:
+- `<%= variabile %>`: output del valore (escapato per sicurezza HTML)
+- `<% codice %>`: esecuzione codice JavaScript (if, loop, ecc.)
+- `<%- html %>`: output HTML non escapato (usare con cautela)
+
+Il template viene processato sul server e il risultato finale è HTML puro inviato al browser.
+
+---
+
+## REST API
+
+### Cos'è una REST API
+
+Una REST API è un'interfaccia che permette di scambiare dati JSON tra client e server usando metodi HTTP standard. A differenza di server che restituiscono HTML, una REST API restituisce solo dati strutturati, lasciando al client la responsabilità di renderizzarli.
+
+### Setup Base
+
+Per creare una REST API con Express:
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(express.json()); // Body parsing JSON
+
+app.listen(3000);
+```
+
+Il middleware `express.json()` (o `bodyParser.json()`) è essenziale per parsare automaticamente i dati JSON inviati nelle richieste POST/PUT.
+
+### Endpoint CRUD
+
+Una REST API tipicamente implementa operazioni CRUD (Create, Read, Update, Delete) per ogni risorsa:
+
+```javascript
+// GET: Recuperare tutte le risorse
+app.get('/api/items', (req, res) => {
+  res.json({ items: [] });
+});
+
+// GET: Recuperare una risorsa specifica
+app.get('/api/items/:id', (req, res) => {
+  const id = req.params.id;
+  res.json({ item: { id } });
+});
+
+// POST: Creare una nuova risorsa
+app.post('/api/items', (req, res) => {
+  const newItem = req.body;
+  // Logica per salvare l'item nel database
+  res.json({ id: 123, ...newItem });
+});
+
+// PUT: Aggiornare una risorsa esistente
+app.put('/api/items/:id', (req, res) => {
+  const id = req.params.id;
+  const updates = req.body;
+  // Logica per aggiornare l'item
+  res.json({ id, ...updates });
+});
+
+// DELETE: Eliminare una risorsa
+app.delete('/api/items/:id', (req, res) => {
+  const id = req.params.id;
+  // Logica per eliminare l'item
+  res.status(204).send(); // 204 = No Content (successo senza body)
+});
+```
+
+**Convenzioni REST**:
+- URL plurali per le risorse (`/api/items` non `/api/item`)
+- Metodi HTTP che descrivono l'operazione
+- Risposte JSON consistenti
+- Status codes appropriati
+
+### Status Codes HTTP
+
+I status codes comunicano il risultato dell'operazione al client:
+
+```javascript
+res.status(200).json({ data });  // Success - operazione riuscita
+res.status(201).json({ data });  // Created - risorsa creata con successo
+res.status(404).json({ error });  // Not Found - risorsa non trovata
+res.status(500).json({ error });  // Server Error - errore interno
+res.status(204).send();           // No Content - successo senza contenuto
+```
+
+Usare status codes appropriati aiuta il client a gestire correttamente le risposte e gli errori.
+
+---
+
+## CORS
+
+### Il Problema delle Richieste Cross-Origin
+
+CORS (Cross-Origin Resource Sharing) è una policy di sicurezza del browser che blocca richieste tra origini diverse. Due URL sono considerati origini diverse se differiscono per protocollo, dominio o porta.
+
+Se il frontend è su `localhost:8080` e il backend su `localhost:3000`, sono considerati origini diverse e il browser bloccherà le richieste tra di loro per default.
+
+### Soluzione: Configurare Headers CORS
+
+Per permettere richieste cross-origin, il server deve inviare headers specifici nella risposta:
+
+```javascript
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+```
+
+**Headers CORS principali**:
+- **`Access-Control-Allow-Origin`**: specifica quali origini possono accedere. `'*'` permette tutte le origini (usare con cautela in produzione)
+- **`Access-Control-Allow-Methods`**: lista dei metodi HTTP permessi
+- **`Access-Control-Allow-Headers`**: lista degli headers che il client può inviare
+
+**Preflight Requests**: per alcune richieste (come POST con JSON), il browser invia prima una richiesta OPTIONS per verificare i permessi. Il server deve rispondere correttamente a questa richiesta, altrimenti la richiesta effettiva verrà bloccata. Assicurarsi di includere `OPTIONS` nei metodi permessi o gestire esplicitamente le richieste OPTIONS.
+
+---
+
+## MongoDB
+
+### Cos'è MongoDB
+
+MongoDB è un database NoSQL che memorizza dati in formato JSON-like (documenti). Si integra particolarmente bene con Node.js perché entrambi lavorano nativamente con oggetti JavaScript.
+
+### Installazione Driver
+
+Per connettersi a MongoDB da Node.js, serve il driver ufficiale:
+
+```bash
+npm install mongodb
+```
+
+### Connessione al Database
+
+Il driver MongoDB permette di connettersi a un database MongoDB (locale o cloud) e eseguire operazioni:
+
+```javascript
+const mongodb = require('mongodb');
+const MongoClient = mongodb.MongoClient;
+
+const connectionURL = 'mongodb+srv://username:password@cluster.mongodb.net/database';
+
+const client = new MongoClient(connectionURL);
+
+client.connect((err, client) => {
+  if (err) {
+    console.error('Errore connessione:', err);
+    return;
+  }
+  
+  const db = client.db('database-name');
+  // Operazioni database qui
+});
+```
+
+La connection string contiene le credenziali e l'indirizzo del database. Per MongoDB Atlas (cloud), la stringa include username, password e cluster address. Il metodo `connect()` è asincrono e accetta una callback che viene eseguita quando la connessione è stabilita o se si verifica un errore.
+
+### Struttura: Database, Collection, Documenti
+
+MongoDB organizza i dati in:
+- **Database**: contenitore principale (equivalente a un database SQL)
+- **Collection**: gruppo di documenti simili (equivalente a una tabella SQL)
+- **Documento**: singolo oggetto JSON (equivalente a una riga SQL)
+
+### Inserire Documenti
+
+Per inserire un nuovo documento in una collection:
+
+```javascript
+client.connect((err, client) => {
+  const db = client.db('locations');
+  const collection = db.collection('user-locations');
+  
+  collection.insertOne({
+    address: 'Via Roma 1',
+    coords: { lat: 41.9028, lng: 12.4964 }
+  }, (err, result) => {
+    if (err) {
+      console.error('Errore inserimento:', err);
+      return;
+    }
+    console.log('ID inserito:', result.insertedId);
+  });
+});
+```
+
+`insertOne()` inserisce un singolo documento. Se la collection non esiste, viene creata automaticamente. MongoDB genera automaticamente un `_id` univoco per ogni documento inserito, disponibile in `result.insertedId`.
+
+### Trovare Documenti
+
+Per cercare documenti in una collection:
+
+```javascript
+// Trovare un documento specifico
+collection.findOne(
+  { _id: new mongodb.ObjectId('id-stringa') },
+  (err, doc) => {
+    if (err) {
+      console.error('Errore ricerca:', err);
+      return;
+    }
+    console.log('Documento trovato:', doc);
+  }
+);
+
+// Trovare più documenti che corrispondono a criteri
+collection.find({ address: 'Via Roma' }).toArray((err, docs) => {
+  console.log('Documenti trovati:', docs);
+});
+```
+
+`findOne()` restituisce il primo documento che corrisponde ai criteri, o `null` se nessuno corrisponde. `find()` restituisce un cursor che può essere convertito in array con `toArray()`.
+
+**Nota importante**: gli ID in MongoDB sono di tipo `ObjectId`, non stringhe semplici. Quando si cerca per ID, bisogna convertire la stringa in `ObjectId` usando `new mongodb.ObjectId(idString)`. Se si prova a cercare con una stringa normale, la query non troverà il documento anche se l'ID corrisponde.
+
+### Esempio Completo: Route con MongoDB
+
+Ecco un esempio completo che combina Express routes con operazioni MongoDB:
+
+```javascript
+const express = require('express');
+const mongodb = require('mongodb');
+const router = express.Router();
+
+const MongoClient = mongodb.MongoClient;
+const connectionURL = 'mongodb+srv://username:password@cluster.mongodb.net/locations';
+
+// POST: Salvare una location nel database
+router.post('/location', (req, res) => {
+  MongoClient.connect(connectionURL, (err, client) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database connection failed' });
+    }
+    
+    const db = client.db('locations');
+    const collection = db.collection('user-locations');
+    
+    collection.insertOne({
+      address: req.body.address,
+      coords: {
+        lat: req.body.lat,
+        lng: req.body.lng
+      }
+    }, (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: 'Errore salvataggio' });
+      }
+      res.json({ locId: result.insertedId });
+    });
+  });
+});
+
+// GET: Recuperare una location dal database
+router.get('/location/:lid', (req, res) => {
+  const locationId = req.params.lid;
+  
+  MongoClient.connect(connectionURL, (err, client) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database connection failed' });
+    }
+    
+    const db = client.db('locations');
+    const collection = db.collection('user-locations');
+    
+    collection.findOne(
+      { _id: new mongodb.ObjectId(locationId) },
+      (err, doc) => {
+        if (err || !doc) {
+          return res.status(404).json({ message: 'Not found' });
+        }
+        res.json({
+          address: doc.address,
+          coordinates: doc.coords
+        });
+      }
+    );
+  });
+});
+
+module.exports = router;
+```
+
+Questo esempio mostra come:
+- Connettersi al database per ogni richiesta (in produzione, si preferisce riutilizzare la connessione)
+- Gestire errori di connessione e operazioni
+- Convertire l'ID stringa in `ObjectId` per le query
+- Restituire status codes appropriati
+- Strutturare le routes in un file separato
+
+### Gestione Errori
+
+La gestione degli errori è cruciale in un'applicazione production-ready. Ecco un esempio migliorato:
+
+```javascript
+router.get('/location/:lid', (req, res) => {
+  let locationId;
+  
+  // Validare e convertire l'ID prima di usarlo
+  try {
+    locationId = new mongodb.ObjectId(req.params.lid);
+  } catch (error) {
+    // Se l'ID non è valido, ObjectId lancerà un errore
+    return res.status(500).json({ message: 'Invalid id' });
+  }
+  
+  MongoClient.connect(connectionURL, (err, client) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    const db = client.db('locations');
+    const collection = db.collection('user-locations');
+    
+    collection.findOne({ _id: locationId }, (err, doc) => {
+      if (err) {
+        return res.status(500).json({ error: 'Query error' });
+      }
+      if (!doc) {
+        return res.status(404).json({ message: 'Not found' });
+      }
+      res.json({ address: doc.address, coordinates: doc.coords });
+    });
+  });
+});
+```
+
+**Punti importanti**:
+- Validare l'ID prima di usarlo nelle query (usare `try/catch` per `ObjectId`)
+- Gestire errori di connessione separatamente dagli errori di query
+- Distinguere tra "documento non trovato" (404) e "errore del server" (500)
+- Restituire sempre una risposta, anche in caso di errore
+
+---
+
+## Struttura Progetto Tipica
+
+### Organizzazione Consigliata
+
+Per progetti Node.js più grandi, è importante organizzare il codice in una struttura chiara e modulare:
+
+```
+project/
+├── app.js                 # Entry point principale
+├── package.json           # Dipendenze e configurazione npm
+├── routes/                # Routes organizzate per risorsa
+│   ├── users.js          # Routes relative agli utenti
+│   └── locations.js      # Routes relative alle locations
+├── views/                 # Template EJS (se si usa server-side rendering)
+│   └── index.ejs
+└── node_modules/          # Dipendenze installate (non committare)
+```
+
+Questa struttura separa le responsabilità: `app.js` contiene la configurazione generale, mentre le routes sono organizzate in file separati per risorsa.
+
+### app.js Esempio Completo
+
+Il file principale tipicamente configura Express, registra middleware globali e monta le routes:
+
+```javascript
+const express = require('express');
+const bodyParser = require('body-parser');
+const usersRoutes = require('./routes/users');
+const locationsRoutes = require('./routes/locations');
+
+const app = express();
+
+// Middleware globali: applicati a tutte le richieste
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+
+// CORS: permette richieste cross-origin
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+// Routes: montate con percorsi base specifici
+app.use('/api/users', usersRoutes);
+app.use('/api/locations', locationsRoutes);
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+
+L'ordine è importante: i middleware vengono eseguiti nell'ordine in cui sono registrati. Le routes vengono montate dopo i middleware globali, così ogni richiesta passa prima attraverso i middleware (parsing body, CORS) e poi viene gestita dalla route appropriata.
+
+---
+
+## Riepilogo
+
+- **Node.js**: ambiente JavaScript lato server. Stessa sintassi del browser ma API diverse (file system, HTTP server, database).
+
+- **Moduli**: `require()` per importare, `module.exports` per esportare. Moduli core disponibili senza installazione.
+
+- **File System**: `fs.writeFile()` e `fs.readFile()` per operazioni su file. Operazioni asincrone con callback.
+
+- **Server HTTP**: `http.createServer()` per server base. Express.js semplifica la creazione di server web con middleware e routing.
+
+- **Express.js**: framework basato su middleware. `app.use()` per middleware globali, `app.get/post()` per routes, `app.listen()` per avviare il server.
+
+- **Body Parsing**: `body-parser` per parsare JSON e form data. Dati disponibili in `req.body` dopo il parsing.
+
+- **Routes**: organizzare routes in file separati con `express.Router()`. Esportare router e importarlo in `app.js` con `app.use()`.
+
+- **REST API**: pattern per scambiare dati JSON. Endpoint organizzati per risorsa (`/api/items`), metodi HTTP per operazioni (GET, POST, PUT, DELETE).
+
+- **CORS**: configurare headers per permettere richieste cross-origin. Necessario quando frontend e backend sono su origini diverse.
+
+- **MongoDB**: driver `mongodb` per connettersi e operare su database. `insertOne()` per inserire, `findOne()` per cercare. ID sono `ObjectId`, non stringhe.

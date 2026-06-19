@@ -1,6 +1,7 @@
 ---
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import ContentLayout from '../../layouts/ContentLayout.astro';
+import { readingTime } from '../../lib/post';
 
 export async function getStaticPaths() {
 	const projects = await getCollection('projects');
@@ -12,9 +13,9 @@ export async function getStaticPaths() {
 type Props = CollectionEntry<'projects'>;
 
 const project = Astro.props;
-const { Content } = await render(project);
+const { Content, headings } = await render(project);
 ---
 
-<ContentLayout {...project.data}>
+<ContentLayout {...project.data} readingTime={readingTime(project.body)} headings={headings}>
 	<Content />
 </ContentLayout>

@@ -1,6 +1,11 @@
 ---
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import ContentLayout from '../../layouts/ContentLayout.astro';
+import PostNavigation from '../../components/PostNavigation.astro';
+import CourseToc from '../../components/CourseToc.astro';
+import CourseSidebar from '../../components/CourseSidebar.astro';
+import { readingTime } from '../../lib/post';
+import { getCourseView } from '../../lib/collections';
 
 export async function getStaticPaths() {
 	const entries = await getCollection('education');
@@ -12,9 +17,101 @@ export async function getStaticPaths() {
 type Props = CollectionEntry<'education'>;
 
 const entry = Astro.props;
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
+
+// Contesto del corso: navigazione, indice completo e directory.
+// È null per contenuti isolati (senza capitoli) → resta l'indice semplice.
+const course = await getCourseView(entry.id);
 ---
 
-<ContentLayout {...entry.data}>
+<ContentLayout {...entry.data} readingTime={readingTime(entry.body)} headings={headings}>
+	{course?.isChapter && (
+		<PostNavigation
+			slot="nav"
+			base={course.base}
+			prev={course.nav.prev}
+			next={course.nav.next}
+			parent={course.nav.parent}
+		/>
+	)}
+
+	{course && (
+		<CourseToc
+			slot="sidebar-left"
+			base={course.base}
+			parent={course.toc.parent}
+			subposts={course.toc.subposts}
+		/>
+	)}
+
+	{course && (
+		<CourseSidebar
+			slot="sidebar-right"
+			base={course.base}
+			root={course.directory.root}
+			chapters={course.directory.chapters}
+		/>
+	)}
+
+	{/* Mobile: dentro il drawer dell'indice, i contenuti del corso per saltare di capitolo. */}
+	{course?.isChapter && (
+		<div slot="toc-extra" class="border-t border-border pt-3">
+			<p class="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+				Contenuti del corso
+			</p>
+			<ul class="m-0 flex list-none flex-col p-0">
+				<li>
+					<a
+						href={`${course.base}/${course.directory.root.id}`}
+						class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground no-underline transition-colors hover:text-foreground"
+					>
+						{course.directory.root.title}
+					</a>
+				</li>
+				{course.directory.chapters.map((c) => (
+					<li>
+						<a
+							href={`${course.base}/${c.id}`}
+							class:list={[
+								"flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm no-underline transition-colors",
+								c.current
+									? "bg-muted font-medium text-foreground"
+									: "text-muted-foreground hover:text-foreground",
+							]}
+						>
+							<span class="truncate">{c.title}</span>
+							<span class="shrink-0 text-xs text-muted-foreground">{c.readingTime}</span>
+						</a>
+					</li>
+				))}
+			</ul>
+		</div>
+	)}
+
 	<Content />
+
+	{/* Sulla pagina-corso: elenco lezioni in fondo (la directory laterale copre il desktop). */}
+	{course && !course.isChapter && (
+		<nav
+			slot="after"
+			aria-label="Lezioni del corso"
+			class="border-t border-border pt-6 xl:hidden"
+		>
+			<h2 class="mb-4 text-lg font-semibold">Lezioni del corso</h2>
+			<ol class="flex flex-col">
+				{course.directory.chapters.map((chapter, i) => (
+					<li>
+						<a
+							href={`${course.base}/${chapter.id}`}
+							class="flex items-center gap-3 border-b border-border py-3 text-muted-foreground transition-colors last:border-b-0 hover:text-foreground"
+						>
+							<span class="w-6 shrink-0 text-sm tabular-nums">{i + 1}.</span>
+							<span class="flex-1 text-sm font-medium text-foreground">{chapter.title}</span>
+							<span class="shrink-0 text-xs">{chapter.readingTime}</span>
+						</a>
+					</li>
+				))}
+			</ol>
+		</nav>
+	)}
 </ContentLayout>

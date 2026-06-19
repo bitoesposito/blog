@@ -1,0 +1,81 @@
+---
+import { buttonVariants } from "./ui/button";
+import { Icon } from "./ui/icon";
+import { cn } from "@/lib/utils";
+import type { CollectionEntry } from "astro:content";
+
+type Entry = CollectionEntry<"education">;
+
+interface Props {
+  base: string;
+  prev: Entry | null;
+  next: Entry | null;
+  parent: Entry | null;
+}
+
+const { base, prev, next, parent } = Astro.props;
+
+const cell = "h-auto py-2";
+---
+
+<nav
+  class:list={[
+    "grid grid-cols-1 gap-3",
+    parent ? "sm:grid-cols-3" : "sm:grid-cols-2",
+  ]}
+  aria-label="Navigazione tra le lezioni"
+>
+  <a
+    href={prev ? `${base}/${prev.id}` : "#"}
+    aria-disabled={!prev}
+    title={prev ? `Vai a: ${prev.data.title}` : undefined}
+    class={cn(
+      buttonVariants({ variant: "outline" }),
+      cell,
+      "group justify-start",
+      !prev && "pointer-events-none opacity-50"
+    )}
+  >
+    <Icon name="arrow-left" className="shrink-0 transition-transform group-hover:-translate-x-0.5" />
+    <span class="flex min-w-0 flex-col items-start">
+      <span class="text-xs text-muted-foreground">Lezione precedente</span>
+      <span class="w-full truncate text-left text-sm">
+        {prev?.data.title ?? "Inizio del corso"}
+      </span>
+    </span>
+  </a>
+
+  {parent && (
+    <a
+      href={`${base}/${parent.id}`}
+      title={`Vai al corso: ${parent.data.title}`}
+      class={cn(buttonVariants({ variant: "outline" }), cell, "group justify-center")}
+    >
+      <Icon name="corner-left-up" className="shrink-0 transition-transform group-hover:-translate-y-0.5" />
+      <span class="flex min-w-0 flex-col items-center">
+        <span class="text-xs text-muted-foreground">Corso</span>
+        <span class="w-full truncate text-center text-sm">{parent.data.title}</span>
+      </span>
+    </a>
+  )}
+
+  <a
+    href={next ? `${base}/${next.id}` : "#"}
+    aria-disabled={!next}
+    title={next ? `Vai a: ${next.data.title}` : undefined}
+    class={cn(
+      buttonVariants({ variant: "outline" }),
+      cell,
+      "group justify-end",
+      !next && "pointer-events-none opacity-50"
+    )}
+  >
+    <span class="flex min-w-0 flex-col items-end">
+      <span class="text-xs text-muted-foreground">Lezione successiva</span>
+      <span class="w-full truncate text-right text-sm">
+        {next?.data.title ?? "Fine del corso"}
+      </span>
+    </span>
+    <Icon name="arrow-right" className="shrink-0 transition-transform group-hover:translate-x-0.5" />
+  </a>
+</nav>

@@ -1,0 +1,53 @@
+---
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "./ui/card";
+import { Tags } from "./ui/tags";
+import { formatDate } from "@/lib/post";
+
+interface Props {
+  href: string;
+  title: string;
+  description?: string;
+  pubDate: Date;
+  tags?: string[];
+  /** Banner del progetto (heroImage). Mostrato in cima alla card. */
+  image?: ImageMetadata;
+}
+
+const { href, title, description, pubDate, tags = [], image } = Astro.props;
+---
+
+<a href={href} class="block">
+  <Card>
+    {/* La Card gestisce da sé un'immagine come primo figlio (pt-0 + angoli arrotondati). */}
+    {image && (
+      <Image
+        src={image}
+        alt=""
+        width={800}
+        class="aspect-[2/1] w-full object-cover"
+      />
+    )}
+    <CardHeader>
+      <CardTitle className="text-lg leading-[1.25]">{title}</CardTitle>
+      {description && (
+        <CardDescription className="line-clamp-3 leading-[1.25]">
+          {description}
+        </CardDescription>
+      )}
+    </CardHeader>
+    <CardContent className="flex flex-col gap-1">
+      <div class="flex items-center gap-2 text-sm text-muted-foreground">
+        <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+      </div>
+      <Tags tags={tags} max={2} />
+    </CardContent>
+  </Card>
+</a>

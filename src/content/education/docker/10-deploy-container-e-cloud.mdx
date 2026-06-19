@@ -1,0 +1,181 @@
+---
+title: "Deploy di container: da locale a cloud"
+description: "Immagini e registry, EC2 e SSH, AWS ECS e Fargate, load balancer, volumi EFS, database gestiti e build multi-stage per frontend"
+pubDate: 2026-03-28
+tags: ['formazione', 'docker', 'deploy', 'aws', 'ecs', 'produzione']
+authors: ['vitoesposito']
+order: 10
+---
+
+## Cosa significa “deployare” un container
+
+Fino a qui il lavoro è stato prevalentemente su **macchina locale**: build di immagini, `docker run`, Compose. Il **deploy** consiste nel far eseguire gli **stessi container** (stessa immagine) su **host remoti** raggiungibili dalla rete, così che utenti o client possano usare l’applicazione.
+
+Il materiale qui è orientato alle **applicazioni web** (HTTP, browser, API), perché è il caso più immediato da verificare. I concetti si applicano comunque a **qualunque** workload containerizzato.
+
+L’idea centrale di Docker resta valida: ciò che gira in un container in sviluppo può girare altrove **purché** sia installato un **Docker Engine** (o runtime compatibile) e siano rispettate le regole di rete e configurazione dell’ambiente target.
+
+## Sviluppo vs produzione: bind mount e `COPY`
+
+In **sviluppo** i **bind mount** servono a montare il codice dall’host nel container per iterare senza rebuild continui.
+
+In **produzione** l’immagine dovrebbe essere **autonoma**: il codice e le dipendenze necessarie all’esecuzione dovrebbero essere **dentro l’immagine** (tipicamente tramite **`COPY`** nel Dockerfile), non dipendere da cartelle presenti solo sulla macchina di build.
+
+Compose può descrivere bind mount nel file YAML: in deploy remoto quelle path **non esistono** sul server. Per produzione si usano immagini già buildate (e spesso si evita di buildare sul server di produzione se non è parte della pipeline).
+
+Un solo Dockerfile può restare la fonte di verità: in locale si aggiungono mount solo al comando `run` / Compose; in produzione si esegue il container **senza** quei mount.
+
+## Applicazioni con “build step” (es. React)
+
+Framework frontend (React, Vue, Angular) usano in sviluppo un **dev server** (`npm start`) che compila e serve il codice. Quel server **non** è pensato per la produzione.
+
+In produzione si esegue in genere **`npm run build`**, che produce file statici ottimizzati. Quei file vanno serviti da un **web server** (es. **Nginx**). Quindi l’ambiente “come si avvia il processo” **differisce** tra dev e prod: non è una contraddizione con Docker, è un requisito del tipo di applicazione. L’immagine può comunque fissare versioni di Node/tool di build e il runtime di serving.
+
+## Approccio “fai da te”: macchina virtuale e Docker
+
+Un pattern elementare:
+
+1. Provisioning di una **VM** presso un cloud provider (es. **AWS EC2**).
+2. Configurazione di **rete** e **firewall** (su AWS: **Security Group**, **VPC**).
+3. Connessione **SSH** alla VM.
+4. Installazione del **Docker Engine** sulla VM.
+5. **Push** dell’immagine su un **registry** (es. **Docker Hub**).
+6. Sulla VM: **`docker pull`** e **`docker run`** (con `-p` per esporre le porte).
+
+### EC2 e SSH
+
+Alla creazione dell’istanza si scarica una **chiave `.pem`**: va custodita in modo sicuro; senza chiave non si ripristina l’accesso SSH. Su Linux/macOS si impostano permessi restrittivi sulla chiave (`chmod 400`) prima di `ssh -i chiave.pem utente@ip-pubblico`. Su Windows si può usare **WSL2** o un client SSH dedicato.
+
+### Installazione Docker su Amazon Linux
+
+La procedura esatta dipende dalla versione dell’AMI. Per **Amazon Linux 2** spesso si usa il package manager (`yum` / `dnf`) e i pacchetti Docker ufficiali o della distro; conviene seguire la **documentazione aggiornata** Docker e AWS. Dopo l’installazione: avvio del servizio (`systemctl`), eventuale aggiunta dell’utente al gruppo `docker`, riavvio sessione.
+
+### Registry e immagine
+
+Flusso tipico in locale:
+
+```bash
+docker build -t mia-app:1.0 .
+docker tag mia-app:1.0 utente/mia-app:1.0
+docker login
+docker push utente/mia-app:1.0
+```
+
+Sulla VM remota:
+
+```bash
+docker pull utente/mia-app:1.0
+docker run -d -p 80:80 --name app utente/mia-app:1.0
+```
+
+**Nota**: `docker run` usa l’immagine **già presente in cache** sul nodo se il tag coincide; dopo un `push` di una nuova versione con lo **stesso tag**, sulla VM può essere necessario un **`docker pull`** esplicito prima di ricreare il container.
+
+### Security Group e traffico in ingresso
+
+Di default una EC2 può bloccare tutto il traffico HTTP/HTTPS. Per servire una app sulla porta 80 occorre una **regola in ingresso** che consenta **HTTP (80)** dalla rete desiderata (spesso “ovunque” `0.0.0.0/0` per demo; in produzione si restringe). La porta **22** (SSH) va protetta (IP sorgente ristretto quando possibile).
+
+### Aggiornare il deploy
+
+1. Modificare il codice, **rebuild** immagine, **push** sul registry.
+2. Sulla VM: **stop** del container, **`pull`**, **nuovo `run`** (o orchestrazione equivalente).
+
+### Limiti dell’approccio DIY
+
+Con una VM si ha **controllo completo** ma anche **responsabilità**: patch OS, hardening, monitoring, scaling, backup. È adatto a chi ha competenze di sistema; altrimenti il rischio è configurazione fragile o insicura.
+
+## Approccio gestito: esempio AWS ECS
+
+**Amazon ECS** (**Elastic Container Service**) è un servizio che esegue container senza gestire manualmente una VM come con EC2 “nudo”. Spesso si usa **AWS Fargate**: modello in cui AWS provvede all’infrastruttura sottostante; si definiscono **task** e **servizi**, non si SSH-a in un server per installare Docker.
+
+Concetti ECS (terminologia provider-specifica, ma il pattern è comune):
+
+| Concetto ECS | Analogia |
+|--------------|----------|
+| **Cluster** | Ambiente logico di rete/raggruppamento |
+| **Task definition** | “Blueprint”: quali container, CPU/RAM, porte, env, volumi |
+| **Task** | Istanza in esecuzione di una revisione della task definition |
+| **Service** | Mantiene un certo numero di task attivi, rolling update, collegamento a load balancer |
+
+Molte opzioni nella console ECS corrispondono a parametri noti di **`docker run`** (immagine, nome, porte, variabili d’ambiente, command override, volumi).
+
+### Aggiornare un’immagine su ECS
+
+Dopo `push` di una nuova immagine sul registry, ECS **non** sostituisce automaticamente i task: in genere si crea una **nuova revisione** della task definition (o si forza un **nuovo deploy** del service) così che i task ripartano e scarichino l’immagine aggiornata.
+
+**Attenzione ai costi**: servizi come ECS, load balancer, NAT, storage possono generare addebiti. È buona pratica **rimuovere** risorse di prova e leggere le pagine **pricing** e **free tier** del provider.
+
+## Multi-container su ECS: rete e `localhost`
+
+In locale, su **un solo host**, Compose crea una rete e i **nomi dei servizi** risolvono tra container.
+
+Su ECS **non** è garantito lo stesso meccanismo DNS “stile Compose” tra task diversi. Se **due container sono nello stesso task** (stesso host logico), spesso si usa **`localhost`** per parlare tra container sulla stessa macchina (es. backend → database nello stesso task), secondo le regole documentate per Fargate/task networking.
+
+Per **portabilità** tra locale (nome servizio `mongodb`) e cloud (`localhost` nello stesso task), conviene incapsulare l’host in una **variabile d’ambiente** (es. `MONGODB_URL`) con valori diversi per ambiente, senza duplicare la logica applicativa.
+
+## Load balancer e health check
+
+Un **Application Load Balancer** fornisce un **DNS stabile** invece di un IP che cambia a ogni redeploy del task. Il target group deve avere un **health check path** che risponda **200**: se il check punta a `/` e l’API risponde solo su `/goals`, il bilanciamento può considerare i target **unhealthy** e riavviare i task in loop.
+
+## Persistenza: volumi e database
+
+Per dati che devono sopravvivere al ciclo di vita del container su piattaforme gestite si possono usare volumi (su AWS: **EFS** collegato al task). I volumi remoti aggiungono complessità (permessi, security group NFS, versione piattaforma Fargate compatibile con EFS).
+
+Per i **database** in produzione spesso conviene un **servizio gestito** (**RDS** per SQL, **MongoDB Atlas** per MongoDB, ecc.): backup, patching, scaling e alta disponibilità sono problemi distinti dal solo “container dell’app”. Si può continuare a usare un container DB in laboratorio; in produzione il trade-off è **controllo** vs **responsabilità operativa**.
+
+Collegando **Atlas** o simili, la connection string (es. **`mongodb+srv:`**) e le **regole di rete** (IP allowlist) vanno allineate; le credenziali non vanno committate: **secrets** o variabili inject a runtime.
+
+## Frontend React: Dockerfile multi-stage
+
+Un pattern efficace è il **multi-stage build**:
+
+1. **Stage “build”** (es. `FROM node:… AS build`): `COPY package.json`, `RUN npm ci` o `npm install`, `COPY` sorgenti, `RUN npm run build`.
+2. **Stage finale** (es. `FROM nginx:alpine`): `COPY --from=build /app/build /usr/share/nginx/html` e avvio di Nginx con `daemon off`.
+
+L’immagine finale **non** contiene l’intero toolchain Node se non serve a runtime, solo Nginx e gli statici.
+
+### URL dell’API dal browser
+
+Il codice React gira nel **browser**: `localhost` nel sorgente si riferisce alla macchina dell’**utente**, non al server. In produzione l’URL del backend va scelto in modo esplicito (dominio del load balancer, path relativi solo se frontend e API condividono **origine** e routing). Spesso si usano variabili **`REACT_APP_*`** (Create React App) o equivalenti, risolte **in fase di build**, non come `process.env` generico inject da Docker a runtime nel browser.
+
+### Due web server sulla stessa porta nello stesso task
+
+Due container nello **stesso** task ECS **non** possono entrambi pubblicare la **stessa porta host** (es. 80). Se backend Node e frontend Nginx espongono entrambi 80, servono **due task** (due servizi) e due load balancer (o routing avanzato), oppure **unificare** serving e API in un unico processo/container (scelta architetturale).
+
+## `docker build` con file e stage non predefiniti
+
+```bash
+docker build -f frontend/Dockerfile.prod -t utente/goals-react ./frontend
+```
+
+Per fermarsi a uno stage intermedio (test, sola compilazione):
+
+```bash
+docker build -f Dockerfile.prod --target build -t app:build-only .
+```
+
+## Docker Compose e deploy cloud
+
+Compose resta eccellente per **sviluppo locale** e CI. In cloud gestito raramente si “porta” il compose così com’è: mancano metadati richiesti dal provider (CPU, task role, load balancer, scaling). Si traducono le definizioni in **task definition** / manifest del provider, usando **immagini già pushate** sul registry.
+
+## Riepilogo dei trade-off
+
+| Strategia | Pro | Contro |
+|-----------|-----|--------|
+| **VM + Docker** | Controllo totale, comandi Docker familiari | Sicurezza, OS, scaling, operatività a carico del team |
+| **Servizio gestito (es. ECS+Fargate)** | Meno infrastruttura da curare | Vendor lock-in parziale, modello mentale e CLI specifici |
+| **DB in container** | Coerenza locale | Backup, HA, scaling, locking file con volumi condivisi tra task |
+| **DB gestito** | Operazioni delegate | Costi, configurazione rete e auth |
+
+## Checklist operativa post-lab
+
+- Eliminare **load balancer**, **target group**, **EFS**, **security group** e **cluster** creati per esperimenti se non servono.
+- Verificare che non restino **task** o **NAT gateway** a consumo continuo.
+- Non includere file **`.pem`** o segreti nel contesto di build (`.dockerignore`).
+
+## Esercizi correlati
+
+1. Buildare un’immagine minimale, pusharla su un registry privato/pubblico e `pull` + `run` su una VM di test.
+2. Simulare un aggiornamento: stesso tag immagine dopo `push` e osservare la necessità di `pull` sul nodo remoto.
+3. Scrivere una task definition concettuale (tabella) che mappi ogni campo a un flag di `docker run`.
+4. Progettare variabili d’ambiente per la stessa immagine backend tra Compose (nome servizio DB) e ECS (`localhost` nello stesso task).
+5. Scrivere un Dockerfile multi-stage che produca solo la directory `build` nello stage `build` e serva con Nginx nello stage finale.

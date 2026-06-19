@@ -1,0 +1,159 @@
+/* Tipografia del contenuto Markdown/MDX renderizzato in <article class="prose">.
+   Regole CSS (non utility Tailwind) perché agiscono su HTML generato dal
+   Markdown, su cui non possiamo applicare classi direttamente.
+   `--prose-body` è un foreground leggermente ammorbidito per il corpo del testo. */
+.prose {
+  --prose-body: color-mix(in oklch, var(--foreground) 85%, var(--background));
+  color: var(--foreground);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.prose > * + * {
+  margin-top: 1.25em;
+}
+
+.prose p,
+.prose li {
+  color: var(--prose-body);
+}
+
+/* Gerarchia dei titoli */
+.prose h2 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.prose h3 {
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.prose h4 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.prose :is(h2, h3, h4):first-child {
+  margin-top: 0;
+}
+
+.prose a {
+  color: var(--foreground);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--muted-foreground);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s ease;
+}
+.prose a:hover {
+  text-decoration-color: var(--foreground);
+}
+
+.prose strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.5em;
+}
+.prose ul {
+  list-style: disc;
+}
+.prose ol {
+  list-style: decimal;
+}
+.prose li {
+  padding-left: 0.25em;
+  margin-left: 0.25em;
+}
+.prose li + li {
+  margin-top: 0.5em;
+}
+.prose li > p {
+  margin: 0;
+}
+.prose :is(ul, ol) :is(ul, ol) {
+  margin-top: 0.5em;
+}
+
+.prose blockquote {
+  margin-block: 1.5em;
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.prose code {
+  background: var(--muted);
+  border-radius: var(--radius-md);
+  padding: 0.15em 0.4em;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+.prose pre {
+  margin-block: 1.5em;
+  background: var(--muted);
+  border-radius: var(--radius-lg);
+  padding: 1em;
+  overflow-x: auto;
+  max-height: min(68vh, 1000px);
+}
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.875em;
+}
+
+.prose img,
+.prose video {
+  margin-block: 1.5em;
+  border-radius: var(--radius-lg);
+}
+.prose hr {
+  margin-block: 2em;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Tabelle: bordi e padding per renderle leggibili */
+.prose table {
+  width: 100%;
+  margin-block: 1.5em;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.prose thead {
+  border-bottom: 1px solid var(--border);
+}
+.prose th {
+  padding: 0.5rem 0.85rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.prose td {
+  padding: 0.5rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+  border-top: 1px solid var(--border);
+  color: var(--prose-body);
+}
+.prose tbody tr:first-child td {
+  border-top: 0;
+}
+.prose :is(th, td)[align="center"] {
+  text-align: center;
+}
+.prose :is(th, td)[align="right"] {
+  text-align: right;
+}

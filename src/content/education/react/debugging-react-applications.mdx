@@ -1,0 +1,288 @@
+---
+title: 'Debugging delle Applicazioni React'
+description: 'Come trovare e risolvere errori nelle applicazioni React: messaggi di errore, strumenti del browser, StrictMode e React DevTools'
+pubDate: 2025-12-22
+tags: ['formazione']
+authors: ['vitoesposito']
+order: 6
+---
+
+## Introduzione
+
+Questo articolo esplora strumenti e tecniche per il debugging delle applicazioni React: interpretazione dei messaggi di errore, debugging di errori logici con il debugger del browser, React StrictMode per individuare problemi durante lo sviluppo, e React DevTools per ispezionare componenti e stato.
+
+## Analisi dei Messaggi di Errore
+
+React mostra messaggi di errore quando qualcosa va storto. Il **messaggio principale** descrive il tipo di errore e quale proprietà o operazione ha causato il problema. La **stack trace** mostra l'elenco delle chiamate di codice che hanno portato all'errore, indicando funzione, file e riga di codice dove si è verificato il problema.
+
+### Esempio Pratico: Errore su Valore Undefined
+
+Un errore comune si verifica quando si cerca di accedere a una proprietà di un valore `undefined`. Ad esempio, se si cerca di leggere `name` da un oggetto che non esiste, React mostrerà un errore simile a:
+
+```
+Cannot read properties of undefined (reading 'name')
+```
+
+Il messaggio indica che si sta cercando di accedere alla proprietà `name` di un oggetto `undefined`, nella funzione e riga indicate nella stack trace.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Gestione di Array Vuoti</summary>
+<div class="px-4 pb-4">
+
+Un caso comune è quando si cerca di accedere al primo elemento di un array che potrebbe essere vuoto:
+
+```jsx
+function ProductList({ products }) {
+  // Se products è vuoto, products[0] sarà undefined
+  const firstProduct = products[0];
+  
+  // Questo causerà un errore se firstProduct è undefined
+  return (
+    <div>
+      <h2>Primo prodotto: {firstProduct.name}</h2>
+      <p>Prezzo: €{firstProduct.price}</p>
+    </div>
+  );
+}
+```
+
+Per risolvere questo problema, si può aggiungere un controllo di guardia:
+
+```jsx
+function ProductList({ products }) {
+  // Controllo di guardia: se l'array è vuoto, mostra un messaggio
+  if (products.length === 0) {
+    return <p className="text-center">Nessun prodotto disponibile</p>;
+  }
+  
+  // Ora possiamo accedere in sicurezza al primo elemento
+  const firstProduct = products[0];
+  
+  return (
+    <div>
+      <h2>Primo prodotto: {firstProduct.name}</h2>
+      <p>Prezzo: €{firstProduct.price}</p>
+    </div>
+  );
+}
+```
+
+Questo pattern di "guardia" gestisce dati che potrebbero non essere sempre presenti.
+
+</div>
+</details>
+
+### Come Leggere la Stack Trace
+
+La stack trace mostra il percorso che il codice ha seguito prima di raggiungere l'errore. Ogni riga indica funzione, file e riga (e opzionalmente colonna). Ad esempio `at ProductCard (ProductCard.jsx:12:24)` indica che l'errore si trova nella funzione `ProductCard`, nel file `ProductCard.jsx`, alla riga 12, colonna 24.
+
+## Debugging di Errori Logici
+
+Gli **errori logici** sono errori dove il codice viene eseguito senza errori tecnici ma produce risultati incorretti. Non producono messaggi di errore nella console, quindi richiedono il debugger del browser per essere individuati.
+
+### Utilizzo del Debugger del Browser
+
+Il debugger integrato negli strumenti di sviluppo permette di esaminare il codice durante l'esecuzione. Nella scheda Sources si trova la struttura del progetto. Cliccando sul numero di una riga si imposta un **breakpoint**: quando il codice raggiunge quella riga, l'esecuzione si ferma. Con l'esecuzione in pausa si possono vedere i valori delle variabili, usare la console per valutare espressioni, e controllare lo scope. I controlli permettono di eseguire il codice passo dopo passo (step into, step over, step out, resume).
+
+
+### Esempio: Errore di Conversione di Tipo
+
+Un errore logico comune si verifica quando si lavora con input dell'utente che vengono trattati come stringhe invece che come numeri:
+
+```jsx
+function ShoppingCart() {
+  const [cart, setCart] = useState({
+    quantity: 1,
+    price: 29.99,
+    discount: 0
+  });
+
+  function handleQuantityChange(newQuantity) {
+    // Problema: newQuantity è una stringa, non un numero
+    setCart(prevCart => ({
+      ...prevCart,
+      quantity: newQuantity  // newQuantity è una stringa!
+    }));
+  }
+
+  // Calcolo del totale: se quantity è una stringa,
+  // JavaScript fa concatenazione invece di moltiplicazione
+  const total = cart.quantity * cart.price;
+  
+  return (
+    <div>
+      <input 
+        type="number" 
+        value={cart.quantity} 
+        onChange={(e) => handleQuantityChange(e.target.value)} 
+      />
+      <p>Totale: €{total}</p>
+    </div>
+  );
+}
+```
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Soluzione: Conversione Esplicita</summary>
+<div class="px-4 pb-4">
+
+Per risolvere questo problema, è necessario convertire esplicitamente il valore in un numero:
+
+```jsx
+function handleQuantityChange(newQuantity) {
+  setCart(prevCart => ({
+    ...prevCart,
+    // Conversione esplicita a numero usando l'operatore unario +
+    quantity: +newQuantity
+  }));
+}
+```
+
+L'operatore unario `+` converte il valore in un numero. Alternativamente, si può usare `Number(newQuantity)` o `parseInt(newQuantity)` / `parseFloat(newQuantity)` a seconda delle necessità.
+
+In JavaScript, quando si combinano stringhe e numeri, il risultato può essere inaspettato: `"5" * 29.99` produce `149.95`, ma `"5" + 29.99` produce `"529.99"` (concatenazione invece di addizione). Il debugger mostra che `newQuantity` ha le virgolette, indicando una stringa.
+
+</div>
+</details>
+
+## React StrictMode
+
+React StrictMode è un componente integrato che aiuta a individuare problemi potenziali nell'applicazione durante lo sviluppo. Non viene renderizzato visivamente nell'interfaccia utente, ma esegue controlli aggiuntivi e avvisi nella console.
+
+### Come Abilitare StrictMode
+
+StrictMode si usa avvolgendo i componenti che si vogliono controllare:
+
+```jsx
+import { StrictMode } from 'react';
+
+function App() {
+  return (
+    <StrictMode>
+      <ProductForm />
+      <ProductList />
+    </StrictMode>
+  );
+}
+```
+
+Tipicamente, si avvolge il componente radice dell'applicazione in `index.jsx`:
+
+```jsx
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+
+const root = createRoot(document.getElementById('root'));
+root.render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+```
+
+### Cosa Fa StrictMode
+
+StrictMode esegue verifiche durante lo sviluppo: ogni funzione componente viene eseguita due volte per individuare effetti collaterali e problemi di stato, avvisa quando si usano API deprecate, e aiuta a identificare componenti con effetti collaterali non sicuri.
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esempio: Individuare Mutazioni di Stato</summary>
+<div class="px-4 pb-4">
+
+StrictMode può aiutare a individuare problemi come la mutazione di variabili al di fuori del componente:
+
+```jsx
+// ❌ ERRATO: Array creato fuori dal componente
+const filteredItems = [];
+
+function ProductList({ searchTerm }) {
+  // Questo array viene riutilizzato tra i render
+  // e continua a crescere invece di essere resettato
+  products.forEach(product => {
+    if (product.name.includes(searchTerm)) {
+      filteredItems.push(product);
+    }
+  });
+  
+  return (
+    <ul>
+      {filteredItems.map((item, index) => (
+        <li key={index}>{item.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Con StrictMode, questo problema diventa evidente perché il componente viene eseguito due volte e la lista raddoppia già al primo render.
+
+**Soluzione corretta:**
+
+```jsx
+function ProductList({ searchTerm }) {
+  // ✅ CORRETTO: Array creato dentro il componente
+  // Viene ricreato ad ogni render
+  const filteredItems = [];
+  products.forEach(product => {
+    if (product.name.includes(searchTerm)) {
+      filteredItems.push(product);
+    }
+  });
+  
+  return (
+    <ul>
+      {filteredItems.map((item, index) => (
+        <li key={index}>{item.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+L'array viene ricreato ad ogni esecuzione del componente, evitando accumuli indesiderati.
+
+</div>
+</details>
+
+StrictMode funziona solo durante lo sviluppo. In produzione non esegue i controlli aggiuntivi, ma è comune lasciarlo perché non ha effetti visibili.
+
+## React DevTools
+
+React DevTools è un'estensione del browser che aggiunge strumenti di sviluppo specifici per React. È disponibile per Chrome, Firefox, Edge e altri browser basati su Chromium.
+
+### Installazione
+
+React DevTools si installa come estensione del browser. Dopo l'installazione, nelle DevTools compaiono due schede: **Components** per ispezionare l'albero dei componenti e **Profiler** per analizzare le prestazioni.
+
+### Scheda Components
+
+La scheda Components mostra la struttura gerarchica dei componenti. Passando il mouse su un componente nell'albero, viene evidenziata la parte corrispondente nell'interfaccia. Cliccando su un componente si possono vedere props, stato e hook utilizzati. Si possono modificare props e stato direttamente dalle DevTools per vedere immediatamente le modifiche riflesse nell'interfaccia.
+
+
+Cliccando sull'icona a forma di ingranaggio si accede alle impostazioni per personalizzare theme, density e opzioni dell'albero dei componenti.
+
+## Errori Comuni e Come Evitarli
+
+Durante lo sviluppo con React, ci sono alcuni errori comuni che si possono facilmente evitare conoscendo le convenzioni e le regole di React.
+
+### Componenti HTML vs Componenti Custom
+
+I componenti HTML built-in (come `<div>`, `<p>`, `<input>`) devono iniziare con una lettera minuscola. I componenti custom devono iniziare con una lettera maiuscola. React usa la maiuscola/minuscola per distinguere tra elementi HTML e componenti React.
+
+### Event Handlers: onClick vs onclick
+
+Gli event handler in React usano `camelCase` con il prefisso `on`: `onClick`, `onChange`, `onSubmit`, `onMouseEnter`, `onFocus`. `onclick` è l'attributo HTML standard ma non funziona correttamente in React.
+
+
+## Riepilogo
+
+I **messaggi di errore** di React mostrano un messaggio principale e una stack trace che indica funzione, file e riga. Per gestire valori `undefined` o `null` si usano controlli di guardia.
+
+Gli **errori logici** non producono messaggi di errore: si usa il debugger del browser per esaminare l'esecuzione passo dopo passo e verificare le conversioni di tipo.
+
+**StrictMode** avvolge l'applicazione con `<StrictMode>` durante lo sviluppo, esegue i componenti due volte per individuare problemi di mutazione di stato e effetti collaterali.
+
+**React DevTools** è un'estensione del browser che permette di ispezionare l'albero dei componenti e modificare props e stato interattivamente.
+
+**Convenzioni React**: componenti HTML con minuscola, componenti custom con maiuscola, event handler in camelCase (`onClick`, non `onclick`).
+
