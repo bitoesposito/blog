@@ -6,7 +6,7 @@ Blog personale di Vito Esposito dove scrive e condivide idee e pensieri sullo sv
 ## Site Information
 - **URL**: https://vitoesposito.it
 - **Language**: Italian (it-IT)
-- **Author**: vitoesposito
+- **Author**: Vito Esposito
 - **Description**: Blog personale in cui scrivo e condivido le mie idee e pensieri sullo sviluppo software, design e altro.
 
 ## Content Structure
@@ -22,17 +22,12 @@ Blog personale di Vito Esposito dove scrive e condivide idee e pensieri sullo sv
 - **Path**: `/projects`
 - **Format**: MDX files
 - **Content**: Progetti personali con descrizioni, tecnologie utilizzate, demo e link esterni
-- **Examples**: DuoSync, Virtual Card, Wolfden Manager
 
 ### Education
 - **Path**: `/education`
 - **Format**: MDX files
 - **Content**: Appunti di formazione su argomenti tecnici come data structures, algorithms, React
 - **Structure**: Serie di articoli educativi organizzati per argomento
-
-### Tags
-- **Path**: `/tags`
-- **Content**: Articoli organizzati per tag/topic
 
 ## Key Pages
 - **Home**: `/` - Pagina principale con post recenti e progetti
@@ -60,5 +55,3 @@ Il feed RSS è disponibile su `/rss.xml` e include tutti gli articoli del blog p
 
 ## Sitemap
 Il sitemap è disponibile su `/sitemap-index.xml` e include tutte le pagine del sito.
-
-
