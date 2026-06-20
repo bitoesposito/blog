@@ -1,0 +1,239 @@
+---
+title: 'ISS / Satellite Tracker App'
+description: "Progetto di apprendimento per imparare a usare le librerie Esri (ArcGIS Maps SDK for JavaScript e Calcite Components). Un satellite tracker che segue la posizione della ISS in tempo reale su mappa 2D e globo 3D, visualizza le orbite dei satelliti CubeSat e calcola i loro passaggi su un'area di interesse. React 19, Redux Toolkit, satellite.js e telemetria via SSE."
+tags:
+  [
+    'React',
+    'TypeScript',
+    'Vite',
+    'ArcGIS Maps SDK',
+    'Calcite Components',
+    'Esri',
+    'Redux Toolkit',
+    'satellite.js',
+    'Tailwind CSS',
+    'SSE',
+    '3D WebGL',
+    'Cloudflare Workers',
+  ]
+heroImage: './assets/cover.png'
+link: 'https://iss.vitoesposito.it/'
+repository: 'https://github.com/bitoesposito/wt-iss-app'
+pubDate: '2026-06-20'
+---
+
+## Il Contesto
+
+Da marzo 2026 lavoro come sviluppatore front-end in **Where Tech**, azienda che opera nell'ecosistema **Esri**, leader mondiale nei sistemi informativi geografici (GIS). Entrare in questo mondo ha significato confrontarmi con un nuovo stack di strumenti: l'**ArcGIS Maps SDK for JavaScript** per la visualizzazione di dati spaziali e i **Calcite Components**, il design system ufficiale di Esri.
+
+WT ISS App nasce proprio da questa esigenza: avevo bisogno di un progetto reale, abbastanza ricco da costringermi a esplorare le API a fondo, ma circoscritto a un dominio che mi appassiona. Tracciare la Stazione Spaziale Internazionale e i satelliti in orbita si è rivelato il banco di prova perfetto: dati in tempo reale, calcoli orbitali, mappe 2D, globi 3D e un'interfaccia interamente costruita con i componenti Esri.
+
+## La Soluzione
+
+WT ISS App (in-app *Satellite Tracker*) è un'applicazione web costruita con **React 19** e **Vite** che mette insieme due modalità di lavoro. La prima segue la **ISS** in tempo reale, mostrandone posizione, telemetria e parametri orbitali, con la possibilità di passare da una mappa 2D a un globo 3D dove la stazione è rappresentata da un modello tridimensionale. La seconda permette di selezionare satelliti **CubeSat** dai cataloghi pubblici, disegnarne le orbite sul globo e calcolare quando passeranno sopra un'area di interesse definita dall'utente.
+
+Tutto lo stato è gestito con **Redux Toolkit**, i calcoli orbitali si appoggiano a **satellite.js** (propagazione SGP4 da dati TLE) e l'intera UI — shell, pannelli, controlli, dialog — è realizzata con i **Calcite Components** di Esri, con Tailwind CSS per il layout di contorno.
+
+import { ArrowRightIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Link } from '@/components/ui/link'
+
+<div class="flex w-full justify-center">
+  <Link href="https://iss.vitoesposito.it/" target="_blank" className="w-full">
+    <Button variant="outline" size="lg" className="w-full justify-between">
+      Vai all'applicazione
+      <ArrowRightIcon className="w-4 h-4" />
+    </Button>
+  </Link>
+</div>
+
+## Come Funziona
+
+L'applicazione è organizzata attorno a una `calcite-shell` con un pannello laterale e una action bar per passare tra le due modalità. Su desktop il pannello è agganciato (dock), su mobile diventa un overlay che parte chiuso per lasciare subito spazio alla mappa.
+
+### Modalità ISS
+
+La posizione della ISS arriva da uno **stream SSE** (Server-Sent Events) di telemetria: l'app si sottoscrive con `EventSource` e aggiorna lo store a ogni evento. Per mantenere la scia fluida e il ricentraggio gradevole, le posizioni vengono memorizzate al massimo ogni 3 secondi e ne vengono conservate fino a 40, formando una traccia degli ultimi spostamenti. Lo stream viene sospeso automaticamente quando la tab non è visibile, per non sprecare risorse.
+
+Il pannello ISS mostra la telemetria live (latitudine, longitudine, altitudine, velocità, orario) e una sezione di **parametri orbitali**: apoapsi, periapsi, inclinazione, eccentricità, periodo, numero di rivoluzione e *beta angle*, oltre a un indicatore che segnala se la stazione è in luce o in ombra. Un interruttore "Segui automaticamente" permette di mantenere la vista centrata sulla ISS.
+
+Con un controllo segmentato si passa dalla **mappa 2D** (`arcgis-map`) al **globo 3D** (`arcgis-scene`): nel passaggio il viewpoint viene sincronizzato convertendo la scala in funzione della latitudine, così l'inquadratura resta coerente. In 3D la stazione è renderizzata con un modello **glTF** posizionato alla sua quota reale, con le posizioni precedenti disegnate come marker lungo la traiettoria.
+
+In entrambe le viste viene tracciata l'**orbita completa** della ISS: a partire dai dati TLE (NORAD 25544, fonte Celestrak) la traiettoria viene propagata in avanti per un'intera rivoluzione (~93 minuti) e disegnata come polilinea — piatta in 2D, in quota nella scena 3D.
+
+### Modalità Satelliti
+
+Passando alla modalità satelliti, l'app scarica i dati TLE del gruppo CubeSat da Celestrak e li mostra in una lista filtrabile con ricerca, selezione multipla, "seleziona tutti" e contatori. I satelliti scelti vengono disegnati sul globo con le rispettive **tracce orbitali**.
+
+### Satellite Orbit Tracker
+
+Il pezzo più ambizioso è il widget *Satellite Orbit Tracker*, accessibile da un pannello a scomparsa. Il flusso è questo: si disegna un **punto** sul globo (con `arcgis-sketch`), si definisce un'**area di interesse** in chilometri, si imposta un intervallo temporale (data e ora di inizio/fine, massimo 6 giorni) e si avvia il calcolo. L'app propaga ciascun satellite selezionato minuto per minuto, proietta la sua posizione al suolo, vi costruisce attorno un buffer e verifica l'intersezione con l'area di interesse: ogni finestra di sovrapposizione diventa un **passaggio** elencato nei risultati. Una lista di "requisiti mancanti" spiega in ogni momento perché il calcolo è eventualmente disabilitato.
+
+## Le Sfide Tecniche
+
+La gestione dello **stream SSE in produzione** ha richiesto attenzione: l'API di telemetria vive su un dominio diverso e avrebbe sollevato problemi di CORS. Ho risolto instradando tutte le chiamate `/api/*` attraverso un **reverse proxy sullo stesso origin** — in sviluppo tramite il proxy di Vite, in produzione tramite un Cloudflare Worker — che inoltra la richiesta in streaming rimuovendo gli header di codifica e lunghezza che altrimenti romperebbero il parsing dello stream.
+
+I **calcoli orbitali** sono il cuore tecnico del progetto. La propagazione di un TLE a una data specifica (parsing del TLE, propagazione SGP4, conversione da coordinate ECI a geodetiche con il tempo siderale di Greenwich) è incapsulata in un'unica funzione condivisa, riutilizzata sia per la traiettoria della ISS sia per il calcolo dei passaggi satellitari. Disegnare le orbite sulla mappa 2D ha richiesto di **spezzare la polilinea quando attraversa l'antimeridiano**, per evitare segmenti orizzontali spuri che la collegherebbero da un capo all'altro della mappa.
+
+Far convivere **React e i Web Components di Esri** è stata una sfida trasversale: i Calcite Components e i componenti mappa sono custom elements che espongono proprietà ed eventi nativi, quindi gli hook devono attendere l'inizializzazione asincrona della vista ArcGIS prima di agganciare layer e grafica, e ripulire tutto al dismount. Il calcolo dei passaggi è inoltre protetto da un limite sul numero di step e dimensionato per non bloccare il thread principale.
+
+## Architettura e Design Patterns
+
+Lo stato globale è suddiviso in tre **slice Redux Toolkit**: `viewMode` (modalità attiva), `iss` (posizioni, dimensione 2D/3D, follow, parametri orbitali e TLE) e `satellites` (catalogo, selezione, stato di caricamento). I thunk gestiscono il fetch asincrono dei dati TLE con i classici stati `idle → loading → ready/error`.
+
+La logica di mappa è isolata in **custom hook** dedicati (grafica ISS 2D, grafica 3D, traccia orbitale, livelli satellitari, sketch dell'area di interesse), mentre i **componenti** restano focalizzati sulla presentazione. Costanti di stile, colori e parametri di tracking sono centralizzati in un unico modulo, e le utility di propagazione orbitale vivono in un layer `lib/` separato e testabile. Esiste anche una versione **Angular** dell'app su un branch dedicato, come ulteriore esercizio sullo stesso dominio con un framework diverso.
+
+---
+
+## Dettagli Tecnici
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Stack Tecnologico</summary>
+<div class="px-4 pb-4">
+
+| Categoria          | Tecnologia                     | Versione | Scopo                                  |
+| ------------------ | ------------------------------ | -------- | -------------------------------------- |
+| **Framework**      | React                          | 19.2     | UI library                             |
+| **Build Tool**     | Vite                           | 7        | Dev server e bundler                   |
+| **Linguaggio**     | TypeScript                     | 5.9      | Type safety                            |
+| **Mappe**          | ArcGIS Maps SDK (`@arcgis/core`) | 4.34   | Mappa 2D, scena 3D, geometrie          |
+|                    | `@arcgis/map-components`       | 4.34     | Web Components mappa/scena             |
+| **UI**             | Calcite Components (`@esri/calcite-components`) | 3.3 | Design system Esri          |
+|                    | Tailwind CSS                   | 4        | Utility-first CSS                      |
+| **State**          | Redux Toolkit                  | 2        | Gestione stato globale                 |
+|                    | react-redux                    | 9        | Binding React ↔ Redux                  |
+| **Calcoli orbitali** | satellite.js                 | 6        | Propagazione SGP4 da TLE               |
+| **Deployment**     | Cloudflare Workers + Assets    | -        | Hosting + reverse proxy SSE            |
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Funzionalità Principali</summary>
+<div class="px-4 pb-4">
+
+| Funzionalità                | Descrizione                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| **Tracking ISS live**       | Posizione in tempo reale via stream SSE, con scia degli ultimi spostamenti   |
+| **Telemetria & orbita**     | Lat/lon, altitudine, velocità e parametri orbitali (apoapsi, periapsi, inclinazione…) |
+| **Vista 2D / 3D**           | Switch tra mappa piana e globo, con modello 3D della stazione                |
+| **Traiettoria orbitale**    | Orbita completa della ISS propagata dai TLE e disegnata sulla vista          |
+| **Catalogo satelliti**      | Lista CubeSat filtrabile con selezione multipla e tracce orbitali sul globo  |
+| **Orbit Tracker**           | Calcolo dei passaggi dei satelliti su un'area di interesse in una finestra temporale |
+| **Indicatore esposizione**  | Stato luce/ombra della ISS con orari di alba e tramonto orbitali             |
+| **Follow automatico**       | Ricentraggio continuo della vista sulla posizione della stazione            |
+| **Responsive**              | Pannello dock su desktop, overlay su mobile                                  |
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Architettura</summary>
+<div class="px-4 pb-4">
+
+### Struttura Progetto
+
+```
+wt-iss-app/
+├── src/
+│   ├── components/
+│   │   ├── map/            # Map (arcgis-map / arcgis-scene) + controlli vista
+│   │   ├── panels/         # IssPanel, SatellitePanel
+│   │   └── widgets/        # SatelliteOrbitTracker
+│   ├── hooks/              # Logica mappa e orbite (custom hooks)
+│   │   ├── use-iss-graphic.ts          # grafica ISS 2D
+│   │   ├── use-iss-scene-graphic.ts    # grafica ISS 3D (modello glTF)
+│   │   ├── use-iss-orbit-track.ts      # traiettoria orbitale
+│   │   ├── use-sat-graphic.ts          # tracce satelliti
+│   │   └── use-orbit-tracker-sketch.ts # disegno area di interesse
+│   ├── lib/
+│   │   ├── iss-stream.ts               # sottoscrizione SSE telemetria
+│   │   ├── iss-orbit.ts                # fetch TLE della ISS (Celestrak)
+│   │   ├── satellite-position-tracker.ts # fetch & parsing TLE satelliti
+│   │   ├── satellite/propagate.ts      # propagazione TLE → geodetiche
+│   │   ├── orbit-tracker/              # calcolo dei passaggi
+│   │   └── map-style.ts                # colori e costanti condivise
+│   ├── store/             # Redux Toolkit: viewMode / iss / satellites slice
+│   └── types/             # Tipi TypeScript
+├── worker/                # Cloudflare Worker (reverse proxy /api/* + assets)
+└── public/3d/             # Modello glTF della ISS
+```
+
+### State Management
+
+- **Tre slice Redux**: `viewMode`, `iss`, `satellites`, combinati in un unico store
+- **Thunk asincroni**: fetch dei TLE con stati `idle → loading → ready/error`
+- **Hook + selettori**: i componenti leggono lo stato via `useSelector` e dispatchano azioni tipizzate
+- **Buffer posizioni**: scia ISS limitata alle ultime 40 posizioni, con throttling a 3s
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Tracking ISS: SSE & TLE</summary>
+<div class="px-4 pb-4">
+
+### Stream di telemetria (SSE)
+
+- Sottoscrizione con `EventSource` all'endpoint `/api/telemetry/stream`
+- Path relativo → in dev passa dal proxy Vite, in prod dal reverse proxy Cloudflare (no CORS)
+- Throttling: una posizione memorizzata al massimo ogni **3 secondi**
+- Stream sospeso quando `document.hidden` (cambio tab) e riaperto al ritorno
+- Riconnessione automatica gestita da `EventSource` in caso di errore di rete
+
+### Traiettoria orbitale (TLE)
+
+- TLE della ISS (NORAD **25544**) scaricato da **Celestrak**
+- Propagazione SGP4 con `satellite.js` su un'intera orbita (~93 min, step 60s)
+- Conversione ECI → geodetiche tramite tempo siderale di Greenwich (`gstime`)
+- Split della polilinea sull'antimeridiano (Δlon > 180°) per evitare artefatti in 2D
+- In 3D la traiettoria usa la quota reale (`elevationInfo: absolute-height`)
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Calcolo dei Passaggi Satellitari</summary>
+<div class="px-4 pb-4">
+
+Il widget *Satellite Orbit Tracker* stima quando i satelliti selezionati transitano sopra un'area di interesse.
+
+**Input richiesti:**
+
+| Parametro            | Vincolo                                          |
+| -------------------- | ------------------------------------------------ |
+| **Punto sulla mappa**| Disegnato con `arcgis-sketch` (creation-mode single) |
+| **Area di interesse**| Buffer geodesico, minimo 10 km                   |
+| **Intervallo**       | Inizio < fine, durata massima 6 giorni           |
+| **Satelliti**        | Almeno uno selezionato dalla sidebar             |
+
+**Algoritmo:**
+
+1. L'area di interesse viene proiettata in WGS84 e bufferizzata (`geodesicBuffer`)
+2. Per ogni satellite si campiona la posizione **minuto per minuto** propagando il TLE
+3. La posizione viene proiettata al suolo e racchiusa in un buffer (50 km)
+4. `geometryEngine.intersects` verifica la sovrapposizione con l'area di interesse
+5. Le finestre contigue di intersezione vengono aggregate in un **passaggio** (inizio/fine)
+6. Un limite di step (max 10.000) protegge da intervalli troppo ampi
+
+</div>
+</details>
+
+<details class="my-4 rounded-lg border border-border bg-muted/30">
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Esri: ArcGIS & Calcite</summary>
+<div class="px-4 pb-4">
+
+### ArcGIS Maps SDK for JavaScript
+
+- `arcgis-map` per la vista **2D**, `arcgis-scene` per il **globo 3D**
+- `GraphicsLayer`, `Graphic`, `Polyline`, `Point` per disegnare posizioni e orbite
+- Simboli 3D (`PointSymbol3D`, `ObjectSymbol3DLayer`) per il **modello glTF** della ISS
+- `geometryEngine` (buffer geodesici, intersezioni) e `projectOperator` per i calcoli spaziali
+- Sincronizzazione del viewpoint nel passaggio 2D ↔ 3D con conversione di scala per latitudine
+
+### Calcite Components (design system Esri)
+
+Interfaccia interamente costruita con i Web Components ufficiali Esri: `calcite-shell` e `calcite-shell-panel` per il layout, `calcite-action-bar` per la navigazione, `calcite-panel`, `calcite-loader`, `calcite-switch`, `calcite-chip`, `calcite-button`, `calcite-input-*`, `calcite-input-date-picker`, `calcite-input-time-picker`, `calcite-segmented-control`, `calcite-dialog` e `calcite-notice` per controlli e feedback.
+
+</div>
+</details>
