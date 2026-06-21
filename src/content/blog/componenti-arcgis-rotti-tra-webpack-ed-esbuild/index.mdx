@@ -1,0 +1,61 @@
+---
+title: "Quando il bundler rompe ArcGIS: webpack vs esbuild in Angular"
+description: "Un componente ArcGIS che spariva solo in produzione, la caccia alla causa tra esbuild e webpack, e come ho isolato una divergenza di bundling con un repro A/B."
+pubDate: 2026-06-21
+tags: ['angular', 'arcgis', 'webpack', 'esbuild', 'bundling', 'troubleshooting']
+---
+
+## Il sintomo
+
+Un'applicazione Angular 20 con la SDK di ArcGIS (`@arcgis/core` 4.34, `@arcgis/map-components` e i Calcite Components di Esri). Tra i vari componenti, un `arcgis-elevation-profile`: disegni una linea sulla mappa e ti aspetti il grafico del profilo altimetrico.
+
+In locale, con `ng serve`, tutto perfetto. Dopo il deploy, no: il grafico **non si renderizzava o spariva in modo intermittente** mentre si tracciavano le linee. Il classico bug peggiore — quello che esiste solo dove non puoi metterci un breakpoint.
+
+La differenza tra i due ambienti non era il codice, ma **come il codice veniva impacchettato**. Il dev server e la build di produzione di Angular passano per pipeline diverse, e il problema viveva esattamente in quella frattura.
+
+## L'ipotesi
+
+`@arcgis/core` è un albero di dipendenze ESM estremamente modulare. La pipeline di produzione di default di Angular (`@angular/build:application`, basata su **esbuild**) tende a spezzarlo in **moltissimi chunk piccoli**.
+
+Più chunk significa più sensibilità all'**ordine e al timing di caricamento**, e a come vengono emessi CSS, asset e chunk "speciali" (ad esempio il modulo asm.js `libtess-asm.js`). Tutto questo può tradursi in inconsistenze visive intermittenti che su un altro bundler semplicemente non si presentano.
+
+L'ipotesi quindi era: **non è un bug dell'app, è una divergenza di bundling**. Ma per dimostrarlo non basta sospettarlo — serve poterlo confrontare.
+
+## Come l'ho isolato: lo stesso app, due bundler
+
+Il punto chiave è stato costruire un repro che spedisce **la stessa identica applicazione, compilata in due modi diversi**, così da poter confrontare il comportamento a runtime e non solo l'output statico:
+
+- **A — esbuild**: `@angular/build:application`, la pipeline di default di Angular.
+- **B — webpack**: `@angular-builders/custom-webpack:browser`, con un merge mirato solo su `@arcgis/*` e `@esri/*`.
+
+Per avvicinarmi alle condizioni reali di deploy (e non al dev server, dove il bug non si vedeva), ho servito **entrambe le build come file statici dietro nginx** via Docker, su due porte separate:
+
+```bash
+npm run docker:prod
+# esbuild → http://localhost:8080
+# webpack → http://localhost:8081
+```
+
+Così la domanda "è colpa del bundler?" diventa verificabile: apri le due porte, fai lo stesso gesto sulla mappa, e guardi quale build rompe.
+
+## La correzione lato webpack
+
+Il merge webpack (`webpack.arcgis-css.cjs`) si tiene volutamente piccolo e circoscritto a `node_modules/@arcgis` e `node_modules/@esri`. Fa tre cose:
+
+1. **Esclude i chunk di `@arcgis/*` dal Babel loader di Angular.** Far passare quei moduli dal transpile genera URL `file://` assoluti dal `css-loader` e rompe classi native. In particolare viene escluso `libtess-asm.js`: è asm.js, e passarlo da Babel lo rovina.
+2. **Aggiunge una regola dedicata per il CSS di ArcGIS/Esri** (`style-loader` + `css-loader` con `esModule: false`), invece di lasciare che il CSS importato dal JS venga gestito come negli altri casi.
+3. **Tratta i font** (`woff2`, `ttf`, `eot`, `otf`) di ArcGIS/Esri come `asset/resource`, così gli URL referenziati dal CSS restano validi.
+
+Il risultato: la build webpack renderizzava il profilo altimetrico in modo **consistente**, mentre quella esbuild continuava a mostrare la sparizione intermittente. Confronto fianco a fianco, stesso codice sorgente: la causa è nel modo in cui il bundler tratta chunk, CSS-da-JS e chunk speciali — non nell'applicazione.
+
+## La segnalazione a Esri
+
+Una volta circoscritto il problema, l'ho aperto sulla community ufficiale di Esri, con il contesto della divergenza tra le due pipeline:
+
+[ArcGIS components breaking across webpack vs esbuild — Esri Community](https://community.esri.com/t5/arcgis-javascript-maps-sdk-questions/arcgis-components-breaking-across-webpack-vs/m-p/1709045)
+
+Segnalare a monte è parte del lavoro: un repro A/B minimale e riproducibile vale molto più di "a volte il grafico sparisce", sia per chi mantiene la libreria sia per chiunque incappi nello stesso muro.
+
+## Cosa mi porto a casa
+
+Quando un bug si manifesta **solo dopo il deploy** e mai sul dev server, vale la pena sospettare la build prima del codice. E il modo più pulito per dimostrarlo non è leggere a occhio gli output del bundler, ma **spedire lo stesso app compilato in due modi e farli litigare in un ambiente vicino alla produzione**. La riproducibilità trasforma un sospetto in una segnalazione utile.
