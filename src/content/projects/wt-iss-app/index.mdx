@@ -32,7 +32,7 @@ WT ISS App nasce proprio da questa esigenza: avevo bisogno di un progetto reale,
 
 WT ISS App (in-app *Satellite Tracker*) è un'applicazione web costruita con **React 19** e **Vite** che mette insieme due modalità di lavoro. La prima segue la **ISS** in tempo reale, mostrandone posizione, telemetria e parametri orbitali, con la possibilità di passare da una mappa 2D a un globo 3D dove la stazione è rappresentata da un modello tridimensionale. La seconda permette di selezionare satelliti **CubeSat** dai cataloghi pubblici, disegnarne le orbite sul globo e calcolare quando passeranno sopra un'area di interesse definita dall'utente.
 
-Tutto lo stato è gestito con **Redux Toolkit**, i calcoli orbitali si appoggiano a **satellite.js** (propagazione SGP4 da dati TLE) e l'intera UI — shell, pannelli, controlli, dialog — è realizzata con i **Calcite Components** di Esri, con Tailwind CSS per il layout di contorno.
+Tutto lo stato è gestito con **Redux Toolkit**, i calcoli orbitali si appoggiano a **satellite.js** (propagazione SGP4 da dati TLE) e l'intera UI, shell, pannelli, controlli, dialog, è realizzata con i **Calcite Components** di Esri, con Tailwind CSS per il layout di contorno.
 
 import { ArrowRightIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -59,7 +59,7 @@ Il pannello ISS mostra la telemetria live (latitudine, longitudine, altitudine, 
 
 Con un controllo segmentato si passa dalla **mappa 2D** (`arcgis-map`) al **globo 3D** (`arcgis-scene`): nel passaggio il viewpoint viene sincronizzato convertendo la scala in funzione della latitudine, così l'inquadratura resta coerente. In 3D la stazione è renderizzata con un modello **glTF** posizionato alla sua quota reale, con le posizioni precedenti disegnate come marker lungo la traiettoria.
 
-In entrambe le viste viene tracciata l'**orbita completa** della ISS: a partire dai dati TLE (NORAD 25544, fonte Celestrak) la traiettoria viene propagata in avanti per un'intera rivoluzione (~93 minuti) e disegnata come polilinea — piatta in 2D, in quota nella scena 3D.
+In entrambe le viste viene tracciata l'**orbita completa** della ISS: a partire dai dati TLE (NORAD 25544, fonte Celestrak) la traiettoria viene propagata in avanti per un'intera rivoluzione (~93 minuti) e disegnata come polilinea, piatta in 2D, in quota nella scena 3D.
 
 ### Modalità Satelliti
 
@@ -71,7 +71,7 @@ Il pezzo più ambizioso è il widget *Satellite Orbit Tracker*, accessibile da u
 
 ## Le Sfide Tecniche
 
-La gestione dello **stream SSE in produzione** ha richiesto attenzione: l'API di telemetria vive su un dominio diverso e avrebbe sollevato problemi di CORS. Ho risolto instradando tutte le chiamate `/api/*` attraverso un **reverse proxy sullo stesso origin** — in sviluppo tramite il proxy di Vite, in produzione tramite un Cloudflare Worker — che inoltra la richiesta in streaming rimuovendo gli header di codifica e lunghezza che altrimenti romperebbero il parsing dello stream.
+La gestione dello **stream SSE in produzione** ha richiesto attenzione: l'API di telemetria vive su un dominio diverso e avrebbe sollevato problemi di CORS. Ho risolto instradando tutte le chiamate `/api/*` attraverso un **reverse proxy sullo stesso origin**, in sviluppo tramite il proxy di Vite, in produzione tramite un Cloudflare Worker, che inoltra la richiesta in streaming rimuovendo gli header di codifica e lunghezza che altrimenti romperebbero il parsing dello stream.
 
 I **calcoli orbitali** sono il cuore tecnico del progetto. La propagazione di un TLE a una data specifica (parsing del TLE, propagazione SGP4, conversione da coordinate ECI a geodetiche con il tempo siderale di Greenwich) è incapsulata in un'unica funzione condivisa, riutilizzata sia per la traiettoria della ISS sia per il calcolo dei passaggi satellitari. Disegnare le orbite sulla mappa 2D ha richiesto di **spezzare la polilinea quando attraversa l'antimeridiano**, per evitare segmenti orizzontali spuri che la collegherebbero da un capo all'altro della mappa.
 

@@ -43,8 +43,8 @@ L’uso di una subquery in una certa posizione è valido solo se il risultato ha
 
 **Tre forme principali:**
 
-1. **Valore scalare (scalar):** una riga e una colonna — un singolo valore. Esempio: `SELECT MAX(price) FROM products`.
-2. **Singola colonna:** più righe, una colonna — lista di valori. Esempio: `SELECT id FROM orders`.
+1. **Valore scalare (scalar):** una riga e una colonna, un singolo valore. Esempio: `SELECT MAX(price) FROM products`.
+2. **Singola colonna:** più righe, una colonna, lista di valori. Esempio: `SELECT id FROM orders`.
 3. **Insieme di righe e colonne:** più righe e più colonne. Esempio: `SELECT * FROM orders`.
 
 La posizione della subquery (SELECT, FROM, JOIN, WHERE) impone quale forma è ammessa. Conviene sempre ragionare su: "cosa restituisce questa query?" e "cosa si aspetta il contesto?".

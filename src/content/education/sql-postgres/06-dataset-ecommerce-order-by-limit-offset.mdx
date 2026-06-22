@@ -35,9 +35,9 @@ Il database è composto da tre tabelle correlate:
 
 **Tabella `orders`:**
 - **id**: SERIAL PRIMARY KEY
-- **user_id**: INTEGER REFERENCES users(id) — utente che effettua l'ordine
-- **product_id**: INTEGER REFERENCES products(id) — prodotto ordinato
-- **paid**: BOOLEAN — se l'ordine è stato pagato
+- **user_id**: INTEGER REFERENCES users(id), utente che effettua l'ordine
+- **product_id**: INTEGER REFERENCES products(id), prodotto ordinato
+- **paid**: BOOLEAN, se l'ordine è stato pagato
 
 ### Creazione dello Schema
 

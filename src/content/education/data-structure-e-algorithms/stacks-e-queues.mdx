@@ -389,7 +389,7 @@ Con una linked list modificata, possiamo avere **entrambe le operazioni O(1)**:
 |--------------------------------------------------|:-----------:|---------------------------------------------------------|
 | **Enqueue** (fine con `last`)                    | <span class="font-semibold text-green-500">O(1)</span>     | Aggiunta in fondo con puntatore `last`                  |
 | **Dequeue** (inizio con `first`)                 | <span class="font-semibold text-green-500">O(1)</span>     | Rimozione dall'inizio con puntatore `first`             |
-| Enqueue dall'inizio o Dequeue dalla fine         | <span class="font-semibold text-red-500">O(n)</span>       | **Sconsigliato** — richiede scorrimento di tutta la lista|
+| Enqueue dall'inizio o Dequeue dalla fine         | <span class="font-semibold text-red-500">O(n)</span>       | **Sconsigliato**, richiede scorrimento di tutta la lista|
 
 **Importante**: Con una linked list per queue:
 - **Enqueue** avviene dalla **fine** usando `last` (equivalente di `tail`)

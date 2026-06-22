@@ -32,14 +32,14 @@ SELECT ... FROM ...;
 
 Obiettivo: ottenere i **4 prodotti più cari** e i **4 prodotti con rapporto prezzo/peso più alto** (es. per evidenziare i più redditizi e i più convenienti da spedire). I criteri di ordinamento sono diversi, quindi conviene usare due query e unirle.
 
-**Prima query — i 4 più cari:**
+**Prima query, i 4 più cari:**
 ```sql
 SELECT * FROM products
 ORDER BY price DESC
 LIMIT 4;
 ```
 
-**Seconda query — i 4 con rapporto prezzo/peso più alto:**
+**Seconda query, i 4 con rapporto prezzo/peso più alto:**
 ```sql
 SELECT * FROM products
 ORDER BY price / weight DESC
@@ -109,7 +109,7 @@ Per usare UNION (o UNION ALL) le due query devono restituire:
 
 I **nomi** delle colonne possono essere diversi; il risultato userà i nomi della prima query. L’importante è che tipo e ordine delle colonne coincidano.
 
-**Esempio di errore — tipi incompatibili:**
+**Esempio di errore, tipi incompatibili:**
 ```sql
 SELECT name FROM products
 UNION
@@ -117,7 +117,7 @@ SELECT price FROM products;
 -- Errore: tipi delle colonne non compatibili (es. VARCHAR vs INTEGER)
 ```
 
-**Esempio valido — stesse colonne e tipi:**
+**Esempio valido, stesse colonne e tipi:**
 ```sql
 SELECT name, price FROM products
 UNION
