@@ -33,7 +33,7 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
 ---
 
 <!doctype html>
-<html lang="it">
+<html lang="it" xml:lang="it">
   <head>
     <Head title={SITE.title} description={SITE.description} />
     <script type="application/ld+json" set:html={JSON.stringify({
@@ -49,14 +49,14 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
   </head>
   <body>
     <Header />
-    <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 lg:px-0 py-4">
+    <main id="main-content" class="mx-auto flex max-w-3xl flex-col gap-8 px-4 lg:px-0 py-4">
       <!-- HERO -->
       <section
         id="hero"
         class="flex flex-col sm:flex-row gap-3 py-3 justify-between sm:items-center"
       >
         <div class="flex flex-col md:items-start items-center">
-          <h1 class="font-light uppercase">Vito Esposito</h1>
+          <p class="font-light uppercase">Vito Esposito</p>
           <Image
             src={heroImage}
             alt="Logo di Vito Esposito"
@@ -76,6 +76,8 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
           icon="github"
           external
           aria-label="GitHub"
+          underline={false}
+          variant="button"
           className={buttonVariants({ variant: "outline" })}
         >
           GitHub
@@ -85,6 +87,8 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
           icon="linkedin"
           external
           aria-label="LinkedIn"
+          underline={false}
+          variant="button"
           className={buttonVariants({ variant: "outline" })}
         >
           LinkedIn
@@ -93,6 +97,8 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
           href="/CV.pdf"
           icon="FileText"
           aria-label="Curriculum"
+          underline={false}
+          variant="button"
           className={buttonVariants({ variant: "outline" })}
         >
           Curriculum
@@ -101,6 +107,8 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
           href="mailto:info@vitoesposito.it"
           icon="Mail"
           aria-label="Contattami via mail"
+          underline={false}
+          variant="button"
           className={buttonVariants({ variant: "outline" })}
         >
           Contattami
@@ -119,6 +127,8 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
           <h2 class="text-xl font-semibold">Ultimi post</h2>
           <Link
             href="/blog"
+            underline={false}
+            variant="button"
             className={buttonVariants({ variant: "outline" })}
             icon="ArrowRight"
             aria-label="Vedi tutti i post"
@@ -176,6 +186,8 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
           <h2 class="text-xl font-semibold">Ultimi progetti</h2>
           <Link
             href="/projects"
+            underline={false}
+            variant="button"
             className={buttonVariants({ variant: "outline" })}
             icon="ArrowRight"
             aria-label="Vedi tutti i progetti"
@@ -212,6 +224,8 @@ const courses = (await getCourses()).slice(0, SITE.featuredEducationCount);
           <h2 class="text-xl font-semibold">Formazione recente</h2>
           <Link
             href="/education"
+            underline={false}
+            variant="button"
             className={buttonVariants({ variant: "outline" })}
             icon="ArrowRight"
             aria-label="Vedi tutta la formazione"

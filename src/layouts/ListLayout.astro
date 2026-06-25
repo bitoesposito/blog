@@ -48,13 +48,13 @@ if (currentPage > 1) {
 ---
 
 <!doctype html>
-<html lang="it">
+<html lang="it" xml:lang="it">
   <head>
     <Head title={title} description={description} />
   </head>
   <body>
     <Header />
-    <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 lg:px-0 py-4">
+    <main id="main-content" class="mx-auto flex max-w-3xl flex-col gap-8 px-4 lg:px-0 py-4">
       <Breadcrumbs items={crumbs} />
 
       <slot />

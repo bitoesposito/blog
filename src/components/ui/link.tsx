@@ -13,7 +13,7 @@ const linkVariants = cva(
       },
     },
     defaultVariants: {
-      underline: false,
+      underline: true,
     },
   }
 )
@@ -24,6 +24,7 @@ interface LinkProps
   href: string
   external?: boolean
   icon?: IconName
+  variant?: "text" | "button"
 }
 
 function Link({
@@ -31,6 +32,7 @@ function Link({
   external,
   underline,
   icon,
+  variant = "text",
   className,
   "aria-label": ariaLabel,
   title,
@@ -42,6 +44,11 @@ function Link({
   const finalTitle =
     title ?? (external && !ariaLabel ? "Link esterno (si apre in una nuova finestra)" : undefined)
 
+  const resolvedClassName =
+    variant === "button"
+      ? cn(className)
+      : cn(linkVariants({ underline, className }))
+
   return (
     <a
       href={href}
@@ -49,7 +56,7 @@ function Link({
       rel={external ? "noopener noreferrer" : undefined}
       aria-label={finalAriaLabel}
       title={finalTitle}
-      className={cn(linkVariants({ underline, className }))}
+      className={resolvedClassName}
       {...props}
     >
       {icon && <Icon name={icon} />}

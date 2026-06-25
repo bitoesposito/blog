@@ -43,7 +43,7 @@ const hasToc = tocItems.length >= 2;
 ---
 
 {/* scroll-pt: header + barra indice (< xl) / solo header (xl+) per gli anchor. */}
-<html class="scroll-pt-28 xl:scroll-pt-20" lang="it">
+<html class="scroll-pt-28 xl:scroll-pt-20" lang="it" xml:lang="it">
   <head>
     <Head
       title={title}
@@ -120,6 +120,7 @@ const hasToc = tocItems.length >= 2;
       partono quindi sotto l'intestazione, come nel blog legacy.
     */}
     <main
+      id="main-content"
       class="grid grid-cols-[minmax(0,1fr)_min(48rem,100%)_minmax(0,1fr)] gap-y-8 px-4 py-8"
     >
       <div class="col-start-2 row-start-1 flex flex-col gap-6">

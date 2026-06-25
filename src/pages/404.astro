@@ -9,14 +9,14 @@ import { cn } from '@/lib/utils'
 ---
 
 <!doctype html>
-<html lang="it">
+<html lang="it" xml:lang="it">
   <head>
     <Head title="Pagina non trovata" description="La pagina che stai cercando non esiste o è stata spostata." />
     <meta name="robots" content="noindex" />
   </head>
   <body>
     <Header />
-    <main class="mx-auto flex max-w-3xl flex-col gap-8 px-4 lg:px-0 py-4">
+    <main id="main-content" class="mx-auto flex max-w-3xl flex-col gap-8 px-4 lg:px-0 py-4">
       <Breadcrumbs client:load items={[{ label: '404' }]} />
 
       <section class="flex flex-col items-center justify-center gap-y-4 text-center">
@@ -26,10 +26,11 @@ import { cn } from '@/lib/utils'
         </div>
         <Link
           href="/"
-          className={cn(buttonVariants({ variant: 'outline' }), 'flex gap-x-1.5 group')}
+          underline={false}
+          variant="button"
+          className={cn(buttonVariants({ variant: 'outline' }), 'flex gap-x-1.5 group text-foreground')}
           aria-label="Torna alla homepage"
         >
-          <span class="transition-transform group-hover:-translate-x-1" aria-hidden="true">&larr;</span>
           Vai alla home page
         </Link>
       </section>
