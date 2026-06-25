@@ -1,0 +1,4 @@
+Contact: mailto:info@vitoesposito.it
+Expires: 2027-06-25T00:00:00.000Z
+Preferred-Languages: it, en
+Canonical: https://vitoesposito.it/.well-known/security.txt
