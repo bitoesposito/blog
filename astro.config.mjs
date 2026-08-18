@@ -7,6 +7,8 @@ import { defineConfig, fontProviders } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@astrojs/react';
 
+import cloudflare from '@astrojs/cloudflare';
+
 // https://astro.build/config
 export default defineConfig({
   site: 'https://vitoesposito.it',
@@ -53,4 +55,6 @@ export default defineConfig({
       noExternal: ['lucide-react'],
     },
   },
+
+  adapter: cloudflare(),
 });
