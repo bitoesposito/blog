@@ -1,0 +1,223 @@
+---
+title: "Dati 3D"
+description: "Valori z, sistemi di coordinate verticali, superfici funzionali, TIN e raster, extrusion, mesh e point cloud"
+pubDate: 2026-08-18
+tags: ['formazione', 'esri', 'arcgis', 'gis', '3d']
+authors: ['vitoesposito']
+order: 7
+---
+
+## Perché il 3D
+
+Le mappe 2D restano utili, ma molte feature reali acquistano senso solo viste in tre dimensioni: pozzi, linee di trasporto sotterranee, rotte di volo, vani ascensore in un edificio, formazioni geologiche nel sottosuolo. Il tratto comune è che la posizione verticale non è un attributo secondario ma parte dell'identità dell'oggetto.
+
+## I valori z
+
+La differenza fondamentale tra dato 2D e dato 3D è che **il dato 3D "conosce" la propria altezza**, il dato 2D no.
+
+Per posizionare un elemento su una mappa 2D bastano le coordinate **x,y**. Per una mappa 3D serve una terza coordinata, il **valore z**, che ne determina l'altezza: longitudine e latitudine sono x e y, l'elevazione è z.
+
+Due precisazioni:
+
+- **il valore z non è necessariamente un'elevazione.** Può rappresentare precipitazione, densità, o la quantità di un qualunque attributo. Qualsiasi dato che usi valori z è considerato 3D. Un esempio: una mappa di tracciamento dei tifoni in cui il colore delle colonne indica la pressione barometrica e l'altezza indica la velocità del vento;
+- il dato 3D ha **valori z associati a ciascun vertice**, non uno per feature.
+
+Una feature creata in una mappa 2D **può** essere visualizzata in 3D: non sono mondi separati.
+
+## Vertical coordinate system
+
+In 2D il sistema di coordinate stabilisce dove stanno le feature l'una rispetto all'altra su un piano orizzontale. In 3D il **vertical coordinate system** fa la stessa cosa sul piano verticale.
+
+Risponde a due domande senza le quali un'altezza non significa nulla: **da dove si comincia a misurare** e **in che unità**. Contiene quindi due informazioni.
+
+| Componente | Contenuto |
+|---|---|
+| **Unità di misura** | Sempre **lineare**, di solito metri o piedi internazionali. |
+| **Direzione** | Stabilisce se i valori sono **positive up** o **positive down**. |
+
+| | **Positive up (height-based)** | **Positive down (depth-based)** |
+|---|---|---|
+| I valori rappresentano | **Altezze** sopra una superficie. | **Profondità** sotto una superficie. |
+| Valori positivi | Sopra la superficie di riferimento. | Sotto la superficie di riferimento. |
+| Valori negativi | Sotto la superficie. | Sopra la superficie. |
+| Origine tipica | Livello medio del mare (*mean sea level*). | Livello medio di bassa marea (*mean low-water level*). |
+
+Come i sistemi orizzontali, quelli verticali garantiscono che i dati siano collocati correttamente gli uni rispetto agli altri: cosa che conta quando si editano dati esistenti, se ne creano di nuovi o si fa analisi.
+
+Il caso più insidioso è la combinazione dei due versi: un dataset batimetrico *depth-based* sovrapposto a un dataset topografico *height-based* produce un fondale che risale sopra la costa, e i valori sono entrambi corretti. Il difetto è nella lettura, non nel dato.
+
+### Altezza ellissoidica e altezza ortometrica
+
+Il vertical coordinate system dice l'unità e il verso, ma la superficie da cui si parte può essere di due nature diverse, e la differenza è nell'ordine delle decine di metri:
+
+- l'**altezza ellissoidica** è misurata rispetto allo spheroid, il modello matematico. È quella che restituisce un ricevitore GNSS, perché è ciò che il calcolo satellitare produce naturalmente;
+- l'**altezza ortometrica** è misurata rispetto al geoid, quindi al livello medio del mare. È quella delle carte topografiche e quella che corrisponde all'idea intuitiva di quota.
+
+Le due differiscono per la separazione locale tra geoid e spheroid, che varia da luogo a luogo. Un dato rilevato con GPS e sovrapposto a un modello di elevazione cartografico risulta traslato verticalmente di quella quantità, in modo non costante sull'area. La conversione richiede un **modello di geoid**, non un offset fisso.
+
+## Le surface
+
+Perché un dato si visualizzi alla quota giusta, la scena deve sapere **da dove iniziare a misurare**: questa informazione la fornisce la **surface**, detta anche *ground surface* o *elevation surface*.
+
+- Le surface modellano **fenomeni che variano con continuità** su un'area. Nelle scene 3D la maggior parte rappresenta altezze o elevazioni, ma **una surface può rappresentare qualunque fenomeno continuo**.
+- L'altezza dei layer nella scena è determinata **in relazione a una surface**. Il valore di altezza può essere memorizzato nel dato stesso, oppure il dato può essere **drappeggiato** (*draped*) sopra una elevation surface.
+- In ArcGIS le surface **non hanno una simbologia propria**: per vederle chiaramente bisogna drappeggiarci sopra altri dati.
+
+La relazione tra layer e surface è configurabile, e le opzioni non sono equivalenti:
+
+| Modalità | Comportamento |
+|---|---|
+| **On the ground** | Il layer viene drappeggiato sulla surface e ne segue l'andamento; i valori z eventualmente presenti nel dato sono ignorati. |
+| **Relative to ground** | L'altezza del dato viene sommata a quella della surface: utile per oggetti sospesi a una quota nota dal suolo. |
+| **Absolute height** | L'altezza è assoluta, indipendente dalla surface. È l'unica corretta per dati che devono stare sotto il terreno, come pozzi o gallerie. |
+
+Un dato sotterraneo impostato su *on the ground* viene appiattito sul terreno e sembra scomparire: la geometria è giusta, la modalità di elevazione è sbagliata.
+
+## Functional surface, ovvero il 2.5D
+
+Tra la mappa 2D, vista dall'alto e ortografica, e la scena 3D vera esiste una via di mezzo: le **functional surface**, dette anche **2.5D**. Mostrano la dimensionalità del dato senza essere tecnicamente 3D.
+
+La differenza sta tutta in quanti z può avere un x,y.
+
+| | Quanti z per ogni x,y |
+|---|---|
+| **2D** | Ogni punto ha una sola coppia x,y. Anche se la feature class ha coordinate z, **non vengono usate** per la visualizzazione. |
+| **Functional surface (2.5D)** | Ogni x,y è associato a **un solo** valore z. |
+| **3D vero** | Ogni x,y può essere associato a **più punti o vertici**, ciascuno con z diverso. Serve per modellare una parete rocciosa strapiombante o l'aggetto di un edificio. |
+
+La conseguenza del vincolo 2.5D è che una superficie funzionale non può rappresentare nulla che si ripieghi su se stesso: nessuna grotta, nessuna sporgenza, nessun ponte con lo spazio sotto. È una funzione matematica da (x,y) a z, e come tale ammette un solo valore per ogni ingresso.
+
+I due tipi più comuni di functional surface sono il raster e il TIN.
+
+### Raster in 3D
+
+Un **raster** è una griglia di celle equidistanti, ognuna con un valore che misura un fenomeno: elevazione, resa agricola, spessore della neve. ArcGIS Pro usa i valori delle celle per visualizzarlo in 3D, e **qualunque valore numerico** può generare il rendering 3D, non solo l'elevazione.
+
+I raster di elevazione si chiamano **DEM** (*digital elevation model*). Sono **ampiamente disponibili e relativamente economici** da elaborare e analizzare.
+
+DEM è il termine ombrello, e nella pratica conviene distinguere cosa contiene la superficie:
+
+- **DTM** (*digital terrain model*): il terreno nudo, con edifici e vegetazione rimossi;
+- **DSM** (*digital surface model*): la superficie come la vede il sensore, tetti e chiome comprese.
+
+Calcolare l'altezza di un edificio come differenza tra DSM e DTM funziona; usare un DSM come terreno su cui poggiare gli edifici li mette al di sopra dei propri tetti.
+
+### TIN
+
+Un **TIN** (*triangulated irregular network*) rappresenta lo spazio con un insieme di **triangoli non sovrapposti** che confinano tra loro e variano per dimensione e proporzione.
+
+Come è costruito: si parte da punti con coordinate x,y e valore z; questi punti diventano i **vertici** (*nodes*) dei triangoli, collegati da linee che ne formano i bordi (*edges*). Il risultato è una superficie continua di triangoli.
+
+Cosa se ne ricava: l'elevazione di **qualunque punto** della superficie può essere **interpolata**, cioè stimata matematicamente, a partire dalle coordinate dei vertici del triangolo che lo contiene. Dai triangoli si calcolano anche **slope**, la pendenza, e **aspect**, l'orientamento della pendenza rispetto ai punti cardinali.
+
+| | **TIN** | **Raster / DEM** |
+|---|---|---|
+| Struttura | Triangoli non sovrapposti, di dimensione variabile. | Griglia di celle equidistanti. |
+| Risoluzione | **Variabile**: più triangoli dove la superficie varia molto, meno dove è uniforme. | Uniforme su tutta l'estensione. |
+| Punto di forza | Rende i **bordi netti e definiti**, uno spigolo vivo, che un raster non rappresenta bene. Restituisce slope, aspect ed elevazione di qualunque punto. | Adatto a mappe tematiche, elevazione e imagery; economico e diffuso. |
+| Punto debole | Struttura dati complessa, **costosa** da costruire, mantenere e analizzare, soprattutto su aree estese. | Non gestisce bene le discontinuità nette. |
+
+La scelta si riduce a cosa contiene il terreno: se ci sono discontinuità che devono restare nette — un argine, una scarpata, il bordo di una cava — il TIN le conserva e il raster le arrotonda su una cella. Su terreno regolare ed esteso, il raster vince per costo.
+
+## Le feature vettoriali in 3D
+
+Come in 2D, il dato vettoriale rappresenta feature **discrete**: edifici, pozzi, epicentri, pali del telefono, strade.
+
+Perché una feature si visualizzi in una scena serve un'altezza di partenza, la **base height**. L'informazione può stare **nella geometria** della feature come valore z — le feature si dicono allora *z-aware* e si collocano da sole rispetto alla ground surface — oppure **come attributo** nella tabella.
+
+### Extrusion
+
+L'**extrusion** è l'estensione tridimensionale di feature 2D. Estrudendo:
+
+- i **punti** diventano pali o colonne;
+- le **linee** diventano recinzioni o muri;
+- i **poligoni** diventano blocchi.
+
+Per estrudere si può usare **qualunque attributo numerico** come valore z: l'altezza di una città può rappresentarne la popolazione, quella di una sezione di censimento il numero di residenti sopra i 40 anni.
+
+Va tenuto presente che l'extrusion è una **proprietà di visualizzazione**, non una modifica della geometria: la feature resta un poligono 2D e l'altezza viene calcolata al rendering. Cambiando il campo di estrusione cambia il volume, senza toccare il dato.
+
+## I dati intrinsecamente 3D
+
+Punti, linee e poligoni si vedono sia in 2D sia in 3D. Alcuni tipi di dato, invece, **hanno senso solo in 3D**, perché in una mappa 2D non si visualizzano correttamente.
+
+### Mesh
+
+Una **mesh** è una collezione di triangoli combinati per creare modelli del mondo reale.
+
+**Mesh e TIN non sono la stessa cosa**, ed è la distinzione da tenere ferma: in una mesh **più valori z possono essere associati allo stesso x,y**, quindi la mesh è un layer **veramente 3D**; un TIN è una functional surface e ammette **un solo z per ogni x,y**. Entrambi sono fatti di triangoli, e la somiglianza superficiale è esattamente il motivo per cui vengono confusi.
+
+I tre tipi di mesh in ArcGIS Pro:
+
+| Tipo | Descrizione | Attributi |
+|---|---|---|
+| **Integrated mesh** | Rappresenta gli oggetti discreti (auto, alberi, edifici) **e il terreno** come **un unico oggetto 3D** consolidato. | **Non** supporta attributi sulle singole feature. |
+| **3D object scene layer** | Rappresenta feature discrete in 3D. | Si possono aggiungere attributi alle singole feature. |
+| **Multipatch feature** | Formato per rappresentare i **gusci esterni** di feature discrete in 3D; può memorizzare immagini e texture per imitare l'aspetto reale. | Si possono aggiungere attributi alle singole feature. |
+
+La conseguenza pratica dell'integrated mesh è che non è interrogabile per oggetto: essendo un solo oggetto consolidato, non esiste "l'edificio" da selezionare. Ottimo come contesto realistico di una città, inadatto se serve cliccare su una feature e leggerne gli attributi.
+
+### Multipatch
+
+È il tipo di mesh **nativo di ArcGIS**. Rappresenta le superfici esterne di feature che occupano un'area o un volume discreto nello spazio tridimensionale, ed è composto da triangoli combinati per modellare un guscio.
+
+Cosa lo distingue:
+
+- memorizza **texture, immagini, colore e trasparenza dentro la geometria stessa** della feature, e può essere **ristilizzato** con texture o colori diversi;
+- ogni feature multipatch, con tutte le sue informazioni di visualizzazione, occupa **una sola riga** della attribute table;
+- è **inerentemente 3D**: in una mappa 2D non si visualizza correttamente;
+- va bene sia per oggetti semplici, sfere e cubi, sia complessi, edifici, alberi, isosuperfici; è il tipo migliore quando servono feature 3D **visivamente realistiche**.
+
+Essendo un guscio, un multipatch è vuoto all'interno: descrive la superficie che delimita un volume, non il volume stesso.
+
+### Point cloud
+
+Il **lidar** (*light detection and ranging*) è un sensore ottico che invia impulsi laser verso un bersaglio, di solito una porzione di superficie terrestre. Il sensore raccoglie la riflessione, il *return*, e misura il tempo di andata e ritorno, ricavando misure x,y,z **molto accurate**.
+
+Il lidar produce milioni di punti; l'insieme di coordinate x,y,z che ne risulta si chiama **point cloud** e viene archiviato in un **file LAS**.
+
+Note sui formati: **LAS** è il formato aperto standard, **LAZ** la sua variante compressa, e in ambiente Esri si incontra **zLAS**, la versione ottimizzata proprietaria. La compressione conta più di quanto sembri: un rilievo lidar di una città arriva facilmente a decine di gigabyte non compressi.
+
+Un point cloud non è una superficie: è un insieme di punti sparsi. Diventa una superficie solo dopo una classificazione dei return — terreno, vegetazione, edifici — e un'interpolazione, che è il modo in cui da un rilievo lidar si producono DTM e DSM.
+
+### Come vengono distribuiti gli scene layer
+
+I dati 3D pubblicati come scene layer seguono la specifica **I3S** (*Indexed 3D Scene layer*), che li organizza in una struttura indicizzata e a livelli di dettaglio per essere trasmessi via rete progressivamente, come i tile fanno in 2D. Il pacchetto locale corrispondente ha estensione **SLPK** (*scene layer package*).
+
+È il motivo per cui una scena con una città intera si apre in tempi ragionevoli: non viene caricato tutto, ma il livello di dettaglio adeguato alla distanza della camera.
+
+### Riepilogo dei tipi di dato 3D
+
+| Tipo | Come riconoscerlo |
+|---|---|
+| **Point, line, polygon** | Feature discrete usabili sia in 2D sia in 3D; l'altezza sta nella geometria come z o nella tabella come attributo; possono essere estruse o poggiate su una surface. |
+| **Integrated mesh** | Triangoli; oggetti discreti **e terreno insieme** in un unico oggetto; **niente attributi**. |
+| **Multipatch** | Triangoli; **gusci esterni** di oggetti discreti; le informazioni di visualizzazione fanno parte della feature; **non funziona in 2D**. |
+| **Point cloud** | Milioni di coordinate x,y,z molto accurate, tipicamente da **lidar**, archiviate in **file LAS**. |
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Z-value** | La terza coordinata, che dà l'altezza; non necessariamente un'elevazione. |
+| **Vertical coordinate system** | Sistema che colloca le feature sul piano verticale; ha un'unità lineare e una direzione. |
+| **Positive up / positive down** | Direzione del sistema verticale: altezze sopra una superficie / profondità sotto una superficie. |
+| **Altezza ellissoidica / ortometrica** | Quota misurata rispetto allo spheroid, come fa il GNSS / rispetto al geoid, come fanno le carte. |
+| **Surface** | Superficie di riferimento da cui si misurano le altezze in una scena; modella fenomeni continui. |
+| **Drape** | Drappeggiare un dato sopra una surface, necessario perché la surface non ha simbologia propria. |
+| **Functional surface (2.5D)** | Superficie in cui ogni x,y ha un solo valore z. |
+| **DEM** | Digital elevation model: un raster che contiene dati di elevazione. |
+| **DTM / DSM** | Modello del terreno nudo / modello della superficie con edifici e vegetazione. |
+| **TIN** | Rete di triangoli irregolari non sovrapposti; risoluzione variabile, gestisce bordi netti, dà slope e aspect. |
+| **Interpolazione** | Stima matematica di un valore, per esempio l'elevazione di un punto dai vertici del suo triangolo. |
+| **Slope / aspect** | Pendenza / direzione cardinale verso cui la pendenza è rivolta. |
+| **Base height** | L'altezza a cui una feature viene visualizzata nella scena. |
+| **Z-aware** | Feature che contiene i valori z nella geometria e si posiziona da sé rispetto alla surface. |
+| **Extrusion** | Estensione in 3D di feature 2D: punti in pali, linee in muri, poligoni in blocchi. |
+| **Mesh** | Collezione di triangoli che modella oggetti reali; è vero 3D, più z per lo stesso x,y. |
+| **Integrated mesh** | Mesh che unisce oggetti e terreno in un unico oggetto 3D, senza attributi. |
+| **3D object scene layer** | Mesh che rappresenta feature discrete in 3D, con attributi sulle singole feature. |
+| **Multipatch** | Mesh nativa ArcGIS che rappresenta i gusci esterni, con texture nella geometria; una riga per feature. |
+| **Lidar** | Sensore laser che misura la distanza dal tempo di ritorno dell'impulso. |
+| **Point cloud** | Insieme di milioni di coordinate x,y,z da lidar, archiviato in file LAS. |
+| **I3S / SLPK** | Specifica di distribuzione degli scene layer / il pacchetto locale corrispondente. |

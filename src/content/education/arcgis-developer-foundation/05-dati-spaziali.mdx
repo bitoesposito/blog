@@ -1,0 +1,135 @@
+---
+title: "Dati spaziali: vettoriale e raster"
+description: "Dato discreto e continuo, modello vettoriale e modello raster, ruolo della scala nella scelta della geometria"
+pubDate: 2026-08-18
+tags: ['formazione', 'esri', 'arcgis', 'gis', 'dati-spaziali']
+authors: ['vitoesposito']
+order: 5
+---
+
+## Che cos'è il dato spaziale
+
+Il **dato spaziale** (detto anche *geographic information* o *geographic data*) non è la mappa. È **qualunque informazione a cui sia associata una posizione**, che finisca su una mappa oppure no.
+
+Il GIS integra le due cose: memorizza **dove** si trova qualcosa insieme a **che cosa** è quel qualcosa. Una carta d'identità è dato spaziale a tutti gli effetti: contiene attributi descrittivi di una persona uniti a un'informazione di posizione. Lo stesso vale per gli indirizzi dei clienti, il tracciamento delle spedizioni, l'analisi delle vendite su un territorio, la navigazione turn-by-turn e il tracciamento dell'attività fisica.
+
+## Dati discreti e dati continui
+
+È la distinzione più basilare per classificare i dati GIS, e condiziona quali analisi e quali visualizzazioni sono legittime.
+
+| | **Discrete data** | **Continuous data** |
+|---|---|---|
+| Cosa rappresenta | Feature del mondo reale con **confini ben definiti**, distinte da ciò che le circonda. | Fenomeni **senza confini definiti**, che non smettono mai davvero in un punto preciso. |
+| Esempio guida | Un fiume: si può essere dentro, fuori o a metà, ma esiste un punto preciso in cui si smette di essere asciutti. | L'elevazione: i valori possono cambiare bruscamente, ma il fenomeno resta misurabile ovunque. |
+| Altri esempi | Edifici, strade, linee del tram, alberi, distretti elettorali, infrastrutture, indirizzi, **tipi di suolo**. | Precipitazioni annue, pendenza (*slope*), temperatura dell'oceano, profondità marina, umidità. |
+
+Il test rapido per distinguerli: **chiedersi se fare una media dei valori abbia senso**. Se sì (precipitazione media, profondità media, umidità media) il dato è **continuo**. Se no (tipo di edificio, nome della strada, specie di albero) è **discreto**.
+
+Il caso che inganna: **tipo di suolo** e **uso del suolo** sono **discreti** anche se coprono tutto il territorio senza buchi. La copertura totale non è il criterio: sono categorie, e mediare due categorie non produce nulla. Il criterio è la natura del valore, non la geometria della sua distribuzione.
+
+Perché la distinzione conta operativamente: su dato continuo hanno senso interpolazione, gradienti, isolinee e statistiche di media; su dato discreto hanno senso conteggi, frequenze e operazioni di appartenenza. Applicare l'una all'altro produce numeri che sembrano validi e non lo sono.
+
+## Il modello vettoriale
+
+Il **vector data model** rappresenta oggetti **discreti** sulla superficie terrestre usando tre geometrie.
+
+| Geometria | Com'è fatta | Esempio |
+|---|---|---|
+| **Point** | Una singola coppia di coordinate x,y, cioè un **vertice**. | Un lampione. |
+| **Line** | **Due o più** vertici collegati. | Una strada. |
+| **Polygon** | **Tre o più** vertici collegati che formano un anello chiuso. | Un edificio, un'area. |
+
+### Geometria e attributi
+
+Punti, linee e poligoni sono fatti di **geometria più attributi**, e questi ultimi risiedono nella **attribute table**. Due punti da fissare:
+
+- ogni **riga** della attribute table rappresenta **una feature**, non un vertice: un poligono da 400 vertici occupa una riga sola;
+- gli attributi delle feature vettoriali possono essere **generati automaticamente oppure definiti dall'utente**.
+
+### La geometria dipende dalla scala
+
+Non esiste una geometria corretta in assoluto per una feature: dipende dalla **scala e dallo scopo** della mappa.
+
+Un fiume si rappresenta normalmente con una **linea**, ed è una buona scelta. Ma su una mappa **a grande scala**, molto dettagliata, una singola linea non descrive la posizione delle sponde, e il **poligono** diventa migliore. Vale anche il contrario: una città è un poligono a grande scala, ma a piccola scala i dettagli del poligono non sono più visibili e un **punto** è più utile.
+
+La terminologia è controintuitiva e conviene ancorarla al denominatore della frazione di scala:
+
+- **Small-scale map** = area geografica **grande** con **pochi** dettagli (un continente, il mondo). Denominatore grande: 1:10.000.000.
+- **Large-scale map** = area geografica **piccola** con **molti** dettagli (un quartiere, un paese). Denominatore piccolo: 1:5.000.
+
+Il verso della semplificazione è a senso unico: da una geometria dettagliata come un poligono si possono **derivare** punti o linee, mentre il contrario richiede dati che non ci sono. Per una mappa consultata a scale diverse si usano punti e linee alle piccole scale e geometrie più dettagliate man mano che si zooma.
+
+Esempi di scelta:
+
+| Scenario | Geometria |
+|---|---|
+| Siti UNESCO su una mappa mondiale a piccola scala | **Point** |
+| Siti archeologici entro 2 km da un monumento, ognuno con un'area di scavo definita | **Polygon** |
+| Rete autostradale nazionale | **Line** |
+| Un fiume su una mappa 1:17.000 di una città, con ponti e moli | **Polygon** (è grande scala) |
+
+## Il modello raster
+
+Il **raster data model** rappresenta la superficie terrestre come una **griglia di celle di uguali dimensioni**. Ogni cella corrisponde a una porzione di terra — un metro quadro, un miglio quadro — e contiene l'informazione relativa a quella porzione.
+
+**Raster e immagine non sono sinonimi.** Un'immagine è una rappresentazione pittorica 2D; un raster è il modello di dati che archivia informazione in righe e colonne di celle. **Tutte le immagini sono raster, ma non tutti i raster sono immagini**: un dataset di precipitazioni è un raster e non è un'immagine.
+
+### Bande
+
+Un raster può contenere più informazioni sovrapposte, chiamate **bande** (*bands*). Ogni banda contiene dati acquisiti a una certa **lunghezza d'onda**, eventualmente da sensori diversi: un satellite può produrre un'immagine a otto bande, ciascuna presa in una porzione diversa dello spettro (visibile, infrarosso). In un raster multibanda ogni cella contiene un valore per ciascuna banda; in un'immagine a colori le bande sono rosso, verde e blu.
+
+### Attributi e risoluzione
+
+Due proprietà da fissare:
+
+- gli attributi raster sono quasi sempre **generati automaticamente dai sensori**, non definiti dall'utente. È la differenza principale rispetto agli attributi vettoriali, che l'utente definisce e popola;
+- il valore di ogni cella è la **media dell'intero spazio coperto dalla cella**. Ne segue che **celle piccole danno più dettaglio** di celle grandi. La dimensione delle celle è la **risoluzione** del raster.
+
+La conseguenza della media è che ogni raster contiene una perdita di informazione già a monte: una cella da 30 metri che copre metà strada e metà prato non contiene né strada né prato, ma un valore intermedio che non corrisponde a nulla di reale. È il motivo per cui la risoluzione va scelta sul fenomeno che si vuole misurare, non sul dettaglio che si vuole vedere.
+
+**Risoluzione e scala non sono la stessa cosa**: la risoluzione è una proprietà fissa del dato (la dimensione della cella in unità di terreno), la scala è una proprietà della visualizzazione. Zoomare su un raster non ne aumenta la risoluzione, ingrandisce le celle.
+
+### Tipi di raster
+
+| Tipo | Descrizione |
+|---|---|
+| **Raster continuo** | Fenomeni continui come pioggia, temperatura, elevazione. |
+| **Raster discreto** | Anche i dati discreti possono stare in un raster, per esempio una mappa dei tipi di suolo. |
+| **Imagery** | Prodotta da camera o sensore; è un tipo comune di raster continuo (satellitare, aerea, da drone). Spesso usata come basemap. |
+| **Mappe scansionate** | Una mappa cartacea digitalizzata. Sembra contenere dati vettoriali ma è **solo un'immagine raster statica** dell'originale: le linee non sono geometrie e non hanno attributi. |
+| **Video** | Anche i video sono considerati un tipo di raster e possono essere archiviati in un GIS. |
+
+In ArcGIS Pro si può creare un **mosaic dataset**, che serve a **gestire i raster**: unisce più immagini in un raster più grande, oppure crea un catalogo di raster sovrapposti a risoluzioni diverse. I **raster product** servono invece a organizzare e visualizzare le informazioni delle diverse bande.
+
+## Scegliere tra vettoriale e raster
+
+I due modelli non sono alternative stilistiche: descrivono realtà diverse e supportano operazioni diverse.
+
+| | **Vettoriale** | **Raster** |
+|---|---|---|
+| Rappresenta bene | Oggetti discreti con confini netti. | Fenomeni continui e superfici. |
+| Precisione della posizione | Coordinate esatte, indipendenti dalla scala di memorizzazione. | Limitata dalla dimensione della cella. |
+| Attributi | Molti campi per feature, definiti dall'utente. | Tipicamente un valore per cella per banda, generato dal sensore. |
+| Peso | Cresce col numero di vertici: leggero su geometrie semplici. | Cresce col quadrato della risoluzione: pesante su aree estese ad alto dettaglio. |
+| Operazioni naturali | Query sugli attributi, relazioni topologiche, misure di distanza e area, editing. | Algebra di mappe cella per cella, interpolazione, statistiche di superficie, analisi di vicinato. |
+| Confini | Netti per costruzione. | Approssimati a gradini dalla griglia. |
+
+La domanda da porsi prima di scegliere è quale sia il fenomeno, non quale sia il formato dei file disponibili: convertire tra i due modelli è possibile ma non è gratuito, e ogni conversione perde qualcosa. Da vettoriale a raster si perde la precisione dei confini; da raster a vettoriale si producono geometrie a gradini che vanno semplificate.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Spatial data** | Qualunque informazione a cui è associata una posizione. |
+| **Discrete data** | Feature con confini ben definiti, distinte da ciò che le circonda. |
+| **Continuous data** | Fenomeni senza confini definiti, misurabili con continuità; ha senso farne la media. |
+| **Vector data model** | Modello che rappresenta oggetti discreti come punti, linee e poligoni. |
+| **Vertex** | Una coppia di coordinate x,y; l'elemento con cui si costruiscono le geometrie vettoriali. |
+| **Attribute table** | Tabella degli attributi delle feature vettoriali; una riga per feature. |
+| **Small-scale map** | Mappa di un'area grande con pochi dettagli. |
+| **Large-scale map** | Mappa di un'area piccola con molti dettagli. |
+| **Raster data model** | Modello che rappresenta il territorio come griglia di celle di uguali dimensioni. |
+| **Band** | Strato di un raster contenente dati acquisiti a una specifica lunghezza d'onda. |
+| **Risoluzione** | La dimensione delle celle di un raster; celle più piccole, più dettaglio. |
+| **Imagery** | Raster continuo prodotto da camera o sensore (satellite, aereo, drone). |
+| **Mosaic dataset** | Strumento di ArcGIS Pro per gestire, unire e catalogare raster. |

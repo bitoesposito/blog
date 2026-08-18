@@ -1,0 +1,193 @@
+---
+title: "Sistemi di coordinate geografiche"
+description: "Datum, spheroid e forma della Terra, graticule di latitudine e longitudine, cerchi massimi e formati di coordinate DMS e DD"
+pubDate: 2026-08-18
+tags: ['formazione', 'esri', 'arcgis', 'gis', 'coordinate']
+authors: ['vitoesposito']
+order: 6
+---
+
+## Di cosa è fatto un geographic coordinate system
+
+Un **geographic coordinate system (GCS)** serve a individuare e analizzare posizioni sulla Terra. È composto da tre elementi:
+
+1. un **datum**;
+2. un **prime meridian**, il meridiano di riferimento;
+3. una **unità di misura**.
+
+Il **datum** fornisce il sistema di riferimento con cui si trovano le posizioni, ed è costruito su uno **spheroid**, cioè sul modello matematico della forma della Terra. Questo modello è la base di ogni funzione di un GIS: senza una forma precisa non esistono coordinate affidabili.
+
+Sull'unità di misura conviene essere precisi subito, perché compare in due posti diversi e vengono confusi:
+
+- le **coordinate** di un GCS sono **angolari**, cioè gradi. Latitudine e longitudine non sono lunghezze;
+- i **semiassi dello spheroid** sono invece espressi in unità **lineari**, tipicamente metri, perché descrivono le dimensioni fisiche del modello.
+
+Le coordinate in unità lineari — metri, piedi — appartengono ai **projected coordinate system**, che proiettano la superficie curva su un piano. Un GCS non è proiettato.
+
+## La forma della Terra
+
+### Perché non è una sfera
+
+Gli antichi greci consideravano la Terra una sfera. A metà del Settecento una spedizione francese misurò l'arco di meridiano all'equatore in Perù e al circolo polare artico in Lapponia, e scoprì che la Terra **si rigonfia all'equatore**. Non è una sfera ma un **ellissoide**.
+
+Le due cause del rigonfiamento: la **rotazione della Terra sul proprio asse** e la **distribuzione non uniforme della massa** al suo interno.
+
+### Ellissoide e sferoide
+
+L'**ellisse** è una delle **sezioni coniche**, insieme a linea, cerchio, parabola e iperbole: si ottiene tagliando un cono con un piano inclinato. La definizione costruttiva usa due punti fissi, i **fuochi**: l'ellisse è il luogo dei punti per cui la **somma delle distanze dai due fuochi resta costante**.
+
+Come la sfera nasce dal cerchio, l'**ellissoide** nasce dall'ellisse: ruotando un'ellisse attorno a uno dei suoi assi si ottiene un *ellissoide di rotazione*. Poiché la Terra ruota attorno al suo **asse minore**, il più corto, si descrive come **oblate ellipsoid**, schiacciato ai poli. Se ruotasse attorno all'asse maggiore sarebbe *prolate*.
+
+Gli assi maggiore e minore terrestri differiscono pochissimo: negli spheroid mondiali di uso comune lo scarto tra i due è **inferiore allo 0,34%**, quindi la forma è vicinissima a una sfera e si parla di **spheroid**. I due termini sono considerati **equivalenti** dalla maggior parte delle autorità in materia di proiezioni; Esri usa *spheroid*.
+
+Esistono due definizioni di spheroid: un ellissoide che **approssima una sfera**, oppure un ellissoide ottenuto ruotando un'ellisse attorno a uno dei suoi assi. La seconda è geometricamente più rigorosa, e secondo quella la Terra è un *oblate spheroid*.
+
+Sul piano matematico un ellissoide è **triassiale**, definito da tre assi; in un ellissoide di rotazione due dei tre sono uguali. Nella pratica non si descrivono con gli assi interi ma con i **semiassi**: nei parametri di qualunque ellissoide terrestre compaiono il **semimajor axis** e il **semiminor axis**.
+
+### Ellitticità
+
+L'**ellipticity**, o *flattening*, misura quanto i due assi differiscono, espressa come frazione o decimale:
+
+- un **cerchio** ha ellitticità **0**, perché i due assi sono uguali;
+- una **linea** ha ellitticità **1**, perché ha lunghezza ma non altezza;
+- un'ellisse il cui asse maggiore è il doppio del minore ha ellitticità 0,5.
+
+L'ellitticità della Terra è circa **0,003353**. Sembra trascurabile, e **incide parecchio sulle mappe a grande scala**.
+
+## Perché esistono tanti spheroid diversi
+
+La superficie terrestre non è perfettamente simmetrica, quindi i semiassi che descrivono bene una regione non descrivono bene un'altra. I satelliti hanno confermato queste deviazioni: il polo sud, per esempio, è più vicino all'equatore di quanto lo sia il polo nord.
+
+Per questo si usano spheroid diversi a seconda dell'area: **International 1924** e **Bessel 1841** in Europa, **GRS80** in Nord America. Usare lo stesso spheroid ovunque produrrebbe errori di **diversi metri, fino a centinaia di metri** nei casi estremi, su scala regionale.
+
+Lo spheroid di una stessa area può cambiare nel tempo, per miglioramenti tecnologici, misurazioni più precise o ragioni politiche. In Nord America **Clarke 1866** è stato a lungo lo standard e viene sostituito da **GRS80**, ma non si può dare per scontato che un database nordamericano sia già stato convertito. La tendenza generale è la sostituzione degli spheroid **misurati a terra**, come Clarke 1866, con quelli **derivati da satellite**, come GRS80; i primi resteranno in uso ancora per anni, data la complessità del cambio.
+
+Due conseguenze operative:
+
+- **cambiare spheroid cambia i valori di posizione** delle feature, quindi lavorando con dataset su spheroid diversi va verificato l'**allineamento dei dati**;
+- le **misure di distanza** nelle analisi spaziali risentono dello spheroid scelto.
+
+### Il geoid, e perché il datum non è solo lo spheroid
+
+Lo spheroid è una forma matematica regolare. La superficie fisica di riferimento della Terra non lo è: il **geoid** è la superficie equipotenziale del campo gravitazionale terrestre che approssima il livello medio del mare, e siccome la massa non è distribuita in modo uniforme, si discosta dallo spheroid in modo irregolare, con scarti nell'ordine delle decine di metri.
+
+Serve distinguere tre cose che vengono spesso appiattite in una:
+
+| | Che cos'è |
+|---|---|
+| **Spheroid** | Il modello matematico regolare della forma della Terra: due semiassi. |
+| **Geoid** | La superficie fisica equipotenziale che approssima il livello medio del mare, irregolare. |
+| **Datum** | Il legame tra il modello e la Terra reale: quale spheroid, dove è posizionato il suo centro, come è orientato. |
+
+Due datum possono usare lo **stesso** spheroid e restare diversi, perché lo ancorano alla Terra in modo differente. Ne segue il punto che genera i disallineamenti più difficili da diagnosticare: **la stessa coppia di latitudine e longitudine, interpretata su due datum diversi, individua due punti diversi del terreno**. Lo scarto va dal metro a qualche centinaio di metri secondo la coppia di datum: tra NAD83 e WGS84 è nell'ordine del metro, tra NAD27 e NAD83 arriva a decine o centinaia di metri.
+
+Il sintomo tipico è un layer che appare correttamente collocato ma sistematicamente traslato rispetto agli altri, di una quantità costante. Non è un errore di digitalizzazione: è una **trasformazione di datum** mancante.
+
+La distinzione tra spheroid e geoid torna a contare nel 3D, dove l'altezza misurata da un GNSS è riferita allo spheroid mentre le quote cartografiche sono riferite al geoid.
+
+## Quando usare una sfera al posto dello sferoide
+
+A volte la Terra viene trattata come una sfera per semplificare i calcoli. Il metodo più accettato è costruire una sfera con la **stessa superficie** dello sferoide, chiamata **authalic sphere**.
+
+La soglia pratica è **1:5.000.000**. Sulle mappe a **piccola scala**, cioè con denominatore maggiore, la differenza tra sfera e sferoide non è significativa e la sfera basta. Sulle mappe a **grande scala** conviene scegliere uno spheroid.
+
+Per calibrare la soglia: una mappa 1:5.000.000 degli Stati Uniti continentali sarebbe larga circa 122 centimetri.
+
+## Il graticule: latitudine e longitudine
+
+Circa 2.100 anni fa l'astronomo greco **Ipparco** formalizzò il sistema che oggi chiamiamo latitudine e longitudine, applicando alla superficie terrestre il sistema babilonese dei **360 gradi**, ciascuno diviso in 60 minuti e ciascun minuto in 60 secondi.
+
+La rete formata dall'incrocio delle due famiglie di linee si chiama **graticule**. È immaginaria, ma viene disegnata su globi e mappe come riferimento. È un **sistema di misura angolare**, con tutte le posizioni misurate rispetto al **centro della Terra**.
+
+| | **Latitudine** (*parallels*) | **Longitudine** (*meridians*) |
+|---|---|---|
+| Direzione delle linee | Corrono **est-ovest** attorno alla Terra. | Corrono **nord-sud** e **convergono ai poli**. |
+| Cosa misurano | La distanza a **nord o sud dell'equatore**. | La distanza a **est o ovest del prime meridian**. |
+| Comportamento | Le linee sono **parallele** tra loro. | Ogni meridiano è **metà di un cerchio massimo**. |
+| Origine | L'**equatore**, 0°. | Il **prime meridian**, 0°. |
+| Intervallo | Da 0° a 90° nord e da 0° a 90° sud, ai poli. | Da 0° a 180° est e da 0° a 180° ovest. |
+| Valore di un grado | Quasi costante: 110,572 km all'equatore, 111,69 km ai poli. | **Variabile**: 111,317 km all'equatore, decresce fino a **zero ai poli**. |
+
+L'asse **y** corrisponde alla latitudine, nord-sud; l'asse **x** alla longitudine, est-ovest.
+
+La variabilità del grado di longitudine è la ragione per cui **un buffer espresso in gradi non è un buffer**: alla latitudine di Roma un grado di longitudine vale circa 80 km, alla latitudine di Oslo circa 55. Le distanze si calcolano in unità lineari, su un sistema proiettato o con calcoli geodetici, non in gradi.
+
+### Perché l'equatore e perché Greenwich
+
+I paralleli sono i bordi di piani paralleli che tagliano l'asse terrestre ad angolo retto e si rimpiccioliscono avvicinandosi ai poli. **Solo uno di essi è un cerchio massimo**, cioè divide la Terra in due metà uguali: l'**equatore**. Per questo è l'origine naturale della latitudine.
+
+Non era una scelta obbligata storicamente: i greci usarono come origine almeno due paralleli diversi, uno passante per Rodi e uno per Alessandria.
+
+Per la longitudine il problema è opposto: tutti i meridiani sono cerchi della stessa dimensione, quindi sceglierne uno è **arbitrario**. Spagna, Francia e Austria hanno usato meridiani propri — Madrid, Parigi, Ferro — e gli Stati Uniti hanno usato Washington. Solo nel **1884**, con l'*International Meridian Conference*, l'osservatorio di **Greenwich** è stato adottato come prime meridian ufficiale.
+
+Non tutti i paesi lo hanno adottato: diversi prime meridian sono ancora in uso. Confrontando coordinate di fonti diverse va verificato che siano **riferite allo stesso prime meridian**, altrimenti non sono confrontabili.
+
+Il meridiano a 180° viene spesso chiamato *international date line*, ma la linea del cambio data se ne discosta: è un costrutto politico e cronologico, non di localizzazione.
+
+### Cerchi massimi
+
+Un **great circle** è il cerchio generato dall'intersezione con la Terra di un piano che la divide in **due metà uguali**. L'equatore è un cerchio massimo, e lo è anche la coppia formata da due meridiani opposti. Tutti gli altri paralleli sono **small circles**, perché non dividono la Terra in emisferi uguali. Un cerchio massimo che non incrocia l'equatore ad angolo retto si dice **obliquo**.
+
+L'utilità pratica: un **arco di cerchio massimo è la distanza più breve tra due punti** sulla Terra. Per questo si usa per tracciare le rotte di aerei, missili e navi, tenendo conto della curvatura terrestre.
+
+## Esprimere una posizione
+
+Servono **sempre due valori**, latitudine e longitudine, come servono x e y in un sistema cartesiano. Si scrive **prima la latitudine, poi la longitudine**, separate da virgola.
+
+Esempio: `0° N, 78° W` è un punto sull'equatore, 78 gradi a ovest di Greenwich, cioè Quito.
+
+### DMS e DD
+
+| | **DMS** (degrees/minutes/seconds) | **DD** (decimal degrees) |
+|---|---|---|
+| Formato | 53°32'04" N | 53.534444 |
+| Segni | L'emisfero è indicato con la lettera. | Sud e ovest sono **negativi**: 106° W diventa -106. |
+| Quando si usa | Leggibilità umana; è archiviabile in file di testo o tabelle di database. | **Obbligatorio per le coordinate nei dataset geografici**: shapefile, coverage, geodatabase. |
+| Vantaggio | Leggibile. | Archiviazione digitale più semplice e **calcoli più rapidi**. |
+
+**Conversione da DMS a DD**: dividere i minuti per 60, i secondi per 3600, sommare tutto ai gradi.
+
+```
+32 / 60   = 0,533333
+4 / 3600  = 0,001111
+53 + 0,533333 + 0,001111 = 53,534444 DD
+```
+
+Con una calcolatrice scientifica si passa da un formato all'altro inserendo il valore come decimale e premendo il tasto `deg`, verso DD, o `dms`, verso DMS.
+
+### Identificare un sistema nel codice
+
+Nei dati e nelle API i sistemi di coordinate non compaiono per nome ma come codici numerici, quasi sempre **EPSG**. I due che si incontrano continuamente:
+
+| Codice | Sistema | Uso |
+|---|---|---|
+| **4326** | WGS 84, geographic | Coordinate in gradi. È il default di GPS, GeoJSON e della maggior parte degli scambi di dati. |
+| **3857** | WGS 84 / Pseudo-Mercator, projected | Coordinate in metri. È il sistema dei basemap web e dei tile schemes. |
+
+In ArcGIS lo stesso valore compare come `wkid` (*well-known ID*) nella definizione dello `spatialReference`, e per il Web Mercator si trova anche il codice Esri **102100**, equivalente a 3857.
+
+Un dettaglio che costa tempo se non lo si conosce: la definizione formale di EPSG:4326 stabilisce l'ordine **latitudine, longitudine**, mentre GeoJSON e molte API usano **longitudine, latitudine**. Coordinate scambiate finiscono in mezzo all'oceano o fuori dai limiti validi, e il sintomo è una posizione assurda piuttosto che un errore.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Geographic coordinate system** | Sistema per localizzare punti sulla Terra con coordinate angolari; è fatto di datum, prime meridian e unità di misura. |
+| **Projected coordinate system** | Sistema che proietta la superficie curva su un piano, con coordinate in unità lineari. |
+| **Datum** | Il sistema di riferimento che ancora uno spheroid alla Terra reale, definendone posizione e orientamento. |
+| **Geoid** | Superficie equipotenziale del campo gravitazionale terrestre che approssima il livello medio del mare. |
+| **Ellipsoid** | Solido generato dalla rotazione di un'ellisse; matematicamente definito da tre assi. |
+| **Oblate / prolate ellipsoid** | Ellissoide generato ruotando l'ellisse attorno all'asse minore / maggiore. La Terra è oblate. |
+| **Spheroid** | Ellissoide che approssima una sfera; nel contesto Esri è sinonimo di ellipsoid. |
+| **Semimajor / semiminor axis** | Metà dell'asse maggiore / minore; i parametri con cui si descrive uno spheroid. |
+| **Ellipticity (flattening)** | Misura dello schiacciamento: 0 per il cerchio, 1 per la linea, circa 0,003353 per la Terra. |
+| **GRS80 / Clarke 1866 / International 1924 / Bessel 1841** | Spheroid di uso comune: i primi due in Nord America, gli altri in Europa. |
+| **Authalic sphere** | Sfera con la stessa superficie dello spheroid; utilizzabile sotto 1:5.000.000. |
+| **Graticule** | La rete di paralleli e meridiani; è un sistema di misura angolare. |
+| **Parallel (latitudine)** | Linea est-ovest che misura la distanza a nord o sud dell'equatore. |
+| **Meridian (longitudine)** | Linea nord-sud che converge ai poli e misura la distanza a est o ovest del prime meridian. |
+| **Prime meridian** | Il meridiano di origine; dal 1884 è convenzionalmente quello di Greenwich. |
+| **Great circle** | Cerchio che divide la Terra in due metà uguali; il suo arco è la distanza più breve tra due punti. |
+| **Small circle** | Cerchio che non divide la Terra in metà uguali: tutti i paralleli tranne l'equatore. |
+| **DMS / DD** | Gradi-minuti-secondi / gradi decimali; i dataset geografici richiedono DD. |
+| **EPSG / wkid** | Codici numerici che identificano un sistema di coordinate: 4326 geografico, 3857 Web Mercator. |

@@ -1,0 +1,205 @@
+---
+title: "ArcGIS Online"
+description: "Organizzazioni, tipi di contenuto e di layer, item page, livelli di condivisione, web scene, gruppi e app builder"
+pubDate: 2026-08-18
+tags: ['formazione', 'esri', 'arcgis', 'arcgis-online']
+authors: ['vitoesposito']
+order: 3
+---
+
+## Che cos'è ArcGIS Online
+
+**ArcGIS Online** è software GIS **web-based** erogato con modello **SaaS** (*software-as-a-service*): si accede via internet a un'applicazione cloud, senza installare né gestire infrastruttura. Offre mapping, analisi e data management, e lavora in modo integrato con ArcGIS Pro e con le altre applicazioni ArcGIS.
+
+Le operazioni che abilita: creare mappe, condividere mappe e app, collaborare, analizzare dati, gestire i propri dati.
+
+## Come si accede
+
+Il contenuto condiviso pubblicamente **si consulta senza login**. Per **creare o modificare** contenuto serve autenticarsi.
+
+| Livello di accesso | Che cosa consente |
+|---|---|
+| **Organizational member** | Account legato a un'organizzazione ArcGIS. Dà accesso alla vista personalizzata del sito dell'organizzazione e ai suoi dati autorevoli, permette di condividere il proprio lavoro con gli altri membri e di **partecipare ai gruppi**. |
+| **Public user** | Account gratuito per uso personale e non commerciale, con limiti d'uso. Permette di creare, archiviare e gestire mappe, scene, layer e app, di condividerle **pubblicamente** e di accedere ai contenuti condivisi da Esri e dagli utenti di tutto il mondo. |
+| **Social login** | Si può creare un organizational account, o accedere a un public account, con credenziali **GitHub, Facebook, Google o Apple**. |
+
+Il confine tra i due account non è "quante mappe puoi fare" ma **con chi puoi lavorare**: partecipare ai gruppi e condividere con i membri dell'organizzazione sono capacità dell'accesso organizzativo. Il public account condivide solo in privato o pubblicamente, senza livelli intermedi.
+
+## L'organizzazione
+
+Una **ArcGIS Online organization** è uno spazio virtuale distinto all'interno del cloud sicuro Esri, che permette a un ente di gestire i propri contenuti e di favorire la collaborazione.
+
+È attraverso un'organizzazione che ArcGIS Online offre il set di capacità più completo: archiviare ed elaborare dati geografici, risolvere problemi di routing, eseguire analisi spaziale, creare report, arricchire i dati con attributi demografici e geografici.
+
+Come funziona nella pratica:
+
+- i membri condividono dati, mappe e layer verso un **portale centrale** che supporta self-service mapping, analytics e collaborazione;
+- il contenuto può andare a **tutti i membri** oppure a **gruppi specifici**;
+- ogni organizzazione ha uno o più **administrator**, che decidono come gli utenti accedono a contenuti, app e capacità, e curano anche l'aspetto del portale;
+- al login si apre la home page personalizzata dell'organizzazione, con due tab che i public account non hanno: **Gallery** (selezione curata di contenuti) e **Groups** (i gruppi a cui si appartiene e quelli disponibili).
+
+## I tipi di contenuto
+
+| Tipo | Che cos'è |
+|---|---|
+| **Layer** | Il modo principale di lavorare con i dati geografici. Ogni layer fa riferimento a un dataset e stabilisce **come quel dataset viene rappresentato** con simboli ed etichette. Tutte le web map e le web scene sono fatte di layer. |
+| **Web map** | Mappa **2D** composta da web layer, condivisibile, editabile e visualizzabile online. È un contenuto centrale, riutilizzabile in tutto il sistema ArcGIS. |
+| **Web scene** | Come la web map, ma per visualizzare e analizzare in un ambiente **3D**. |
+| **Web app** | Controlla **come gli utenti interagiscono** con una mappa o una scena, offrendo un'esperienza focalizzata. Si crea senza scrivere codice. |
+| **File** | I formati più condivisi sono PDF, CSV e shapefile. **CSV e shapefile possono essere trasformati in layer.** |
+
+Da notare la definizione di layer, perché è la fonte di metà delle confusioni successive: un layer **non è** il dato. È un riferimento a un dataset **più** le regole di rappresentazione. Lo stesso dataset può stare dietro due layer stilizzati in modo completamente diverso, e cambiare la simbologia di un layer non tocca il dato.
+
+## Basemap layer e operational layer
+
+Quando un layer viene aggiunto a una mappa o a una scena assume una di due funzioni.
+
+| | **Basemap layer** | **Operational layer** |
+|---|---|---|
+| A cosa serve | Fornisce il **contesto geografico** su cui poggia il resto. | È il contenuto tematico vero e proprio, disegnato **sopra** il basemap. |
+| Com'è fatto | Tiled layer statici: imagery, confini amministrativi, strade. | Feature oppure imagery. |
+| Cosa ci si può fare | Niente, è sfondo. | Consultare gli **attributi**, **editare** le feature, farci **analisi**. |
+
+Sia Map Viewer sia Scene Viewer dispongono di una collezione predefinita di basemap Esri.
+
+Il problema ricorrente è un operational layer poco leggibile perché il basemap ha troppo dettaglio. La soluzione è **sostituire il basemap con uno più semplice** — non rimuoverlo (si perde il contesto geografico) e non togliere operational layer (si perde il contenuto).
+
+Questa è la funzione, non la struttura: lo stesso layer, in due mappe diverse, può fare da basemap in una e da operational nell'altra. Un layer di confini amministrativi è contesto in una mappa di traffico e soggetto tematico in una mappa elettorale.
+
+## I tipi di web layer
+
+Basemap e operational classificano i layer per **funzione**. I web layer type li classificano per **come è strutturato il dato**.
+
+| Tipo | Che cos'è | Da ricordare |
+|---|---|---|
+| **Feature** | Raggruppamento di feature geografiche simili (edifici, particelle, città, strade, epicentri), rappresentate da **punti, linee o poligoni**. | È il tipo che mostra **pop-up con l'informazione di attributo** di ogni feature: quando servono i pop-up, la risposta è feature layer. Si usa come operational layer. |
+| **Tile** | Collezione di immagini pre-renderizzate, o di vettori a rendering rapido, che si visualizzano molto velocemente. | Serve come riferimento e contesto: è il tipico **basemap layer**. |
+| **Map image** | Cartografia organizzata per posizione e scala, che può contenere sia feature sia imagery, visualizzabile dinamicamente o come tile in cache. | **Non consente raster analysis.** |
+| **Imagery** | Cartografia basata su dati **raster**, cioè una griglia di celle, tipicamente acquisiti da strumenti di remote sensing. | Visualizzabile dinamicamente o pre-renderizzata in cache. |
+| **Elevation** | Tile in cache pre-renderizzati che contengono dati di **elevazione**. | Serve a rappresentare il terreno nelle scene. |
+| **Scene** | Collezione di oggetti **3D** e valori di elevazione. | Sottotipi: point, 3D object, integrated mesh, point cloud, building. |
+| **Table** | Righe e colonne, dove ogni riga (*record*) è una singola entità. | **Non viene disegnata sulla mappa**, ma può essere aggiunta come item. |
+
+Il criterio che separa i primi due è **pre-renderizzato contro interrogabile**. Un tile layer è veloce perché le immagini esistono già: per questo non si può interrogare, filtrare o editare. Un feature layer arriva come geometrie e attributi e viene disegnato dal client: per questo è più lento e permette pop-up, filtri, editing e analisi. La scelta tra i due è un compromesso tra performance e interattività, non una questione di tipo di dato.
+
+### Hosted layer e referenced service
+
+Distinzione che non è nella classificazione ma serve appena si pubblica qualcosa. Un layer creato caricando un file locale è **hosted**: il dato risiede nel cloud Esri, che ne gestisce archiviazione e serving, consumando credits. Un layer può invece **referenziare un servizio esterno** già pubblicato altrove (per esempio da ArcGIS Enterprise): l'item in ArcGIS Online è un puntatore più i suoi metadati, e il dato resta dove sta.
+
+Conseguenza pratica: cancellare un item che referenzia un servizio non cancella il dato; cancellare un hosted layer sì.
+
+## La item page
+
+Ogni contenuto ArcGIS — layer, mappa, scena o app — ha una **item page** che dice chi ha creato l'item, quando, e come andrebbe usato.
+
+È anche un indicatore di qualità: una item page ricca di metadati segnala di solito dati affidabili, mentre metadati mancanti o incompleti sono un campanello d'allarme di contenuto derivato o incompleto.
+
+Le **fonti dei dati** stanno nella sezione **Acknowledgments**. Non in Tags (parole chiave per la ricerca) e non in Owner (chi possiede l'item nel portale, che non è necessariamente chi ha prodotto il dato).
+
+## Da dove arrivano i layer
+
+Tre modi per aggiungere layer a una web map.
+
+| Sorgente | Come funziona |
+|---|---|
+| **ArcGIS Online** | Il primo posto dove cercare è la propria organizzazione. Poi c'è **ArcGIS Living Atlas of the World**, la libreria Esri di layer affidabili e aggiornati. Per contenuti che non vengono né dal Living Atlas né dall'organizzazione bisogna controllare gli item details e verificarne accuratezza, veridicità e attualità. |
+| **Local files** | Si caricano file locali, tipicamente **CSV** e **shapefile**. I layer così creati sono **ospitati da ArcGIS Online**. |
+| **Sketch layer** | Feature collection disegnata direttamente sulla mappa. Le sue feature vengono **salvate insieme alla mappa** e possono avere informazioni descrittive che compaiono nei pop-up al clic. |
+
+Lo sketch layer è l'unico dei tre a non produrre un item indipendente: vive dentro la mappa. Comodo per annotazioni, inadatto a dati da riutilizzare altrove.
+
+## I livelli di condivisione
+
+Determinano chi può accedere a un contenuto. Sono quattro, dal più chiuso al più aperto.
+
+| Livello | Chi vede il contenuto | Quando usarlo |
+|---|---|---|
+| **Private** | Solo il proprietario e gli administrator dell'organizzazione. | Il contenuto è in lavorazione e non è pronto per gli altri. |
+| **Group** | I membri del gruppo, che possono collaborare sul contenuto condiviso. L'iscrizione al gruppo può essere aperta o ristretta. | Il contenuto è destinato a un team specifico e a nessun altro. |
+| **Organization** | Tutti i membri dell'organizzazione. Si può condividere contemporaneamente con l'organizzazione e con gruppi selezionati. | Il contenuto serve a tutta l'azienda ma non deve uscirne. |
+| **Public** | Chiunque su internet. | Dati aperti o governativi, pubblicazioni, e ogni contenuto da **embeddare** in blog, siti o social. |
+
+Il criterio di scelta si riduce a una domanda sola: **chi deve poterlo aprire**. Se il contenuto va embeddato da qualche parte, o visto da persone esterne, è **Public**; se deve restare in azienda raggiungendo tutti, è **Organization**; se riguarda un solo team, è **Group**.
+
+### La condivisione si applica all'item, non alla mappa
+
+Il livello di condivisione è una proprietà di **ogni singolo item**, e una web map è un item che ne referenzia altri. Condividere pubblicamente la mappa non condivide i layer che contiene: chi la apre dall'esterno vede la mappa caricarsi con i layer mancanti o vuoti.
+
+Quando si pubblica qualcosa verso l'esterno va verificata l'intera catena — la mappa, ogni layer che contiene, e l'app che la incorpora — perché il livello meno permissivo della catena è quello che determina cosa l'utente vede.
+
+## Le capabilities di ArcGIS Online
+
+| Capability | Che cosa fa |
+|---|---|
+| **Smart mapping** | Attinge a una libreria di principi cartografici per stilizzare le mappe senza decidere da zero. Aggiungendo un layer in Map Viewer, il sistema **individua automaticamente un campo** da simbolizzare e **suggerisce una simbologia**; cambiando campo, la simbologia si aggiorna di conseguenza. |
+| **Analysis** | Collezione crescente di strumenti di analisi geospaziale, accessibili da Map Viewer e in alcuni casi dalle web app, per trovare pattern e rispondere a domande. Tra gli strumenti: **buffer, routing, elevation profile, overlay analysis**. |
+| **Sharing and collaboration** | Un item può essere condiviso con l'intera organizzazione o limitato ai membri di un gruppo, e può anche uscire dall'organizzazione: il contenuto pubblico è embeddabile in blog, siti web e social. È la capability che garantisce che **il contenuto giusto arrivi alle persone giuste**. |
+
+## Le web scene
+
+Quando due dimensioni non bastano, al posto di una web map si crea una **web scene**, che permette di esplorare e analizzare in tre dimensioni.
+
+- Come una web map, anche una scene usa **operational layer e basemap layer**.
+- I **bookmark** salvano una vista specifica e anche **quali layer sono visibili**, basemap compreso. Per questo passando da un bookmark all'altro può cambiare il basemap stesso, per esempio da Topographic a Imagery. Non è un bug: il bookmark è uno stato completo della vista, non solo una posizione della camera.
+- Da una scene si può creare una web app con la **3D Viewer configurable app**, per far esplorare il contenuto in 3D al proprio pubblico.
+
+Sovrapporre layer diversi in una mappa o in una scena è la base della visualizzazione e dell'analisi GIS.
+
+## I gruppi
+
+I gruppi organizzano contenuti e utenti attorno a un tema, un compito o uno scopo: raccolgono layer, mappe, scene e app in un unico posto e danno a un team l'accesso a tutto il pacchetto.
+
+Il **group owner** decide tre cose: chi può **trovare** il gruppo, chi può **iscriversi**, chi può **contribuire** contenuti. Un gruppo può essere accessibile dentro l'organizzazione oppure al pubblico.
+
+Tre modelli, sull'esempio di un ente locale:
+
+- **Law Enforcement** — contiene dataset sulla prevenzione del crimine; poiché il tema tocca anche altri dipartimenti, i membri dell'organizzazione possono chiedere di aderire.
+- **Utilities** — contiene informazioni su infrastrutture critiche, quindi accesso **solo su invito** e contenuto visibile ai soli membri.
+- **Parks and Recreation** — contiene informazioni destinate ai cittadini, quindi condiviso a livello **Public**.
+
+Il beneficio caratteristico del gruppo è esattamente questo: legare **un insieme di utenti** a **una collezione di contenuti**, senza dover gestire i permessi item per item.
+
+## Web app e app builder
+
+Gli app builder permettono di creare web app **senza scrivere codice**. Una web app serve per tre motivi: offrire un modo focalizzato e interattivo di esplorare una mappa o una scena, mettere in evidenza il risultato di un'analisi spaziale, comunicare il tema del contenuto.
+
+| App builder | Che cosa produce |
+|---|---|
+| **ArcGIS Instant Apps** | Trasforma rapidamente una mappa in una web app focalizzata scegliendo un **template preconfigurato**. |
+| **ArcGIS Dashboards** | Mostra mappe e dati in un **dashboard interattivo** con aggiornamenti in tempo reale, per decidere a colpo d'occhio. |
+| **ArcGIS StoryMaps** | Crea **storie digitali** che combinano mappe, scene, contenuti embeddati e multimedia in una narrazione interattiva. |
+| **ArcGIS Experience Builder** | Crea un'**esperienza web** partendo da un template, unificando mappe, app, pagine, **widget interconnessi** e dati sia 2D sia 3D. |
+
+Prima di creare l'app conviene usare il **preview** di un template: serve a testarne la funzionalità e **non viene salvato**.
+
+Poiché le app partono da template e non richiedono codice, il lavoro vero sta a monte: nella **progettazione della web map**. Simbologia, pop-up configurati, filtri e ordine dei layer sono decisioni prese sulla mappa, e l'app le eredita. Una web map fatta male non si aggiusta scegliendo un template migliore.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **SaaS** | Modello in cui si usano applicazioni cloud via internet, senza installare software. |
+| **Organization** | Spazio virtuale distinto nel cloud Esri in cui un ente gestisce contenuti e collabora. |
+| **Public account** | Account gratuito per uso personale non commerciale, con limiti d'uso. |
+| **Layer** | Riferimento a un dataset più le regole con cui viene rappresentato. |
+| **Hosted layer** | Layer il cui dato risiede e viene servito dal cloud Esri. |
+| **Web map / Web scene** | Mappa 2D / ambiente 3D composti da web layer. |
+| **Basemap layer** | Layer statico che fornisce contesto geografico. |
+| **Operational layer** | Layer tematico sopra il basemap, con cui si può interagire, editare e analizzare. |
+| **Feature layer** | Layer di punti, linee o poligoni; supporta i pop-up con gli attributi. |
+| **Tile layer** | Immagini pre-renderizzate a rendering rapido; tipico basemap, non interrogabile. |
+| **Map image layer** | Cartografia con feature e imagery per posizione e scala; non consente raster analysis. |
+| **Imagery layer** | Cartografia basata su dati raster. |
+| **Elevation layer** | Tile in cache con dati di elevazione, per il terreno nelle scene. |
+| **Scene layer** | Collezione di oggetti 3D e valori di elevazione. |
+| **Table** | Righe e colonne; è un item ma non viene disegnata sulla mappa. |
+| **Item page** | La pagina di metadati di un contenuto: autore, data, uso previsto, fonti. |
+| **Acknowledgments** | La sezione della item page che riporta le fonti dei dati. |
+| **Living Atlas** | Libreria Esri di layer affidabili e aggiornati. |
+| **Sketch layer** | Feature collection disegnata sulla mappa e salvata insieme a essa. |
+| **Sharing level** | Il livello di accesso a un item: private, group, organization, public. |
+| **Smart mapping** | Suggerimento automatico di campo e simbologia basato su principi cartografici. |
+| **Map Viewer / Scene Viewer** | I visualizzatori 2D e 3D di ArcGIS Online. |
+| **Bookmark** | Vista salvata in una mappa o scena, che memorizza anche quali layer sono visibili. |
+| **Buffer** | Strumento che genera l'area entro una certa distanza da una feature. |
+| **Overlay analysis** | Analisi che combina più layer sovrapposti per ricavarne informazione. |

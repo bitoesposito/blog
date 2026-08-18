@@ -1,0 +1,183 @@
+---
+title: "Fondamenti di GIS"
+description: "Cosa è un GIS come sistema, cosa rende un dato geografico, le sette capabilities, il web GIS e i prodotti ArcGIS"
+pubDate: 2026-08-18
+tags: ['formazione', 'esri', 'arcgis', 'gis']
+authors: ['vitoesposito']
+order: 2
+---
+
+## Che cos'è un GIS
+
+Un **geographic information system (GIS)** è un framework per raccogliere, gestire e analizzare dati, fondato sulla scienza della geografia. Permette di creare, gestire, visualizzare, analizzare e interpretare dati geospaziali, e da quei dati fa emergere relazioni, pattern e situazioni che portano a decisioni migliori.
+
+In una riga: serve a capire **cosa è successo, cosa sta succedendo e cosa succederà** in una determinata area geografica, su scala locale o globale.
+
+Alcuni scenari tipici, utili per calibrare cosa significhi "risolvere un problema spaziale":
+
+- un porto traccia le navi in tempo reale e instrada i mezzi di emergenza quando le strade sono bloccate;
+- una catena retail sceglie dove aprire il prossimo punto vendita incrociando criminalità, concorrenti e abitudini di spesa dell'area;
+- un allevamento di molluschi determina la profondità ottimale per ciascuna specie usando riprese da drone in bassa marea;
+- un'organizzazione anti-bracconaggio prevede dove avverranno i prossimi episodi partendo dalle posizioni di quelli passati.
+
+Il tratto comune non è la mappa: è che la **posizione** è una variabile del problema, non un dettaglio di presentazione.
+
+## Le cinque componenti
+
+Un GIS non è il software. È un sistema di cinque parti che lavorano insieme, e la componente che manca più spesso non è tecnica.
+
+| Componente | Ruolo |
+|---|---|
+| **Hardware** | L'infrastruttura su cui gira il sistema: server centralizzati, macchine desktop, dispositivi portatili. È ciò che rende possibile creare, condividere e consumare informazione geografica. |
+| **Software** | Gli strumenti per archiviare, analizzare e visualizzare i dati geografici, e quelli per inserirli, manipolarli e interrogarli. |
+| **Data** | I dati che contengono informazione di posizione (indirizzi, codici postali, coordinate x/y). Il GIS li gestisce e li **integra con dati di altre fonti** per visualizzarli e analizzarli. |
+| **People** | Amministratori, analisti, cartografi, operatori sul campo. Un sistema senza chi lo gestisce e chi progetta come applicarlo a problemi reali produce poco valore. |
+| **Workflows** | I processi strutturati e le regole di business dell'organizzazione. Sono le attività ripetibili a rendere il sistema efficiente. |
+
+## Informazione geografica: attributo più localizzazione
+
+L'informazione geografica nasce dalla combinazione di due tipi di informazione:
+
+- **Attribute** — tutto ciò che non è posizione: identificativi, nomi, valori, altezza, data di nascita.
+- **Location** — dove un oggetto si trova sulla Terra: coordinate x/y, indirizzi, città, points of interest.
+
+```
+attributo + localizzazione = informazione geografica, cioè mappabile
+```
+
+Un esempio minimo: "casa blu a un piano" è un **attributo**, e con quello non si trova nulla. Aggiungendo l'indirizzo si aggiunge la **location**, e la descrizione diventa collocabile con precisione su una mappa.
+
+Il criterio per classificare un campo è netto: **è location solo ciò che identifica un posto sulla Terra**. Indirizzo, città e luogo di nascita sono location. Numero di telefono, URL, numero identificativo, altezza e date sono attributi, anche quando sono identificativi precisi e anche quando *sembrano* geografici (un prefisso telefonico non è una posizione: è un attributo che, al più, correla con una).
+
+### Perché la distinzione ha una conseguenza tecnica
+
+Non tutte le location sono utilizzabili allo stesso modo. Una coppia di coordinate x/y è già collocabile: il sistema la disegna direttamente. Un indirizzo, un codice postale o un nome di città sono location **testuali**, e devono prima passare per una **geocodifica** (*geocoding*), cioè la conversione della descrizione testuale in coordinate tramite un servizio che dispone di dati di riferimento.
+
+Da qui due implicazioni che si pagano a valle:
+
+- la geocodifica è un processo **approssimativo e valutabile**: restituisce un punteggio di corrispondenza, e su indirizzi sporchi o incompleti può collocare una feature nel posto sbagliato in silenzio;
+- l'operazione inversa, il **reverse geocoding**, ricava l'indirizzo dalle coordinate, e serve tipicamente quando il dato nasce da un GPS.
+
+Un dataset con coordinate e un dataset con indirizzi sono entrambi dati spaziali, ma richiedono lavoro diverso prima di essere mappabili.
+
+## Le sette GIS capabilities
+
+Sono le famiglie di funzionalità che un GIS mette a disposizione. La difficoltà non è la definizione ma il **riconoscimento**: dato uno scenario, capire quale capability lo descrive. Conviene fissare il tratto distintivo di ciascuna.
+
+| Capability | Che cosa fa | Tratto distintivo | Esempio |
+|---|---|---|---|
+| **Spatial analytics** | Va oltre l'esplorazione visiva: usa algoritmi spaziali per identificare trend, pattern e relazioni. | Si **analizza**, non si guarda soltanto. | Monitorare una specie vegetale invasiva e prevedere dove si diffonderà. |
+| **Field operations** | Allinea ufficio e operatori sul campo sulle stesse fonti dati autorevoli tramite dispositivi mobili, eliminando la carta. | C'è **una persona sul campo** che raccoglie o aggiorna dati. | Un tecnico rileva un guasto idrico da mobile e le squadre partono subito. |
+| **Mapping and visualization** | Porta su una mappa dati di provenienza diversa: fogli di calcolo, database, feed live. | Si **uniscono più fonti** per vederle insieme. | Un corriere vede gli indirizzi di consegna e il percorso ottimale. |
+| **Real-time GIS** | Monitora e visualizza dati provenienti da sensori o dispositivi in posizioni specifiche. | Il dato arriva da **sensori**, in continuo e senza intervento umano. | Un dispatcher invia l'ambulanza più vicina guardando le posizioni aggiornate. |
+| **3D GIS** | Trasforma dati 2D in modelli 3D, aggiungendo contesto reale a visualizzazione e analisi. | Compare la **terza dimensione**. | Studiare come le ombre di un nuovo edificio colpiranno quelli vicini. |
+| **Imagery and remote sensing** | Fornisce strumenti per estrarre informazione da immagini e dati telerilevati. | Il dato di partenza è un'**immagine** (satellite, drone). | Ricavare le classi di land cover dalle immagini di un bosco. |
+| **Data collection and management** | Permette di accedere ai dati di business, usarli, integrarli e archiviarli dentro il GIS. | L'accento è su **archiviare e rendere disponibile** il dato. | Un topografo rileva una particella e la salva nel database aziendale. |
+
+La coppia che si confonde più facilmente è **field operations** contro **real-time GIS**. Il discriminante è chi produce il dato: se c'è una persona che raccoglie fuori dall'ufficio è *field operations*, anche quando quei dati finiscono poi in un database; se sono **sensori che trasmettono da soli** è *real-time GIS*.
+
+Seconda coppia insidiosa: **mapping and visualization** contro **spatial analytics**. Sovrapporre due layer per guardarli è visualizzazione; farli intersecare da un algoritmo per ottenere un risultato nuovo è analisi.
+
+## Web GIS
+
+Il **web GIS** è un sistema informativo distribuito composto da un **GIS server** e da un **client** — un browser, un'applicazione desktop o un'app mobile. È lo strato che connette gli utenti a mappe, dati e strumenti attraverso la rete.
+
+I benefici che lo caratterizzano:
+
+1. **Lo usa un pubblico ampio**, anche persone senza competenze GIS, perché è progettato per essere semplice e intuitivo.
+2. **Chiunque accede da qualunque posto**, il che migliora la collaborazione tra organizzazioni, team e pubblico.
+3. **Regge molti utenti in contemporanea**, mentre un desktop GIS è usato da una persona alla volta.
+4. **Attinge a fonti dati diverse**, in base a ciò che serve al progetto.
+5. **Funziona a qualunque scala**, dal singolo con un piccolo progetto fino a più organizzazioni che collaborano globalmente.
+
+Quello che il web GIS **non** offre è la consultazione **senza connessione**: è l'opposto del suo modello di funzionamento. La capacità offline appartiene alle app mobili, non al web GIS in quanto tale.
+
+## I prodotti ArcGIS
+
+**ArcGIS** è il sistema con cui un'organizzazione sfrutta le capabilities appena viste. I componenti principali sono quattro, e la domanda utile non è cosa fanno ma **quando sono la scelta giusta**.
+
+| Prodotto | Che cos'è | Quando è la risposta |
+|---|---|---|
+| **ArcGIS Online** | Web GIS **cloud-based** per mapping e analisi, usabile con un dispositivo e una connessione. Connette persone, luoghi e dati con mappe interattive condivisibili con gruppi specifici o con il mondo. | Serve una mappa online da condividere, in particolare **con il pubblico**, senza gestire infrastruttura propria. |
+| **ArcGIS Enterprise** | Web GIS deployato **dentro il firewall** dell'organizzazione, con strumenti per creare mappe, analizzare dati e condividere contenuti geospaziali. | Il sistema deve stare su **server privati**, non connessi a internet, o comunque sotto il controllo diretto dell'organizzazione. |
+| **ArcGIS Pro** | L'applicazione **desktop** per gestione dati, visualizzazione e analisi in **2D e 3D**, con strumenti cartografici avanzati. È integrata con il resto del sistema e pubblica verso Online ed Enterprise. | Serve **analisi approfondita** o **cartografia avanzata**: analisi 3D come visibilità e ombre, oppure site selection costruendo **service area** attorno alle sedi esistenti. |
+| **ArcGIS mobile apps** | Collezione di app location-based per navigare percorsi, raccogliere dati, tracciare posizioni e condividere informazioni. Funzionano **connesse e disconnesse**. | Il lavoro si svolge **sul campo** e i dati devono restare aggiornati per chi sta in ufficio. |
+
+A questi si affianca **ArcGIS Dashboards**, app web che presenta mappe e dati in un cruscotto interattivo con aggiornamenti in tempo reale. Non è tra i componenti principali del sistema, ma è lo strumento di monitoraggio tipico per chi non ha competenze GIS.
+
+La discriminante tra Online ed Enterprise è **dove stanno i dati e chi controlla l'infrastruttura**, non l'insieme delle funzionalità: sono entrambi web GIS con un portale.
+
+### Come i prodotti compongono un sistema
+
+Il pattern ricorrente, su base ArcGIS Enterprise, distribuisce i ruoli così:
+
+- l'**IT administrator** gestisce sistema e performance;
+- i **field worker** raccolgono foto e condizioni sul posto con le **mobile apps**, e i dati si sincronizzano automaticamente: l'ufficio li vede senza aspettare il rientro delle squadre;
+- il **responsabile senza competenze GIS** segue squadra e dati da una **dashboard**;
+- il **GIS professional** fa le analisi in **ArcGIS Pro** e pubblica story map per istituzioni, imprese e altri stakeholder.
+
+Il risultato architetturale è che tutti lavorano sugli **stessi dati**, in tempo reale, con interfacce diverse calibrate sul ruolo. Il valore non sta in nessuno dei singoli prodotti: sta nel non avere copie divergenti dello stesso dato.
+
+## Portare i dati aziendali dentro il GIS
+
+Un GIS consuma dati provenienti dai sistemi gestionali. Il collocamento sulla mappa avviene grazie ai campi che contengono informazione spaziale.
+
+| Formato | Informazione spaziale tipica |
+|---|---|
+| **CSV** | coordinate x/y |
+| **Excel** | indirizzi |
+| **JSON** | codici postali |
+
+In Map Viewer un file si aggiunge dal menu `Add → Add Layer From File`.
+
+Il formato non determina il tipo di location: un CSV può contenere indirizzi e un file Excel coordinate. Quello che conta è **quale campo porta la posizione** e se è già in coordinate o richiede geocodifica.
+
+### Perché questo cambia le decisioni
+
+Il caso della gestione dei blackout dopo una tempesta mostra la differenza in modo pulito.
+
+Senza GIS le segnalazioni finiscono in un database e le squadre intervengono **nell'ordine in cui arrivano le chiamate**, senza sapere dove il bisogno sia maggiore. La coda è temporale.
+
+Con il GIS le segnalazioni vengono mappate sulla posizione del guasto e i pattern diventano visibili (*mapping and visualization*); la *spatial analysis* conferma quei pattern e individua le aree con più clienti coinvolti; la priorità va a quelle; sul posto gli operatori aggiornano lo stato da mobile e il dato torna in sede; il management segue l'evento su una dashboard. La coda diventa **spaziale e pesata sull'impatto**.
+
+Lo stesso dato, lo stesso numero di squadre, un ordine di intervento diverso.
+
+## Presentare e condividere le mappe
+
+Le mappe si presentano in due forme.
+
+| | **Static map** | **Dynamic map** |
+|---|---|---|
+| Interazione | Si guarda soltanto. | Si guarda e ci si interagisce. |
+| Esempi | Mappa stampata, immagine, PDF. | Web map, web app. |
+| Come circola | Distribuita a mano, appesa, inviata via email, scaricata da un sito. | Esplorata cliccando o toccando la mappa. |
+
+Per condividere mappe interattive, o semplicemente dati, serve un **web GIS portal**, realizzabile con **due prodotti**: **ArcGIS Online** e **ArcGIS Enterprise**. Il portale consente di scegliere chi accede al contenuto: la propria organizzazione, altre organizzazioni, oppure il pubblico.
+
+Il vantaggio rispetto alla distribuzione di file è meno estetico di quanto sembri e più di gestione: inviare PDF via email significa perdere tempo, perdere file e far circolare **versioni divergenti** dello stesso piano. Pubblicando su un portale e condividendo un'unica web app, tutti restano sull'ultima versione pubblicata. Il problema risolto non è "la mappa è interattiva": è che esiste **una sola copia autorevole**.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **GIS** | Framework per raccogliere, gestire e analizzare dati geospaziali, radicato nella scienza geografica. |
+| **Attribute** | Informazione non di posizione associata a un elemento (identificativo, nome, valore). |
+| **Location** | Informazione che dice dove un oggetto si trova sulla Terra. |
+| **Geographic information** | La combinazione di attributi e localizzazione: ciò che rende un dato mappabile. |
+| **Geocoding** | Conversione di una location testuale (indirizzo, codice postale) in coordinate. |
+| **Reverse geocoding** | Operazione inversa: dalle coordinate all'indirizzo. |
+| **Spatial analytics** | Analisi che usa algoritmi spaziali per trovare trend, pattern e relazioni. |
+| **Field operations** | Capability che allinea operatori sul campo e ufficio sulle stesse fonti dati tramite dispositivi mobili. |
+| **Real-time GIS** | Monitoraggio e visualizzazione di dati provenienti da sensori, per decisioni immediate. |
+| **Remote sensing** | Acquisizione di dati a distanza tramite satellite, drone o sensori. |
+| **Land cover** | Classificazione della copertura del suolo estratta da immagini. |
+| **Web GIS** | Sistema distribuito composto da GIS server e client (browser, app desktop, app mobile). |
+| **Web GIS portal** | Il portale attraverso cui si condividono i contenuti GIS; si realizza con ArcGIS Online o Enterprise. |
+| **ArcGIS Online** | Web GIS cloud-based per mapping e analisi. |
+| **ArcGIS Enterprise** | Web GIS deployato dentro il firewall dell'organizzazione. |
+| **ArcGIS Pro** | Applicazione desktop per gestione dati, visualizzazione e analisi 2D/3D con cartografia avanzata. |
+| **ArcGIS Dashboards** | App web che presenta mappe e dati in un cruscotto con aggiornamenti in tempo reale. |
+| **Story map** | Formato narrativo che combina mappe e contenuti per comunicare risultati. |
+| **Static map / Dynamic map** | Mappa non interattiva (stampa, PDF) / mappa interattiva (web map, web app). |
+| **Map Viewer** | Il visualizzatore di mappe di ArcGIS Online: dove si aggiungono layer, si stilizza e si analizza. |
+| **Service area** | Area di servizio calcolata attorno a una località, usata per esempio nella site selection. |
