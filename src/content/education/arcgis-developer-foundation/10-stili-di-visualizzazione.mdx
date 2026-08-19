@@ -1,0 +1,408 @@
+---
+title: "Stili di visualizzazione in Map Viewer"
+description: "Catalogo dei drawing style: quando usarli, che dati richiedono, quali opzioni contano e quali errori producono"
+pubDate: 2026-08-19
+tags: ['formazione', 'esri', 'arcgis', 'arcgis-online', 'cartografia']
+authors: ['vitoesposito']
+order: 10
+---
+
+## Come scegliere
+
+Gli stili non sono varianti estetiche dello stesso risultato: ognuno richiede un tipo di dato specifico e distorce in un modo suo. Questa è la tabella da cui partire.
+
+| Ho questo | Voglio mostrare | Stile |
+|---|---|---|
+| Nessun attributo | Solo dove sono le cose | **Location (single symbol)** |
+| Un campo categoriale | A quale categoria appartiene ciascuna feature | **Types (unique symbols)** |
+| Un conteggio o totale | Quanto è grande ciascun valore | **Counts and Amounts (size)** |
+| Un valore normalizzato | Dove è alto e dove è basso | **Counts and Amounts (color)** |
+| Un numerico, o un normalizzato più il suo conteggio | Entrambi nello stesso simbolo | **Color and Size** |
+| Due conteggi, senza il rapporto già calcolato | Il rapporto tra i due | **Compare A to B** |
+| Da 2 a 10 conteggi omogenei | Quale è il maggiore in ciascuna area | **Predominance** |
+| Due o tre normalizzati correlati | Dove i due pattern convergono e dove divergono | **Relationship** |
+| Da 2 a 10 conteggi mutuamente esclusivi | Le proporzioni interne a ciascuna feature | **Charts** |
+| Poligoni con conteggi | La densità senza il bias dell'area del poligono | **Dot Density** |
+| Molti punti sovrapposti | Dove si addensano | **Heat Map** |
+| Molti punti, ma servono le feature | Quanti sono per zona, mantenendo la simbologia | **Clustering** |
+| Un campo data | Quando è successo, o quanto tempo è passato | **Continuous timeline**, **Age** |
+
+Tre principi trasversali, validi per tutto il resto del capitolo:
+
+1. **Conteggi alla dimensione, valori normalizzati al colore.** Colorare un conteggio produce una mappa in cui i poligoni grandi vincono per superficie.
+2. **Prima i breaks, poi i colori.** Le maniglie dell'istogramma decidono cosa la mappa dice; il colore lo rende visibile.
+3. **Basemap neutro sempre.** Human Geography o Light Gray Canvas.
+
+## Location (single symbol)
+
+Un simbolo unico per tutte le feature, senza attributo mappato. Funziona su punti, linee e poligoni.
+
+Sembra lo stile senza decisioni, e invece ne ha una che conta: **quanto il simbolo è intuitivo**. Un aeroporto rappresentato da un aeroplano, un'università da un tocco accademico, si leggono senza legenda.
+
+Le opzioni disponibili sono simbolo, dimensione, rotazione, colore, trasparenza e contorno con la sua **stroke width**.
+
+Sulla scelta del simbolo c'è una distinzione tecnica che ha conseguenze:
+
+| | **Classic Symbols** | **Vector Symbols** |
+|---|---|---|
+| Come sono fatti | Tranne le forme base, sono **picture marker**: un'immagine definisce l'aspetto. | Sono **vettoriali** e scalabili. |
+| In scala | Ingrandendoli si **pixelizzano**. La dimensione è regolabile solo con questo stile. | La forma resta integra a qualunque dimensione. |
+| Disponibilità | Anche in Map Viewer Classic. | **Solo in Map Viewer**, non in Map Viewer Classic. |
+
+Altre note operative:
+
+- **Adjust size automatically** mantiene la scala del simbolo durante lo zoom.
+- La **rotazione** è utile per orientare un simbolo a una direzione cardinale: 90° lo punta a est.
+- I colori si scelgono tra 16 preset o si definiscono con **HEX, RGB o HSV** — la via da usare per i colori istituzionali — e si salvano per riuso.
+- La **stroke width** del contorno fa risaltare il simbolo, ma esagerata trasforma la mappa in un reticolo di bordi.
+- Per linee e poligoni non si possono usare icone; restano contorno e riempimento.
+
+Un layer a simbolo unico funziona bene come **contesto sotto un altro layer tematico**, ed è spesso il suo ruolo migliore.
+
+## Types (unique symbols)
+
+Un colore o un simbolo per ciascuna categoria. Richiede un campo **stringa** e funziona su punti, linee e poligoni.
+
+Come si comporta di default:
+
+- le categorie vengono elencate **per frequenza**, con la più frequente in cima, e il conteggio dei record è visibile accanto a ciascuna;
+- vengono mappate le **prime dieci**; tutto il resto finisce nel gruppo **Other**.
+
+Le operazioni che servono quasi sempre:
+
+- **promuovere** le categorie da Other alla lista, per dare a ciascuna un colore proprio. Quando Other resta a zero feature, si può deselezionare per togliercelo dalla legenda;
+- **riordinare** le categorie trascinandole: l'ordine di frequenza raramente è l'ordine con cui vanno lette. Dopo il riordino conviene **riapplicare la scala di colori**, altrimenti i colori restano appiccicati alla posizione precedente;
+- **rinominare** le etichette, cliccandole direttamente. La legenda riflette il testo modificato.
+
+### Il colore deve seguire il significato
+
+Qui la conoscenza del tema è più determinante che negli stili numerici, perché il software non sa che relazione ci sia tra le categorie. Due esempi che chiariscono il criterio:
+
+- una mappa di normative su tre categorie — *legale con limiti*, *legale senza limiti*, *illegale* — assegna due tonalità dello stesso colore alle due categorie legali e un colore completamente diverso all'illegale. La distanza cromatica riproduce la distanza concettuale;
+- categorie con un **ordine intrinseco**, come una valutazione da 1 a 5 stelle, chiedono una scala sequenziale, non colori qualitativi.
+
+### Aggiungere la dimensione
+
+Due modi, con esiti diversi:
+
+- **dimensionare le categorie a mano**, per enfatizzarne una. Nella mappa degli ospedali per punteggio di qualità, i cinque stelle hanno simbolo più grande e contorno: emergono senza che gli altri spariscano;
+- **guidare la dimensione con un attributo numerico**, mappando due attributi insieme: colore per la categoria, dimensione per il valore. Le strade colorate per distretto e dimensionate sul traffico medio giornaliero mostrano quali distretti contengono le arterie principali.
+
+### Rifinitura finale
+
+Le domande da porsi prima di considerare finita una mappa categoriale valgono in realtà per tutte: il basemap non compete con i dati, la legenda è comprensibile, i **pop-up** sono configurati per dire ciò che la mappa sta mostrando, le **etichette** sono appropriate alla scala di lettura.
+
+Vincolo frequente: se i colori sono limitati da requisiti di stampa o di brand, la **forma** — quadrati, cerchi, triangoli — è un canale alternativo per distinguere le categorie.
+
+## Counts and Amounts (size)
+
+Dimensione del simbolo proporzionale al valore di un attributo numerico. Funziona su punti, linee e poligoni.
+
+È lo stile giusto per **conteggi e totali**, e regge anche medie, tassi, percentuali e indici. Il vantaggio della dimensione è che non dipende dall'area della geometria: un comune piccolo con un valore alto ottiene un simbolo grande.
+
+### I due passi
+
+**Esplorare i numeri.** L'istogramma mostra minimo, massimo, media e deviazioni standard; il pulsante di zoom sopra l'istogramma serve a leggerli meglio quando sono compressi. Il tema *Above* posiziona di default gli handle sulla **media** e sul **massimo**, e lo fa per ridurre l'impatto degli outlier sulla scala dimensionale.
+
+Arrotondare gli handle è una micro-decisione che migliora la legenda: `900` e `10.000` si leggono meglio di `868,8` e `10.120` e non cambiano il pattern.
+
+**Rifinire le dimensioni.** Allargare il size range aumenta la variazione visibile: passare da `12-83` pixel a `6-120` distribuisce il contrasto su una porzione più ampia dei dati. Alzando il massimo si può spingere più in alto anche l'handle superiore, recuperando i valori estremi. Le dimensioni si riscalano automaticamente con lo zoom.
+
+### Simboli sovrapposti
+
+È il problema pratico di questo stile. Quando i simboli si sovrappongono smettono di leggersi come feature distinte e il pattern si perde. Tre rimedi:
+
+- **50% di trasparenza sul riempimento** più un contorno colorato: le singole feature ridiventano distinguibili;
+- su basemap chiari, un **contorno bianco parzialmente trasparente** aggiunge definizione solo dove serve, ai bordi;
+- su un layer di poligoni, lo stile posiziona un **simbolo puntuale dentro ciascun poligono** — per i poligoni multi-parte, al centro della parte più estesa — e disegna i contorni in grigio medio. Impostare il **contorno del poligono dello stesso colore del punto** lega visivamente il simbolo alla sua area.
+
+## Counts and Amounts (color)
+
+Colore applicato a ciascuna feature in base al valore di un attributo numerico. È la mappa coropletica.
+
+Va usato su dati **normalizzati**: media, mediana, tasso, rapporto, percentuale, indice. Per un totale o un conteggio servono *Counts and Amounts (size)* o *Color and Size*.
+
+### Il bias dell'area
+
+Questo stile **premia i poligoni grandi**: più superficie significa più pixel di colore. Nelle geografie censuarie di qualunque paese le unità piccole — comuni densi, sezioni urbane, CAP cittadini — fanno fatica a esistere sulla mappa, e alcune non arrivano a un pixel. È una distorsione strutturale, non un problema di impostazioni. *Color and Size* la riduce, perché aggiunge un canale che non dipende dall'area.
+
+### Il default: unclassed
+
+Di default la scala di colori è **unclassed**, cioè proporzionale: ogni valore compreso tra i due handle riceve un colore proporzionale al suo valore, e si vedono anche le differenze piccole tra aree vicine. Gli handle sono posizionati a **±1 deviazione standard dalla media**, cosa che su una distribuzione normale copre circa il **68%** dei dati; i valori oltre gli handle ricevono il colore terminale della scala.
+
+Chiunque apra la mappa può trascinare gli handle o digitare valori: non è una proprietà bloccata dall'autore.
+
+### I sei temi
+
+| Tema | Cosa enfatizza |
+|---|---|
+| **High to low** | I valori alti con colore forte, i bassi con colore debole. Scala monocromatica o a due colori. È il default. |
+| **Above and below** | Entrambi gli estremi, con **scala divergente**: due colori forti e un colore neutro al centro. L'handle centrale è il perno della storia. |
+| **Above** | Solo i valori sopra una soglia; tutto il resto riceve lo stesso colore pallido. |
+| **Below** | Simmetrico: solo i valori sotto una soglia. |
+| **Centered on** | I valori **vicini** a un valore centrale; la trasparenza cresce allontanandosi, fino a 100% oltre una deviazione standard. |
+| **Extremes** | Solo i valori oltre una deviazione standard dalla media; il centro diventa completamente trasparente. |
+
+Il tema più produttivo è **Above and below**, perché obbliga a rispondere a una domanda che gli altri lasciano implicita: *rispetto a quale valore*. Il default è la media dei dati, ragionevole quando non si sa ancora cosa cercare, ma il valore utile è quasi sempre esterno al dataset — una media nazionale, una soglia, un obiettivo di programma. Portare l'handle centrale su `20%` perché è l'obiettivo dichiarato trasforma una mappa descrittiva in una mappa che dice chi è sopra e chi è sotto il target.
+
+### Le classificazioni
+
+Attivando **Classify data** si passa da colore proporzionale a colore per classi. La mappa diventa **visivamente più semplice**, e il prezzo è che **tutte le differenze sottili scompaiono**: con classi, un valore di 30 può essere bianco e 31 azzurro chiaro, mentre in unclassed erano quasi indistinguibili — che è la verità del dato.
+
+| Metodo | Come divide | Quando |
+|---|---|---|
+| **Natural Breaks** (Jenks) | Cerca i raggruppamenti naturali: pone i confini dove ci sono salti relativamente grandi nei valori, massimizzando la differenza tra classi. | Dati **distribuiti in modo non uniforme**. È il default quando si attivano le classi. |
+| **Equal Interval** | Divide l'intervallo tra minimo e massimo in sottointervalli di **ampiezza uguale**. | Intervalli che devono essere leggibili come misure regolari. Su dati asimmetrici concentra quasi tutto in una classe. |
+| **Quantile** | Ogni classe contiene lo **stesso numero di feature**. | Dati distribuiti linearmente. Può risultare **fuorviante**: feature simili finiscono in classi adiacenti, feature molto diverse nella stessa classe. Si attenua aumentando le classi. |
+| **Standard deviation** | Ogni intervallo è ampio una deviazione standard, centrato sulla media. Si può scendere a 0,5. | Quando la storia è statistica: quanto una feature devia dalla media. |
+| **Manual** | Breaks digitati a mano. | Quando esistono soglie che significano qualcosa fuori dal dataset. |
+
+Si possono usare **fino a 10 classi**. Con un numero **dispari** di classi una scala divergente assegna il colore neutro alla classe centrale; con un numero pari nessuna classe lo riceve.
+
+Due accorgimenti:
+
+- **riscrivere le etichette delle classi** perché comunichino il significato, non solo l'intervallo numerico. È il passaggio che traduce i numeri in senso, e senza di esso il lettore si inventa la propria interpretazione;
+- l'istogramma mostra **dove ciascun metodo taglia i dati**. Confrontare il taglio con la distribuzione è il modo per capire perché due mappe degli stessi dati sembrano raccontare cose diverse.
+
+I **contorni** dei poligoni restano sottili per default, e devono restarlo: contorni scuri e spessi distruggono qualunque pattern cromatico.
+
+### Le scale di colori
+
+Vanno scelte per ultime, e la scelta ha effetti reali sulla leggibilità:
+
+- una scala **monocromatica** — un solo colore dal chiaro al saturo — enfatizza un solo estremo. Costringe a qualificare quale blu si sta indicando, perché per il lettore tutta la mappa è blu;
+- una scala a **due colori** — per esempio giallo verso verde scuro — mantiene l'enfasi sull'alto ma fa emergere anche il basso dal basemap;
+- una scala **divergente** è quella che il tema *Above and below* richiede, e viene proposta di conseguenza.
+
+Le scale si filtrano per adeguatezza a **basemap chiari o scuri** e per **compatibilità con il daltonismo**.
+
+Ultimo controllo, spesso decisivo: **zoomare alla scala a cui la mappa verrà effettivamente guardata**. Un dato comunale che tutti consulteranno per provincia va valutato a quel livello di zoom, non sull'inquadratura nazionale.
+
+## Color and Size
+
+Colore e dimensione insieme, su **uno o due** attributi numerici.
+
+Con **un solo attributo**, colore e dimensione codificano lo stesso valore: il simbolo è ridondante ma più leggibile, e sui poligoni compensa il bias dell'area della mappa coropletica.
+
+Con **due attributi** si mappano due variabili in un simbolo. Assegnazione fissa: **il primo attributo della lista va al colore, il secondo alla dimensione**.
+
+La buona pratica sull'accoppiamento è precisa: **normalizzato al colore, conteggio correlato alla dimensione**. La ragione è che il tasso da solo mente per omissione. Un indice di incidentalità identico su una strada urbana e su una rurale non descrive lo stesso fenomeno se sulla prima passano 250.000 veicoli al giorno e sulla seconda duemila: il volume è esso stesso parte della storia. Una mappa che mostra percentuale **e** conteggio dice più di due mappe separate.
+
+Il tema **Above and below** è il più espressivo anche qui, e in questo stile viene con **coppie di simboli** — per esempio riempimento pieno per la crescita e simbolo cavo per il calo — che aggiungono un canale oltre al colore.
+
+Nota sui limiti teorici: su una variazione percentuale, l'handle inferiore ha senso a `-100%`, che è il limite del decremento possibile, mentre il superiore è libero. La legenda dimensiona proporzionalmente rispetto all'handle superiore.
+
+## Compare A to B
+
+Esprime il rapporto tra due numeri. Serve quando il rapporto **non esiste come campo** ma numeratore e denominatore sì.
+
+Tre forme, da scegliere in base a cosa sono A e B:
+
+| Forma | Calcolo | Quando |
+|---|---|---|
+| **A as a percent of B** | `A / B * 100` | A è una parte del totale B. Anche per confronti temporali: popolazione prevista come percentuale di quella nota. |
+| **A as a percent of A+B** | `A / (A+B) * 100` | A e B sono due conteggi propri che insieme fanno il totale di interesse: proprietari e affittuari. |
+| **A as a ratio to B** | `A / B` | Serve un rapporto diretto, leggibile come "uno a uno". |
+
+Funziona bene quando ci sono **due soli gruppi di interesse**: proprietari e affittuari, veterani e non veterani, lo stesso conteggio in due momenti diversi.
+
+Un avvertimento sul denominatore. Se il censimento distingue alloggi occupati da proprietari, occupati da affittuari e vacanti, mappare A come percentuale di A+B sui primi due è una scelta legittima ma **non sostituisce** il rapporto sul totale degli alloggi: il denominatore è diverso e il numero significa un'altra cosa.
+
+Opzioni caratteristiche:
+
+- vengono offerte **solo scale divergenti**, coerentemente con la natura del confronto;
+- **Center at** ha due valori. *Average value* centra sulla media dei dati e mostra la variazione attorno a essa: è la scelta giusta quando non si aspetta che A e B siano uguali. *Equal values* centra sul rapporto **1:1**, utile quando la parità è l'aspettativa. Scegliere il centro sbagliato produce una mappa quasi tutta grigia, dove tutto sembra vicino al valore centrale;
+- le **etichette** della legenda si possono impostare sulle tre forme di lettura, cambiando cosa si comunica a parità di mappa;
+- trascinando le barre in blocco si mantiene la spaziatura tra i breaks e si sposta l'assegnazione dei colori; muovendo un singolo handle si enfatizza una porzione della scala.
+
+## Predominance
+
+Confronta **da 2 a 10 attributi numerici** e colora ciascuna feature in base a **quale è il maggiore**. Una mappa elettorale è l'esempio canonico.
+
+Il requisito sui dati è che gli attributi condividano **soggetto e unità di misura**: conteggi di voti per candidato, capi per specie allevata, alloggi per titolo di occupazione. Funziona meglio quando i campi sommati danno un totale sensato.
+
+### La forza della predominanza
+
+Il meccanismo che rende questo stile più informativo di una semplice mappa del vincitore: la **trasparenza codifica il margine**, cioè lo scarto tra il valore predominante e il secondo.
+
+Con 600 voti contro 400 lo scarto è 200 e il colore è pieno. Con 510 contro 490 lo scarto è 20 e il colore è molto trasparente. Il risultato è una mappa che distingue **dove la predominanza è netta e dove è marginale** — informazione che andrebbe completamente perduta applicando la stessa opacità a tutti.
+
+Le aree in **parità**, o quelle con dati insufficienti a determinare un massimo, non ricadono in nessuna categoria: si possono mostrare in grigio o escludere.
+
+### Esplorare escludendo
+
+Una tecnica specifica di questo stile: **togliere l'attributo dominante** per far emergere il livello sotto. Su una mappa dell'allevamento mondiale, il pollame prevale quasi ovunque e la mappa dice poco; rimuovendolo compaiono i pattern continentali — bovini nelle Americhe, suini in Europa, caprini in una fascia africana.
+
+### Predominant category and Size
+
+Aggiunge un canale: la dimensione rappresenta la **somma degli attributi confrontati**. Si vede insieme *quale* categoria prevale e *quanto* materiale c'è in gioco, che sono domande diverse. Le impostazioni di colore si conservano passando da uno stile all'altro.
+
+### Varianti e limiti
+
+- Se le categorie hanno un **ordine** — fasce di reddito, classi di età — si riordinano i campi trascinandoli e si usa una scala **sequenziale** invece di colori qualitativi.
+- **Forme diverse** dai cerchi (diamante, triangolo, quadrato) possono comunicare la categoria quanto il colore.
+- Quando la dimensione rende difficile leggere il pattern d'insieme, si duplica il layer: la **predominanza a colori sotto**, la predominanza con dimensione sopra. Il pattern resta leggibile e la dimensione aggiunge il suo livello.
+- Oltre i **10 attributi**, o per raggruppare campi in nuovi totali, serve un'espressione **Arcade** che calcoli il predominante — con la possibilità di ricostruire anche la logica della forza della predominanza.
+
+## Relationship
+
+Mappa **bivariata**: incrocia due attributi numerici e mostra dove i due pattern convergono e dove divergono. Con un terzo attributo diventa **Relationship and Size**, cioè trivariata.
+
+Il problema che risolve: due mappe coropletiche affiancate sembrano simili, ma nessuna delle due dice **dove entrambi i valori sono alti**, dove entrambi bassi, dove uno solo. Relationship combina due scale di colori in una griglia, e gli **angoli della griglia** portano l'informazione: alto-alto, alto-basso, basso-alto, basso-basso.
+
+Va usato su attributi **normalizzati**, non su conteggi. Se il campo non è già normalizzato si può normalizzarlo nelle opzioni.
+
+Le opzioni che contano:
+
+| Opzione | Cosa fa |
+|---|---|
+| **Grid size** | `3x3` di default, cioè basso/medio/alto per asse. `2x2` riduce a sopra/sotto la media; `4x4` distribuisce su più colori. |
+| **Classificazione** | Di default **quantile**, che garantisce lo stesso numero di feature per colore. Va bene per esplorare, meno per concludere. |
+| **Breakpoint manuali** | Dal menu di ciascun attributo si apre l'istogramma con la deviazione standard e si spostano i breakpoint. È il punto in cui entra la conoscenza del tema: una soglia nazionale nota vale più di un quantile. |
+| **Focus** | Ruota la griglia in legenda per mettere in alto la combinazione da enfatizzare: *High-High* di default, poi *High/Low*, *Low/High*, *Low*, *None*. |
+| **Labels** | Riscrivibili, ed è qui che la mappa diventa leggibile: "molto fumo, poco alcol" comunica ciò che "alto-basso" non comunica. |
+
+Quando si aggiunge il terzo attributo, i primi due restano la relazione e il terzo va alla dimensione: serve tipicamente a mostrare **dove il pattern coincide con la popolazione**, distinguendo i centri urbani dalle aree rurali.
+
+## Charts
+
+Simboli a **torta o ciambella** proporzionali, che mostrano le **proporzioni interne** a ciascuna feature. Funziona su poligoni e punti, con **da 2 a 10 attributi numerici**.
+
+Il requisito è vincolante: le categorie devono essere **mutuamente esclusive**. Fasce d'età, titolo di occupazione dell'alloggio, tipo di assicurazione, combustibile per il riscaldamento: ogni unità conta in una sola categoria. Se le categorie si sovrappongono, le proporzioni non significano niente.
+
+La differenza rispetto a *Predominance* è cosa si vede: la predominanza dice **solo chi vince**, Charts mostra **la composizione**. Su una mappa del combustibile di riscaldamento, la predominanza dice qual è il più diffuso per sezione censuaria; Charts mostra che il predominante convive con cinque alternative e in che proporzione.
+
+Opzioni e limiti pratici:
+
+- il numero **utilizzabile** di attributi è **2-6**, anche se il software arriva a 10. Una torta a dieci fette non rivela pattern, li nasconde;
+- **Grouping %** raggruppa dinamicamente i valori piccoli in una categoria *Other*, semplificando la lettura;
+- **Chart size** è **dipendente dalla scala**: le dimensioni vanno configurate alla scala di lettura prevista, perché torte troppo grandi si sovrappongono e annullano il dettaglio. **Adjust chart size automatically** le adatta allo zoom, ma va verificato a tutte le scale previste;
+- la forma passa da torta a **ciambella** con uno slider sul foro centrale. Il foro è utile quando serve spazio per un'etichetta — per esempio il totale, o l'età mediana;
+- **Show background symbol** è attivo per default e disegna sotto le torte il simbolo del poligono. Tenerlo con una trasparenza dà una geografia di riferimento discreta; spegnerlo pulisce la mappa.
+
+**Charts and Size** dimensiona ciascuna torta sulla **somma** delle categorie. È l'aggiunta che rende la mappa comparabile tra aree: le proporzioni interne restano, e la dimensione dice quanto peso ha ciascuna area nel totale.
+
+Una combinazione efficace: duplicare il layer, simbolizzare la copia con **Predominance** in trasparenza sotto le torte. Il colore di fondo rinforza la categoria prevalente, le torte mostrano le proporzioni.
+
+## Dot Density
+
+Riempie i poligoni di **punti** che rappresentano conteggi, invece di colorarli. Richiede un layer poligonale e uno o più attributi di conteggio.
+
+Il problema che risolve è il bias dell'area: quando si colora un poligono in base a un conteggio, **la dimensione del poligono influisce sul pattern più del dato**. Dot density distribuisce i punti dentro l'area, quindi rappresenta la **densità** in modo confrontabile tra poligoni di dimensioni diverse.
+
+Il confronto che chiarisce la differenza: mappando la popolazione con la dimensione dei simboli si vedono le città e si perde tutto il resto; con dot density emergono anche le sfumature suburbane e rurali.
+
+Con **più attributi** confronta categorie correlate — proprietari, affittuari, alloggi vacanti — e mostra dove ciascuna prevale e dove convivono.
+
+Opzioni chiave:
+
+- il **dot value** stabilisce quanti elementi rappresenta un punto (`1 punto = 1 nucleo familiare`, o 9 persone, o 100). Cambiarlo cambia radicalmente l'aspetto della mappa;
+- **vary dot value by scale** adatta il valore allo zoom, ma la configurazione va comunque fatta **alla scala di lettura prevista**;
+- **blend overlapping colors**, attivo per default, fonde i colori sovrapposti invece di far coprire un colore dall'altro. Le scale di dot density sono progettate per fondersi: blu e giallo danno verde, rosso e giallo arancione. Un'area con conteggi quasi pari di due categorie appare nel colore fuso;
+- attenuare i **contorni** dei poligoni, con trasparenza o colore più tenue, fa risaltare il pattern dei punti;
+- la legenda deve dire **cosa rappresenta un punto**, unità di misura compresa. Senza quello i punti sono decorativi.
+
+## Heat Map
+
+Calcola e mostra la **densità relativa** dei punti come superficie di colore continua, dal freddo (pochi punti) al caldo (molti).
+
+Serve per layer di punti **numerosi e sovrapposti**, in particolare per dati a eventi in cui più punti cadono nella stessa posizione — violazioni, incidenti, chiamate. È utile anche perché la sovrapposizione peggiora alle piccole scale, dove un dataset denso diventa illeggibile e costringe a zoomare, perdendo il pattern d'insieme.
+
+Opzioni:
+
+- la **scala di colori** va scelta in relazione al basemap; i filtri per basemap chiari o scuri e per compatibilità con il daltonismo aiutano. Un low scuro con un high brillante enfatizza gli addensamenti;
+- i **due handle** sulla scala determinano come i colori si distribuiscono sulla superficie di densità;
+- **area of influence** regola l'ampiezza dei cluster: più largo e smussato, o più piccolo e definito;
+- un **campo numerico di peso** modifica il calcolo: la densità viene ponderata su quel valore. Stringhe e date **non** possono pesare. La differenza è sostanziale — pesare gli incidenti sul numero di feriti sposta il punto caldo dove gli incidenti sono meno numerosi ma più gravi.
+
+Due limiti da tenere presenti:
+
+- **con pochi punti la heat map non serve**: si mappano i punti;
+- la superficie di densità **non ha feature**, quindi non ha pop-up. Se servono, si aggiunge di nuovo il layer di punti sopra la heat map, con trasparenza o con visibilità limitata alle scale di zoom ravvicinate.
+
+## Clustering
+
+Aggrega i punti **al volo**, senza pre-processing, e si attiva dalla toolbar di destra su un layer di punti.
+
+Il comportamento:
+
+- i cluster si **ricalcolano a ogni cambio di estensione**: zoomando, i gruppi si scompongono;
+- i simboli sono **proporzionali al numero di feature** contenute;
+- le **etichette** con il conteggio sono attive di default, e spesso vanno spente perché coprono il simbolo;
+- **cluster radius** verso il basso produce più punti singoli e meno cluster; verso l'alto il contrario. **Size range** regola le dimensioni di cluster piccoli e grandi;
+- il **pop-up** riporta il conteggio, e permette di zoomare sulle feature del cluster o di scorrerle una per una.
+
+La caratteristica che lo distingue dalle altre tecniche di aggregazione è che **conserva la cartografia esistente**:
+
+| Simbologia di partenza | Cosa mostra il cluster |
+|---|---|
+| **Types (categoriale)** | Il colore della **categoria predominante** tra le feature aggregate; la dimensione resta il conteggio. Il pop-up riporta conteggio **e** valore predominante. |
+| **Numerica (colore su valore)** | Il colore corrispondente alla **media** dei valori aggregati, con la scala di partenza invariata. Il pop-up riporta la media. |
+
+La simbologia si può impostare prima o dopo aver attivato il clustering.
+
+Rispetto alla heat map la differenza è cosa si conserva: la heat map produce una superficie continua e perde le feature; il clustering mantiene feature interrogabili e i canali cromatici già impostati.
+
+## Continuous timeline e Age
+
+I due stili per i campi **date**. Entrambi disponibili con **colore** o con **dimensione**.
+
+Rispondono a domande diverse:
+
+| | **Continuous timeline** | **Age** |
+|---|---|---|
+| Domanda | **Quando** è successo. | **Quanto tempo** è passato. |
+| Cosa rappresenta | La data collocata su una linea temporale continua. | Una durata calcolata. |
+| Esempio | Edifici colorati per anno di costruzione. | Tempo tra la chiamata di emergenza e l'arrivo dei soccorsi. |
+
+### Continuous timeline
+
+Di default mostra il pattern dal più recente al più vecchio. Il tema interessante è **Before and after**, che centra la simbologia su una **data specifica**.
+
+Il caso che mostra la differenza tra un default e una decisione: una mappa degli edifici di Rotterdam per anno di costruzione è già leggibile, ma centrando il tema sul **14 maggio 1940** — la data del bombardamento — la mappa smette di mostrare "quando sono stati costruiti" e mostra **quali edifici sono sopravvissuti alla guerra e quali sono stati ricostruiti**. Stesso campo, stesso stile, una data scelta con criterio.
+
+Con la **dimensione** si racconta la stessa cosa enfatizzando per grandezza invece che per colore, e il tema *Above* o *Below* decide se emergono i più recenti o i più antichi.
+
+### Age
+
+L'età si calcola in tre modi, ed è l'opzione che vale la pena conoscere perché il default raramente è quello utile:
+
+- differenza tra il campo data e la **data di creazione della mappa** (default);
+- differenza tra il campo data e una **data personalizzata**, per domande del tipo "quali eventi sono anteriori a giugno 2021";
+- differenza tra **due campi data** dello stesso record: è il modo per misurare una durata interna al dato — allarme e arrivo, richiesta e evasione, apertura e chiusura.
+
+L'**unità** è selezionabile tra secondi, minuti, ore, giorni, mesi e anni, e va scelta sull'ordine di grandezza del fenomeno: minuti per i tempi di risposta, anni per l'anzianità di una rete.
+
+### Combinazioni con il tempo
+
+Gli stili temporali si compongono con quelli numerici e categoriali, e ciascuna combinazione risponde a una domanda precisa:
+
+| Combinazione | Domanda |
+|---|---|
+| **Color (age) and Size** | Colore = quanto è recente, dimensione = un conteggio. "Dove sono gli incidenti recenti che hanno coinvolto più veicoli?" |
+| **Color and Size (age)** | Colore = un valore numerico, dimensione = anzianità. "Quali pratiche sono più vecchie, e su immobili di che dimensione?" |
+| **Types and Size (age)** | Colore = categoria, dimensione = anzianità. "Quali tipi di condotta sono i più vecchi?" |
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Location (single symbol)** | Un simbolo unico per tutte le feature, senza attributo mappato. |
+| **Types (unique symbols)** | Un colore o simbolo per categoria, su campo stringa. |
+| **Counts and Amounts (size)** | Dimensione proporzionale a un valore numerico; adatto a conteggi e totali. |
+| **Counts and Amounts (color)** | Colore proporzionale a un valore numerico; adatto a valori normalizzati. Mappa coropletica. |
+| **Unclassed** | Assegnazione proporzionale del colore, senza classi; default degli stili a colore. |
+| **Natural Breaks (Jenks)** | Classificazione che pone i confini dove i dati presentano salti naturali. |
+| **Equal Interval** | Classificazione in sottointervalli di ampiezza uguale. |
+| **Quantile** | Classificazione con lo stesso numero di feature per classe. |
+| **Color and Size** | Colore e dimensione su uno o due attributi; il primo va al colore, il secondo alla dimensione. |
+| **Compare A to B** | Rapporto tra due numeri come percentuale o ratio, con centro sulla media o sulla parità. |
+| **Predominance** | Colora in base a quale di più attributi omogenei è il maggiore; la trasparenza codifica il margine. |
+| **Forza della predominanza** | Lo scarto tra il valore predominante e il secondo; guida la trasparenza del simbolo. |
+| **Relationship** | Mappa bivariata che incrocia due attributi normalizzati in una griglia di colori. |
+| **Charts** | Torte o ciambelle proporzionali che mostrano le proporzioni interne a ciascuna feature. |
+| **Dot Density** | Punti dentro i poligoni per rappresentare conteggi; ogni punto vale N unità. |
+| **Heat Map** | Superficie continua di densità relativa dei punti, opzionalmente pesata su un campo numerico. |
+| **Clustering** | Aggregazione dei punti al volo, ricalcolata per estensione, che conserva la simbologia esistente. |
+| **Continuous timeline** | Stile per campi data che mostra quando è avvenuto un evento. |
+| **Age** | Stile per campi data che mostra una durata, rispetto a oggi, a una data scelta o a un secondo campo data. |

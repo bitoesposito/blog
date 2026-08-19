@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "postbuild": "if grep -rq '/_image?' dist --include='*.html'; then echo 'ERRORE: dist contiene URL /_image, immagini non ottimizzate a build time: non deployare' >&2; exit 1; fi",
     "preview": "astro preview",
     "astro": "astro"
   },

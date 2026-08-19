@@ -1,0 +1,127 @@
+---
+title: "Smart mapping"
+description: "Come il tipo di campo determina lo stile suggerito, il workflow in tre passi, istogramma e breaks, temi e opzioni di stile"
+pubDate: 2026-08-19
+tags: ['formazione', 'esri', 'arcgis', 'arcgis-online', 'cartografia']
+authors: ['vitoesposito']
+order: 9
+---
+
+## Che cos'è smart mapping
+
+**Smart mapping** è il meccanismo con cui Map Viewer, in ArcGIS Online e ArcGIS Enterprise, simbolizza un layer. Non è una galleria di preset: è un sistema che **legge le caratteristiche dell'attributo scelto** e propone gli stili di rappresentazione che hanno senso per quel tipo di dato, con parametri iniziali calcolati sulla distribuzione statistica dei valori.
+
+L'obiettivo dichiarato è duplice: dare a chi non ha formazione cartografica un punto di partenza già ragionevole, e dare a chi ce l'ha un accesso rapido a tecniche che altrimenti richiederebbero configurazione manuale — mappe bivariate, dot density, predominanza.
+
+Si trova selezionando il layer nel pannello **Layers** a sinistra e aprendo **Styles** nella toolbar di destra.
+
+## Cosa lo rende "smart"
+
+Appena si sceglie un attributo, smart mapping ne esamina il **tipo di campo** e restringe le proposte agli stili compatibili. È una regola di inferenza, e conoscerla serve sia a prevedere il suggerimento sia a capire quando ignorarlo.
+
+| Attributo scelto | Tipo | Stile suggerito |
+|---|---|---|
+| Nessuno | — | **Location (single symbol)** |
+| Nome, categoria, codice | String / text | **Types (unique symbols)** |
+| Conteggio, totale | Integer | **Counts and Amounts (size)** |
+| Percentuale, tasso, media, indice | Double / float | **Counts and Amounts (color)** |
+| Data, timestamp | Date | **Continuous timeline**, **Age** |
+| Due o più numerici | Integer / double | **Color and Size**, **Compare A to B**, **Relationship**, **Predominance**, **Dot Density**, **Charts** |
+
+Il ragionamento sotto la tabella non è arbitrario, ed è la regola cartografica più importante da interiorizzare:
+
+- un **conteggio** va rappresentato con la **dimensione**. Un valore assoluto sommabile ha senso come area del simbolo;
+- un **valore normalizzato** — percentuale, tasso, densità, indice — va rappresentato con il **colore**.
+
+Smart mapping usa il tipo di campo come **approssimazione** di questa distinzione: un integer *tende* a essere un conteggio, un float *tende* a essere un valore normalizzato. L'approssimazione può sbagliare. Un tasso arrotondato e salvato come integer riceverà il suggerimento della dimensione, che è la scelta sbagliata; una popolazione salvata come double riceverà il colore, e produrrà la classica mappa in cui i comuni grandi sembrano più popolosi solo perché sono più grandi.
+
+Il suggerimento va quindi letto per quello che è: un punto di partenza calcolato su un indizio, non una decisione presa al posto di chi fa la mappa.
+
+Si possono mappare **fino a 10 attributi** contemporaneamente, e il numero di attributi scelti è il secondo fattore che determina quali stili compaiono.
+
+## Il workflow in tre passi
+
+### 1. Scegliere gli attributi
+
+Si aggiunge un campo con **+ Field**. Il pannello di ricerca trova i campi per nome o per alias.
+
+Accanto a ciascun campo c'è il pulsante **informazioni**, che è il punto più sottovalutato dell'interfaccia. Mostra:
+
+- **tipo** del campo e **alias**;
+- **descrizione**, se il proprietario del layer l'ha compilata (nei layer ben documentati arriva a contenere la formula con cui il campo è stato calcolato);
+- un **valore di esempio** e il **numero di record**;
+- per i campi numerici: **numero di decimali**, **media**, **deviazione standard**, **minimo** e **massimo**.
+
+Sono le stesse informazioni che altrimenti si andrebbero a cercare nella tabella attributi o in un documento di metadati. Guardarle prima di mappare evita di scoprire a valle che il campo conteneva `-9999` come valore di *no data*.
+
+Sostituire un campo con un altro è immediato, e le opzioni di stile cambiano di conseguenza.
+
+### 2. Provare uno stile
+
+Scelto l'attributo, smart mapping applica lo stile suggerito e ne elenca gli alternativi. Il passaggio da uno all'altro è un clic, e la mappa reagisce immediatamente.
+
+La domanda "quale stile scegliere" non ha una risposta a priori: **ogni stile ha i suoi bias, i suoi punti di forza e i suoi limiti**, e la ragione per cui l'esplorazione è a basso costo è precisamente che serve provarli. Cinque minuti passati a scorrere gli stili su un dataset nuovo dicono più di qualsiasi ispezione della tabella.
+
+### 3. Esplorare le opzioni di stile
+
+`Style options` apre i parametri dello stile corrente. È il passo che viene saltato più spesso, e quello che separa una mappa leggibile da una mappa accettata così com'è.
+
+Gli elementi ricorrenti in tutti gli stili numerici:
+
+| Elemento | A cosa serve |
+|---|---|
+| **Istogramma** | Mostra la distribuzione dei valori, con media (`x`), deviazione standard, minimo e massimo. È lo strumento con cui si decide cosa la mappa deve enfatizzare. |
+| **Handle / breaks** | Le maniglie sull'istogramma delimitano l'intervallo di valori su cui colore o dimensione vengono distribuiti. Si trascinano o si digitano. |
+| **Size range** | L'intervallo di dimensioni dei simboli, in pixel. |
+| **Symbol style** | Forma, colore, contorno, trasparenza, rotazione. |
+| **Theme** | Quale parte della distribuzione enfatizzare: alto, basso, sopra la media, estremi. |
+
+### L'ordine conta: prima i numeri, poi l'aspetto
+
+La sequenza corretta è **esplorare i numeri, poi rifinire colori e dimensioni**. La tendenza naturale è l'opposto — si scelgono prima i colori, perché danno un riscontro visivo immediato — e produce mappe che sembrano curate senza raccontare niente.
+
+Il motivo è che **i breaks determinano la storia, il colore la può solo accentuare o nascondere**. Una scala di colori perfetta applicata a breaks insensati non rivela alcun pattern; breaks scelti su valori che significano qualcosa nel mondo reale — una media nazionale, una soglia normativa, un obiettivo — funzionano anche con colori mediocri.
+
+## I default statistici
+
+I parametri iniziali non sono valori arbitrari, e sapere da dove vengono aiuta a decidere se tenerli.
+
+- Negli stili basati sul **colore** i due handle sono posizionati a **una deviazione standard sopra e sotto la media**. Su una distribuzione normale questo significa che circa il **68%** dei valori riceve un colore proporzionale, mentre le codine estreme ricevono il colore terminale della scala. La scelta serve a non far consumare tutta la variazione cromatica dagli outlier.
+- Negli stili basati sulla **dimensione** con tema *Above*, gli handle sono posizionati sulla **media** e sul **massimo**, per la stessa ragione: limitare l'effetto dei valori estremi sulla scala dimensionale.
+- Le dimensioni dei simboli si **adattano automaticamente allo zoom**, così che la mappa resti leggibile a scale diverse.
+
+Un default non è una decisione: è la posizione da cui iniziare a spostare le maniglie.
+
+## Il basemap neutro
+
+Vale per ogni stile tematico: il basemap va scelto **prima**, e va scelto neutro. Le opzioni di riferimento sono **Human Geography Map** e **Light Gray Canvas**, entrambe reperibili nel Living Atlas dal fondo del pannello Basemaps.
+
+Due ragioni tecniche, non estetiche:
+
+- sono **quasi privi di colore**, in grigi, neri e bianchi. Un basemap colorato compete con il layer tematico per l'attenzione, e i colori del tema perdono significato quando ce ne sono altri accanto che non ne hanno;
+- tengono **etichette e idrografia su un livello separato**, disegnato **sopra** il layer tematico. I nomi delle città restano leggibili invece di finire coperti dal tema. Human Geography mette sopra anche l'acqua, quindi laghi e fiumi restano riconoscibili.
+
+Prima che questi basemap esistessero, il compromesso era applicare trasparenza al layer tematico, che significa diluire i colori del tema. Non serve più.
+
+Se in un'organizzazione i basemap neutri non compaiono nell'elenco, è l'administrator a controllare quali basemap sono disponibili nel pannello.
+
+## Il ruolo di chi fa la mappa
+
+Smart mapping calcola default sensati; non sa di cosa parla il dato. La conoscenza del soggetto è ciò che trasforma un valore statistico in un valore significativo: la media di una distribuzione è un punto di partenza ragionevole per centrare una scala divergente, ma una media nazionale, una soglia di legge o un obiettivo di programma raccontano qualcosa che la media del dataset non racconta.
+
+Il corollario operativo è che **i default non vanno consegnati come prodotto finito**. La cartografia automatica non esiste: i numeri che finiscono in legenda sono una decisione, e vanno presi da chi conosce il tema.
+
+Nota pratica: le modifiche alle opzioni di stile si annullano con **Cancel**, che ripristina l'impostazione precedente. Esplorare non costa nulla.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Smart mapping** | Sistema di simbolizzazione che suggerisce stili e parametri iniziali in base al tipo e alla distribuzione dell'attributo scelto. |
+| **Drawing style** | Lo stile di rappresentazione applicato a un layer: come attributi e geometrie diventano colore, dimensione, forma. |
+| **Theme** | Variante di uno stile che sposta l'enfasi su una parte della distribuzione (alto, basso, sopra, estremi). |
+| **Break / handle** | Il valore che delimita l'intervallo su cui colore o dimensione vengono distribuiti. |
+| **Size range** | Intervallo in pixel entro cui variano le dimensioni dei simboli. |
+| **Valore normalizzato** | Valore reso comparabile tra unità di dimensione diversa: percentuale, tasso, densità, media, indice. |
+| **Basemap neutro** | Basemap privo di colore e con etichette su livello separato, pensato per stare sotto un layer tematico. |
+| **Living Atlas** | Libreria Esri da cui provengono i basemap neutri e i layer di riferimento. |
