@@ -24,7 +24,7 @@ export const SITE: Site = {
   author: 'Vito Esposito',
   locale: 'it-IT',
   featuredPostCount: 3,
-  featuredProjectCount: 3,
+  featuredProjectCount: 4,
   featuredEducationCount: 3,
   postsPerPage: 5,
 }
