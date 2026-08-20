@@ -1,0 +1,292 @@
+---
+title: "ArcGIS API for Python"
+description: "Moduli, struttura di uno script, metodi di autenticazione, protezione delle credenziali e recupero degli item"
+pubDate: 2026-08-20
+tags: ['formazione', 'esri', 'arcgis', 'python', 'sviluppo']
+authors: ['vitoesposito']
+order: 13
+---
+
+## Che cos'è
+
+**ArcGIS API for Python** è una libreria che porta le capacità del web GIS dentro l'ecosistema Python, dialogando con un'organizzazione ArcGIS Online o ArcGIS Enterprise. È leggera e serve a tre cose: analizzare dati spaziali, amministrare il proprio web GIS, fare spatial data science. Si usa in script o in notebook interattivi, tipicamente **ArcGIS Notebooks**.
+
+Il modello di funzionamento è quello di un client REST con oggetti al posto delle URL: si impostano le proprietà di un oggetto Python, l'API traduce in una **richiesta** a un servizio pubblicato, il servizio elabora e restituisce una **risposta** che l'oggetto rappresenta. Non è una libreria di calcolo locale: la gran parte del lavoro avviene sul server.
+
+Cosa permette di fare:
+
+- accedere, creare, amministrare e pubblicare contenuti dell'organizzazione e della community;
+- eseguire analisi vettoriale e raster;
+- visualizzare dati in web map e web scene, incluso il rendering in memoria;
+- automatizzare processi e scalare workflow.
+
+L'ultimo punto è la ragione principale per cui vale impararla: tutto ciò che nel portale si fa a mano, item per item, qui si fa in ciclo.
+
+## La mappa dei moduli
+
+Le funzionalità sono organizzate in **moduli**, che raggruppano classi, metodi e oggetti per capacità. Sapere quale modulo copre cosa è il primo passo per pianificare uno script.
+
+### `gis`, il modulo di ingresso
+
+È il modulo centrale, e serve a due cose.
+
+**Accesso all'organizzazione.** Contiene la classe `GIS`, che è il punto di ingresso: un oggetto `GIS` rappresenta **una** singola deployment ArcGIS Online o ArcGIS Enterprise. Nulla di ciò che riguarda contenuti dell'organizzazione è raggiungibile prima di averlo istanziato.
+
+**Gestione delle risorse.** L'oggetto `GIS` espone quattro **helper object**, che sono i resource manager dell'organizzazione:
+
+| Helper | Gestisce |
+|---|---|
+| `content` | Item: dati, mappe, app, layer. |
+| `users` | Utenti. |
+| `groups` | Gruppi. |
+| `datastore` | Datastore. |
+
+Sono questi oggetti a permettere di creare, aggiornare, cancellare e interrogare. Il modulo `gis` contiene anche un **map widget** per visualizzazioni di base.
+
+### Gli altri moduli
+
+| Modulo | Copre |
+|---|---|
+| `map` | Visualizzazione e proprietà della mappa: classe `Map` per il 2D, `Scene` per il 3D, `Form` per il comportamento di editing. |
+| `layers` | Servizi e i loro layer; la classe `Service` restituisce il tipo di oggetto appropriato per ciascun servizio. |
+| `features` | Dati vettoriali: `Feature`, `FeatureSet`, `FeatureLayer`, `FeatureCollection`. Da qui si leggono i dati in uno **Spatially Enabled DataFrame** con i metodi `from_layer`, `from_featureclass`. |
+| `raster` | Raster e imagery layer; un oggetto raster referenzia un dataset e ne espone le proprietà. In `arcgis.raster.functions` stanno le funzioni di elaborazione. |
+| `geocoding` | Geocodifica di un singolo indirizzo o **batch** su un array, filtro dei risultati per estensione o prossimità, **reverse geocoding**. |
+| `geoprocessing` | Importazione di toolbox come moduli Python nativi con `import_toolbox()`. |
+| `network` | Routing, distance allocation, service area e altra analisi di rete. |
+| `geoenrichment` | Dati demografici e aree giurisdizionali di ArcGIS Business Analyst: enrichment, standard geography query, report. |
+| `realtime` | Feed in tempo reale, elaborazione continua di stream, stream layer. |
+| `learn` | Deep learning: classificazione di feature e di pixel, object detection, NLP, forecasting su serie temporali. |
+
+Nel sistema, ogni servizio di geoprocessing è rappresentato come un **toolbox** che organizza tool. I web tool creati e condivisi dall'organizzazione si cercano con `gis.content.search()` come qualunque altro item: sono item, non entità speciali.
+
+Un workflow reale usa quasi sempre più moduli insieme. Aggiornare gli attributi di un feature layer ospitato richiede `gis` per connettersi e cercare, `features` per operare sul layer. Una classificazione di land cover richiede `raster` per ritagliare e calcolare indici e `learn` per addestrare il modello. Un'app di visualizzazione richiede `map` e `layers`.
+
+### Interrogazione
+
+Il metodo `query()` esegue query **SQL o spaziali lato server**: è la capacità di subsetting principale e la supportano molti moduli.
+
+- con `features`, `query()` su una tabella o un feature layer restituisce record con attributi, geometria o entrambi;
+- con `raster`, i metodi di query restituiscono forma e area del contorno, informazioni GPS e di orientamento, altre proprietà; servono anche a filtrare una collezione di item raster;
+- con `gis`, le query sugli oggetti raccolgono metriche sulle risorse.
+
+Altre operazioni di subsetting: `filter`, `clip`, `subset`, `search`.
+
+Che la query sia lato server è il dettaglio che conta per le performance: filtrare nella `query()` invece di scaricare tutto e filtrare in Python cambia l'ordine di grandezza dei dati trasferiti.
+
+### Integrazione con l'ecosistema Python
+
+L'API si integra con **pandas DataFrame**, **GeoJSON** e vari formati di file. Lo **Spatially Enabled DataFrame** (SEDF) è il ponte: un DataFrame pandas con una colonna di geometria, che rende i dati GIS manipolabili con gli strumenti a cui si è abituati. In ArcGIS Notebooks si possono importare librerie terze per elaborazione, visualizzazione e modellazione — è così che si affrontano problemi statistici che l'API da sola non copre.
+
+## Struttura di uno script
+
+L'ordine consigliato, valido sia per script sia per notebook:
+
+| Sezione | Contenuto |
+|---|---|
+| **1. Import** | Moduli e classi dell'API, più i pacchetti Python. Un modulo va importato prima di poterne usare classi e metodi. |
+| **2. Autenticazione** | Connessione all'organizzazione. Nessun contenuto è accessibile prima. |
+| **3. Accesso ai contenuti** | Assegnazione a variabili di tutti gli item e le risorse che serviranno. |
+| **4. Esecuzione** | I task veri e propri: amministrazione, pubblicazione, analisi, visualizzazione. È la sezione più grande. |
+
+La terza sezione è quella che si tende a saltare, distribuendo i riferimenti agli item lungo tutto il codice. Concentrarli in un punto ha due effetti pratici: gli input sono tracciabili, e chi riusa lo script cambia i parametri in un posto invece di cercarli in cinquanta celle.
+
+Alcuni vincoli d'ordine sono reali — il modulo `gis` va importato prima di poter autenticare — altri sono convenzione, e le eccezioni esistono.
+
+Un esempio completo, elaborazione raster:
+
+```python
+# 1. Import
+from arcgis.gis import GIS
+from arcgis.raster.functions import stretch, extract_band
+
+# 2. Autenticazione
+org_portal = GIS("https://someportal.domain.com/somewebadapter",
+                 username='some_user',
+                 password='somepassword123')
+
+# 3. Accesso ai contenuti
+img_srv = org_portal.content.search("ImgSrv_Landsat_Idaho_2023")[0]
+idaho_lyr = img_srv.layers[0]
+
+# 4. Esecuzione
+idaho_extract = extract_band(idaho_lyr, [7, 5, 2])
+fire_scars = stretch(idaho_extract,
+                     stretch_type='percentclip',
+                     min_percent=0.1,
+                     max_percent=0.1,
+                     gamma=[1, 1, 1],
+                     dra=True)
+fire_scars_result = fire_scars.save('FireScars_2023')
+```
+
+`extract_band` seleziona le bande — la combinazione 7, 5, 2 evidenzia le cicatrici da incendio — `stretch` migliora la resa visiva, `save` pubblica il risultato come nuovo image service nell'organizzazione. La password in chiaro nella riga di autenticazione è esattamente ciò che la sezione seguente serve a evitare.
+
+## Autenticazione
+
+Qualunque interazione con un'organizzazione passa da un metodo di autenticazione. La scelta si fa su quattro domande:
+
+- che livello di accesso hanno gli utenti che eseguiranno il codice;
+- quali sono i **privilegi minimi** necessari al workflow;
+- quali requisiti di password e sicurezza impone l'organizzazione;
+- il codice può essere eseguito **interattivamente**?
+
+L'ultima domanda è quella decisiva per l'automazione, e torna più sotto.
+
+| Metodo | Come funziona | Esempio |
+|---|---|---|
+| **Anonimo** | Consente di interrogare e visualizzare mappe e layer condivisi pubblicamente. Non permette di creare o modificare contenuti né di eseguire analisi. | `gis = GIS()` per ArcGIS Online; `gis = GIS('https://.../portal')` per un Enterprise che consente l'uso anonimo. |
+| **ArcGIS Pro** | Usa il portale attivo nell'app ArcGIS Pro, senza passare credenziali. Con licenze named user e *Sign Me In Automatically* attivo, il token resta valido per due settimane di default anche a Pro chiuso. | `gis = GIS('pro')`, oppure `gis = GIS('home')` per riusare una connessione già autenticata. |
+| **Built-in** | Identity store preconfigurato di ArcGIS Online ed Enterprise: username e password come sul sito. Le capacità corrispondono a user type e ruolo dell'account. | `gis = GIS(username='...', password='...')`. Per Enterprise **serve** anche `url=`, altrimenti si finisce su ArcGIS Online. |
+| **Enterprise identity store** | Account e gruppi aziendali per controllare l'accesso. Web-tier con LDAP, eventualmente protetta con PKI o IWA; portal-tier con Active Directory o LDAP. | `gis = GIS('https://.../webadapter', 'utente', 'password')`, oppure con `key_file=` e `cert_file=` per PKI. |
+| **OAuth 2.0** | L'API agisce come applicazione nativa serverless. Richiede un **client ID**, assegnato alle applicazioni registrate nell'organizzazione. Login a più passaggi: si istanzia `GIS` col client ID, il browser apre la pagina di sign-in del provider, si incolla in cella il codice ottenuto. Richiede interattività. | `gis = GIS('https://.../portal', client_id='f8cRxbP3NO8bf9ag')` |
+
+Nota di convenzione: `gis` è il nome usuale per l'istanza, ma è solo una convenzione. Si incontra codice che la chiama `portal`, `org` o con nomi specifici come `county_gis`.
+
+### Proteggere le credenziali
+
+Le credenziali non vanno scritte nel notebook o nello script, in particolare quando il codice è condiviso o vive in una posizione condivisa. Due meccanismi.
+
+**Keystroke masking.** Omettendo il parametro `password`, l'API invoca internamente il modulo `getpass` di Python: l'esecuzione si sospende e attende l'input in un campo mascherato.
+
+```python
+gis = GIS('https://www.mysite.com/portal', username='fakeaccount')
+# Enter password: ········
+```
+
+Si può anche importare `getpass` direttamente per mascherare qualunque altro parametro, username o URL compresi.
+
+**Profilo persistente.** Un profilo memorizza le credenziali — username, password, client ID, chiave e certificato, URL — nel **password manager del sistema operativo**. Si possono creare più profili e usarli in parallelo.
+
+```python
+gis = GIS(profile='your_stored_profile')
+```
+
+Il criterio di scelta tra i due non è la comodità ma **se il codice deve girare senza una persona davanti**:
+
+- il masking richiede interattività a runtime, quindi è inutilizzabile in uno script schedulato o headless;
+- il profilo funziona senza intervento, ed è quindi l'unico dei due compatibile con l'automazione.
+
+## Recuperare gli item
+
+Ottenuta la connessione, gli item si raggiungono chiamando un metodo di accesso **sull'helper object del resource manager corretto**: `gis.content.search(...)` per i contenuti, `gis.users.search(...)` per gli utenti, e così via. I privilegi dell'account determinano cosa è raggiungibile.
+
+I due metodi principali sono `get()` e `search()`, e la differenza tra loro non è di comodità.
+
+### `get()`
+
+Prende **un solo argomento**, l'item ID, e restituisce **esattamente una** corrispondenza.
+
+```python
+Hanoi_layer = gis.content.get('faf0e3a02a8c4b8c9a8d5d1')
+```
+
+### `search()`
+
+Serve a esplorare e a recuperare più item. Accetta più argomenti e restituisce una **lista** ordinata per pertinenza.
+
+La `query` è un insieme di clausole in sintassi SQL: operatori booleani `AND`, `OR`, `NOT`, caratteri speciali come il wildcard `*`, ricerca su proprietà con la forma `titolo:`, `owner:`, `type:`.
+
+```python
+gis.content.search("footprint AND type: Image*", max_items=40)
+```
+
+Qui `footprint` cerca il termine in titolo, tag e metadati; `AND` impone che valgano entrambe le clausole; `type: Image*` filtra sul tipo di item con un wildcard, così da includere image layer e image collection; `max_items=40` limita i risultati.
+
+Altri termini utili: `max_items` e `max_users` limitano, `outside_org=True` estende la ricerca a item ospitati in altre organizzazioni, `item_type` restringe al tipo, `sort_field` ordina.
+
+I risultati sono una lista Python, con **indicizzazione da zero**:
+
+```python
+advanced_users = gis.users.search("*_admin OR role:org_publisher", sort_field="created", max_users=5)
+target_user = advanced_users[2]
+```
+
+### La differenza che conta: fuzzy contro deterministico
+
+`search()` è **programmaticamente fuzzy**: gli item vengono restituiti in base a un punteggio di pertinenza. Due esecuzioni della stessa query possono dare risultati leggermente diversi, e diversi da quelli di altri strumenti di ricerca.
+
+Da qui la regola operativa: **`search()` per esplorare, `get()` per automatizzare**. Uno script che dipende da `search(...)[0]` è uno script che un giorno lavorerà sull'item sbagliato senza segnalare nulla — perché la posizione in lista non è garantita. Se l'item è noto, si usa il suo ID.
+
+Quando serve precisione dentro una ricerca, il parametro `filter` di `ContentManager.search()` è **deterministico**: accetta clausole in stile SQL come `query` ma restituisce risultati precisi e consistenti. La strategia consigliata è **query larga, filtro stretto**: partire ampi per capire cosa c'è, poi restringere con `filter` o con una list comprehension sui risultati.
+
+| | `get()` | `search()` |
+|---|---|---|
+| Recupera risorse organizzative | sì | sì |
+| Recupera data item | sì | sì |
+| Più risultati | no | sì |
+| Più termini di ricerca | no | sì |
+| Risultato univoco, non fuzzy | sì | no |
+
+## Proprietà e layer di un item
+
+Recuperato un item, le sue **proprietà** si leggono con la dot notation:
+
+```python
+print(Hanoi_layer.title)   # Hanoi City Districts
+print(Hanoi_layer.id)      # faf0e3a02a8c4b8c9a8d5d1
+print(Hanoi_layer.owner)   # atlas_admin
+```
+
+Le proprietà non servono solo a leggere: sono il meccanismo con cui si amministra. Un administrator alza i privilegi di un utente assegnando un nuovo valore alla proprietà del ruolo; un analista usa la proprietà `fields` di un item per calcolare statistiche. Altre di uso frequente: `type`, `tags` — utile per organizzare e fare audit dei contenuti pubblicati — e `layers`.
+
+Se l'item contiene layer, anche questi sono una lista con indicizzazione da zero, e dal layer si scende alle sue proprietà:
+
+```python
+incidents.layers                              # [<FeatureLayer url: ".../FeatureServer/0">]
+incidents_lyr = incidents.layers[0]
+incidents_lyr.properties.fields               # campi, tipi di dato, alias
+incidents_lyr.properties.defaultVisibility    # True
+```
+
+`properties.fields` è il punto di partenza concreto di qualsiasi analisi: dice quali campi esistono, di che tipo sono e come si chiamano davvero, informazione che altrimenti si va a cercare nella item page.
+
+Nei notebook la **tab completion** elenca proprietà e metodi disponibili su un oggetto: è il modo più rapido di esplorare un'API che non si conosce a memoria.
+
+## Il map widget
+
+L'oggetto `GIS` include un widget di mappa per l'anteprima dei contenuti:
+
+```python
+project_map = gis.map("Puget Sound, WA")
+project_map.content.add(incidents)
+```
+
+Passare una stringa di località imposta l'estensione. Ogni nuovo argomento aggiorna il widget già renderizzato.
+
+Le opzioni di geovisualizzazione sono limitate: serve a **verificare** che il dato recuperato sia quello giusto e stia dove deve stare, prima di passare alla visualizzazione vera con i moduli dedicati.
+
+## Il workflow di scrittura del codice
+
+Cinque fasi, esplicitamente **non lineari**: si torna indietro ogni volta che si incontra un ostacolo.
+
+| Fase | Cosa comporta |
+|---|---|
+| **Plan** | Cosa deve fare il codice, chi lo eseguirà, in che formato girerà (notebook, script, altro), quali permessi, credits e metodi di connessione servono. |
+| **Explore** | Leggere codice di altri: documentazione, sample notebook, tutorial con task e dati simili ai propri. |
+| **Develop** | Scrivere codice con struttura e contesto chiari. Nei notebook, sfruttare il markdown per intestazioni di sezione e spiegazioni; commentare i blocchi. |
+| **Validate** | Testare, fare debug e correggere durante tutto lo sviluppo. Piccole modifiche a valori o parametri si propagano in punti inattesi. |
+| **Deploy** | Eseguire nell'ambiente finale, possibilmente **a stadi**: prima su contenuti a basso rischio, poi sul database che usano tutti. |
+
+Due osservazioni che valgono più della lista. La prima: il codice ben documentato serve a chi lo userà dopo, **incluso se stessi** — un notebook con intestazioni markdown e commenti si rilegge, uno senza si riscrive. La seconda: il deploy a stadi non è prudenza generica ma il modo di far emergere i problemi quando costano poco; uno script che cancella item va provato su contenuti che non servono a nessuno.
+
+Le fasi si attraversano in entrambe le direzioni. Un problema di performance scoperto in deploy rimanda a explore per cercare tecniche di batch processing, poi a develop per applicarle, poi di nuovo a validate.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **API** | Interfaccia che costruisce richieste, le invia a un server remoto e ne riporta le risposte. |
+| **Classe `GIS`** | Punto di ingresso dell'API; un'istanza rappresenta una singola organizzazione ArcGIS Online o Enterprise. |
+| **Helper object** | I resource manager esposti dall'oggetto `GIS`: `content`, `users`, `groups`, `datastore`. |
+| **Spatially Enabled DataFrame (SEDF)** | DataFrame pandas con geometria; il ponte tra l'API e l'ecosistema dati Python. |
+| **`query()`** | Metodo che esegue query SQL o spaziali lato server. |
+| **`import_toolbox()`** | Funzione che importa un toolbox di geoprocessing come modulo Python. |
+| **Keystroke masking** | Protezione delle credenziali via `getpass`: richiede esecuzione interattiva. |
+| **Profilo persistente** | Credenziali memorizzate nel password manager del sistema operativo; funziona headless. |
+| **`get()`** | Recupera un item dal suo ID; risultato univoco e deterministico. |
+| **`search()`** | Cerca item per query e proprietà; risultato multiplo e fuzzy. |
+| **Fuzzy** | Ricerca basata su punteggio di pertinenza, i cui risultati possono variare tra esecuzioni. |
+| **`filter`** | Parametro di `search()` deterministico, per risultati precisi e consistenti. |
+| **Map widget** | Mappa di anteprima fornita dall'oggetto `GIS`, con opzioni di visualizzazione limitate. |
+| **ArcGIS Notebooks** | Ambiente notebook integrato, con accesso a librerie Python terze. |

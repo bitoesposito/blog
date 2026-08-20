@@ -1,0 +1,244 @@
+---
+title: "ArcGIS Arcade"
+description: "Il linguaggio di espressioni di ArcGIS: profili, funzioni, variabili, FeatureSet e attributi calcolati al volo"
+pubDate: 2026-08-20
+tags: ['formazione', 'esri', 'arcgis', 'arcade', 'sviluppo']
+authors: ['vitoesposito']
+order: 12
+---
+
+## Che cos'è Arcade
+
+**ArcGIS Arcade** è un linguaggio di espressioni leggero, trasversale al sistema ArcGIS. Un'espressione viene **valutata** e produce **un valore**, che diventa contenuto della mappa: un'etichetta, un colore, il testo di un pop-up, il risultato di una regola.
+
+Il modello mentale corretto è quello del foglio di calcolo: una formula in una cella che, a partire dai dati disponibili, produce un valore. Con due differenze sostanziali:
+
+- gli input non sono solo attributi ma anche **geometrie**, quindi un valore può nascere da un'operazione spaziale come un'intersezione;
+- gli attributi derivati **non devono essere permanenti**. Vivono nell'applicazione, calcolati a ogni valutazione, senza modificare il dato sottostante.
+
+Questa seconda proprietà è quella che cambia l'approccio: dove servirebbe un campo calcolato — e quindi un'alterazione del dato, un job di aggiornamento, un problema di sincronizzazione — spesso basta un'espressione. Arcade può comunque essere usato anche nei field calculation, quando il campo persistente serve davvero.
+
+Vincolo di base: **un'espressione deve restituire un valore**, sia che sia una riga sola o un calcolo complesso.
+
+I tipi di dato che può produrre: array, boolean, date, dictionary, geometry, number, text.
+
+## Dove si usa
+
+Arcade è nato per etichette, simbologia e pop-up, e si è esteso molto oltre. Gli usi attuali:
+
+- formattare elementi e definire regole condizionali di visibilità dei form in **ArcGIS Dashboards** e **ArcGIS Field Maps**;
+- definire **attribute rules** sui dati;
+- calcolare valori di campo;
+- valutare **vincoli** sulle feature;
+- eseguire geoanalytics e configurare **geotrigger**;
+- personalizzare il rendering nelle web app costruite con **ArcGIS Maps SDK for JavaScript**.
+
+La portabilità è il punto: la stessa espressione che genera un'etichetta in ArcGIS Pro genera la stessa etichetta in ArcGIS Online e in ArcGIS Enterprise. Le espressioni sono in gran parte interscambiabili tra applicazioni e dispositivi.
+
+## I profili
+
+Un **profilo** è il contesto di esecuzione di un'espressione, e definisce tre cose:
+
+1. **dove** l'espressione può essere eseguita;
+2. quali **function bundle** sono disponibili;
+3. quali **profile variable** danno accesso ai dati.
+
+È il concetto che spiega perché un'espressione copiata da un esempio non funziona altrove: in un profilo diverso mancano le funzioni o le variabili che usa. Prima di scrivere, la domanda è "in quale profilo sto".
+
+I profili includono: `Alias`, `Attribute rules`, `Dashboard`, `Dictionary renderer`, `Feature Z`, `Field calculation`, `Field mapping`, `Form calculation`, `Form constraint`, `Labeling`, `Layout`, `Model builder`, `Popups`, `QuickCapture`, `Visualization`.
+
+## Editor e debugging
+
+In ArcGIS Online e ArcGIS Pro le espressioni si scrivono nell'**Arcade editor**. Esiste anche l'**Arcade Playground**, un'applicazione web che serve da ambiente di prova isolato — utile per verificare la logica senza toccare una mappa. Le espressioni possono inoltre essere passate come parametro di input a strumenti di geoprocessing e di analisi.
+
+Nell'editor gli strumenti di diagnosi sono due, e coprono esigenze diverse:
+
+| Strumento | A cosa serve |
+|---|---|
+| **Run** | Valuta l'espressione e mostra il valore prodotto. Serve a verificare che sia sintatticamente valida e che l'output sia quello atteso. |
+| **`Console()`** | Registra messaggi durante la valutazione. Serve a ispezionare i **valori intermedi**, quelli che non compaiono nel risultato finale. |
+
+`Console()` è ciò che rende un'espressione debuggabile: senza, l'unica informazione disponibile è il valore finale, e su un calcolo a più passaggi non basta a capire dove si è rotto. L'output si legge nella scheda dedicata, separata da quella del risultato.
+
+## Le componenti del linguaggio
+
+Le *language feature* si raggruppano in tre famiglie: funzioni, variabili, cicli.
+
+### Funzioni
+
+Sono processi predefiniti che manipolano valori in base ai parametri ricevuti; il numero e il tipo di parametri variano da funzione a funzione.
+
+Le funzioni sono organizzate in **function bundle**, e la disponibilità dipende dal profilo:
+
+- il bundle **Core** è disponibile in **tutti** i profili: costanti, funzioni su array, di debugging, sulle feature, matematiche, di testo e altre;
+- alcuni profili aggiungono bundle ulteriori: **data access**, **database**, **geometry**, **portal access**, **track**.
+
+Il bundle *geometry* è quello che abilita le operazioni spaziali; il bundle *data access* quello che permette di raggiungere layer diversi da quello corrente. Se un'espressione deve leggere un altro layer, il profilo deve concederlo.
+
+### Variabili
+
+Le variabili sono riferimenti a dati riutilizzabili in espressioni complesse. Hanno **scope**: una variabile definita dentro una funzione ha scope **locale** e può mascherare una omonima globale; una con scope **globale** è visibile anche fuori.
+
+Le **costanti** sono valori immutabili offerti dall'editor: `PI`, `Infinity`, e i valori di manipolazione del testo come `TextFormatting.NewLine`.
+
+Le **profile variable** sono l'accesso ai dati fornito dal profilo. Le principali: `$feature` per la feature corrente, `$map` per la mappa, `$datastore` per il datastore sottostante.
+
+L'accesso a un campo ha due forme equivalenti:
+
+```js
+$feature.field1
+$feature["field1"]
+```
+
+La seconda serve quando il nome del campo non è un identificatore valido — spazi, caratteri speciali — o quando è dinamico.
+
+### Cicli
+
+Due tipi:
+
+- **`for`** — esegue un blocco un numero definito di volte, oppure itera su un array o su un **FeatureSet**;
+- **`while`** — esegue un blocco finché una condizione resta vera.
+
+## Esempi di componenti
+
+Assegnazione di un campo a una variabile:
+
+```js
+var DEG = $feature.WIND_DIRECT
+```
+
+Chiamata di funzione con parametri — qui un filtro sulle feature in cui `class` vale `sensitive`:
+
+```js
+Filter($feature, "class = 'sensitive'")
+```
+
+Costante di formattazione, per un'etichetta su due righe:
+
+```js
+$feature.fName + TextFormatting.NewLine + $feature.IName
+```
+
+Iterazione con accumulo:
+
+```js
+var result = 0
+for (var z = 0; z < 100; z++) {
+    result += z;
+}
+return result
+```
+
+Un'espressione che combina i tre elementi — filtro, iterazione e funzione geometrica — per sommare l'area delle sole feature sensibili:
+
+```js
+var sensitiveFeatures = Filter(publicLandFeatures, "class = 'sensitive'");
+var totalArea = 0;
+for (var feature in sensitiveFeatures) {
+    totalArea += AreaGeodetic(feature, "square-kilometers");
+}
+return totalArea
+```
+
+Da leggere così: `"class = 'sensitive'"` è il **parametro** della funzione `Filter`, `publicLandFeatures` è il **layer** di partenza, e `for (var feature in sensitiveFeatures)` è ciò che itera su ogni feature filtrata. `AreaGeodetic` calcola l'area tenendo conto della curvatura terrestre, e questa è la parte che nessun campo precalcolato darebbe con la stessa flessibilità di unità.
+
+## Il pattern di base: attributo derivato per un pop-up
+
+Il caso più frequente è calcolare un valore che nel dato non esiste. Un esempio: la percentuale di nuclei familiari sotto la soglia di povertà, partendo dal conteggio e dal totale.
+
+```js
+var poverty_rate = $feature.households_blwpvty / $feature.total_households
+Console(poverty_rate)
+var poverty_percent = poverty_rate * 100
+Round(poverty_percent)
+```
+
+Tre cose da notare:
+
+- **una variabile non viene restituita se non la si restituisce**. Serve `return`, oppure — come nell'ultima riga — l'espressione finale il cui valore diventa il risultato;
+- il rapporto grezzo è un decimale poco leggibile: moltiplicato per cento e passato a `Round`, che di default arrotonda a **zero decimali**, diventa un numero presentabile;
+- `Console(poverty_rate)` resta nell'espressione a documentare il valore intermedio, visibile nella scheda Console e assente dal risultato.
+
+L'espressione va poi **nominata**. Nel testo del pop-up le espressioni si referenziano come `{expression/expr0}`, `{expression/expr1}` e così via, in ordine di creazione: con più di una espressione senza nome diventa impossibile capire quale si sta usando. Il nome compare nell'elenco dei campi durante la composizione del testo.
+
+Il testo del pop-up risultante mescola campi, testo statico ed espressioni:
+
+```text
+In {CNTYNAME}, {expression/expr0}% dei nuclei familiari vive in povertà.
+```
+
+Il lettore vede una frase; da dove arrivano i numeri non è visibile né rilevante per lui.
+
+## FeatureSet: leggere altri layer
+
+Un **FeatureSet** è una collezione di feature ottenuta da un layer della mappa o da un feature layer. È il meccanismo con cui un'espressione esce dalla feature corrente e accede ad **altri dati**: layer della web map, hosted layer, feature layer di un servizio.
+
+La funzione più usata li ottiene per titolo:
+
+```js
+var features = FeatureSetByName($map, 'Hiking trails', ['Trail name', 'Difficulty', 'Length'], True);
+return features;
+```
+
+| Parametro | Valore d'esempio | Significato |
+|---|---|---|
+| `featureSetCollection` | `$map` | Dove cercare il layer. |
+| `title` | `'Hiking trails'` | Il titolo del layer nella mappa. |
+| `fields` | `['Trail name', 'Difficulty', 'Length']` | Quali campi caricare. |
+| `includeGeometry` | `True` | Se caricare anche la geometria. |
+
+Gli ultimi due parametri non sono decorativi: chiedere solo i campi necessari e la geometria solo quando serve è la differenza tra un pop-up che si apre e uno che fa aspettare. La geometria va richiesta quando l'espressione fa operazioni spaziali.
+
+Il riferimento è **per titolo**, quindi rinominare un layer nella mappa rompe l'espressione. È il punto fragile di questo pattern e vale saperlo prima di scoprirlo.
+
+## Il pattern avanzato: aggregazione spaziale al volo
+
+Con FeatureSet e funzioni geometriche si ottiene l'equivalente di uno spatial join, calcolato al momento della visualizzazione e senza produrre alcun dato nuovo.
+
+Contare quante feature di un altro layer cadono nella feature corrente — quanti tornado hanno colpito ciascuna contea:
+
+```js
+var storms = FeatureSetByName($map, "MississippiTornadoes_2000")
+var countStorms = Count(Intersects($feature, storms))
+return countStorms
+```
+
+`Intersects(features, inputGeometry)` restituisce un FeatureSet, quello delle feature che intersecano la geometria data; `Count` lo conta. Qui `$feature` è la contea e `storms` il layer degli eventi.
+
+Sommare un attributo delle feature intersecanti, e formattarlo:
+
+```js
+var CountyDamage = Intersects($feature, FeatureSetByName($map, "MississippiTornadoes_2000"))
+var sumDamage = Sum(CountyDamage, "DamageEsti")
+return Text(sumDamage, '#,###')
+```
+
+`Sum` accetta un FeatureSet e il nome di un campo — o un'espressione SQL — e `Text` applica una formattazione: `'#,###'` inserisce i separatori delle migliaia, perché una cifra di danni senza separatori è illeggibile.
+
+Le due espressioni insieme alimentano un pop-up che è una frase, non una tabella:
+
+```text
+{NAME} in {STATE_NAME} ha avuto {expression/expr0} tornado,
+responsabili di ${expression/expr1} di danni nel periodo.
+```
+
+Il valore architetturale di questo pattern: **nessuna delle due grandezze esiste nel dato**. Non c'è un campo "numero di tornado" sulle contee da mantenere aggiornato, non c'è un job che ricalcola i totali quando arriva un nuovo evento. Aggiungendo eventi al layer, i pop-up delle contee cambiano da soli.
+
+Il rovescio della medaglia, che va valutato: il calcolo avviene **a ogni apertura del pop-up**. Su layer grandi o su intersezioni costose, ciò che si risparmia in manutenzione del dato lo si paga in latenza di interazione. La scelta tra attributo derivato e campo persistente si decide su questo, non per principio.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Arcade** | Linguaggio di espressioni di ArcGIS: valuta un'espressione e restituisce un valore. |
+| **Profilo** | Contesto di esecuzione di un'espressione; definisce function bundle e profile variable disponibili. |
+| **Function bundle** | Insieme di funzioni disponibili in un profilo; `Core` è sempre presente. |
+| **Profile variable** | Variabile fornita dal profilo per accedere ai dati: `$feature`, `$map`, `$datastore`. |
+| **Scope** | Visibilità di una variabile; una locale può mascherare una globale. |
+| **Costante** | Valore immutabile offerto dall'editor: `PI`, `Infinity`, `TextFormatting.NewLine`. |
+| **FeatureSet** | Collezione di feature ottenuta da un layer, per accedere a dati esterni alla feature corrente. |
+| **`FeatureSetByName`** | Funzione che ottiene un FeatureSet dal titolo del layer. |
+| **`Intersects`** | Funzione che restituisce il FeatureSet delle feature che intersecano una geometria. |
+| **`Console()`** | Funzione di debug che registra valori intermedi durante la valutazione. |
+| **Arcade Playground** | Ambiente web di prova per eseguire espressioni in isolamento. |
+| **Attributo derivato** | Valore calcolato dall'espressione a runtime, non persistito nel dato. |

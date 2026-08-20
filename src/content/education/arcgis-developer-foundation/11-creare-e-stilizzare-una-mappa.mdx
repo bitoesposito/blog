@@ -1,0 +1,183 @@
+---
+title: "Creare e stilizzare una mappa"
+description: "Il workflow di authoring in Map Viewer: basemap, layer, simbologia, effetti, aggregazione, pop-up e condivisione"
+pubDate: 2026-08-20
+tags: ['formazione', 'esri', 'arcgis', 'arcgis-online', 'cartografia']
+authors: ['vitoesposito']
+order: 11
+---
+
+## Il workflow in cinque passi
+
+Map Viewer è l'ambiente di authoring di ArcGIS Online: visualizzare e interrogare dati, produrre mappe data-driven, generalizzare o aggregare feature, unire dati di provenienza diversa, condividere.
+
+Le sue capacità di rilievo: basemap di riferimento autorevoli, inclusione di dati propri o condivisi da altri, smart mapping come punto di partenza cartografico, scorciatoie da tastiera, strumenti web di analisi gestiti centralmente, ArcGIS Arcade per personalizzare, e il modello di condivisione standard del portale.
+
+La costruzione di una mappa segue una sequenza fissa, e l'ordine non è arbitrario: ogni passo vincola quelli successivi.
+
+| Passo | Cosa si decide |
+|---|---|
+| **1. Basemap** | Lo sfondo che dice al lettore *dove* si trova. |
+| **2. Layer** | Gli **operational layer**, cioè il motivo per cui la mappa esiste. |
+| **3. Stili** | Come le feature dei layer diventano visibili e comparabili. |
+| **4. Pop-up** | Cosa il lettore scopre interagendo con una feature. |
+| **5. Salvataggio e condivisione** | A chi la mappa è accessibile. |
+
+Seguire la sequenza serve a garantire che la mappa contenga tutte le informazioni necessarie al tema e che ogni elemento sia configurato per il pubblico previsto. Saltare un passo si nota: una mappa senza pop-up configurati espone i nomi grezzi dei campi, una condivisa senza controllare i layer si apre vuota.
+
+### Layer e sublayer
+
+Il pattern di fondo è sempre **basemap più operational layer**. Il basemap dà il contesto geografico, gli operational layer sono i layer di business, quelli che rispondono alla domanda che la mappa pone.
+
+Un layer è flessibile nella struttura: può referenziare **una o più sorgenti dati** come sublayer dello stesso item. Un layer *Fiumi* può avere un solo sublayer di linee; un layer *Corpi idrici* può averne tre con geometrie diverse — sorgenti come punti, fiumi come linee, laghi come poligoni. Quando si ragiona su "quanti layer servono", la risposta dipende anche da come l'item è stato costruito a monte.
+
+## 1. Scegliere il basemap
+
+Tre strade:
+
+- usare un basemap Esri dalla **galleria** di Map Viewer;
+- **costruirne uno proprio**, incorporando i propri dati autorevoli nel livello di basemap;
+- combinare le due cose in un **basemap multisorgente**.
+
+La galleria è amministrata: quali basemap compaiono lo decide l'administrator dell'organizzazione. Si apre dal pannello Basemap o con la scorciatoia `Alt+B` (`Option+B` su Mac).
+
+Due criteri di scelta, entrambi concreti:
+
+- **il contesto d'uso**. Se la mappa verrà consultata di notte, un basemap scuro riduce l'affaticamento visivo. È il criterio che si dimentica più spesso, perché in fase di authoring si guarda sempre lo stesso schermo alla stessa ora;
+- **il contenuto degli operational layer**. Una mappa di risorse naturali chiede un basemap che valorizzi gli elementi naturali; una di verifica in campo su edifici chiede **Imagery Hybrid**, perché serve vedere il costruito reale con i riferimenti sovrapposti; una di rotte di cetacei con dati di profondità chiede **Oceans**, che dà il fondale come termine di paragone.
+
+Il basemap non è solo contesto: è anche il fondo cartografico su cui i colori del tema devono risaltare. Vale il criterio già visto sui basemap neutri — un fondo colorato compete con il tema.
+
+Nota tecnica: i basemap usano cartografia avanzata con molti sublayer, etichette e rendering dipendente dalla scala, e si appoggiano a un **cached GIS web service**. È la cache a farli restare disegnati mentre si naviga, senza attese a ogni pan.
+
+## 2. Aggiungere i layer
+
+Map Viewer è integrato con il portale, quindi la ricerca dei contenuti attraversa tre cerchi concentrici:
+
+| Sorgente | Cosa contiene |
+|---|---|
+| **Contenuti propri e dell'organizzazione** | I propri item, i preferiti, i gruppi, l'organizzazione. È il primo posto dove cercare. |
+| **ArcGIS Living Atlas of the World** | Layer curati da Esri, affidabili e aggiornati. |
+| **Catalogo pubblico** | Tutto ciò che è condiviso pubblicamente in ArcGIS Online. Qui gli item details vanno controllati, perché nessuno garantisce accuratezza e attualità. |
+
+Ricerca e filtri servono a restringere i risultati. Oltre a cercare contenuti esistenti si possono **caricare o creare** cinque tipi di contenuto:
+
+- l'**URL di un web service** già pubblicato;
+- **file** con informazione geospaziale;
+- uno **sketch layer**, disegnato a mano e salvato con la mappa;
+- un **route layer**, il risultato di un calcolo di percorso;
+- un **media layer**, per collocare un'immagine su un'area.
+
+L'aggiunta è un processo iterativo: struttura e ordine dei layer si riconfigurano in qualsiasi momento, e l'ordine conta perché determina cosa copre cosa.
+
+## 3. Applicare gli stili
+
+Questo è il passo in cui la mappa comincia a dire qualcosa. Gli stili disponibili — location, heat map, colore, dimensione, combinazione, categoria predominante, charts and size — e i loro parametri sono trattati nel dettaglio negli appunti su [stili di visualizzazione](/education/arcgis-developer-foundation/10-stili-di-visualizzazione); smart mapping propone quello coerente con il tipo di dato, come descritto in [smart mapping](/education/arcgis-developer-foundation/09-smart-mapping).
+
+Quello che interessa qui sono i **livelli di controllo che si sovrappongono allo stile**, e che restano invisibili se non si va a cercarli.
+
+### Scegliere il metodo di classificazione
+
+Per gli stili numerici la scelta del metodo di classificazione dipende dalla domanda, non dal dato. Tradotta in criteri operativi:
+
+| Obiettivo | Metodo |
+|---|---|
+| Evidenziare i migliori e i peggiori rispetto alla media | **Standard deviation** |
+| Far emergere i raggruppamenti già presenti nei dati | **Natural breaks** |
+| Isolare i primi o gli ultimi N elementi | **Quantile** |
+| Mostrare quote relative su una scala regolare, del tipo "quali aree fanno il primo terzo" | **Equal interval** |
+| Confrontare layer diversi, o lo stesso attributo in anni diversi, con classi identiche | **Manual interval** |
+
+L'ultimo caso è quello che si sottovaluta: se ogni anno viene classificato sui propri dati, le mappe della serie storica **non sono confrontabili**, perché a colori uguali corrispondono valori diversi. Le classi manuali sono l'unico modo di rendere comparabile una serie.
+
+### Simbologia: qualitativo e quantitativo
+
+Le opzioni di simbolo dipendono da tre cose: la **geometria** della feature, il **tipo di attributo** e il **numero di campi** usati per lo stile.
+
+Sul tipo di attributo la distinzione è binaria: un attributo **qualitativo** descrive senza misurare, uno **quantitativo** è una misura o un conteggio. Da questa differenza dipende cosa il pannello offre.
+
+| Geometria | Opzioni |
+|---|---|
+| **Punto** | Colore, dimensione, forma, immagini o icone; trasparenza e rotazione. |
+| **Linea** | Colore, spessore, trasparenza. |
+| **Poligono** | Riempimento e contorno: colore pieno, un **pattern** (linee, punti), oppure un **grafico** per dati quantitativi; trasparenza. |
+
+Un'icona coerente col tema — una montagna dimensionata sull'altitudine — comunica prima della legenda. Il pattern e il grafico dentro il poligono sono le opzioni che si dimenticano, e sono quelle che permettono di rappresentare più attributi in un'area senza sovrapporre layer.
+
+### Effetti
+
+Gli **effetti** cartografici modificano l'aspetto della simbologia, e si applicano **a tutte le feature del layer oppure solo a quelle selezionate** — che è ciò che li rende utili: enfatizzare un sottoinsieme senza toccare lo stile.
+
+| Effetto | Risultato |
+|---|---|
+| **Drop shadow** | I simboli sembrano sollevati dalla mappa. |
+| **Blur** | I bordi delle feature si ammorbidiscono. |
+| **Invert** | I colori diventano i loro opposti. |
+
+### Aggregazione
+
+Quando un layer ha molte feature, i simboli si sovrappongono e il pattern smette di essere visibile: una nuvola indistinta di punti, il cosiddetto *point cloud* nel senso cartografico del termine.
+
+| Modalità | Come aggrega |
+|---|---|
+| **Nessuna** | Ogni feature ha il suo simbolo. Su alta densità non si legge niente. |
+| **Clustering** | Aggrega i **punti** per raggio di cluster. |
+| **Clustering (chart)** | Come sopra, con un grafico dentro il simbolo aggregato. |
+| **Binning** | Aggrega **punti, linee e poligoni** per dimensione di cella. |
+
+Entrambe si ricalcolano allo zoom e si disattivano oltre una **soglia di scala** configurabile, così che avvicinandosi si tornino a vedere le feature singole.
+
+La differenza che conta nella scelta: il **clustering lavora solo sui punti**, il **binning anche su linee e poligoni**. Su un dataset di segnalazioni puntuali entrambi funzionano; su una rete o su poligoni sovrapposti resta solo il binning.
+
+### Le altre leve
+
+Due controlli ulteriori, indipendenti dallo stile:
+
+- le **appearance settings** permettono di fondere la simbologia del layer con il basemap (blending) e di regolare la trasparenza, per un controllo cartografico più fine;
+- il **filtro** limita quali feature vengono disegnate, tramite un'espressione. Non è una modifica del dato: è una vista.
+
+## 4. Configurare i pop-up
+
+Il pop-up è la parte interattiva della mappa: si apre cliccando una feature ed è dove il lettore legge gli attributi. Ogni web layer ne ha una configurazione di default con due elementi: l'elemento **title**, una stringa di testo configurabile, e l'elemento **fields list**, che presenta nome e valore di ciascun attributo su due colonne.
+
+Il default è raramente quello che serve, perché mostra i campi come sono nel database. Gli elementi disponibili per sostituirlo:
+
+| Elemento | Cosa fa | Da sapere |
+|---|---|---|
+| **Text** | Una descrizione narrativa della feature. | Supporta **HTML** e Arcade: tabelle, colori, font, link esterni. È l'elemento con cui si trasforma una riga di tabella in una frase leggibile. |
+| **Chart** | I valori numerici della feature come grafico a barre, linee o torta. | Solo campi **numerici**. Può sostituire o affiancare la fields list; si orienta in orizzontale o verticale, si può cambiare la scala di colori, colorare una singola porzione e **normalizzare** su un altro campo. |
+| **Image** | Immagini associate alla feature. | La sorgente deve essere un **URL pubblico**, preso da un attributo della feature o fisso per tutto il layer. Configurabile con titolo, didascalia, testo alternativo, link e **auto-refresh** — che è ciò che permette di mostrare un feed live, per esempio una webcam. |
+| **Attachment** | I file allegati alle feature, archiviati come attributi. | Visualizzabili come **lista** con link e anteprima o come **galleria**. Aprire il file richiede che il dispositivo abbia l'applicazione adatta. È l'elemento per dare a un tecnico in campo il manuale dell'asset che sta ispezionando. |
+| **Arcade** | Contenuto interamente calcolato da un'espressione. | Funziona in tutto il sistema ArcGIS, app mobili comprese. Vedi [Arcade](/education/arcgis-developer-foundation/12-arcade). |
+
+Il testo è configurabile in molti più punti di quanto sembri: titolo del pop-up, titolo e descrizione della fields list, nome di ogni campo, titolo e didascalia e testo alternativo di immagini e grafici, titolo e descrizione degli allegati, e il corpo dell'elemento text.
+
+E in tutti quei punti può essere **statico** o **data-driven**: si può selezionare un campo che fornisce il valore, oppure usare un'espressione **Arcade** per comporre testo statico e valori calcolati. La combinazione tipica di un pop-up curato è testo fisso, riferimenti a campi ed espressioni Arcade nella stessa frase.
+
+## 5. Salvare e condividere
+
+L'ultimo passo espone la mappa al pubblico previsto: privata, verso uno o più gruppi, verso tutta l'organizzazione, verso chiunque, o una combinazione.
+
+Il punto che rompe più mappe: **i layer usati nella mappa devono essere disponibili allo stesso pubblico della mappa**. Se la mappa va al pubblico, tutti i suoi layer devono essere pubblici; se va a un gruppo di progetto, i layer devono essere condivisi con quel gruppo. La condivisione è una proprietà di ogni singolo item, e il livello meno permissivo della catena è quello che determina cosa il lettore vede.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Map Viewer** | L'ambiente di authoring di mappe di ArcGIS Online. |
+| **Operational layer** | Il layer tematico, il motivo per cui la mappa esiste. |
+| **Sublayer** | Sorgente dati referenziata all'interno di un item layer; un layer può averne più di una, con geometrie diverse. |
+| **Basemap multisorgente** | Basemap che combina layer Esri e dati propri. |
+| **Cached GIS web service** | Servizio con tile pre-renderizzati, su cui si appoggiano i basemap. |
+| **Sketch layer** | Feature disegnate a mano e salvate con la mappa. |
+| **Route layer** | Layer che contiene il risultato di un calcolo di percorso. |
+| **Media layer** | Immagine collocata su un'area della mappa. |
+| **Attributo qualitativo / quantitativo** | Attributo che descrive senza misurare / che è una misura o un conteggio. |
+| **Effetti** | Modifiche all'aspetto della simbologia, applicabili a tutte le feature o solo alle selezionate. |
+| **Clustering** | Aggregazione di punti per raggio, ricalcolata allo zoom. |
+| **Binning** | Aggregazione per dimensione di cella, applicabile anche a linee e poligoni. |
+| **Soglia di scala** | Livello di zoom oltre il quale l'aggregazione si disattiva. |
+| **Blending** | Fusione della simbologia di un layer con il basemap. |
+| **Filtro** | Espressione che limita quali feature vengono disegnate, senza modificare il dato. |
+| **Fields list** | Elemento di pop-up che elenca nome e valore degli attributi; è nel default. |
+| **Elemento di pop-up** | Blocco configurabile del pop-up: text, chart, image, attachment, Arcade. |
