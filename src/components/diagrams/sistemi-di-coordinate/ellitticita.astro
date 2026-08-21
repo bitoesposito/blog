@@ -1,0 +1,35 @@
+---
+// Scala dell'ellitticità: cerchio (0), Terra (0,003353), ellisse dimezzata (0,5), linea (1).
+// La Terra è disegnata con l'ellitticità reale, quindi indistinguibile dal cerchio accanto.
+---
+
+<figure class="my-8">
+  <svg viewBox="0 0 620 210" role="img" aria-labelledby="ellitticita-title" class="h-auto w-full text-foreground">
+    <title id="ellitticita-title">
+      Confronto tra quattro ellitticità: cerchio pari a zero, Terra pari a 0,003353,
+      ellisse pari a 0,5 e linea pari a uno.
+    </title>
+
+    <ellipse cx="90" cy="95" rx="56" ry="56" fill="none" class="stroke-foreground" stroke-width="2" />
+    <text x="90" y="178" font-size="13" text-anchor="middle" class="fill-foreground">cerchio</text>
+    <text x="90" y="196" font-size="12" text-anchor="middle" class="fill-muted-foreground">0</text>
+
+    <ellipse cx="240" cy="95" rx="56" ry="55.81" fill="none" class="stroke-foreground" stroke-width="2" />
+    <text x="240" y="178" font-size="13" text-anchor="middle" class="fill-foreground">Terra</text>
+    <text x="240" y="196" font-size="12" text-anchor="middle" class="fill-muted-foreground">0,003353</text>
+
+    <ellipse cx="400" cy="95" rx="56" ry="28" fill="none" class="stroke-foreground" stroke-width="2" />
+    <text x="400" y="178" font-size="13" text-anchor="middle" class="fill-foreground">ellisse</text>
+    <text x="400" y="196" font-size="12" text-anchor="middle" class="fill-muted-foreground">0,5</text>
+
+    <line x1="494" y1="95" x2="606" y2="95" class="stroke-foreground" stroke-width="2" />
+    <text x="550" y="178" font-size="13" text-anchor="middle" class="fill-foreground">linea</text>
+    <text x="550" y="196" font-size="12" text-anchor="middle" class="fill-muted-foreground">1</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">
+    L'ellitticità misura quanto i due semiassi differiscono: zero per il cerchio, uno per la linea.
+    La seconda figura è disegnata con l'ellitticità <strong class="font-medium text-foreground">reale</strong>
+    della Terra, ed è il motivo per cui accanto al cerchio risulta indistinguibile. Su una mappa a
+    grande scala quei tre millesimi valgono chilometri.
+  </figcaption>
+</figure>

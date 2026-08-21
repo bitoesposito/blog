@@ -1,0 +1,67 @@
+---
+// Le tre superfici di riferimento in sezione: spheroid, geoid, superficie reale.
+// Con le tre quote h (ellissoidica), H (ortometrica) e N (separazione).
+---
+
+<figure class="my-8">
+  <svg viewBox="0 0 640 330" role="img" aria-labelledby="geoide-title" class="h-auto w-full text-foreground">
+    <title id="geoide-title">
+      Sezione che confronta spheroid, geoid e superficie reale, con l'altezza ellissoidica h,
+      quella ortometrica H e la separazione N tra geoid e spheroid.
+    </title>
+
+    <!-- spheroid: modello matematico regolare -->
+    <path d="M 40 210 Q 320 175 600 210" fill="none" class="stroke-muted-foreground" stroke-width="1.5" stroke-dasharray="7 5" />
+
+    <!-- geoid: superficie equipotenziale, irregolare -->
+    <path d="M 40 200 C 120 176, 200 216, 280 190 S 380 168, 430 180 S 545 220, 600 204" fill="none" class="stroke-muted-foreground" stroke-width="2" />
+
+    <!-- superficie reale: terreno, con un rilievo e un fondale a sinistra -->
+    <path d="M 40 208 L 90 202 L 130 210 L 175 197 L 215 187 L 260 195 L 300 173 L 340 158 L 380 126 L 430 95 L 470 130 L 505 152 L 545 178 L 580 197 L 600 202" fill="none" class="stroke-foreground" stroke-width="2" />
+
+    <!-- guide: i tre livelli sulla verticale del rilievo -->
+    <line x1="430" y1="95" x2="430" y2="200" class="stroke-border" stroke-width="1" stroke-dasharray="3 3" />
+    <line x1="398" y1="95" x2="470" y2="95" class="stroke-border" stroke-width="1" stroke-dasharray="3 3" />
+    <line x1="430" y1="180" x2="478" y2="180" class="stroke-border" stroke-width="1" stroke-dasharray="3 3" />
+    <line x1="398" y1="195" x2="478" y2="195" class="stroke-border" stroke-width="1" stroke-dasharray="3 3" />
+
+    <!-- h: dallo spheroid al terreno -->
+    <line x1="406" y1="95" x2="406" y2="195" class="stroke-muted-foreground" stroke-width="1" />
+    <line x1="401" y1="95" x2="411" y2="95" class="stroke-muted-foreground" stroke-width="1" />
+    <line x1="401" y1="195" x2="411" y2="195" class="stroke-muted-foreground" stroke-width="1" />
+    <text x="398" y="148" font-size="12" text-anchor="end" class="fill-foreground">h</text>
+
+    <!-- H: dal geoid al terreno -->
+    <line x1="456" y1="95" x2="456" y2="180" class="stroke-muted-foreground" stroke-width="1" />
+    <line x1="451" y1="95" x2="461" y2="95" class="stroke-muted-foreground" stroke-width="1" />
+    <line x1="451" y1="180" x2="461" y2="180" class="stroke-muted-foreground" stroke-width="1" />
+    <text x="464" y="140" font-size="12" class="fill-foreground">H</text>
+
+    <!-- N: separazione geoid-spheroid -->
+    <line x1="470" y1="180" x2="470" y2="195" class="stroke-muted-foreground" stroke-width="1" />
+    <line x1="465" y1="180" x2="475" y2="180" class="stroke-muted-foreground" stroke-width="1" />
+    <line x1="465" y1="195" x2="475" y2="195" class="stroke-muted-foreground" stroke-width="1" />
+    <text x="482" y="192" font-size="12" class="fill-foreground">N</text>
+
+    <text x="430" y="80" font-size="12" text-anchor="middle" class="fill-muted-foreground">h = H + N</text>
+
+    <!-- legenda -->
+    <line x1="44" y1="266" x2="76" y2="266" class="stroke-foreground" stroke-width="2" />
+    <text x="86" y="270" font-size="12" class="fill-muted-foreground">superficie reale: terreno e fondale</text>
+
+    <line x1="44" y1="290" x2="76" y2="290" class="stroke-muted-foreground" stroke-width="2" />
+    <text x="86" y="294" font-size="12" class="fill-muted-foreground">geoid: superficie equipotenziale, ≈ livello medio del mare</text>
+
+    <line x1="44" y1="314" x2="76" y2="314" class="stroke-muted-foreground" stroke-width="1.5" stroke-dasharray="7 5" />
+    <text x="86" y="318" font-size="12" class="fill-muted-foreground">spheroid: modello matematico, due semiassi</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">
+    Lo spheroid è regolare per costruzione, il geoid non lo è: segue le irregolarità del campo
+    gravitazionale e se ne discosta di decine di metri, in un verso o nell'altro. Da qui le due
+    quote: <strong class="font-medium text-foreground">h</strong> è l'altezza ellissoidica, quella
+    che restituisce un GNSS; <strong class="font-medium text-foreground">H</strong> è l'ortometrica,
+    quella delle carte. Differiscono di <strong class="font-medium text-foreground">N</strong>, che
+    varia da luogo a luogo — motivo per cui la conversione richiede un modello di geoid e non un
+    offset fisso. Le proporzioni verticali sono esagerate.
+  </figcaption>
+</figure>

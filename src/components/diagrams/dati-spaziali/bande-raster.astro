@@ -1,0 +1,74 @@
+---
+// Raster multibanda: le bande sono griglie sovrapposte, e ogni cella porta un valore per banda.
+---
+
+<figure class="my-8">
+  <svg viewBox="0 0 660 300" role="img" aria-labelledby="bande-title" class="h-auto w-full text-foreground">
+    <title id="bande-title">
+      Tre griglie sovrapposte, una per banda: la stessa cella contiene un valore distinto in
+      ciascuna banda.
+    </title>
+
+    <rect x="150" y="56" width="132" height="88" class="fill-background" />
+    <rect x="216" y="78" width="22" height="22" class="fill-foreground" opacity="0.45" />
+    <line x1="150" y1="56" x2="150" y2="144" class="stroke-border" stroke-width="0.8" />
+    <line x1="172" y1="56" x2="172" y2="144" class="stroke-border" stroke-width="0.8" />
+    <line x1="194" y1="56" x2="194" y2="144" class="stroke-border" stroke-width="0.8" />
+    <line x1="216" y1="56" x2="216" y2="144" class="stroke-border" stroke-width="0.8" />
+    <line x1="238" y1="56" x2="238" y2="144" class="stroke-border" stroke-width="0.8" />
+    <line x1="260" y1="56" x2="260" y2="144" class="stroke-border" stroke-width="0.8" />
+    <line x1="282" y1="56" x2="282" y2="144" class="stroke-border" stroke-width="0.8" />
+    <line x1="150" y1="56" x2="282" y2="56" class="stroke-border" stroke-width="0.8" />
+    <line x1="150" y1="78" x2="282" y2="78" class="stroke-border" stroke-width="0.8" />
+    <line x1="150" y1="100" x2="282" y2="100" class="stroke-border" stroke-width="0.8" />
+    <line x1="150" y1="122" x2="282" y2="122" class="stroke-border" stroke-width="0.8" />
+    <line x1="150" y1="144" x2="282" y2="144" class="stroke-border" stroke-width="0.8" />
+    <rect x="150" y="56" width="132" height="88" fill="none" class="stroke-muted-foreground" stroke-width="1.2" />
+    <line x1="282" y1="100" x2="294" y2="100" class="stroke-border" stroke-width="1" />
+    <text x="300" y="104" font-size="11" class="fill-foreground">banda 1 · visibile</text>
+    <rect x="122" y="110" width="132" height="88" class="fill-background" />
+    <rect x="188" y="132" width="22" height="22" class="fill-foreground" opacity="0.45" />
+    <line x1="122" y1="110" x2="122" y2="198" class="stroke-border" stroke-width="0.8" />
+    <line x1="144" y1="110" x2="144" y2="198" class="stroke-border" stroke-width="0.8" />
+    <line x1="166" y1="110" x2="166" y2="198" class="stroke-border" stroke-width="0.8" />
+    <line x1="188" y1="110" x2="188" y2="198" class="stroke-border" stroke-width="0.8" />
+    <line x1="210" y1="110" x2="210" y2="198" class="stroke-border" stroke-width="0.8" />
+    <line x1="232" y1="110" x2="232" y2="198" class="stroke-border" stroke-width="0.8" />
+    <line x1="254" y1="110" x2="254" y2="198" class="stroke-border" stroke-width="0.8" />
+    <line x1="122" y1="110" x2="254" y2="110" class="stroke-border" stroke-width="0.8" />
+    <line x1="122" y1="132" x2="254" y2="132" class="stroke-border" stroke-width="0.8" />
+    <line x1="122" y1="154" x2="254" y2="154" class="stroke-border" stroke-width="0.8" />
+    <line x1="122" y1="176" x2="254" y2="176" class="stroke-border" stroke-width="0.8" />
+    <line x1="122" y1="198" x2="254" y2="198" class="stroke-border" stroke-width="0.8" />
+    <rect x="122" y="110" width="132" height="88" fill="none" class="stroke-muted-foreground" stroke-width="1.2" />
+    <line x1="254" y1="154" x2="294" y2="154" class="stroke-border" stroke-width="1" />
+    <text x="300" y="158" font-size="11" class="fill-foreground">banda 2 · vicino infrarosso</text>
+    <rect x="94" y="164" width="132" height="88" class="fill-background" />
+    <rect x="160" y="186" width="22" height="22" class="fill-foreground" opacity="0.45" />
+    <line x1="94" y1="164" x2="94" y2="252" class="stroke-border" stroke-width="0.8" />
+    <line x1="116" y1="164" x2="116" y2="252" class="stroke-border" stroke-width="0.8" />
+    <line x1="138" y1="164" x2="138" y2="252" class="stroke-border" stroke-width="0.8" />
+    <line x1="160" y1="164" x2="160" y2="252" class="stroke-border" stroke-width="0.8" />
+    <line x1="182" y1="164" x2="182" y2="252" class="stroke-border" stroke-width="0.8" />
+    <line x1="204" y1="164" x2="204" y2="252" class="stroke-border" stroke-width="0.8" />
+    <line x1="226" y1="164" x2="226" y2="252" class="stroke-border" stroke-width="0.8" />
+    <line x1="94" y1="164" x2="226" y2="164" class="stroke-border" stroke-width="0.8" />
+    <line x1="94" y1="186" x2="226" y2="186" class="stroke-border" stroke-width="0.8" />
+    <line x1="94" y1="208" x2="226" y2="208" class="stroke-border" stroke-width="0.8" />
+    <line x1="94" y1="230" x2="226" y2="230" class="stroke-border" stroke-width="0.8" />
+    <line x1="94" y1="252" x2="226" y2="252" class="stroke-border" stroke-width="0.8" />
+    <rect x="94" y="164" width="132" height="88" fill="none" class="stroke-muted-foreground" stroke-width="1.2" />
+    <line x1="226" y1="208" x2="294" y2="208" class="stroke-border" stroke-width="1" />
+    <text x="300" y="212" font-size="11" class="fill-foreground">banda 3 · infrarosso termico</text>
+    <line x1="227" y1="89" x2="171" y2="197" class="stroke-foreground" stroke-width="1.2" stroke-dasharray="4 3" />
+
+    <text x="94" y="278" font-size="11" class="fill-muted-foreground">una cella, un valore per ciascuna banda</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">
+    Ogni banda contiene dati acquisiti a una lunghezza d'onda diversa, e le celle sono allineate:
+    in un raster multibanda la stessa posizione porta tanti valori quante sono le bande. È anche il
+    motivo per cui <strong class="font-medium text-foreground">raster e immagine non sono sinonimi</strong>:
+    in un'immagine a colori le bande sono rosso, verde e blu, ma un dataset di precipitazioni è un
+    raster senza essere un'immagine.
+  </figcaption>
+</figure>

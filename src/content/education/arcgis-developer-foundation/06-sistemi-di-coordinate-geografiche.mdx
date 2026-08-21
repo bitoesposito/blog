@@ -7,6 +7,15 @@ authors: ['vitoesposito']
 order: 6
 ---
 
+import Ellisse from '@/components/diagrams/sistemi-di-coordinate/ellisse.astro'
+import OblateProlate from '@/components/diagrams/sistemi-di-coordinate/oblate-prolate.astro'
+import Ellitticita from '@/components/diagrams/sistemi-di-coordinate/ellitticita.astro'
+import GeoideSpheroide from '@/components/diagrams/sistemi-di-coordinate/geoide-spheroide.astro'
+import DatumShift from '@/components/diagrams/sistemi-di-coordinate/datum-shift.astro'
+import Graticule from '@/components/diagrams/sistemi-di-coordinate/graticule.astro'
+import GradoLongitudine from '@/components/diagrams/sistemi-di-coordinate/grado-longitudine.astro'
+import CerchiMassimi from '@/components/diagrams/sistemi-di-coordinate/cerchi-massimi.astro'
+
 ## Di cosa è fatto un geographic coordinate system
 
 Un **geographic coordinate system (GCS)** serve a individuare e analizzare posizioni sulla Terra. È composto da tre elementi:
@@ -36,7 +45,11 @@ Le due cause del rigonfiamento: la **rotazione della Terra sul proprio asse** e 
 
 L'**ellisse** è una delle **sezioni coniche**, insieme a linea, cerchio, parabola e iperbole: si ottiene tagliando un cono con un piano inclinato. La definizione costruttiva usa due punti fissi, i **fuochi**: l'ellisse è il luogo dei punti per cui la **somma delle distanze dai due fuochi resta costante**.
 
+<Ellisse />
+
 Come la sfera nasce dal cerchio, l'**ellissoide** nasce dall'ellisse: ruotando un'ellisse attorno a uno dei suoi assi si ottiene un *ellissoide di rotazione*. Poiché la Terra ruota attorno al suo **asse minore**, il più corto, si descrive come **oblate ellipsoid**, schiacciato ai poli. Se ruotasse attorno all'asse maggiore sarebbe *prolate*.
+
+<OblateProlate />
 
 Gli assi maggiore e minore terrestri differiscono pochissimo: negli spheroid mondiali di uso comune lo scarto tra i due è **inferiore allo 0,34%**, quindi la forma è vicinissima a una sfera e si parla di **spheroid**. I due termini sono considerati **equivalenti** dalla maggior parte delle autorità in materia di proiezioni; Esri usa *spheroid*.
 
@@ -53,6 +66,8 @@ L'**ellipticity**, o *flattening*, misura quanto i due assi differiscono, espres
 - un'ellisse il cui asse maggiore è il doppio del minore ha ellitticità 0,5.
 
 L'ellitticità della Terra è circa **0,003353**. Sembra trascurabile, e **incide parecchio sulle mappe a grande scala**.
+
+<Ellitticita />
 
 ## Perché esistono tanti spheroid diversi
 
@@ -71,6 +86,8 @@ Due conseguenze operative:
 
 Lo spheroid è una forma matematica regolare. La superficie fisica di riferimento della Terra non lo è: il **geoid** è la superficie equipotenziale del campo gravitazionale terrestre che approssima il livello medio del mare, e siccome la massa non è distribuita in modo uniforme, si discosta dallo spheroid in modo irregolare, con scarti nell'ordine delle decine di metri.
 
+<GeoideSpheroide />
+
 Serve distinguere tre cose che vengono spesso appiattite in una:
 
 | | Che cos'è |
@@ -82,6 +99,8 @@ Serve distinguere tre cose che vengono spesso appiattite in una:
 Due datum possono usare lo **stesso** spheroid e restare diversi, perché lo ancorano alla Terra in modo differente. Ne segue il punto che genera i disallineamenti più difficili da diagnosticare: **la stessa coppia di latitudine e longitudine, interpretata su due datum diversi, individua due punti diversi del terreno**. Lo scarto va dal metro a qualche centinaio di metri secondo la coppia di datum: tra NAD83 e WGS84 è nell'ordine del metro, tra NAD27 e NAD83 arriva a decine o centinaia di metri.
 
 Il sintomo tipico è un layer che appare correttamente collocato ma sistematicamente traslato rispetto agli altri, di una quantità costante. Non è un errore di digitalizzazione: è una **trasformazione di datum** mancante.
+
+<DatumShift />
 
 La distinzione tra spheroid e geoid torna a contare nel 3D, dove l'altezza misurata da un GNSS è riferita allo spheroid mentre le quote cartografiche sono riferite al geoid.
 
@@ -99,6 +118,8 @@ Circa 2.100 anni fa l'astronomo greco **Ipparco** formalizzò il sistema che ogg
 
 La rete formata dall'incrocio delle due famiglie di linee si chiama **graticule**. È immaginaria, ma viene disegnata su globi e mappe come riferimento. È un **sistema di misura angolare**, con tutte le posizioni misurate rispetto al **centro della Terra**.
 
+<Graticule />
+
 | | **Latitudine** (*parallels*) | **Longitudine** (*meridians*) |
 |---|---|---|
 | Direzione delle linee | Corrono **est-ovest** attorno alla Terra. | Corrono **nord-sud** e **convergono ai poli**. |
@@ -111,6 +132,8 @@ La rete formata dall'incrocio delle due famiglie di linee si chiama **graticule*
 L'asse **y** corrisponde alla latitudine, nord-sud; l'asse **x** alla longitudine, est-ovest.
 
 La variabilità del grado di longitudine è la ragione per cui **un buffer espresso in gradi non è un buffer**: alla latitudine di Roma un grado di longitudine vale circa 80 km, alla latitudine di Oslo circa 55. Le distanze si calcolano in unità lineari, su un sistema proiettato o con calcoli geodetici, non in gradi.
+
+<GradoLongitudine />
 
 ### Perché l'equatore e perché Greenwich
 
@@ -129,6 +152,8 @@ Il meridiano a 180° viene spesso chiamato *international date line*, ma la line
 Un **great circle** è il cerchio generato dall'intersezione con la Terra di un piano che la divide in **due metà uguali**. L'equatore è un cerchio massimo, e lo è anche la coppia formata da due meridiani opposti. Tutti gli altri paralleli sono **small circles**, perché non dividono la Terra in emisferi uguali. Un cerchio massimo che non incrocia l'equatore ad angolo retto si dice **obliquo**.
 
 L'utilità pratica: un **arco di cerchio massimo è la distanza più breve tra due punti** sulla Terra. Per questo si usa per tracciare le rotte di aerei, missili e navi, tenendo conto della curvatura terrestre.
+
+<CerchiMassimi />
 
 ## Esprimere una posizione
 

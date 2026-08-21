@@ -1,0 +1,67 @@
+---
+// Latitudine e longitudine come misure angolari dal centro della Terra.
+// Pannello sinistro: sezione verticale (φ). Pannello destro: sezione equatoriale dal polo (λ).
+---
+
+<figure class="my-8">
+  <svg viewBox="0 0 680 330" role="img" aria-labelledby="graticule-title" class="h-auto w-full text-foreground">
+    <title id="graticule-title">
+      A sinistra la latitudine come angolo misurato dal centro della Terra rispetto all'equatore,
+      a destra la longitudine come angolo misurato dal prime meridian.
+    </title>
+
+    <text x="170" y="26" font-size="14" text-anchor="middle" class="fill-foreground">latitudine φ</text>
+    <text x="170" y="44" font-size="12" text-anchor="middle" class="fill-muted-foreground">sezione verticale</text>
+    <text x="500" y="26" font-size="14" text-anchor="middle" class="fill-foreground">longitudine λ</text>
+    <text x="500" y="44" font-size="12" text-anchor="middle" class="fill-muted-foreground">sezione equatoriale vista dal polo</text>
+
+    <!-- PANNELLO A: latitudine -->
+    <circle cx="170" cy="180" r="105" fill="none" class="stroke-foreground" stroke-width="2" />
+    <line x1="117.5" y1="89.1" x2="222.5" y2="89.1" class="stroke-border" stroke-width="1" />
+    <line x1="79.1" y1="127.5" x2="260.9" y2="127.5" class="stroke-border" stroke-width="1" />
+    <line x1="79.1" y1="232.5" x2="260.9" y2="232.5" class="stroke-border" stroke-width="1" />
+    <line x1="117.5" y1="270.9" x2="222.5" y2="270.9" class="stroke-border" stroke-width="1" />
+    <line x1="65" y1="180" x2="275" y2="180" class="stroke-muted-foreground" stroke-width="1" stroke-dasharray="5 4" />
+    <text x="58" y="184" font-size="11" text-anchor="end" class="fill-muted-foreground">0°</text>
+    <text x="72" y="131" font-size="11" text-anchor="end" class="fill-muted-foreground">30°</text>
+    <text x="110" y="93" font-size="11" text-anchor="end" class="fill-muted-foreground">60°</text>
+    <text x="170" y="66" font-size="11" text-anchor="middle" class="fill-muted-foreground">90° N</text>
+    <text x="170" y="300" font-size="11" text-anchor="middle" class="fill-muted-foreground">90° S</text>
+
+    <line x1="170" y1="180" x2="250.4" y2="112.5" class="stroke-foreground" stroke-width="1.5" />
+    <circle cx="250.4" cy="112.5" r="4" class="fill-foreground" />
+    <circle cx="170" cy="180" r="2.5" class="fill-muted-foreground" />
+    <path d="M 212 180 A 42 42 0 0 0 202.2 153" fill="none" class="stroke-foreground" stroke-width="1.5" />
+    <text x="222" y="164" font-size="12" class="fill-foreground">φ</text>
+    <text x="258" y="106" font-size="11" class="fill-muted-foreground">40° N</text>
+
+    <!-- PANNELLO B: longitudine -->
+    <circle cx="500" cy="180" r="105" fill="none" class="stroke-foreground" stroke-width="2" />
+    <line x1="500" y1="180" x2="552.5" y2="89.1" class="stroke-border" stroke-width="1" />
+    <line x1="500" y1="180" x2="590.9" y2="232.5" class="stroke-border" stroke-width="1" />
+    <line x1="500" y1="180" x2="500" y2="285" class="stroke-border" stroke-width="1" />
+    <line x1="500" y1="180" x2="409.1" y2="232.5" class="stroke-border" stroke-width="1" />
+    <line x1="500" y1="180" x2="447.5" y2="89.1" class="stroke-border" stroke-width="1" />
+    <line x1="500" y1="180" x2="409.1" y2="127.5" class="stroke-border" stroke-width="1" />
+
+    <line x1="395" y1="180" x2="605" y2="180" class="stroke-border" stroke-width="1" />
+    <line x1="500" y1="180" x2="500" y2="75" class="stroke-muted-foreground" stroke-width="1.5" stroke-dasharray="5 4" />
+    <text x="500" y="66" font-size="11" text-anchor="middle" class="fill-muted-foreground">0° prime meridian</text>
+    <text x="612" y="184" font-size="11" class="fill-muted-foreground">90° E</text>
+    <text x="500" y="300" font-size="11" text-anchor="middle" class="fill-muted-foreground">180°</text>
+    <text x="388" y="184" font-size="11" text-anchor="end" class="fill-muted-foreground">90° W</text>
+
+    <line x1="500" y1="180" x2="590.9" y2="127.5" class="stroke-foreground" stroke-width="1.5" />
+    <circle cx="590.9" cy="127.5" r="4" class="fill-foreground" />
+    <circle cx="500" cy="180" r="2.5" class="fill-muted-foreground" />
+    <path d="M 500 138 A 42 42 0 0 1 536.4 159" fill="none" class="stroke-foreground" stroke-width="1.5" />
+    <text x="527" y="133" font-size="12" class="fill-foreground">λ</text>
+    <text x="598" y="120" font-size="11" class="fill-muted-foreground">60° E</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">
+    Il graticule è un sistema di misura <strong class="font-medium text-foreground">angolare</strong>,
+    e gli angoli si misurano dal centro della Terra. La latitudine parte dall'equatore, che è l'unico
+    parallelo a essere un cerchio massimo; la longitudine parte dal prime meridian, che è invece una
+    scelta convenzionale, perché tutti i meridiani sono cerchi della stessa dimensione.
+  </figcaption>
+</figure>

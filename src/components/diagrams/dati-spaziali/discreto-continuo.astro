@@ -1,0 +1,47 @@
+---
+// Dato discreto (feature con confini) contro dato continuo (fenomeno misurabile ovunque).
+---
+
+<figure class="my-8">
+  <svg viewBox="0 0 660 290" role="img" aria-labelledby="discreto-title" class="h-auto w-full text-foreground">
+    <title id="discreto-title">
+      A sinistra feature discrete con confini definiti: edifici, una strada, alberi. A destra un
+      fenomeno continuo rappresentato da isolinee, misurabile in ogni punto.
+    </title>
+
+    <text x="170" y="42" font-size="13" text-anchor="middle" class="fill-foreground">dato discreto</text>
+    <text x="490" y="42" font-size="13" text-anchor="middle" class="fill-foreground">dato continuo</text>
+
+    <!-- discreto: oggetti con bordo -->
+    <rect x="40" y="60" width="260" height="170" fill="none" class="stroke-border" stroke-width="1" />
+    <polyline points="42,205 120,196 220,170 298,160" fill="none" class="stroke-foreground" stroke-width="2.5" />
+    <rect x="70" y="120" width="36" height="28" fill="none" class="stroke-foreground" stroke-width="1.8" />
+    <rect x="122" y="88" width="28" height="24" fill="none" class="stroke-foreground" stroke-width="1.8" />
+    <rect x="200" y="104" width="42" height="30" fill="none" class="stroke-foreground" stroke-width="1.8" />
+    <circle cx="160" cy="212" r="4" class="fill-foreground" />
+    <circle cx="180" cy="220" r="4" class="fill-foreground" />
+    <circle cx="252" cy="204" r="4" class="fill-foreground" />
+    <text x="170" y="252" font-size="11" text-anchor="middle" class="fill-muted-foreground">confini definiti: dentro, fuori</text>
+    <text x="170" y="270" font-size="11" text-anchor="middle" class="fill-muted-foreground">mediarli non significa niente</text>
+
+    <!-- continuo: isolinee -->
+    <rect x="360" y="60" width="260" height="170" fill="none" class="stroke-border" stroke-width="1" />
+    <ellipse cx="490" cy="145" rx="104" ry="74" fill="none" class="stroke-muted-foreground" stroke-width="1.5" />
+    <ellipse cx="490" cy="145" rx="78" ry="56" fill="none" class="stroke-muted-foreground" stroke-width="1.5" />
+    <ellipse cx="490" cy="145" rx="54" ry="38" fill="none" class="stroke-muted-foreground" stroke-width="1.5" />
+    <ellipse cx="490" cy="145" rx="28" ry="20" fill="none" class="stroke-foreground" stroke-width="1.8" />
+    <text x="602" y="149" font-size="9.5" class="fill-muted-foreground">10</text>
+    <text x="576" y="149" font-size="9.5" class="fill-muted-foreground">20</text>
+    <text x="552" y="149" font-size="9.5" class="fill-muted-foreground">30</text>
+    <text x="526" y="149" font-size="9.5" class="fill-muted-foreground">40</text>
+    <text x="490" y="252" font-size="11" text-anchor="middle" class="fill-muted-foreground">nessun confine: un valore in ogni punto</text>
+    <text x="490" y="270" font-size="11" text-anchor="middle" class="fill-muted-foreground">la media ha senso</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">
+    Il test rapido è chiedersi se <strong class="font-medium text-foreground">fare una media abbia
+    senso</strong>: precipitazione media, profondità media, temperatura media sì, quindi il dato è
+    continuo; tipo di edificio o nome della strada no, quindi è discreto. Attenzione al caso che
+    inganna: il tipo di suolo copre tutto il territorio senza buchi ma resta discreto, perché è una
+    categoria. Il criterio è la natura del valore, non il fatto che copra tutto.
+  </figcaption>
+</figure>

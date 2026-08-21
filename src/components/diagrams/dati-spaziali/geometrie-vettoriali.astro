@@ -1,0 +1,45 @@
+---
+// Le tre geometrie vettoriali e il numero minimo di vertici che ciascuna richiede.
+---
+
+<figure class="my-8">
+  <svg viewBox="0 0 660 240" role="img" aria-labelledby="geometrie-title" class="h-auto w-full text-foreground">
+    <title id="geometrie-title">
+      Le tre geometrie vettoriali: un punto è un vertice, una linea due o più vertici collegati,
+      un poligono tre o più vertici che chiudono un anello.
+    </title>
+
+    <text x="130" y="44" font-size="13" text-anchor="middle" class="fill-foreground">point</text>
+    <text x="332" y="44" font-size="13" text-anchor="middle" class="fill-foreground">line</text>
+    <text x="530" y="44" font-size="13" text-anchor="middle" class="fill-foreground">polygon</text>
+
+    <circle cx="130" cy="130" r="5.5" class="fill-foreground" />
+
+    <polyline points="280,165 315,115 352,145 385,105" fill="none" class="stroke-foreground" stroke-width="2" />
+    <circle cx="280" cy="165" r="3.5" class="fill-foreground" />
+    <circle cx="315" cy="115" r="3.5" class="fill-foreground" />
+    <circle cx="352" cy="145" r="3.5" class="fill-foreground" />
+    <circle cx="385" cy="105" r="3.5" class="fill-foreground" />
+
+    <path d="M 480 150 L 505 105 L 555 100 L 580 135 L 558 168 L 505 170 Z" fill="none" class="stroke-foreground" stroke-width="2" />
+    <circle cx="480" cy="150" r="3.5" class="fill-foreground" />
+    <circle cx="505" cy="105" r="3.5" class="fill-foreground" />
+    <circle cx="555" cy="100" r="3.5" class="fill-foreground" />
+    <circle cx="580" cy="135" r="3.5" class="fill-foreground" />
+    <circle cx="558" cy="168" r="3.5" class="fill-foreground" />
+    <circle cx="505" cy="170" r="3.5" class="fill-foreground" />
+
+    <text x="130" y="198" font-size="11" text-anchor="middle" class="fill-foreground">1 vertice</text>
+    <text x="332" y="198" font-size="11" text-anchor="middle" class="fill-foreground">2 o più vertici</text>
+    <text x="530" y="198" font-size="11" text-anchor="middle" class="fill-foreground">3 o più, anello chiuso</text>
+    <text x="130" y="220" font-size="11" text-anchor="middle" class="fill-muted-foreground">un lampione</text>
+    <text x="332" y="220" font-size="11" text-anchor="middle" class="fill-muted-foreground">una strada</text>
+    <text x="530" y="220" font-size="11" text-anchor="middle" class="fill-muted-foreground">un edificio</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">
+    I pallini sono i vertici, cioè le coppie di coordinate memorizzate. Da notare, perché è la
+    confusione più comune: nella attribute table ogni riga è <strong class="font-medium text-foreground">una
+    feature</strong>, non un vertice. Il poligono qui sopra ha sei vertici e occupa una riga sola; un
+    confine comunale da quattrocento vertici occupa anch'esso una riga sola.
+  </figcaption>
+</figure>

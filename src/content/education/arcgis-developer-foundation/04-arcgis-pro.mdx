@@ -1,0 +1,175 @@
+---
+title: "ArcGIS Pro"
+description: "Struttura di un progetto, interfaccia, navigazione 2D e 3D, automazione, estensioni e pubblicazione verso il portale"
+pubDate: 2026-08-21
+tags: ['formazione', 'esri', 'arcgis', 'arcgis-pro']
+authors: ['vitoesposito']
+order: 4
+---
+
+## Che cos'è
+
+**ArcGIS Pro** è l'applicazione desktop professionale del sistema ArcGIS. Copre l'intero arco del lavoro su dati geospaziali: produrre mappe 2D e 3D, eseguire analisi spaziale, integrare e gestire dati, elaborare imagery, e pubblicare il risultato verso un portale.
+
+La caratteristica che lo distingue dagli strumenti web non è l'elenco di funzioni ma la **profondità**: dove Map Viewer offre gli stili e gli strumenti di analisi più comuni, Pro offre centinaia di strumenti di analisi e data science, cartografia contestuale avanzata e la possibilità di automatizzare tutto.
+
+| Area | Cosa comprende |
+|---|---|
+| **Cartografia** | Mappe 2D e 3D di qualità di pubblicazione, con strumenti contestuali per enfatizzare informazioni, pattern e relazioni. |
+| **Analisi** | Centinaia di strumenti di analisi e data science per individuare pattern, fare previsioni, rispondere a domande complesse. |
+| **Dati** | Gestione di qualunque tipo di dato spaziale, **dati in tempo reale e big data** compresi. |
+| **Editing** | Manipolazione dei dati, automazione dei flussi di editing, verifica di integrità e accuratezza, **editing concorrente** tra più utenti. |
+| **Imagery** | Gestione, analisi ed elaborazione di immagini da satellite, aereo, drone, video full-motion, dati di elevazione e lidar. Estrazione di feature, analisi scientifica, valutazione dei cambiamenti nel tempo. |
+| **AI e machine learning** | Algoritmi che riconoscono e apprendono pattern complessi; integrazione con framework di machine learning, reti neurali e hardware AI dedicato, on premise e in cloud. |
+| **Automazione** | Modelli di geoprocessing, task, script Python e R. |
+| **Portale** | Connessione a ArcGIS Online o ArcGIS Enterprise per accedere, pubblicare e condividere. |
+
+La connessione al portale avviene tramite la **user identity**: è l'identità con cui si è autenticati a determinare cosa si può vedere e cosa si può pubblicare. Non esiste un accesso ai contenuti dell'organizzazione separato dall'account.
+
+## Il progetto
+
+In Pro non si apre un file di mappa: si apre un **progetto**, che è il contenitore di tutto il lavoro. Un progetto conserva mappe, scene, layout, strumenti e connessioni ai dati, e li tiene insieme come un unico ambiente di lavoro.
+
+Alla creazione si scelgono un nome, una posizione, e se **creare una cartella dedicata** al progetto — opzione da lasciare attiva, perché il progetto non è un file solo: accanto ad esso vengono creati una file geodatabase e un toolbox predefiniti, che senza una cartella propria finiscono sparsi.
+
+I formati che si incontrano subito:
+
+| Estensione | Cos'è |
+|---|---|
+| `.aprx` | Il **progetto**. È il file che si apre. |
+| `.mapx` | Una **mappa** esportata, importabile in qualunque progetto. |
+| `.lyrx` | Un **layer** con la sua simbologia, riutilizzabile altrove. |
+
+La distinzione tra `.aprx` e `.mapx` è quella che chiarisce il modello: il progetto è l'ambiente, la mappa è un contenuto che può viverci dentro o essere spostato in un altro progetto. Un file `.mapx` si aggiunge dal Catalog pane con **Add And Open**, e la mappa arriva già popolata dei suoi layer.
+
+### Le connessioni ai dati
+
+Un progetto **non copia i dati**: li referenzia. Per usare dati che stanno fuori dalla cartella del progetto serve una **folder connection**, che si crea dal Catalog pane con `Folders → Add Folder Connection`.
+
+È la conseguenza da tenere presente: spostare o rinominare la cartella di origine rompe i riferimenti del progetto, che continuerà ad aprirsi mostrando layer non disegnabili. Il progetto sa dove guardare, non cosa contengono i dati.
+
+## L'interfaccia
+
+Tre elementi portano tutto il peso.
+
+| Elemento | Ruolo |
+|---|---|
+| **Ribbon** | Le schede di comandi in alto. Sono **contestuali**: cambiano in base a cosa è selezionato e a quale vista è attiva. Le ricorrenti sono `Map`, `View`, `Share`, `Project`. |
+| **Contents pane** | Mostra il contenuto della **vista attiva**: i layer, il loro ordine, la loro simbologia, cosa è acceso e cosa spento. |
+| **Catalog pane** | Mostra le risorse del progetto e le connessioni: cartelle, database, toolbox, mappe. È da qui che si aggiungono contenuti. |
+
+Il Contents pane è legato alla **vista attiva**, non al progetto: cambiando vista, cambia il suo contenuto. È il motivo per cui un layer "sparisce" quando si passa da una mappa a un'altra senza accorgersene.
+
+Le viste — mappe, scene, layout, tabelle — sono **tab**. Possono essere affiancate trascinandone una sopra le icone di docking, così da vedere due contenuti spazialmente correlati uno accanto all'altro.
+
+## Navigare mappe e scene
+
+Lo strumento di navigazione predefinito è l'**Explore tool**. Passandoci sopra il puntatore compare l'elenco dei tasti del mouse e delle scorciatoie disponibili — che è il modo più rapido di ricordarsi i comandi 3D senza cercarli. Uno strumento attivo si riconosce perché è evidenziato in grigio chiaro.
+
+In 2D i controlli sono quelli che si aspettano, con tre comandi di estensione che vale conoscere:
+
+| Azione | Comando |
+|---|---|
+| Pan | Trascinare la mappa. |
+| Zoom | Rotella; lo zoom è centrato sulla **posizione del puntatore**, non della mappa. |
+| Tornare alla vista precedente | **Previous Extent**, nel gruppo Navigate della scheda Map. |
+| Vedere tutto | **Full Extent**: l'estensione di tutte le feature e i layer della mappa. |
+| Vedere un layer | Tasto destro sul layer nel Contents pane → **Zoom To Layer**. |
+
+Nelle **scene** i controlli di navigazione 2D restano validi e se ne aggiungono altri per la terza dimensione. La mappatura dei tasti del mouse è la parte che non si intuisce:
+
+| Gesto | Effetto |
+|---|---|
+| Trascinare con il tasto sinistro | Pan della scena. |
+| Trascinare con il tasto destro, o rotella | Zoom avanti e indietro. |
+| Premere la **rotella** e muovere avanti/indietro | Ruota la scena in alto e in basso, cioè inclina la camera. |
+| Premere la **rotella** e muovere a sinistra/destra | Ruota la scena **attorno al punto cliccato**. |
+
+L'ultimo è il controllo che serve davvero in 3D: orbitare attorno a un edificio o a un rilievo per capirne la forma, invece di spostare la camera.
+
+### Collegare le viste
+
+Due viste affiancate possono essere **sincronizzate**: dalla scheda `View`, gruppo `Link`, si sceglie la modalità di collegamento — per esempio **Center And Scale**, che allinea sia il centro sia la scala. Un'icona a catena sulle linguette segnala che le viste sono collegate, e cambiando estensione su una l'altra si aggiorna da sola.
+
+È il modo di leggere lo stesso fenomeno in 2D e in 3D contemporaneamente: la mappa dà la posizione precisa e il contesto planimetrico, la scena dà l'altezza e l'ingombro. Senza il collegamento si passa il tempo a ritrovare a mano lo stesso punto nelle due viste.
+
+## Automazione
+
+Quattro strumenti, in ordine crescente di libertà:
+
+| Strumento | Cosa risolve |
+|---|---|
+| **Modelli di geoprocessing** | Concatenare strumenti esistenti in un flusso ripetibile, senza scrivere codice. |
+| **Task** | Guidare una persona attraverso un flusso ripetibile, passo per passo. Automatizza la procedura, non l'esecuzione. |
+| **Script Python** | Automazione piena, con accesso all'intero ambiente. |
+| **Script R** | Analisi statistica in R, tramite l'**R-ArcGIS bridge**. |
+
+I **task** sono la categoria che si tende a ignorare, e sono la risposta al problema più comune di un ufficio GIS: una procedura che va eseguita allo stesso modo da persone diverse. Un modello o uno script automatizzano il calcolo; un task documenta e guida i passaggi che richiedono comunque una decisione umana.
+
+Oltre agli strumenti interni si possono usare strumenti di automazione **di terze parti** per analisi, editing e gestione dati.
+
+## Estensioni
+
+Le capacità di base si estendono con **extension** opzionali, che aggiungono strumenti avanzati in aree specifiche: modellazione e analisi 3D, analisi spaziale, analisi di immagini, analisi di rete, gestione dei flussi di lavoro, controllo di qualità dei dati.
+
+Vale saperlo prima di cercare uno strumento che non c'è: l'assenza di una funzione in Pro non significa che il sistema non la offra, può significare che appartiene a un'estensione non licenziata.
+
+## Condividere verso il portale
+
+Dalla scheda **Share** il contenuto prodotto in Pro va direttamente nel portale ArcGIS Online o ArcGIS Enterprise. Le forme di condivisione sono tre, e la scelta dipende da cosa deve poter fare il destinatario.
+
+| Forma | Cosa contiene | Quando |
+|---|---|---|
+| **Web map** | I layer di dati **e i basemap** usati nella mappa. | Il destinatario deve consumare una mappa già composta. |
+| **Web layer** | Solo i layer di dati. | Il dato deve essere riusabile in mappe diverse, comprese quelle di altri. |
+| **Package** | Il contenuto di una mappa, di un progetto o di un layer, in un file. | Serve consegnare qualcosa a chi non ha accesso al portale, o lavorare senza connessione. |
+
+La differenza operativa tra le prime due: il **web layer** è un mattone, la **web map** è una composizione. Pubblicare una mappa quando serviva il dato costringe chi la riceve a rifarla per riusarne i layer.
+
+I package sono l'unica delle tre che produce un **file**: possono essere pubblicati su un portale oppure **inviati direttamente** al destinatario. Sono la risposta quando il portale non è nel quadro.
+
+Un singolo layer si condivide anche senza passare dalla scheda Share: tasto destro sul layer nel Contents pane → `Sharing`, da cui si può produrre un **layer package** o pubblicarlo nel portale dell'organizzazione.
+
+### Prima di pubblicare
+
+Il passaggio che si liquida in fretta e che determina se il contenuto sarà ritrovabile: rivedere le **informazioni descrittive** che vengono pubblicate insieme al dato.
+
+- il **summary**, una descrizione breve dello scopo del contenuto;
+- i **tag**, termini chiave ricercabili con cui altri troveranno l'item.
+
+Entrambi sono **obbligatori** e vengono **precompilati dai metadati del layer**. Questa è la parte che conta: se i metadati a monte sono poveri, il precompilato è povero, e l'item finisce nel portale in una forma che nessuno trova cercando. La qualità dei metadati non è un adempimento, è la condizione perché il lavoro sia riutilizzabile — lo stesso principio per cui, sulla item page, una scheda ricca segnala dati affidabili.
+
+Restano da scegliere la **cartella** del portale in cui pubblicare e i **gruppi** con cui condividere, poi si pubblica. Dopo la pubblicazione l'item è consultabile nel portale, la sua scheda descrittiva è verificabile, e si può aprire in Map Viewer per iniziare a lavorarci.
+
+## Pro o Map Viewer
+
+I due ambienti non sono alternativi ma sequenziali, e il discriminante è il tipo di lavoro.
+
+| | **ArcGIS Pro** | **Map Viewer** |
+|---|---|---|
+| Punto di forza | Analisi approfondita, cartografia avanzata, editing, elaborazione imagery, automazione. | Authoring rapido di mappe web, condivisione immediata, accessibilità da qualunque dispositivo. |
+| Ambiente | Desktop, con i dati anche locali. | Browser, sui contenuti del portale. |
+| Ruolo nel flusso | Produce e pubblica. | Compone e distribuisce ciò che è pubblicato. |
+
+Il percorso tipico è uno: il lavoro pesante si fa in Pro, il risultato si pubblica come web layer, e da lì la mappa si compone e si condivide sul web.
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Progetto** | Il contenitore di lavoro di ArcGIS Pro: mappe, scene, layout, strumenti e connessioni. File `.aprx`. |
+| **`.mapx` / `.lyrx`** | Mappa esportata / layer con la sua simbologia, riutilizzabili in altri progetti. |
+| **Folder connection** | Riferimento a una cartella esterna al progetto, necessario perché il progetto referenzia i dati e non li copia. |
+| **Ribbon** | Le schede di comandi, contestuali alla selezione e alla vista attiva. |
+| **Contents pane** | Pannello che mostra il contenuto della vista attiva. |
+| **Catalog pane** | Pannello che mostra risorse e connessioni del progetto. |
+| **Vista** | Mappa, scena, layout o tabella aperti come tab; affiancabili e collegabili. |
+| **Explore tool** | Strumento di navigazione predefinito; espone al passaggio del puntatore i comandi disponibili. |
+| **Previous Extent / Full Extent** | Ritorno alla vista precedente / estensione di tutti i layer della mappa. |
+| **Link Views** | Sincronizzazione di due viste, per esempio su centro e scala. |
+| **Task** | Flusso di lavoro ripetibile che guida una persona passo per passo. |
+| **R-ArcGIS bridge** | Componente che permette di eseguire script R da ArcGIS Pro. |
+| **Extension** | Modulo opzionale che aggiunge strumenti avanzati in un'area specifica. |
+| **Web map / web layer** | Mappa composta con i suoi basemap / solo i layer di dati, riusabili. |
+| **Package** | File che racchiude una mappa, un progetto o un layer; pubblicabile o consegnabile direttamente. |
+| **Summary / tag** | Descrizione breve dello scopo / termini chiave ricercabili; obbligatori e precompilati dai metadati. |

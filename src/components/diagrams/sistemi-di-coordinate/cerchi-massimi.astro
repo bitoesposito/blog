@@ -1,0 +1,59 @@
+---
+// Cerchio massimo e small circle: il piano passa o no per il centro.
+// A destra la conseguenza pratica: l'arco di cerchio massimo è la rotta più breve.
+---
+
+<figure class="my-8">
+  <svg viewBox="0 0 700 340" role="img" aria-labelledby="cerchi-title" class="h-auto w-full text-foreground">
+    <title id="cerchi-title">
+      A sinistra un cerchio massimo, generato da un piano che passa per il centro della Terra,
+      e un small circle generato da un piano spostato. A destra il confronto su una mappa piana
+      tra la linea retta e l'arco di cerchio massimo.
+    </title>
+
+    <text x="160" y="26" font-size="13" text-anchor="middle" class="fill-foreground">i piani che tagliano la Terra</text>
+    <text x="540" y="26" font-size="13" text-anchor="middle" class="fill-foreground">la rotta più breve</text>
+
+    <!-- PANNELLO A -->
+    <text x="160" y="52" font-size="11" text-anchor="middle" class="fill-muted-foreground">small circle</text>
+    <line x1="160" y1="58" x2="160" y2="83" class="stroke-border" stroke-width="1" />
+
+    <circle cx="160" cy="175" r="105" fill="none" class="stroke-foreground" stroke-width="2" />
+    <ellipse cx="160" cy="107" rx="80" ry="20" fill="none" class="stroke-muted-foreground" stroke-width="1.5" />
+    <ellipse cx="160" cy="175" rx="105" ry="30" fill="none" class="stroke-foreground" stroke-width="2" />
+    <line x1="160" y1="107" x2="160" y2="175" class="stroke-border" stroke-width="1" stroke-dasharray="4 3" />
+    <circle cx="160" cy="175" r="3.5" class="fill-foreground" />
+    <text x="172" y="192" font-size="11" class="fill-muted-foreground">centro</text>
+
+    <line x1="160" y1="205" x2="160" y2="290" class="stroke-border" stroke-width="1" />
+    <text x="160" y="306" font-size="11" text-anchor="middle" class="fill-foreground">cerchio massimo</text>
+    <text x="160" y="324" font-size="11" text-anchor="middle" class="fill-muted-foreground">divide la Terra in due metà uguali</text>
+
+    <!-- PANNELLO B: mappa piana -->
+    <rect x="400" y="70" width="280" height="180" fill="none" class="stroke-border" stroke-width="1" />
+    <line x1="470" y1="70" x2="470" y2="250" class="stroke-border" stroke-width="0.75" />
+    <line x1="540" y1="70" x2="540" y2="250" class="stroke-border" stroke-width="0.75" />
+    <line x1="610" y1="70" x2="610" y2="250" class="stroke-border" stroke-width="0.75" />
+    <line x1="400" y1="130" x2="680" y2="130" class="stroke-border" stroke-width="0.75" />
+    <line x1="400" y1="190" x2="680" y2="190" class="stroke-border" stroke-width="0.75" />
+
+    <path d="M 425 210 Q 525 125 645 180" fill="none" class="stroke-foreground" stroke-width="2.5" />
+    <line x1="425" y1="210" x2="645" y2="180" class="stroke-muted-foreground" stroke-width="1.5" stroke-dasharray="6 4" />
+    <circle cx="425" cy="210" r="4.5" class="fill-foreground" />
+    <circle cx="645" cy="180" r="4.5" class="fill-foreground" />
+    <text x="419" y="228" font-size="12" text-anchor="end" class="fill-foreground">A</text>
+    <text x="652" y="174" font-size="12" class="fill-foreground">B</text>
+
+    <text x="530" y="142" font-size="11" text-anchor="middle" class="fill-foreground">arco di cerchio massimo</text>
+    <text x="545" y="216" font-size="11" text-anchor="middle" class="fill-muted-foreground">linea retta sulla mappa</text>
+    <text x="540" y="306" font-size="11" text-anchor="middle" class="fill-muted-foreground">sul piano sembra più lunga,</text>
+    <text x="540" y="324" font-size="11" text-anchor="middle" class="fill-muted-foreground">sulla sfera è la più corta</text>
+  </svg>
+  <figcaption class="mt-3 text-sm text-muted-foreground">
+    Un cerchio massimo nasce da un piano che passa per il <strong class="font-medium text-foreground">centro</strong>
+    della Terra e la divide in due metà uguali: l'equatore lo è, e lo è ogni coppia di meridiani opposti.
+    Tutti gli altri paralleli sono small circle, perché il loro piano è spostato rispetto al centro.
+    L'utilità pratica sta nel pannello destro: un arco di cerchio massimo è la distanza più breve tra
+    due punti, ed è per questo che le rotte aeree su una mappa piana appaiono curve.
+  </figcaption>
+</figure>
