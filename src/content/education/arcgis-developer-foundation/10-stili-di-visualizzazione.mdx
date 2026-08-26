@@ -7,6 +7,10 @@ authors: ['vitoesposito']
 order: 10
 ---
 
+import FormeEMetodi from '@/components/diagrams/stili/forme-e-metodi.astro'
+
+import MetodiClassificazione from '@/components/diagrams/stili/metodi-classificazione.astro'
+
 ## Come scegliere
 
 Gli stili non sono varianti estetiche dello stesso risultato: ognuno richiede un tipo di dato specifico e distorce in un modo suo. Questa è la tabella da cui partire.
@@ -149,13 +153,41 @@ Il tema più produttivo è **Above and below**, perché obbliga a rispondere a u
 
 Attivando **Classify data** si passa da colore proporzionale a colore per classi. La mappa diventa **visivamente più semplice**, e il prezzo è che **tutte le differenze sottili scompaiono**: con classi, un valore di 30 può essere bianco e 31 azzurro chiaro, mentre in unclassed erano quasi indistinguibili — che è la verità del dato.
 
-| Metodo | Come divide | Quando |
-|---|---|---|
-| **Natural Breaks** (Jenks) | Cerca i raggruppamenti naturali: pone i confini dove ci sono salti relativamente grandi nei valori, massimizzando la differenza tra classi. | Dati **distribuiti in modo non uniforme**. È il default quando si attivano le classi. |
-| **Equal Interval** | Divide l'intervallo tra minimo e massimo in sottointervalli di **ampiezza uguale**. | Intervalli che devono essere leggibili come misure regolari. Su dati asimmetrici concentra quasi tutto in una classe. |
-| **Quantile** | Ogni classe contiene lo **stesso numero di feature**. | Dati distribuiti linearmente. Può risultare **fuorviante**: feature simili finiscono in classi adiacenti, feature molto diverse nella stessa classe. Si attenua aumentando le classi. |
-| **Standard deviation** | Ogni intervallo è ampio una deviazione standard, centrato sulla media. Si può scendere a 0,5. | Quando la storia è statistica: quanto una feature devia dalla media. |
-| **Manual** | Breaks digitati a mano. | Quando esistono soglie che significano qualcosa fuori dal dataset. |
+Prima di scegliere il metodo conviene guardare **che forma ha la distribuzione**, perché è la forma
+a determinare quanto la scelta pesa. Le tre che si incontrano più spesso, e come i tre metodi
+automatici reagiscono a ciascuna:
+
+<FormeEMetodi />
+
+Sulla distribuzione **uniforme** i tre metodi danno quasi lo stesso risultato: la scelta è quasi
+irrilevante. Sulla **asimmetrica** divergono al massimo, e il metodo diventa la decisione più
+importante della mappa. Sulla **bimodale** emerge un caso a sé: quantile, per tenere 30 feature per
+classe, è costretto a tagliare **dentro** entrambi i gruppi, separando feature che appartengono allo
+stesso insieme — è esattamente il "fuorviante" della tabella qui sotto. Vale anche l'osservazione
+più generale: quattro classi su due gruppi naturali obbligano comunque a suddividere, segno che il
+**numero di classi** va scelto sulla struttura del dato, non lasciato al default.
+Ogni metodo divide gli stessi numeri in modo diverso, e la chiave per non confonderli è una sola:
+**ognuno tiene fisso qualcosa e lascia variare tutto il resto**. Le due grandezze in gioco sono
+l'**ampiezza** di ciascuna classe e il **numero di feature** che ci finisce dentro; nessun metodo può
+tenerle fisse entrambe.
+
+| Metodo | Tiene fisso | Lascia variare | Quando serve |
+|---|---|---|---|
+| **Equal Interval** | L'**ampiezza**: divide l'intervallo tra minimo e massimo in parti uguali. | Il numero di feature per classe, che su dati asimmetrici diventa squilibratissimo. | Quando le classi devono leggersi come misure regolari: fasce di 10 in 10, quartili di prezzo, "il primo terzo". |
+| **Quantile** | Il **numero di feature**: tante quante ne servono perché le classi si equivalgano. | L'ampiezza, che può passare da 0,8 a 8,3 tra una classe e l'altra. | Quando la domanda è di posizione in graduatoria: i primi cinque, il 20% peggiore. |
+| **Standard deviation** | L'**ampiezza**, ma fissata a una deviazione standard e centrata sulla media. Si può scendere a 0,5. | Il numero di feature per classe. | Quando la storia è statistica: quanto una feature devia dalla media, e chi sono gli outlier. |
+| **Natural Breaks** (Jenks) | **Niente**: cerca i punti dove i dati si diradano e taglia lì, minimizzando la varianza interna alle classi. | Sia le ampiezze sia i conteggi. | Dati **distribuiti in modo non uniforme**, quando si vogliono rispettare i raggruppamenti che il dato ha già. È il default. |
+| **Manual** | Quello che decidi tu. | Tutto il resto. | Quando esistono soglie che significano qualcosa **fuori** dal dataset: un limite di legge, un obiettivo, una media nazionale. |
+
+<MetodiClassificazione />
+
+I due casi da conoscere sono le facce della stessa medaglia, e sui dati del diagramma si contano.
+**Equal interval** sulla distribuzione asimmetrica produce classi da **72, 33, 9 e 6** feature: il
+60% del dato in una classe sola, sei feature nell'ultima. La mappa esce quasi monocroma e i tre
+quarti superiori della scala di colori restano inutilizzati. **Quantile** produce **30, 30, 30 e 30**
+feature, e per riuscirci accosta classi larghe 1,4 e 1,5 a una larga 8,0: due feature che
+differiscono di poco finiscono in classi diverse, due che differiscono molto nella stessa. Aumentare
+il numero di classi attenua l'effetto, non lo elimina.
 
 Si possono usare **fino a 10 classi**. Con un numero **dispari** di classi una scala divergente assegna il colore neutro alla classe centrale; con un numero pari nessuna classe lo riceve.
 
