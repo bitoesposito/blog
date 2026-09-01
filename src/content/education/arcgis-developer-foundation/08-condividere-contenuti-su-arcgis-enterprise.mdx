@@ -1,0 +1,292 @@
+---
+title: "Condividere contenuti su ArcGIS Enterprise"
+description: "Portale e servizi, ruoli, dati copiati o referenziati, feature e map image layer, web tool, package, imagery e caching"
+pubDate: 2026-09-01
+tags: ['formazione', 'esri', 'arcgis', 'arcgis-enterprise', 'condivisione']
+authors: ['vitoesposito']
+order: 8
+---
+
+## Il portale come punto di raccolta
+
+ArcGIS è una piattaforma **Web GIS**: le persone interagiscono con essa tramite app su desktop, browser e dispositivi mobili, e le organizzazioni pubblicano dati, mappe e strumenti come **servizi web** verso un portale centrale che supporta mapping self-service, analisi e collaborazione.
+
+Il **portale** è quello spazio collaborativo, e si realizza in due modi: **ArcGIS Online** oppure **ArcGIS Enterprise**. Un portale gestisce gli **item** — file di dati, web map, web app — che collettivamente si chiamano *content*, e lascia a chi li crea la decisione su con chi condividerli.
+
+### Enterprise od Online
+
+Le due implementazioni offrono esperienza e capacità largamente sovrapposte. Le differenze che contano:
+
+| | **ArcGIS Enterprise** | **ArcGIS Online** |
+|---|---|---|
+| Amministrazione | Richiede amministrazione di sistema. | Necessità minima di amministrazione. |
+| Dove stanno i dati | Sulla **propria** infrastruttura. | Ospitati da ArcGIS Online. |
+| Software | Installato sulla propria infrastruttura. | Servizi GIS gestiti da Esri nel cloud. |
+| Analisi nel portale | Sì. | Sì. |
+| Layer ospitati | Feature, tile, **imagery, elevation**, scene. | Feature, tile, scene. |
+| Dati enterprise gestiti dall'utente | Sì: servizi basati su geodatabase aziendali registrati. | No. |
+
+La riga decisiva è la penultima: solo Enterprise ospita **imagery ed elevation layer**, mentre Online distribuisce scene ed elevation come package da scaricare e usare in locale. E solo Enterprise può esporre servizi che leggono direttamente un **geodatabase aziendale** gestito dall'organizzazione — che è il motivo per cui esiste tutto il resto di questo capitolo.
+
+### Servizio e item non sono la stessa cosa
+
+Un **servizio** rappresenta una risorsa GIS — una mappa, un locator, una connessione a geodatabase — che risiede su ArcGIS Server ed è resa disponibile alle applicazioni client. L'**item** nel portale è ciò che rende quel servizio cercabile e condivisibile. Sono due strati distinti, e la corrispondenza tra i due è fissa:
+
+| Tipo di servizio su ArcGIS Server | Tipo di item nel portale |
+|---|---|
+| Cached map service | Tile layer |
+| Cached map service con feature service | Tile layer **e** feature layer |
+| Feature service | Feature layer |
+| Image service | Imagery layer |
+| Scene service | Scene layer |
+| WFS service | WFS layer |
+
+Nota infrastrutturale: l'image service che sta sotto un imagery layer ospitato gira sul **raster analysis server** del portale, non sull'hosting server.
+
+## Chi può fare cosa
+
+Chi accede al portale senza essere membro dell'organizzazione ha accesso limitato. I membri operano secondo i **privilegi del ruolo** che l'administrator gli assegna. I ruoli standard sono quattro e sono **cumulativi**: ciascuno ha i permessi dei precedenti più altri.
+
+| Attività | Ruoli che possono farlo |
+|---|---|
+| Aderire ai gruppi | tutti |
+| Vedere web map pubbliche | tutti |
+| Condividere web map | User, Publisher |
+| Editare feature | User, Publisher |
+| **Pubblicare web layer** | Publisher |
+| **Eseguire analisi sulle feature** | Publisher |
+
+`Viewer → User → Publisher → Administrator`
+
+Le due righe in grassetto sono quelle che si scoprono sbattendoci contro: pubblicare e analizzare richiedono **Publisher**, e non è un dettaglio amministrativo — determina chi nel team può portare dati nel portale e chi può solo consumarli.
+
+## Il workflow di condivisione
+
+Quattro passi, ripetibili ogni volta che dati o pubblico cambiano:
+
+1. **Aggiungere** il contenuto al portale: layer, mappe, scene, app.
+2. **Rifinire gli item details**: ogni item ha una pagina di dettaglio con le sue opzioni di gestione.
+3. **Scegliere il pubblico**: pubblico, organizzazione, un gruppo, una persona.
+4. **Condividere**.
+
+Sul secondo passo vale la stessa avvertenza già vista sulla pubblicazione da ArcGIS Pro: summary dettagliato, descrizione approfondita, **credito alla fonte** dei dati e tag specifici sono ciò che rende un contenuto trovabile e riconoscibile come autorevole. Un item senza metadati esiste nel portale e non esiste per chi lo cerca.
+
+## La decisione centrale: copiare o referenziare
+
+Condividendo un web layer da ArcGIS Pro si scelgono uno di due modi di gestire il dato, e questa è la decisione da cui dipende tutto il resto.
+
+| | **Copy All Data** | **Reference Registered Data** |
+|---|---|---|
+| Cosa fa | Manda una **copia** del contenuto all'**ArcGIS Data Store**. | Pubblica un **riferimento** al dato gestito da un geodatabase aziendale. |
+| Come appare l'item | `Feature Layer (Hosted)` | `Feature Layer` |
+| Chi gestisce il dato | Il server. | Chi possiede il dato. |
+| Legame con la sorgente | **Nessuno**: la copia non è collegata alla feature class di origine. | Diretto: il server legge la stessa sorgente, o una sua replica esatta, tramite il percorso registrato. |
+| Editing collaborativo | Sulla **copia** pubblicata, non sull'originale. | Sull'**originale**, se il dato sta in un geodatabase aziendale. |
+| Quando conviene | Velocità e semplicità; nessuna infrastruttura da registrare. | Contenuto autorevole, dove deve esistere **una sola versione base** del dato. |
+
+Il modo più utile di leggere questa tabella è chiedersi **chi possiede la verità**. Con *Copy All Data* la verità passa al portale: quello che c'è nel Data Store è uno snapshot, e da quel momento vive di vita propria — le modifiche fatte nel portale non tornano indietro, e quelle fatte all'originale non arrivano avanti. Con *Reference Registered Data* la verità resta nel database e il portale è una finestra su di esso: chi modifica da qualunque client modifica la stessa cosa.
+
+Da qui la regola operativa, che non ha alternative: se le modifiche devono essere **visibili dinamicamente sia nel web layer sia nel dato sorgente**, l'unica opzione è *Reference Registered Data*.
+
+### Registrare le sorgenti
+
+Referenziare presuppone che il dato sia **registrato** con ArcGIS Server. La registrazione fornisce al server l'elenco dei percorsi e delle connessioni che può usare, e ArcGIS Pro offre un modo diretto per registrarla e validarla. Due tipi di sorgente:
+
+| Tipo | Caratteristiche |
+|---|---|
+| **Database** | Accesso scalabile e **versionato** al dato. Un geodatabase aziendale è **necessario** per pubblicare feature service editabili. |
+| **Folder** | Rende disponibile al server il dato su file, da una cartella condivisa o un percorso di rete. Mappe e strumenti che lo usano dovrebbero usare **percorsi relativi**. |
+
+Per registrare sorgenti serve essere **Administrator** o **Publisher**, oppure avere il privilegio *Publish Server-Based Layers* in un ruolo custom.
+
+## Feature layer o map image layer
+
+Scelto come il server accede al dato, resta da scegliere **come esporlo**. Per il mapping di base ci sono due tipi di layer, e la differenza è netta.
+
+| | **Map image layer** | **Feature layer** |
+|---|---|---|
+| Cosa manda al client | Un'**immagine** della mappa, renderizzata dinamicamente dal server. | Le **feature**: geometrie e attributi. |
+| Editing | **No.** | **Sì**, ed è il motivo per cui esiste. |
+| Query sugli attributi | Sì. | Sì. |
+| Cartografia complessa | Gestita bene: il rendering è sul server. | Il client deve disegnare tutto. |
+| Integrità del dato | Protetta: nessuna modifica indesiderata possibile. | Esposta, secondo i permessi concessi. |
+
+È il default quando si referenzia un dato registrato, e la sua natura si riassume in una frase: è **solo un'immagine dei dati**. Questo è insieme il limite e il punto di forza — chi consuma un map image layer non può editare né ristilizzare, e in cambio si ottiene cartografia pesante servita velocemente e un dato al sicuro.
+
+Il feature layer, quando pubblicato per riferimento su geodatabase aziendale, permette un controllo fine sull'editing: si abilita o disabilita del tutto, e se abilitato si concedono privilegi pieni — aggiunta, aggiornamento, cancellazione — oppure si restringe a solo aggiornamento o solo aggiunta, senza cancellazione.
+
+### La matrice di scelta
+
+Le due decisioni — tipo di layer e metodo di condivisione — si combinano. I quattro casi tipici:
+
+| Obiettivo | Tipo di layer | Metodo |
+|---|---|---|
+| Proteggere il dato sorgente ma permettere ad altri di editare | Feature layer | **Copy** |
+| Dato usato regolarmente da altri, mai in workflow di editing | Map image layer | indifferente |
+| Cartografia complessa, aggiornata ogni giorno, non editabile | Map image layer | **Reference** |
+| Dato sorgente usato per editing e query dinamiche | Feature layer | **Reference** |
+
+La prima riga è quella controintuitiva e vale rileggerla: se si vuole *far editare senza mettere a rischio l'originale*, la risposta è copiare. L'editing avviene sulla copia, e il sorgente resta intatto.
+
+## Dati aggiunti dal portale
+
+Non tutto passa da ArcGIS Pro. Il portale accetta direttamente CSV, shapefile in package, GPX e raster, e il modo in cui li si aggiunge determina **cosa si ottiene**.
+
+| Come si aggiunge | Cosa si ottiene |
+|---|---|
+| Direttamente nella mappa di **Map Viewer** | Una **feature collection**. Solo il proprietario o un administrator la può editare; gli altri vedono gli aggiornamenti che il proprietario fa. Salvandola dalla mappa si crea un item feature layer. |
+| Dalla pagina **Content**, con l'opzione di pubblicare | Un **hosted feature service** con il suo hosted feature layer, copiato nell'**ArcGIS Data Store**. Supporta editing collaborativo, sia dentro il portale sia tra portale e ArcGIS Pro. |
+
+La distinzione conta perché è facile prendere la strada sbagliata per abitudine: trascinare un CSV nella mappa è il gesto più naturale e produce l'oggetto meno condivisibile. Se il dato serve a più persone, va aggiunto dalla pagina Content e pubblicato.
+
+L'analisi nel portale richiede il livello **Publisher** o superiore, e copre analisi su feature e su raster dentro Map Viewer. È la capacità che permette di lavorare in ambienti disconnessi — in viaggio o sul campo — senza una postazione ArcGIS Pro.
+
+## Condividere analisi personalizzate
+
+Un modello di geoprocessing costruito in ArcGIS Pro si condivide in due forme, e la differenza è a chi serve.
+
+| | **Web tool** | **Geoprocessing package** |
+|---|---|---|
+| Cosa contiene | Il servizio dello strumento. | Lo strumento, **i dati** usati e la **storia** del geoprocessing. |
+| Chi lo consuma | Chiunque abbia accesso al portale, da Map Viewer, dalle web app e da ArcGIS Pro. | Colleghi che lavorano con ArcGIS Pro. |
+| A cosa serve | Incorporare analisi custom in mappe e app. | Condividere un **workflow** completo, per collaborazione o istruzione. |
+
+Un dettaglio procedurale che spiega un errore frequente: lo strumento **deve essere eseguito in ArcGIS Pro** prima di poter essere condiviso, perché ciò che si pubblica come web tool è la **geoprocessing history** generata da quell'esecuzione. Non si condivide un modello mai lanciato.
+
+### Le web app
+
+Una web app aggiunge valore a una web map, e si costruisce **sopra** di essa: la mappa fornisce il contesto geografico, l'app la configurazione con cui il pubblico interagisce.
+
+La proprietà architetturale da tenere presente: **una web map può alimentare più app**, e le modifiche alla mappa si riflettono in tutte. Lo stesso vale un livello più sotto — un feature layer può stare in più mappe, o anche più volte nella stessa mappa con simbologie diverse per evidenziare aspetti diversi.
+
+Due strade per costruirle:
+
+- le **configurable app** partono da template pensati per usi specifici. Sono potenti e **limitate nella personalizzazione**: possono non supportare esattamente ciò che si aveva in mente;
+- **Web AppBuilder** offre personalizzazione maggiore con un'interfaccia a wizard, temi di layout e **widget** modulari — stampa, disegno, misura, segnalibri. Tra questi c'è un widget di **geoprocessing** dedicato, che è il modo con cui un web tool custom viene esposto all'utente finale.
+
+## I package
+
+Un **project package** contiene tutte le mappe di un progetto e i dati referenziati dai loro layer, più connessioni a cartelle, toolbox, geoprocessing history, task e allegati. Serve a trasferire un progetto completo tra colleghi, tra dipartimenti o verso utenti ArcGIS esterni — e ha un uso secondario che vale conoscere: **fotografare** lo stato di un progetto in un dato momento, come archivio.
+
+La distinzione tra un **package** e un **file** è la stessa in tutte le sue varianti: un map package porta i dati con sé e funziona senza accesso alla rete di origine; un map file contiene solo un **riferimento** ai dati e serve unicamente a chi può raggiungere quel percorso.
+
+Le varianti per i tile: **tile package** (`.tpk`) per immagini e raster, **vector tile package** (`.vtpk`) per i vettori con le loro risorse di stile. Entrambi si producono da mappe multiscala con strumenti di geoprocessing, e una volta caricati sul portale diventano un tile layer pubblicato. Un package, come qualunque archivio, si copia su una rete, si manda per email, si mette su un dispositivo mobile come basemap **offline**, o si carica sul portale.
+
+### Share Outside Of Organization
+
+L'opzione che decide se i dati vengono **inclusi** nel package o solo referenziati. Attivandola, i dati vengono estratti dai geodatabase aziendali e dai percorsi UNC e copiati in una **file geodatabase** dentro il package.
+
+Il criterio non è il confine dell'organizzazione, malgrado il nome. È se il destinatario può **risolvere i tuoi percorsi**:
+
+- colleghi nello stesso ufficio, con workstation standardizzate, gli stessi database aziendali e le stesse connessioni: **non serve**, i riferimenti funzioneranno;
+- un collega interno che usa **alias diversi** per le unità di rete: **serve**, anche se non si esce dall'organizzazione;
+- pubblico: **serve**.
+
+Il caso di mezzo è quello che si sbaglia. Restare dentro l'organizzazione non garantisce niente se i percorsi non sono identici su entrambe le macchine.
+
+## Imagery
+
+L'imagery è una forma specializzata di raster — una matrice di celle in cui ogni valore descrive una caratteristica di una posizione — e si condivide direttamente verso il portale. Nel GIS i tipi più comuni sono l'imagery da **remote sensing** e quella **aerea**, composte in genere di più **bande** corrispondenti a porzioni diverse dello spettro elettromagnetico.
+
+Gli elementi che la definiscono:
+
+- ha **quattro risoluzioni**: spaziale, spettrale, temporale, radiometrica;
+- è a colori (**multibanda**) o **pancromatica** (banda singola);
+- rappresenta dati **continui**;
+- l'informazione tematica non c'è: va **derivata** con l'analisi di immagine, a differenza del vettoriale che porta gli attributi con sé.
+
+### Le raster function
+
+Una **raster function** trasforma i dati, altera la simbologia o replica uno strumento di geoprocessing **senza creare un dataset**: elabora dinamicamente e mostra il risultato. I parametri restano modificabili dopo l'applicazione, così da produrre un output nuovo senza ripartire da capo.
+
+| Scopo | Funzioni |
+|---|---|
+| **Trasformazione** | NDVI, Pan Sharpening, Geometric (ortorettifica), LAS Dataset To Raster, Tasseled Cap |
+| **Simbologia** | Shaded Relief, Grayscale, Color Map, Contrast And Brightness, Stretch |
+| **Geoprocessing** | Slope, Clip, Extract Bands, Arithmetic, Aspect |
+
+La catena di funzioni applicata si salva come **raster function template**, riutilizzabile su altri dati con caratteristiche simili e **allegabile a un imagery layer** al momento della condivisione: in ArcGIS Enterprise chi consuma il layer può poi applicare qualunque funzione pubblicata insieme a esso.
+
+"Caratteristiche simili" è un requisito preciso, non un'indicazione: per applicare un template devono corrispondere **bit depth**, **numero di bande**, **raster attribute table** e **intervallo dei valori dei pixel**.
+
+## Ottimizzare la visualizzazione con il caching
+
+Il modo di ottenere layer web veloci è metterli in **cache** come tile. Il server disegna la mappa a un insieme di scale definite e salva i risultati come tile; alla richiesta successiva restituire un tile già pronto è molto più rapido che ridisegnare la mappa.
+
+È appropriato per **basemap e mappe che cambiano raramente** — e la seconda parte della frase è un vincolo, non un consiglio.
+
+| | **Raster tile layer** | **Vector tile layer** |
+|---|---|---|
+| Cosa memorizza | Immagini pre-renderizzate. | Una rappresentazione **vettoriale** dei dati più lo stile con cui disegnarli. |
+| Risoluzione del display | Fissa: i tile sono immagini. | **Si adatta** alla risoluzione del dispositivo. |
+| Ristilizzabile | No. | **Sì**, per usi diversi. |
+| Peso | Maggiore. | Minore, con mappe più rapide. |
+| Uso tipico | Basemap, hillshade, raster tematici statici. | Mappe che devono restare nitide su dispositivi diversi. |
+
+### Il workflow, e dove si decide la qualità
+
+Quattro fasi: **pianificare e progettare**, **authoring**, **pubblicare**, **testare**. Le prime due sono quelle che determinano il risultato.
+
+**In pianificazione** si decidono i fattori strutturali:
+
+- le **scale**. È il punto che cambia mentalità: una mappa di carta è progettata per stare bene a **una** scala, un tile layer va progettato per **ogni** scala che si mette in cache;
+- il **tiling scheme**, che stabilisce numero di scale, dimensioni dei tile, tipi di immagine e sistema di coordinate del servizio in cache. Tra le opzioni c'è lo schema predefinito ArcGIS Online / Bing / Google Maps, e spesso l'organizzazione ha già scelto il proprio;
+- **separare i layer stabili da quelli che cambiano spesso**, pubblicandoli come tile layer distinti. Limita il numero di volte in cui la cache va ricostruita;
+- il **sistema di coordinate**, che va impostato sulla mappa. Le basemap di ArcGIS Online usano **WGS84 Web Mercator (Auxiliary Sphere)**: pubblicando verso un portale, si applica quello.
+
+**In authoring** si può usare tutta la cartografia disponibile senza preoccuparsi delle performance, perché il costo è pagato una volta in fase di cache. Conviene progettare a ogni intervallo di scala: il raster si adatta perché viene ricampionato al variare della scala, il **vettoriale no** — punti e linee restano della stessa dimensione a ogni scala, e serve lavoro per non ottenere una mappa affollata a piccola scala e vuota a grande scala.
+
+Il vincolo da conoscere prima di iniziare, non dopo: **una volta creati i tile, l'aspetto della mappa non si cambia** se non ricostruendo e aggiornando il tile layer. E non lo può cambiare nemmeno chi la consuma, perché sta guardando immagini pre-esistenti su un server. Il caching scambia flessibilità con velocità, e lo fa per tutti.
+
+**In test** si verifica su piattaforme e dispositivi diversi che i tile vengano riconosciuti e usati come previsto. Su mappe di aree molto estese conviene generare prima una cache di prova su un'**estensione ridotta**, invece di scoprire un problema dopo ore di generazione.
+
+Nota sui costi: pubblicando verso ArcGIS Online, costruire la cache come **package** e poi caricarlo riduce i credits consumati rispetto a farla generare dal servizio.
+
+## Presentazioni e app configurabili
+
+Una **presentation** si crea da Map Viewer o dalla pagina di dettaglio di una web map, e produce una sequenza di slide costruite con i layer, i pop-up e le basemap di quella mappa. Ogni slide può mostrare una configurazione diversa di basemap visibile, operational layer, estensione, pop-up aperti e titolo.
+
+Cosa aspettarsi e cosa no:
+
+- serve a raccontare una storia **lineare**, per esempio un cambiamento nel tempo su un'area;
+- richiede pop-up **configurati** per mostrare informazione rilevante;
+- per essere vista bastano l'accesso ai dati e un **browser**;
+- è una visualizzazione **statica**: non è un ambiente collaborativo e non supporta editing o aggiornamento dei contenuti.
+
+Le **configurable app** sono invece template per categoria d'uso:
+
+| Categoria | A cosa serve |
+|---|---|
+| Story Map | Combinare mappe con testo narrativo, immagini e multimedia. |
+| Collect And Edit Data | Raccogliere dati nuovi o editare posizione e attributi di quelli esistenti. |
+| Compare Maps And Layers | Confrontare fenomeni geografici su una o più località. |
+| Explore And Summarize Data | Esplorare il contenuto della mappa attraverso gli attributi. |
+| Map Social Media | Arricchire la mappa con contenuti social legati al tema e al luogo. |
+| Provide Local Information | Evidenziare risorse o eventi in una località. |
+| Route And Get Directions | Fornire indicazioni di percorso verso le feature della mappa. |
+| Showcase A Map | Interfaccia semplice, con legenda e descrizione, per far concentrare sulla mappa. |
+
+## Glossario
+
+| Termine | Definizione |
+|---|---|
+| **Portale** | Spazio collaborativo in cui si creano, organizzano, archiviano e condividono contenuti geospaziali; si realizza con ArcGIS Online o ArcGIS Enterprise. |
+| **Servizio** | Risorsa GIS che risiede su ArcGIS Server e viene resa disponibile ai client; nel portale è rappresentata da un item. |
+| **ArcGIS Data Store** | Archivio che ospita i contenuti copiati nel portale o creati in esso. |
+| **Copy All Data** | Condivisione che copia il dato nel Data Store; l'item risulta `Feature Layer (Hosted)` e non è più legato alla sorgente. |
+| **Reference Registered Data** | Condivisione che pubblica un riferimento a un dato registrato; le modifiche restano sincronizzate con la sorgente. |
+| **Registrazione della sorgente** | Elenco di cartelle e connessioni a geodatabase che ArcGIS Server può usare per accedere ai dati condivisi. |
+| **User-managed content** | Contenuto la cui sorgente resta gestita da chi lo possiede, tipicamente in un geodatabase aziendale. |
+| **Map image layer** | Layer che il server renderizza dinamicamente restituendo un'immagine; interrogabile, non editabile. |
+| **Feature collection** | Layer creato aggiungendo dati direttamente in Map Viewer; editabile solo dal proprietario o da un administrator. |
+| **Hosted feature layer** | Layer pubblicato nel Data Store, che supporta editing collaborativo. |
+| **Web tool** | Strumento di geoprocessing condiviso al portale, usabile da Map Viewer, web app e ArcGIS Pro. |
+| **Geoprocessing package** | Package che contiene strumento, dati e storia di un workflow di geoprocessing. |
+| **Project package** | File che racchiude mappe, dati referenziati, connessioni, toolbox, history, task e allegati di un progetto. |
+| **Share Outside Of Organization** | Opzione che estrae i dati in una file geodatabase dentro il package; necessaria quando il destinatario non può risolvere i percorsi. |
+| **Tile package / vector tile package** | `.tpk` per immagini e raster, `.vtpk` per vettori con le risorse di stile. |
+| **Raster function** | Elaborazione dinamica di un raster che mostra il risultato senza creare un dataset. |
+| **Raster function template** | Catena di raster function salvata, riutilizzabile su dati con bit depth, bande, tabella e intervallo di valori compatibili. |
+| **Tiling scheme** | Definizione di numero di scale, dimensioni dei tile, tipi di immagine e sistema di coordinate di un servizio in cache. |
+| **Presentation** | Sequenza di slide costruita da una web map; statica, per storie lineari. |
+| **Web AppBuilder** | Costruttore di web app a wizard, con widget modulari, incluso quello di geoprocessing. |
