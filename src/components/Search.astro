@@ -1,0 +1,181 @@
+---
+import { buttonVariants } from "./ui/button";
+import { Icon } from "./ui/icon";
+import { cn } from "@/lib/utils";
+---
+
+<button
+  id="search-open"
+  type="button"
+  aria-label="Cerca nel sito"
+  aria-keyshortcuts="Control+K Meta+K"
+  class={cn(
+    buttonVariants({ variant: "ghost", size: "icon" }),
+    "sm:w-40 sm:justify-between sm:px-2.5 sm:ring-1 sm:ring-foreground/10"
+  )}
+>
+  <span class="flex items-center gap-1.5 text-muted-foreground">
+    <Icon name="Search" className="size-[18px] sm:size-4" />
+    <span class="hidden sm:inline">Cerca…</span>
+  </span>
+  <kbd id="search-shortcut" class="hidden font-mono text-xs text-muted-foreground sm:inline">
+    Ctrl K
+  </kbd>
+</button>
+
+<dialog
+  id="search-dialog"
+  aria-label="Cerca nel sito"
+  class="mx-auto mt-[10vh] mb-auto w-[calc(100%-2rem)] max-w-2xl overflow-hidden border-0 bg-popover p-0 text-popover-foreground ring-1 ring-foreground/10 animate-in fade-in slide-in-from-top-2 duration-200 ease-out"
+>
+  <div class="flex max-h-[70dvh] flex-col">
+    <div class="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+      <Icon name="Search" className="size-4 shrink-0 text-muted-foreground" />
+      <input
+        id="search-input"
+        type="search"
+        placeholder="Cerca…"
+        autocomplete="off"
+        spellcheck="false"
+        enterkeyhint="go"
+        class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+      />
+      <kbd class="hidden font-mono text-xs text-muted-foreground sm:inline">esc</kbd>
+    </div>
+
+    <p
+      id="search-status"
+      role="status"
+      aria-live="polite"
+      class="shrink-0 px-4 py-3 text-sm text-muted-foreground"
+    >
+      Cerca tra articoli, corsi e progetti.
+    </p>
+
+    <ul id="search-results" class="min-h-0 overflow-y-auto"></ul>
+  </div>
+</dialog>
+
+<style>
+  /* Il colore è letterale: ::backdrop non erediteva le custom properties prima
+     di Chrome 122, quindi var(--background) resterebbe vuoto sui browser vecchi. */
+  dialog::backdrop {
+    background-color: oklch(0 0 0 / 0.5);
+    backdrop-filter: blur(4px);
+  }
+
+  /* La × nativa di type="search" è blu in Chrome: unico pixel colorato del sito. */
+  input::-webkit-search-cancel-button {
+    filter: grayscale(1);
+    opacity: 0.5;
+  }
+</style>
+
+<script>
+  const MAX_RESULTS = 8;
+  const DEBOUNCE = 200;
+  const HINT = "Cerca tra articoli, corsi e progetti.";
+  const ROW =
+    "block px-4 py-3 transition-colors duration-200 hover:bg-muted focus-visible:bg-muted dark:hover:bg-input/50";
+
+  /** Pagefind genera l'indice nel postbuild: in dev non esiste e in `astro dev`
+      la ricerca resta vuota. L'URL passa da una variabile per tenere l'import
+      fuori dal grafo di Vite, che altrimenti proverebbe a risolverlo in build. */
+  const INDEX = "/pagefind/pagefind.js";
+  let pagefind: Promise<any> | undefined;
+  const loadPagefind = () =>
+    (pagefind ??= import(/* @vite-ignore */ INDEX).catch(() => null));
+
+  const find = <T extends Element>(selector: string) => document.querySelector<T>(selector);
+
+  const escape = (text: string) =>
+    text.replace(/[<>&"]/g, (char) => `&#${char.charCodeAt(0)};`);
+
+  function open() {
+    const dialog = find<HTMLDialogElement>("#search-dialog");
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    find<HTMLInputElement>("#search-input")?.focus();
+    loadPagefind();
+  }
+
+  /** Il percorso senza la foglia orienta tra i 148 capitoli: "education / javascript". */
+  function breadcrumb(url: string) {
+    return url.replace(/^\/|\/$/g, "").split("/").slice(0, -1).join(" / ");
+  }
+
+  function template(result: any) {
+    const path = breadcrumb(result.url);
+    return `<li>
+      <a href="${escape(result.url)}" class="${ROW}">
+        <p class="text-sm leading-[1.25] font-medium">${escape(result.meta.title ?? "")}</p>
+        <p class="mt-1 line-clamp-2 text-sm leading-[1.35] text-muted-foreground [&_mark]:bg-transparent [&_mark]:font-semibold [&_mark]:text-foreground">${result.excerpt}</p>
+        ${path ? `<p class="mt-1.5 font-mono text-xs text-muted-foreground">${escape(path)}</p>` : ""}
+      </a>
+    </li>`;
+  }
+
+  async function search(term: string) {
+    const status = find("#search-status");
+    const list = find("#search-results");
+    if (!status || !list) return;
+
+    if (!term) {
+      list.innerHTML = "";
+      status.textContent = HINT;
+      return;
+    }
+
+    const index = await loadPagefind();
+    if (!index) {
+      list.innerHTML = "";
+      status.textContent = "Indice di ricerca non disponibile.";
+      return;
+    }
+
+    const found = await index.debouncedSearch(term, {}, DEBOUNCE);
+    if (!found) return;
+
+    const shown = await Promise.all(
+      found.results.slice(0, MAX_RESULTS).map((result: any) => result.data())
+    );
+    list.innerHTML = shown.map(template).join("");
+
+    const total = found.results.length;
+    if (!total) status.textContent = `Nessun risultato per «${term}»`;
+    else if (total > shown.length)
+      status.textContent = `Primi ${shown.length} di ${total} risultati`;
+    else status.textContent = `${total} ${total === 1 ? "risultato" : "risultati"}`;
+  }
+
+  // Listener delegati su document: sopravvivono agli swap di ClientRouter.
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      open();
+      return;
+    }
+    if (event.key === "Enter" && (event.target as Element)?.id === "search-input") {
+      event.preventDefault();
+      find<HTMLAnchorElement>("#search-results a")?.click();
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target as Element | null;
+    if (target?.closest("#search-open")) open();
+    // Il click sul backdrop ha come target il dialog: il contenuto sta in un wrapper.
+    else if (target?.id === "search-dialog") (target as HTMLDialogElement).close();
+  });
+
+  document.addEventListener("input", (event) => {
+    const target = event.target as HTMLInputElement;
+    if (target.id === "search-input") search(target.value.trim());
+  });
+
+  document.addEventListener("astro:page-load", () => {
+    if (!/mac/i.test(navigator.platform)) return;
+    const shortcut = find("#search-shortcut");
+    if (shortcut) shortcut.textContent = "⌘K";
+  });
+</script>
