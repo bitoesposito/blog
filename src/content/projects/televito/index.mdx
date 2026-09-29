@@ -1,315 +1,146 @@
 ---
 title: 'Televito'
-description: 'Omaggio digitale al Televideo RAI, costruito in un pomeriggio con React 19 e Vite. Replica la navigazione numerica e il feed RSS ufficiali RAI per notizie in tempo reale.'
-tags: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'RSS']
-heroImage: './assets/image.jpg'
+description: 'Replica del Televideo RAI nel browser: navigazione per numero di pagina, notizie ed economia dai feed RSS ufficiali, guida TV e meteo in tempo reale. React 19 e Vite, nessun backend. Documento delle funzioni: cosa fa ogni pagina e da dove arrivano i dati.'
+tags: ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'RSS', 'SPA', 'PWA']
+heroImage: './assets/cover.png'
 link: 'https://tv.vitoesposito.it'
+repository: 'https://github.com/bitoesposito/televito'
 pubDate: '2025-12-25'
 ---
 
-## L'Ispirazione
-
-Durante il cenone di Natale a casa dei nonni, i parenti hanno aperto il Televideo sulla TV. Quell'interfaccia così particolare, con i suoi colori saturi, i caratteri pixelati e la navigazione numerica, mi ha colpito immediatamente. Un pezzo di storia della televisione italiana ancora funzionante, un'esperienza utente così diversa da tutto quello che progettiamo oggi.
-
-Tornato a casa, ho deciso di ricrearlo come esperimento web. In un pomeriggio è nato Televito: un omaggio digitale che replica l'estetica e l'interazione del Televideo RAI, alimentato da dati reali grazie ai feed RSS ufficiali della RAI.
-
-## La Soluzione
-
-Televito è un'applicazione React che ricrea fedelmente l'esperienza del Televideo nel browser. Include navigazione numerica autentica digitando numeri da tastiera o cliccando, effetti CRT con scanlines e flickering per simulare un monitor a tubo catodico, dati in tempo reale tramite feed RSS ufficiali RAI, widget meteo con previsioni per Cerignola via Open-Meteo API, e design responsive che adatta i widget allo spazio disponibile.
+Televito replica il Televideo RAI nel browser: si digita un numero di pagina a tre cifre e la pagina cambia, esattamente come sul telecomando. Le notizie, l'economia e la cultura arrivano dai feed RSS ufficiali della RAI, la guida TV da Tivùlaguida e il meteo da Open-Meteo. Non c'è backend e non c'è database.
 
 import { ArrowRightIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Link } from '@/components/ui/link'
+import { Image } from 'astro:assets'
+import notizie from './assets/notizie.png'
+import dettaglio from './assets/dettaglio.png'
+import assente from './assets/assente.png'
+import mobile from './assets/mobile.png'
 
 <div class="flex w-full justify-center">
   <Link href="https://tv.vitoesposito.it" target="_blank" className="w-full">
     <Button variant="outline" size="lg" className="w-full justify-between">
-        Vai all'applicazione
-        <ArrowRightIcon className="w-4 h-4" />
+      Apri il Televito
+      <ArrowRightIcon className="w-4 h-4" />
     </Button>
   </Link>
 </div>
 
-## Come Funziona
+## Contesto
 
-L'interfaccia replica fedelmente il Televideo RAI originale. In alto c'è l'header con il numero di pagina corrente e l'orologio in tempo reale (verde, come nell'originale). In basso, una barra di navigazione colorata con i pulsanti per le sezioni principali.
+L'idea è nata al cenone di Natale a casa dei nonni, quando i parenti hanno aperto il Televideo sulla TV. Colori saturi, caratteri pixelati, navigazione a numeri: un'interfaccia ancora in servizio e lontanissima da come si progetta oggi. Il progetto è nato il pomeriggio dopo, come esperimento.
 
-La **navigazione numerica** funziona esattamente come nel Televideo reale: si digita un numero a 3 cifre (100, 200, 300...) e si viene portati alla pagina corrispondente. Su desktop basta iniziare a digitare i numeri; su mobile si tocca l'indicatore di pagina per aprire l'input. Il sistema include auto-conferma dopo 2 secondi se non si completa il numero.
+Il destinatario è chiunque apra il link per curiosità, quindi l'applicazione deve essere leggibile senza istruzioni e non chiede niente a nessuno: nessun account, nessuna preferenza da impostare, nessun dato salvato. La pagina 100 fa anche da biglietto da visita, con i contatti e il collegamento al blog.
 
-Le **sezioni disponibili** seguono la struttura del Televideo originale:
-- **100**: Homepage con widget informativi (meteo, ultime notizie, guida TV)
-- **200**: Notizie principali (feed RSS RAI)
-- **300**: Guida TV
-- **400**: Economia (feed RSS RAI)
-- **500**: Cultura e spettacolo (feed RSS RAI)
+## Com'è fatta
 
-Ogni sezione supporta sotto-pagine: digitando 201, 202, ecc. si accede ai singoli articoli della sezione notizie.
+È una single page application servita come file statici, senza alcun servizio dietro. Tutti i dati arrivano da API pubbliche chiamate direttamente dal browser, quindi l'applicazione funziona solo online e quello che mostra dipende dalla disponibilità di tre servizi esterni.
 
-## L'Estetica Retro
+<div class="overflow-x-auto">
 
-L'effetto visivo è ottenuto combinando diversi elementi. Lo **sfondo nero** con testo ad alto contrasto replica l'aspetto del Televideo. Le **scanlines** sono create con un pseudo-elemento CSS che sovrappone righe orizzontali semitrasparenti, simulando le linee di scansione di un CRT. Un'**animazione di flickering** sottile fa variare leggermente la luminosità ogni 3 secondi, ricreando l'instabilità tipica dei vecchi monitor.
+| Scelta | Cosa comporta |
+| --- | --- |
+| React 19 con Vite 7, TypeScript e Tailwind 4 | Build statica, nessun runtime da mantenere |
+| Nessun router: la pagina corrente è uno stato | L'indirizzo del browser non cambia mai, quindi una pagina non è condivisibile per link |
+| Stato in `useReducer` più un context | Nessuna libreria di stato per tre campi: pagina, cifre digitate, pagina renderizzata |
+| Nessun backend | Le chiavi non esistono perché le API usate sono aperte, e il costo di esercizio è quello di un hosting statico |
+| Manifest e `display: standalone` | Si installa sulla schermata Home e si apre a schermo intero, in verticale |
 
-La tipografia usa **Jersey 10**, un google font pixel-art che evoca i caratteri bitmap del Televideo originale. I colori seguono la palette classica: blu, giallo, verde, rosso, ciano e bianco su sfondo nero, tutti definiti come variabili CSS per consistenza.
+</div>
 
-## Le Sfide Tecniche
+## Navigare per numero
 
-Il **sistema di caching** è stato fondamentale per evitare troppe chiamate API. Ho implementato un servizio che memorizza i dati per 10 minuti, con fallback ai dati scaduti se la chiamata API fallisce. Questo garantisce che l'applicazione rimanga utilizzabile anche offline o con connessione instabile.
+L'intestazione porta a sinistra la pagina corrente, preceduta da `P.` e seguita da un cursore lampeggiante, e a destra la data e un orologio che avanza ogni secondo.
 
-La **responsività dei widget** nella homepage ha richiesto un approccio particolare: invece di usare media queries statiche, ho implementato un sistema che misura dinamicamente lo spazio disponibile e mostra/nasconde i widget in base all'altezza effettiva. Questo evita layout rotti su dispositivi con dimensioni non standard o quando la barra degli indirizzi del browser cambia altezza.
+Si digita da qualunque punto della pagina: l'ascoltatore sta sulla finestra, non su un campo, e ignora la digitazione quando il fuoco è in un campo di testo o quando è premuto un tasto modificatore. Tre cifre confermano subito; una o due cifre confermano da sole dopo due secondi, così anche un numero incompleto porta da qualche parte. Incollare un testo funziona: le cifre vengono estratte e il resto scartato.
 
-La **navigazione numerica** doveva funzionare sia da tastiera che da touch, gestendo casi limite come input parziali, auto-conferma dopo timeout, e prevenzione di caratteri non numerici.
+Su schermo stretto le cifre stanno dentro un riquadro bordato che si accende al fuoco, perché senza tastiera fisica serve un bersaglio da toccare per aprire quella numerica. In fondo, a ogni misura, ci sono i cinque riquadri colorati delle sezioni, che portano alla stessa pagina senza passare dalle cifre.
 
----
+<div class="flex justify-center">
+  <Image src={mobile} alt="Televito su schermo stretto: riquadro del numero di pagina, indice, riquadri delle sezioni" width={250} densities={[2]} class="h-auto w-[250px]" />
+</div>
 
-## Dettagli Tecnici
+## Pagina 100: l'indice
+
+L'indice è diviso in due colonne: a sinistra la presentazione con i contatti e il meteo, a destra quattro riquadri di anteprima (ultime notizie, guida TV, economia, cultura), ognuno con il rimando alla sezione completa.
+
+I quattro riquadri di destra non vengono sempre mostrati tutti. Un hook misura l'altezza reale di ciascuno in un contenitore nascosto, sottrae intestazione e barra di navigazione dallo spazio disponibile e mostra solo quelli che ci stanno interi. È il motivo per cui su un telefono la colonna di destra sparisce del tutto e resta la sola presentazione: meglio niente che un riquadro tagliato a metà.
+
+## Le sezioni
+
+Le pagine principali sono cinque e ognuna ha un colore, che è lo stesso del riquadro nella barra di navigazione.
+
+<div class="overflow-x-auto">
+
+| Pagina | Sezione | Colore | Sorgente |
+| --- | --- | --- | --- |
+| 100 | Indice | Blu | Contenuto proprio, meteo e anteprime |
+| 200 | Notizie | Giallo | Feed RSS `rss101` del Televideo RAI |
+| 300 | Guida TV | Verde | API dei programmi in evidenza di Tivùlaguida |
+| 400 | Economia | Rosso | Feed RSS `rss130` del Televideo RAI |
+| 500 | Cultura | Ciano | Feed RSS `rss160` del Televideo RAI |
+
+</div>
+
+Notizie, economia e cultura elencano al massimo dieci voci; la guida TV mostra tutti i programmi in evidenza che l'API restituisce. Le voci sono numerate dalla 201 in poi per le notizie, dalla 301 per i programmi e così via. Il numero a sinistra è il modo per aprirle: è la stessa istruzione che c'è in fondo alla pagina, «digita il numero specifico per approfondire».
+
+<div class="flex justify-center">
+  <Image src={notizie} alt="Pagina 200: elenco delle notizie numerate da 201 in poi" width={480} densities={[2]} class="h-auto w-full max-w-[480px]" />
+</div>
+
+## Le pagine di dettaglio
+
+Le pagine da 201 a 299 sono le notizie, da 301 a 399 i programmi, da 401 a 499 l'economia, da 501 a 599 la cultura. L'ultima cifra è la posizione nell'elenco, quindi la 401 è la prima voce di economia. La pagina mostra il titolo nel colore della sezione e il testo integrale della voce; per i programmi TV, davanti al testo, vengono aggiunti il canale e l'orario.
+
+<div class="flex justify-center">
+  <Image src={dettaglio} alt="Pagina 401: titolo nel colore della sezione e testo integrale della voce" width={480} densities={[2]} class="h-auto w-full max-w-[480px]" />
+</div>
+
+## Segnale assente
+
+Un numero che non corrisponde a niente, o una voce che l'elenco non ha, porta alla schermata «segnale assente»: titolo rosso e una barra di risintonizzazione a dieci blocchi che si riempie in due secondi e mezzo. Al termine la navigazione riparte da sola verso l'indice della sezione da cui si veniva, e verso la 100 se non ce n'era una.
+
+<div class="flex justify-center">
+  <Image src={assente} alt="Schermata «segnale assente» con la barra di risintonizzazione a blocchi" width={480} densities={[2]} class="h-auto w-full max-w-[480px]" />
+</div>
+
+## I dati e la cache
+
+I feed RSS della RAI sono XML e arrivano da un dominio che non concede CORS, quindi passano per il convertitore pubblico `rss2json`, che li restituisce in JSON leggibile dal browser. La guida TV e il meteo espongono già JSON e si chiamano direttamente. Il meteo è fissato su Cerignola, con le coordinate scritte nel codice, e riporta la condizione corrente tradotta in una delle sei parole del Televideo: sereno, nuvoloso, nebbia, pioggia, neve, variabile.
+
+Davanti a tutte e tre le sorgenti c'è la stessa cache in memoria, con validità di dieci minuti e una regola in più: se la chiamata fallisce e in cache c'è una risposta scaduta, viene servita quella. Una pagina con dati vecchi di un'ora è più utile di una pagina vuota, e il Televideo vero non è mai istantaneo.
+
+## L'aspetto
+
+Il carattere è PublicPixel, caricato come file locale. La tavolozza è quella del televideo: nero, bianco, giallo, blu, rosso, verde e ciano, senza sfumature né mezzi toni.
+
+Sopra tutto passano due effetti da tubo catodico. Le scanline sono un gradiente ripetuto a righe orizzontali, in uno strato fisso che copre la finestra, non intercetta i click e si fonde in moltiplicazione con la pagina sotto. Il tremolio è un'animazione di tre secondi che abbassa la luminosità al 97% per una frazione di ciclo. La selezione del testo è disattivata, perché un'evidenziazione azzurra su una pagina di televideo rompe l'illusione più di quanto serva.
+
+## Cosa l'applicazione non fa
+
+- Non cambia indirizzo. Non essendoci un router, la pagina corrente vive solo nello stato: ricaricando si torna alla 100 e non si può mandare a qualcuno il link di una notizia.
+- Non funziona senza rete. Il manifest la rende installabile, ma non c'è service worker e tutti i contenuti arrivano da API esterne a ogni avvio.
+- Non ha una ricerca e non ha un archivio: si vedono le dieci voci correnti di ogni feed, e quelle di ieri non esistono più.
+- Non salva niente sul dispositivo, nemmeno le preferenze, perché non ce ne sono.
+- Non replica l'intero Televideo. Le pagine sono cinque, scelte tra quelle che hanno un feed pubblico corrispondente.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Stack Tecnologico</summary>
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Glossario</summary>
 <div class="px-4 pb-4">
 
-| Categoria | Tecnologia | Versione | Scopo |
-|-----------|-----------|----------|-------|
-| **Framework** | React | 19.2.0 | UI library |
-| **Build Tool** | Vite | 7.2.4 | Dev server e bundler |
-| **Linguaggio** | TypeScript | 5.9 | Type safety |
-| **Styling** | Tailwind CSS | 4 | Utility-first CSS |
-| **Font** | Jersey 10 | - | Tipografia pixel-art |
-| **API** | rss2json | - | Conversione RSS to JSON |
-| **API** | Open-Meteo | - | Dati meteo |
-| **API** | RAI RSS | - | Feed notizie ufficiali |
+<div class="overflow-x-auto">
+
+| Termine | Significato |
+| --- | --- |
+| SPA | Single page application: un solo documento HTML, i cambi di schermata avvengono in JavaScript |
+| RSS | Formato XML con cui un sito pubblica l'elenco dei propri contenuti recenti |
+| CORS | Regola del browser che impedisce a una pagina di leggere una risposta da un altro dominio se questo non lo consente |
+| Cache stale | Risposta scaduta tenuta da parte e servita comunque quando la chiamata di aggiornamento fallisce |
+| PWA | Applicazione web installabile: si aggiunge alla schermata Home e si apre senza barra del browser |
+
+</div>
 
 </div>
 </details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Funzionalità Principali</summary>
-<div class="px-4 pb-4">
-
-| Funzionalità | Descrizione |
-|--------------|-------------|
-| **Navigazione Numerica** | Sistema di navigazione a 3 cifre (100-999) come nel Televideo originale |
-| **Effetti CRT** | Scanlines, flickering e palette colori autentici |
-| **Feed RSS RAI** | Notizie, economia e cultura dai feed ufficiali RAI |
-| **Widget Meteo** | Temperatura e condizioni meteo per Cerignola via Open-Meteo |
-| **Guida TV** | Programmazione televisiva |
-| **Caching Intelligente** | Cache 10 minuti con fallback su dati scaduti |
-| **Responsive Widgets** | Adattamento dinamico dei widget basato sullo spazio disponibile |
-| **PWA Ready** | Manifest e meta tag per installazione come app |
-
-</div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Architettura</summary>
-<div class="px-4 pb-4">
-
-### Struttura Progetto
-
-```
-televito/
-├── src/
-│   ├── components/         # Componenti UI
-│   │   ├── layout/         # Header, Navigation, Content
-│   │   ├── utility/        # TitleBox, Loader
-│   │   └── widgets/        # Weather, News, TvGuide, Contact
-│   ├── hooks/              # Custom hooks
-│   │   ├── useNavigation.ts
-│   │   └── usePageSelection.ts
-│   ├── lib/                # Configurazioni
-│   │   └── navigation.config.tsx
-│   ├── pages/              # Pagine per sezione
-│   │   ├── 200/            # Notizie
-│   │   ├── 300/            # Guida TV
-│   │   ├── 400/            # Economia
-│   │   ├── 500/            # Cultura
-│   │   └── index.tsx       # Homepage (100)
-│   ├── services/           # Servizi API
-│   │   ├── cache.service.ts
-│   │   ├── rss.service.ts
-│   │   ├── weather.service.ts
-│   │   └── news.service.ts
-│   ├── types/              # TypeScript types
-│   └── main.css            # Stili globali e effetti CRT
-├── index.html              # Entry point con meta tag e font
-└── vite.config.ts          # Configurazione Vite
-```
-
-### Pattern Principali
-
-- **Service Layer**: Servizi dedicati per ogni fonte dati (RSS, meteo)
-- **Caching Strategy**: Cache in memoria con TTL di 10 minuti e fallback
-- **Component Composition**: Componenti riutilizzabili (TitleBox) per consistenza visiva
-- **Custom Hooks**: Logica di navigazione isolata in hook riutilizzabili
-
-</div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Sistema di Navigazione</summary>
-<div class="px-4 pb-4">
-
-### Pagine Disponibili
-
-| Pagina | Sezione | Fonte Dati |
-|--------|---------|------------|
-| **100** | Homepage | Widget aggregati |
-| **200** | Notizie | RSS RAI (rss101.xml) |
-| **201-299** | Dettaglio notizia | RSS RAI |
-| **300** | Guida TV | API TivulaGuida |
-| **400** | Economia | RSS RAI (rss130.xml) |
-| **500** | Cultura | RSS RAI (rss160.xml) |
-
-### Logica di Navigazione
-
-```typescript
-// Mapping pagine a componenti
-if (page >= 200 && page < 300) return <NotiziePage page={page} />;
-if (page >= 300 && page < 400) return <GuidaTvPage page={page} />;
-if (page >= 400 && page < 500) return <EconomiaPage page={page} />;
-if (page >= 500 && page < 600) return <CulturaPage page={page} />;
-```
-
-- Digitazione numeri: cattura globale da tastiera
-- Auto-conferma: dopo 2 secondi se input incompleto
-- Validazione: solo numeri, massimo 3 cifre
-- Pagine inesistenti: redirect automatico alla sezione principale
-
-</div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Effetti CRT</summary>
-<div class="px-4 pb-4">
-
-### Scanlines
-
-```css
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.15) 0px,
-    rgba(0, 0, 0, 0.2) 1px,
-    transparent 1.5px,
-    transparent 2.5px
-  );
-  pointer-events: none;
-  z-index: 9999;
-  mix-blend-mode: multiply;
-}
-```
-
-### Flickering
-
-```css
-@keyframes flicker {
-  0%, 95%, 100% { filter: brightness(1); }
-  97%, 98% { filter: brightness(0.97); }
-}
-
-body {
-  animation: flicker 3s infinite;
-}
-```
-
-### Palette Colori
-
-- `--black`: #000000 (sfondo)
-- `--white`: #FFFFFF (testo principale)
-- `--yellow`: #FFFF00 (notizie)
-- `--blue`: #0000FF (homepage)
-- `--red`: #FF0000 (economia)
-- `--green`: #00FF00 (guida TV, orologio)
-- `--cyan`: #00FFFF (cultura, meteo)
-
-</div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Sistema di Caching</summary>
-<div class="px-4 pb-4">
-
-### CacheService
-
-Il servizio di caching gestisce tutte le chiamate API per evitare richieste duplicate e garantire performance ottimali.
-
-```typescript
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-class CacheService {
-  private static readonly CACHE_DURATION = 10 * 60 * 1000; // 10 minuti
-  private static cache: Map<string, CacheEntry<any>> = new Map();
-
-  static async get<T>(key: string, fetchFunction: () => Promise<T>): Promise<T> {
-    const cached = this.cache.get(key);
-    const now = Date.now();
-
-    // Restituisci cache se valida
-    if (cached && (now - cached.timestamp) < this.CACHE_DURATION) {
-      return cached.data;
-    }
-
-    // Fetch e salva, con fallback su cache scaduta in caso di errore
-    try {
-      const data = await fetchFunction();
-      this.cache.set(key, { data, timestamp: now });
-      return data;
-    } catch (error) {
-      if (cached) return cached.data; // Fallback
-      throw error;
-    }
-  }
-}
-```
-
-**Caratteristiche:**
-- TTL di 10 minuti per ogni entry
-- Fallback su dati scaduti se l'API fallisce
-- Cache key basata su URL/parametri
-- Invalidazione manuale disponibile
-
-</div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">API e Feed RSS</summary>
-<div class="px-4 pb-4">
-
-### Feed RSS RAI
-
-| Sezione | URL Feed |
-|---------|----------|
-| **Notizie** | `servizitelevideo.rai.it/televideo/pub/rss101.xml` |
-| **Economia** | `servizitelevideo.rai.it/televideo/pub/rss130.xml` |
-| **Cultura** | `servizitelevideo.rai.it/televideo/pub/rss160.xml` |
-
-I feed RSS vengono convertiti in JSON tramite il servizio rss2json per facilitare il parsing nel frontend.
-
-### Open-Meteo API
-
-```typescript
-const API_URL = "https://api.open-meteo.com/v1/forecast";
-// Coordinate di Cerignola, Puglia
-const LATITUDE = 41.2667;
-const LONGITUDE = 15.9000;
-```
-
-**Weather Codes:**
-- 0: Sereno
-- 1-3: Nuvoloso
-- 45-48: Nebbia
-- 51-67: Pioggia
-- 71+: Neve
-
-### Guida TV
-
-Dati programmazione da `services.tivulaguida.it/api/epg/highlights.json`
-
-</div>
-</details>
-

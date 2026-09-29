@@ -1,265 +1,130 @@
 ---
 title: 'WolfDen Manager'
-description: 'Applicazione desktop cross-platform per la gestione dei turni in sala LAN. Redesign completo di un gestionale Java legacy, trasformato in moderna app Electron con Next.js 16, sistema di timer avanzato, organizzazione in sezioni e postazioni, shortcut da tastiera e persistenza dati locale.'
-tags: ['Electron', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Radix UI', 'Desktop App', 'Timer', 'LAN Management']
-heroImage: './assets/cover.png'
+description: "Applicazione desktop per gestire i turni alle postazioni di una sala LAN: sezioni, postazioni, timer con scadenza e avviso sonoro, scorciatoie da tastiera per ogni operazione. Electron e Next.js, dati sul dispositivo. Documento delle funzioni: cosa fa ogni comando e cosa succede allo scadere del tempo."
+tags: ['Electron', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Radix UI', 'Desktop App', 'Timer']
+heroImage: './assets/cover.jpg'
 link: 'https://github.com/bitoesposito/wolfden-manager'
+repository: 'https://github.com/bitoesposito/wolfden-manager'
 pubDate: '2025-11-06'
 ---
 
-## Il Problema
+WolfDen Manager è un'applicazione desktop per chi sta al banco di una sala LAN: organizza le postazioni in sezioni, avvia un timer su ognuna e avvisa quando il turno finisce. Nasce dal rifacimento di un gestionale Java che un amico usava nella propria sala.
 
-Un amico gestisce una sala LAN e aveva bisogno di un sistema per monitorare i turni dei clienti alle postazioni. Il vecchio software, sviluppato in Java, era funzionale ma con un'interfaccia e un'esperienza utente spartana che rendeva l'uso quotidiano poco efficiente.
+import { Image } from 'astro:assets'
+import postazione from './assets/postazione.png'
+import menu from './assets/menu.png'
 
-Ho deciso di fare un completo redesign e rework dell'applicazione, trasformandola in una moderna app desktop con Electron e Next.js, mantenendo tutte le funzionalità essenziali ma aggiungendo un'interfaccia intuitiva e funzionalità avanzate.
+## Contesto
 
-## La Soluzione
+Chi la usa ha una cosa sola da fare mentre la usa: sapere, guardando lo schermo da lontano, quali postazioni stanno per liberarsi. Tutto il resto viene dopo. Da qui due conseguenze che si vedono in ogni schermata: il tempo rimanente è l'elemento più grande della postazione, e ogni operazione ha una scorciatoia da tastiera, perché al banco si lavora con una mano sola.
 
-WolfDen Manager è un'applicazione desktop cross-platform (Windows, macOS, Linux) costruita con Electron e Next.js 16, che permette di gestire in modo efficiente i turni dei clienti in una sala LAN. L'applicazione offre organizzazione in sezioni personalizzabili, sistema di timer avanzato con multiple modalità, shortcut da tastiera per operazioni rapide, supporto tema chiaro/scuro, e persistenza automatica dei dati in locale.
+L'applicazione gira su un solo computer, quello della cassa. Non c'è niente da configurare, niente da installare a parte l'applicazione stessa, e nessun account.
 
-{/* ![WolfDen Manager - Interfaccia principale](./assets/01.png) */}
+## Com'è fatta
 
-## Come Funziona
+<div class="overflow-x-auto">
 
-L'applicazione permette di organizzare le postazioni in sezioni personalizzabili. Ogni sezione può contenere multiple postazioni, permettendo una gestione flessibile della sala. Il cuore dell'applicazione è il sistema di timer, che offre diverse modalità di gestione: timer con durata predefinita o personalizzata, timer con date/ora specifiche per impostazione precisa di inizio e fine turno, aggiunta/rimozione tempo per modifica dinamica del timer in corso, progress bar visiva con colori che cambiano in base al tempo rimanente, notifiche audio quando il timer scade, e scambio postazioni per trasferimento rapido del timer tra postazioni diverse.
-
-Per velocizzare le operazioni quotidiane, l'applicazione supporta numerosi shortcut: Ctrl+E per attivare/disattivare modalità modifica, Ctrl+M per attivare/disattivare audio, Ctrl+1/2/3 per avviare timer o aggiungere tempo (1h, 2h, 30min) quando una card è selezionata, Ctrl+S per scambiare postazione quando timer attivo, Ctrl+R per resettare timer, e Ctrl+Scroll per aggiungere/rimuovere tempo con precisione al minuto.
-
-{/* ![WolfDen Manager - Organizzazione in sezioni](./assets/02.png) */}
-
-Tutti i dati (sezioni, postazioni, timer attivi) vengono salvati automaticamente in locale, garantendo che nessuna informazione vada persa anche in caso di chiusura improvvisa dell'applicazione. Lo stato dell'applicazione è centralizzato in un Context Provider che gestisce sezioni e postazioni, timer attivi, e aggiornamenti in tempo reale con un singolo interval globale per ottimizzare le performance.
-
-{/* ![WolfDen Manager - Sistema di timer](./assets/03.png) */}
-
-## Le Sfide Tecniche
-
-La gestione dello stato globale è stata una delle sfide principali. Ho implementato un Context Provider centralizzato che gestisce tutto lo stato dell'applicazione, evitando prop drilling e garantendo aggiornamenti efficienti. Per ottimizzare le performance, ho utilizzato un singolo interval globale che aggiorna tutti i timer attivi ogni secondo invece di creare un interval per ogni timer, riducendo drasticamente il consumo di risorse.
-
-La persistenza dei dati in locale è stata implementata usando localStorage con serializzazione personalizzata per gestire strutture dati complesse come Map. Il sistema include versioning per future migrazioni e gestione degli errori per casi limite come quota exceeded. Il salvataggio è debounced a 500ms per evitare scritture eccessive durante modifiche rapide.
-
-La gestione del tempo è stata complessa: ho implementato un sistema basato su ISO timestamps completi con supporto timezone (Europe/Rome) per gestire correttamente date e orari, incluso il crossing di mezzanotte. Il calcolo del progress è ottimizzato per mostrare la barra al 100% quando rimangono più di un'ora, poi diminuisce linearmente nell'ultima ora, e mostra valori oltre 100% quando il timer è scaduto per indicare visivamente il ritardo.
-
-{/* ![WolfDen Manager - Shortcut da tastiera](./assets/04.png) */}
-
-## Architettura e Design Patterns
-
-L'applicazione è stata strutturata secondo un principio di separazione di responsabilità. Le features contengono la logica di business isolata (cards, sections, timers) con servizi dedicati per operazioni complesse, i components sono componenti UI riutilizzabili e composabili basati su Radix UI per accessibilità, gli hooks contengono logica riutilizzabile per interazioni e calcoli (timer calculations, card interactions, global shortcuts), e i services gestiscono operazioni complesse come persistenza e calcoli dei timer.
-
-L'uso di Next.js 16 in un contesto Electron ha richiesto configurazioni specifiche: output statico per generare file nella directory 'out', immagini non ottimizzate per compatibilità Electron, e gestione del routing statico. Ho utilizzato Tailwind CSS 4 per lo styling e Radix UI per i componenti accessibili, garantendo un'interfaccia moderna e professionale. Il sistema di build supporta packaging per Windows (portable, zip), macOS (dmg, zip) e Linux (appimage, zip) tramite electron-builder.
-
----
-
-## Showcase video
-
-<div class="my-8 rounded-lg overflow-hidden border border-border bg-muted/30">
-  <video 
-    controls 
-    class="w-full"
-    poster="./assets/cover.png"
-    preload="metadata"
-  >
-    <source src="/projects/wolfden-manager/demo.mp4" type="video/mp4" />
-    Il tuo browser non supporta il tag video.
-  </video>
-</div>
-
----
-
-## Dettagli Tecnici
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Stack Tecnologico</summary>
-<div class="px-4 pb-4">
-
-| Categoria | Tecnologia | Versione | Scopo |
-|-----------|-----------|----------|-------|
-| **Framework** | Electron | 39.1.1 | Desktop app framework |
-| | Next.js | 16.0.1 | React framework |
-| | React | 19.2.0 | UI library |
-| **Linguaggio** | TypeScript | 5 | Type safety |
-| **Styling** | Tailwind CSS | 4 | Utility-first CSS |
-| **UI Components** | Radix UI | Latest | Accessible components |
-| | lucide-react | 0.552.0 | Icon library |
-| **Utilities** | dayjs | 1.11.19 | Date/time manipulation |
-| | date-fns | 4.1.0 | Date utilities |
-| | sonner | 2.0.7 | Toast notifications |
-| **Build Tools** | electron-builder | 26.0.12 | App packaging |
+| Scelta | Cosa comporta |
+| --- | --- |
+| Electron con Next.js in esportazione statica | L'interfaccia è una pagina servita da file locali, quindi non serve un server né in sviluppo né nel pacchetto finale |
+| Radix UI per dialoghi e menu contestuali | I comandi arrivano da componenti accessibili da tastiera, il che rende gratuita metà delle scorciatoie |
+| Stato in `localStorage` | I dati restano sul dispositivo: nessuna rete, nessuna sincronizzazione, nessun servizio da tenere acceso |
+| Orari salvati come timestamp ISO completi di fuso | Un timer sopravvive alla chiusura dell'applicazione e regge il passaggio di mezzanotte |
+| `electron-builder` con destinazioni macOS e Windows | Il pacchetto si costruisce per entrambi i sistemi dallo stesso sorgente |
 
 </div>
-</details>
 
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Funzionalità Principali</summary>
-<div class="px-4 pb-4">
+Lo stato salvato ha un numero di versione. Se il formato letto non corrisponde a quello atteso, viene scartato invece di essere interpretato a metà, e l'applicazione riparte vuota.
 
-| Funzionalità | Descrizione |
-|--------------|-------------|
-| **Organizzazione Sezioni** | Sezioni personalizzabili con multiple postazioni |
-| **Sistema Timer** | Timer con durata, date/ora specifiche, aggiunta/rimozione tempo |
-| **Progress Bar** | Indicatore visivo con colori dinamici (default/warning/orange/destructive) |
-| **Notifiche Audio** | Allarme quando timer scade (gestito con useAudio hook) |
-| **Scambio Postazioni** | Trasferimento timer tra postazioni diverse |
-| **Shortcut Tastiera** | Operazioni rapide da tastiera (globale e card-specific) |
-| **Tema Chiaro/Scuro** | Supporto per preferenze utente (next-themes) |
-| **Persistenza Locale** | Salvataggio automatico dati in localStorage con versioning |
+## La schermata
+
+In alto ci sono il marchio, l'orologio e tre comandi: l'interruttore dell'audio, quello del tema (chiaro, scuro, di sistema) e «Modalità modifica». Sotto, le sezioni una dopo l'altra, e dentro ogni sezione le postazioni in griglia.
+
+Una postazione libera mostra tre pulsanti di avvio rapido, 30 minuti, 1 ora e 2 ore. Una postazione occupata mostra l'orario di inizio, quello di fine e una barra con il tempo che resta.
+
+<div class="flex justify-center">
+  <Image src={postazione} alt="Postazione con timer attivo: orario di inizio e fine, barra del tempo rimanente" width={480} densities={[2]} class="h-auto w-full max-w-[480px]" />
+</div>
+
+## La barra del tempo
+
+La barra non rappresenta la frazione di turno consumata, che su un turno da tre ore direbbe poco da lontano. Finché manca più di un'ora resta piena; nell'ultima ora si svuota in proporzione ai minuti che restano. Il colore cambia due volte: verde sopra i venti minuti, arancione sotto, rosso sotto i dieci.
+
+Allo scadere la barra continua oltre il pieno, fino a un massimo del doppio, e il numero diventa il tempo di sfondamento preceduto dal segno più. Una postazione scaduta da sette minuti si legge quindi come «+07:00 Scaduto» su fondo rosso, e non sparisce dalla griglia finché qualcuno non interviene.
+
+Nello stesso momento parte un avviso sonoro, che l'interruttore in testata silenzia. Il suono viene sbloccato alla prima interazione dell'utente, perché il browser dentro Electron applica le stesse regole di riproduzione automatica di un browser normale.
+
+## Il menu della postazione
+
+Il tasto destro su una postazione apre il menu con tutte le operazioni sul suo timer. Su una postazione libera ci sono l'avvio a un'ora, gli avvii rapidi e la durata personalizzata. Su una occupata compaiono l'aggiunta e la rimozione di tempo, con i sottomenu da 5, 10, 15 e 30 minuti e da 1 e 2 ore, il tempo personalizzato, i dettagli del timer, l'azzeramento e lo scambio con un'altra postazione.
+
+In testa al menu ci sono tre comandi con la loro scorciatoia scritta accanto, e in fondo le due regole della rotellina. Il menu è anche la documentazione delle scorciatoie: chi lo apre due volte smette di aprirlo.
+
+<div class="flex justify-center">
+  <Image src={menu} alt="Menu contestuale di una postazione occupata, con le scorciatoie scritte accanto ai comandi" width={250} densities={[2]} class="h-auto w-[250px]" />
+</div>
+
+## Le scorciatoie
+
+Due valgono ovunque, le altre agiscono sulla postazione sotto il puntatore, senza bisogno di selezionarla prima.
+
+<div class="overflow-x-auto">
+
+| Scorciatoia | Effetto |
+| --- | --- |
+| `Ctrl` `E` | Entra ed esce dalla modalità modifica |
+| `Ctrl` `M` | Silenzia e riattiva l'audio |
+| `Ctrl` `1` / `2` / `3` | Avvia un turno di 1 ora, 2 ore o 30 minuti; se il timer è già attivo aggiunge lo stesso tempo |
+| `Ctrl` `S` | Scambia la postazione con un'altra |
+| `Ctrl` `R` | Azzera il timer |
+| `Ctrl` + rotellina | Aggiunge o toglie un minuto |
+| `Ctrl` `Shift` + rotellina | Aggiunge o toglie cinque minuti |
 
 </div>
-</details>
+
+Le scorciatoie si disattivano mentre si sta scrivendo in un campo di testo, e quelle legate al timer esistono solo quando un timer c'è.
+
+## Aggiungere tempo, in due modi
+
+Il dialogo del tempo personalizzato ha due modalità. Con «Durata» si sceglie un valore rapido tra più e meno 15 minuti, 30 minuti, 1 ora e 2 ore, oppure si scrivono ore e minuti. Con «Date/ora» si impostano direttamente data e ora di inizio e di fine, che è il modo per correggere un turno annotato male più che per prolungarlo.
+
+Il dialogo rifiuta tre casi con un messaggio esplicito: date o orari non validi, una fine precedente all'inizio, e la sottrazione di tempo da un timer non ancora avviato.
+
+«Dettagli timer» raccoglie in un solo pannello lo stato, il periodo e le durate: tempo rimanente, data e ora di inizio e di fine, durata iniziale e durata totale, che divergono appena si aggiunge o si toglie tempo.
+
+## Scambiare una postazione
+
+Quando un cliente cambia posto, il turno lo segue. «Scambia postazione» apre un elenco cercabile per nome di postazione o di sezione, segnala quali hanno già un timer attivo e sposta il timer su quella scelta. Se non ci sono altre postazioni, il dialogo lo dice invece di mostrare un elenco vuoto.
+
+## La modalità modifica
+
+La struttura della sala si cambia solo entrando in modalità modifica, così durante il servizio non si rinomina una postazione per sbaglio. Lì si aggiungono sezioni e postazioni, si riscrivono i nomi e si elimina.
+
+L'eliminazione chiede conferma, e `Shift` + clic la salta per chi sta rifacendo la sala da zero. Il salvataggio verifica che nessuna sezione e nessuna postazione sia rimasta senza nome, e se ne trova elenca quali. Eliminando tutte le postazioni dell'ultima sezione, la sezione resta: una sala senza sezioni non avrebbe un posto dove aggiungere la prima postazione.
+
+## Cosa l'applicazione non fa
+
+- Non comunica in rete. Niente sincronizzazione tra più computer, niente accesso da remoto: i dati vivono nel `localStorage` della macchina su cui gira.
+- Non gestisce il denaro. Non ci sono tariffe, conti o scontrini: l'applicazione governa il tempo delle postazioni e si ferma lì.
+- Non tiene uno storico. Un turno chiuso o azzerato non lascia traccia, e non esistono statistiche sulle giornate passate.
+- Non ha un'anagrafica dei clienti: le postazioni hanno un nome, le persone no.
+- Non esiste come applicazione web. Il pacchetto è per macOS e Windows, e l'esportazione statica di Next.js serve a farla girare dentro Electron.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Shortcut da Tastiera</summary>
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Glossario</summary>
 <div class="px-4 pb-4">
 
-| Shortcut | Azione | Scope |
-|----------|--------|-------|
-| `Ctrl+E` | Attiva/disattiva modalità modifica | Globale |
-| `Ctrl+M` | Attiva/disattiva audio | Globale |
-| `Ctrl+1/2/3` | Avvia timer o aggiungi tempo (1h, 2h, 30min) | Card selezionata |
-| `Ctrl+S` | Scambia postazione (timer attivo) | Card con timer |
-| `Ctrl+R` | Resetta timer | Card con timer |
-| `Ctrl+Scroll` | Aggiungi/rimuovi tempo (precisione minuto) | Card con timer |
+<div class="overflow-x-auto">
 
-**Note:** Gli shortcut globali sono disabilitati quando l'utente sta digitando in campi input.
+| Termine | Significato |
+| --- | --- |
+| Electron | Contenitore che impacchetta un'interfaccia web come applicazione desktop, con il proprio browser incluso |
+| Esportazione statica | Build di Next.js che produce file HTML e JavaScript già pronti, senza un server che li generi a richiesta |
+| `localStorage` | Archivio chiave-valore del browser, locale al dispositivo e persistente tra un avvio e l'altro |
+| Timestamp ISO | Data e ora in formato standard con il fuso orario incluso, confrontabile senza ambiguità |
+| Riproduzione automatica | Regola che impedisce a una pagina di emettere suoni prima che l'utente ci abbia interagito |
 
 </div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Architettura</summary>
-<div class="px-4 pb-4">
-
-### Struttura Progetto
-
-```
-wolfden-manager/
-├── app/                    # Next.js app directory
-├── components/             # Componenti UI riutilizzabili
-│   ├── cards/              # Componenti specifici per cards
-│   ├── sections/           # Componenti per sezioni
-│   ├── layout/             # Layout components
-│   ├── providers/          # Context providers
-│   └── ui/                 # Radix UI components
-├── features/               # Logica di business isolata
-│   ├── cards/              # Servizi per gestione cards
-│   ├── sections/           # Servizi per gestione sezioni
-│   └── timers/             # Servizi per logica timer
-├── hooks/                  # Custom hooks
-│   ├── use-timer-calculations.ts
-│   ├── use-global-shortcuts.ts
-│   ├── use-card-interactions.ts
-│   └── ...
-├── lib/                    # Utilities e servizi
-│   ├── storage/            # Servizio persistenza
-│   └── utils/              # Utility functions (time, keyboard, sound)
-├── store/                  # State management
-│   └── app-store.tsx       # Context Provider centralizzato
-├── main/                   # Electron main process
-│   ├── main.js             # Entry point Electron
-│   └── preload.js          # Preload script
-└── types/                  # TypeScript types
-```
-
-### State Management
-
-- **AppStoreProvider**: Context Provider centralizzato per stato globale
-- **Single interval**: Aggiornamento globale tutti i timer ogni 1 secondo
-- **Persistenza automatica**: Salvataggio debounced (500ms) in localStorage
-- **Serializzazione Map**: Conversione Map in array per JSON (chiave: number, valore: UserCard[])
-- **Versioning**: Sistema di versioning per future migrazioni dati
-
-### Timer System
-
-- **ISO Timestamps**: Uso di timestamp ISO completi con timezone (Europe/Rome)
-- **Progress Calculation**: Barra al 100% se >1h rimanente, poi lineare nell'ultima ora
-- **Expired State**: Valori >100% per indicare timer scaduto
-- **Color Variants**: default/warning/orange/destructive basati su tempo rimanente
-- **Audio Notifications**: Suono automatico quando timer scade (gestito con useAudio)
-
-</div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Persistenza Dati</summary>
-<div class="px-4 pb-4">
-
-### Storage Service
-
-Il servizio di persistenza gestisce il salvataggio e caricamento dello stato dell'applicazione in localStorage.
-
-**Struttura Dati:**
-```typescript
-interface SerializedState {
-  version: number;                    // Versione per migrazioni future
-  sections: Section[];                // Array di sezioni
-  cardsBySection: Array<[number, UserCard[]>];  // Map serializzata come array
-}
-```
-
-**Caratteristiche:**
-- **Versioning**: Controllo versione per future migrazioni
-- **Map Serialization**: Conversione Map in array per JSON serialization
-- **Error Handling**: Gestione errori (quota exceeded, parsing errors)
-- **Auto-save**: Salvataggio automatico con debounce (500ms)
-- **Progress Recalculation**: Ricalcolo progress al caricamento per timer attivi
-
-</div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Electron Configuration</summary>
-<div class="px-4 pb-4">
-
-### Main Process
-
-- **Window Size**: 500x800 (min: 360x600)
-- **Menu Bar**: Auto-hide menu bar
-- **Security**: Context isolation enabled, node integration disabled
-- **Dev Mode**: Auto-reload su fail load, DevTools aperti in sviluppo
-
-### Build Configuration
-
-**Windows:**
-- Target: dir, portable, zip
-- Icon: `public/icon.ico`
-
-**macOS:**
-- Target: dir, dmg, zip
-- Icon: `public/icon.icns`
-- Category: Utilities
-
-**Linux:**
-- Target: dir, appimage, zip
-- Icon: `public/icon.png`
-- Category: Utility
-
-**Files Included:**
-- `out/**/*` (Next.js static export)
-- `main/**/*` (Electron main process)
-- `package.json` e `node_modules` (esclusi file di sviluppo)
-
-</div>
-</details>
-
-<details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Time Management</summary>
-<div class="px-4 pb-4">
-
-### Time Utilities
-
-Il sistema di gestione del tempo utilizza dayjs con plugin timezone per gestire correttamente date e orari.
-
-**Funzionalità:**
-- **Timezone Support**: Europe/Rome timezone per tutti i calcoli
-- **ISO Timestamps**: Uso di timestamp ISO completi per precisione
-- **Midnight Crossing**: Gestione corretta del crossing di mezzanotte
-- **Time Formatting**: Formattazione HH:mm e HH:mm:ss per display
-- **Progress Calculation**: Calcolo progress basato su secondi rimanenti
-- **Expired Detection**: Rilevamento timer scaduti con valori negativi
-
-**Progress Bar Logic:**
-- 100% se rimangono >1 ora
-- Lineare da 100% a 0% nell'ultima ora
-- >100% quando scaduto (fino a 200% max) per indicare ritardo
 
 </div>
 </details>

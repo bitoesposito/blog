@@ -1,6 +1,6 @@
 ---
 title: 'Tangentopoly'
-description: 'Gioco da tavolo multiplayer in tempo reale per un massimo di 8 giocatori, con la struttura del Monopoly e un tabellone riscritto sul tema di Tangentopoli. Accesso senza registrazione tramite link. Monorepo TypeScript: motore di gioco puro e autoritativo, backend su Cloudflare Workers con un Durable Object per stanza, client React su WebSocket.'
+description: 'Gioco da tavolo multiplayer in tempo reale per un massimo di 8 giocatori, con la struttura del Monopoly e un tabellone riscritto sul tema di Tangentopoli. Accesso senza registrazione tramite link. Documento delle funzioni: cosa fa ogni schermata e cosa decide il server.'
 tags: ['React', 'TypeScript', 'Cloudflare Workers', 'Durable Objects', 'WebSocket', 'PWA', 'Game Engine', 'Real-time']
 heroImage: './assets/cover.png'
 link: 'https://tangentopoly.it'
@@ -8,14 +8,21 @@ repository: 'https://github.com/bitoesposito/vitopoly'
 pubDate: '2026-09-15'
 ---
 
-Tangentopoly è un gioco da tavolo multiplayer in tempo reale per un massimo di 8 giocatori. La struttura è quella del Monopoly — 40 caselle, 8 gruppi colore, case e hotel, aste, ipoteche, scambi — mentre il tabellone è contenuto originale sul tema di Tangentopoli: i gruppi colore sono regioni italiane, le stazioni sono partecipate di Stato (Poste Italiane, INPS, Enel, RAI), le società sono concessioni (Autostrade, Equitalia), il Parcheggio Gratuito è la Latitanza e il Vai in Prigione è Mani Pulite. L'accesso non richiede registrazione: si crea una stanza e si condivide il link.
+Tangentopoly è un gioco da tavolo multiplayer in tempo reale per un massimo di 8 giocatori. La struttura è quella del Monopoly (40 caselle, 8 gruppi colore, case e hotel, aste, ipoteche, scambi), mentre il tabellone è contenuto originale sul tema di Tangentopoli. Non richiede registrazione: si apre una stanza e si manda il link.
 
 import { ArrowRightIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Link } from '@/components/ui/link'
 import { Image } from 'astro:assets'
-import mobilePlancia from './assets/mobile.png'
-import mobileAsta from './assets/mobile-asta.png'
+import home from './assets/home.png'
+import lobby from './assets/lobby.png'
+import centro from './assets/centro.png'
+import tabellone from './assets/tabellone.png'
+import casella from './assets/casella.png'
+import asta from './assets/asta.png'
+import chat from './assets/chat.png'
+import chatMobile from './assets/chat-mobile.png'
+import fine from './assets/fine.png'
 
 <div class="flex w-full justify-center">
   <Link href="https://tangentopoly.it" target="_blank" className="w-full">
@@ -26,118 +33,212 @@ import mobileAsta from './assets/mobile-asta.png'
   </Link>
 </div>
 
-L'architettura è un monorepo pnpm con tre pacchetti: il **motore di gioco**, libreria pura senza I/O con PRNG inizializzato da seed, quindi deterministica e testabile; il **backend**, un Cloudflare Worker in cui ogni stanza è un Durable Object con stato persistito in un unico blob JSON; il **client**, React con store Zustand e trasporto WebSocket. Seguono le decisioni progettuali principali.
+## Contesto
 
-## Il limite di 8 giocatori deriva dalla palette
+Il destinatario è un gruppo di amici che gioca una partita insieme, in tempo reale, su dispositivi diversi. Un giocatore apre la stanza e condivide il link, gli altri entrano scrivendo un nome. Non esistono account, matchmaking, classifiche o statistiche tra partite.
 
-Sul tabellone un giocatore è identificato da tre attributi: colore, lettera di serie e offset della pedina all'interno della casella. I colori disponibili sono 8, selezionati per garantire un rapporto di contrasto di almeno 3:1 sul fondo. Oltre l'ottavo posto due pedine risulterebbero indistinguibili, quindi `addPlayer` rifiuta l'inserimento e il client entra in modalità spettatore, con stato e chat in sola lettura.
+I gruppi colore sono regioni italiane in scalata di malaffare, da Foggia alla Milano di Mani Pulite. Le stazioni sono partecipate di Stato (Poste Italiane, INPS, Enel, RAI), le società sono concessioni (Autostrade, Equitalia), il Parcheggio Gratuito è la Latitanza e il Vai in Prigione è Mani Pulite. Le 32 carte, 16 Blitz e 16 Favori, sono scritte nello stesso registro. Il vincolo editoriale riguarda il fenomeno e non le persone: nelle 40 caselle e nelle 32 carte non compare alcun nome di persona reale.
 
-Il limite non è un parametro di configurazione ma una costante derivata dalla palette. Ogni colore ha inoltre un nome (Sanguigna, Verde valore, Indaco…) usato come etichetta accessibile, per non veicolare l'identità del giocatore con il solo colore.
+L'applicazione esiste solo in italiano. I nomi delle caselle, i testi delle carte e le stringhe dell'interfaccia sono scritti direttamente in quella lingua.
 
-![Lobby: nome, selezione del colore, link di invito](./assets/lobby.png)
+Il regolamento è fisso e identico in ogni partita: €1500 di liquidità iniziale, asta sul rifiuto, ipoteche ammesse, affitto base raddoppiato sulla serie completa, malloppo sulla Latitanza, affitto riscosso anche dal proprietario in prigione, costruzione disomogenea ammessa, ordine di turno sorteggiato. Non esiste un'interfaccia per cambiarlo, e nel protocollo non esiste l'azione corrispondente.
 
-## Ciclo di vita delle stanze senza processo di pulizia
+## Com'è fatta
 
-Un namespace di Durable Object non è enumerabile: non esiste una query che restituisca le istanze attive, quindi non è implementabile un job di pulizia esterno. Ogni stanza deve gestire autonomamente la propria scadenza.
+È un'applicazione web installabile: gira nel browser, si aggiunge alla schermata Home come PWA e non passa da nessuno store. Il motore di gioco è autoritativo lato server, quindi il client chiede al server l'esito di ogni regola invece di calcolarlo. Ne discende che la partita non è giocabile offline e che ogni azione attraversa una WebSocket.
 
-L'invariante adottata è che ogni transizione di stato lasci esattamente un alarm programmato: il timeout di turno durante la partita, altrimenti il timer di eliminazione — 5 minuti senza connessioni attive, 1 ora con connessioni attive ma partita ferma. Ogni ramo che esce dall'handler deve riprogrammare l'alarm anche quando non produce effetti, perché un'uscita anticipata lascia l'istanza priva di timer e non più recuperabile.
+<div class="overflow-x-auto">
 
-Ne deriva che la stanza è una sessione, non un salvataggio. In compenso la creazione di una stanza non istanzia il Durable Object (genera solo il codice), quindi i codici non vengono riservati e l'unicità è probabilistica: 6 caratteri su un alfabeto di 32, circa 10⁹ combinazioni.
+| Pacchetto | Contenuto | Conseguenza pratica |
+| --- | --- | --- |
+| `src/` | Client React 19 su Vite, store Zustand, Tailwind 4, Radix UI | L'interfaccia mostra lo stato ricevuto, al più ritardandolo per l'animazione |
+| `packages/game/` | Il motore: libreria pura, senza I/O, PRNG inizializzato da seed | Le partite sono rigiocabili nei test, dadi e mazzi compresi |
+| `packages/server/` | Cloudflare Worker: una stanza = un Durable Object, stato in un unico blob JSON | La stanza vive quanto la sessione e non viene salvata |
 
-## Timeout lato server su ogni stato di attesa
+</div>
 
-Gli stati di attesa hanno una scadenza: `preRoll` 60 s, `buyPrompt` 30 s, `postRoll` 60 s, `debt` 120 s; le aste usano un timer proprio, 10 s di apertura e 6 s dopo ogni rilancio. Alla scadenza il server applica l'azione di default dello stato; sul debito tenta il pagamento e, in caso di fondi insufficienti, esegue la bancarotta.
+Ogni stato di attesa ha una scadenza. Quando scade, il server agisce al posto del giocatore, e per questo il countdown resta visibile accanto al turno.
 
-Poiché la partita avanza senza input del giocatore, l'interfaccia deve esporre il tempo residuo: countdown sul tabellone e una region `aria-live="polite"` che annuncia turno, esito del lancio, richiesta di acquisto e debito. L'esito del lancio era in precedenza reso con una sola trasformazione CSS, quindi non accessibile via screen reader.
-
-## Sincronizzazione a stato pieno con replay degli eventi
-
-Il server trasmette lo stato completo, con le posizioni già finali, insieme alla lista degli eventi della transizione. Applicando il solo stato, causa ed effetto — pesca della carta e spostamento in prigione — risulterebbero simultanei.
-
-Il client esegue quindi un replay temporizzato degli eventi: movimento della pedina, comparsa della carta, spostamento in prigione. Il vincolo è che la presentazione possa ritardare lo stato autoritativo ma non contraddirlo; al termine del replay le posizioni vengono risincronizzate su quelle ricevute.
-
-Il costo sono due rappresentazioni della stessa posizione — autoritativa e visualizzata — in campi distinti dello store. Con la tab in background i timer si accumulano, quindi al rientro in foreground la coda viene scartata e si salta allo stato finale.
-
-<div class="my-8 rounded-lg overflow-hidden border border-border bg-muted/30">
+<div class="flex justify-center">
   <video controls class="w-full" preload="metadata">
     <source src="/projects/tangentopoly/demo.mp4" type="video/mp4" />
     Il tuo browser non supporta il tag video.
   </video>
 </div>
 
-## Una sola tabella per interfaccia e validazione
+## Entrare in una stanza
 
-Client e server devono conoscere l'insieme delle azioni legali nello stato corrente: il primo per abilitare i controlli, il secondo per rifiutare le richieste non valide. Due implementazioni separate divergono nel tempo.
+La home chiede solo un nome, lungo al massimo 20 caratteri. Ci sono quattro strade per arrivare a un tavolo:
 
-`engine.ts` contiene quindi solo la topologia della macchina a stati, una tabella stato → handler. `legalActions()`, che alimenta l'interfaccia, e il controllo di ammissibilità in `apply()` leggono la stessa struttura. Anche i messaggi di rifiuto derivano da lì, quindi restano coerenti con lo stato corrente.
+<div class="overflow-x-auto">
 
-Le operazioni di liquidazione — ipoteca, vendita di case, vendita alla banca — e gli scambi restano fuori dalla tabella: sono legali in qualunque stato e anche fuori dal proprio turno, e sono dichiarate come eccezioni esplicite.
+| Come | Cosa succede |
+| --- | --- |
+| Crea la stanza | Il server conia un codice di 6 caratteri su un alfabeto di 32 senza caratteri ambigui |
+| Link con `?room=` | Il nome della stanza è già nell'indirizzo, e il pulsante diventa «Entra nel giro» |
+| Codice stanza | Si digita il codice a mano, senza passare dal link di qualcun altro |
+| «Rientra nella stanza N.» | Compare solo se si è già stati in una stanza. È la porta dell'app installata, che apre sempre sulla home |
 
-![Stato `debt`: le due azioni dello stato e le operazioni di liquidazione, sempre disponibili](./assets/debito.png)
-
-## Invarianti verificati a runtime, non solo nei test
-
-In un gioco da tavolo gli errori tipici non producono eccezioni ma stati incoerenti e persistibili: case contabilizzate due volte, aste con offerenti già falliti, debiti a carico di giocatori usciti dalla partita.
-
-`invariantViolations()` raccoglie le condizioni non ammesse — liquidità non negativa, conservazione di 32 case e 12 hotel tra tabellone e banca, nessuna proprietà intestata a giocatori usciti, turno assegnato a un giocatore attivo — ed è eseguita dai test dopo ogni azione accettata e dal server prima della persistenza: uno stato non valido non viene salvato né trasmesso. Restituisce l'elenco delle violazioni anziché un booleano, per la diagnostica in produzione.
-
-A completamento, un soak test genera partite complete con azioni pseudo-casuali prevalentemente legali e verifica gli invarianti a ogni passo, coprendo le combinazioni che i test scritti manualmente non prevedono.
-
-## Identificatore pubblico e token di posto
-
-Lo stato pubblico contiene il `pid` di ogni giocatore, necessario al rendering di pedine, proprietà e turno. Il `pid` non può quindi fungere anche da credenziale di accesso al posto.
-
-Al primo ingresso il server genera un token (UUID) e lo trasmette solo al client che occupa effettivamente il posto. Il token è persistito fuori dal blob di gioco, in modo che la funzione di redazione dello stato pubblico non possa esporlo per omissione. Una connessione con `pid` già assegnato e token errato viene degradata a spettatore. Dallo stato pubblico sono rimossi anche il seed del PRNG e l'ordine dei mazzi.
-
-Il token risiede in `localStorage`: cambiando dispositivo a partita in corso si perde il posto. È il compromesso accettato per non gestire account.
-
-## Overlay non bloccante durante le aste
-
-Durante un'asta il tabellone non espone azioni di turno, e la soluzione immediata sarebbe applicare `inert`. Non è corretta: è proprio durante l'asta che serve liquidare proprietà per raccogliere liquidità, operazione che si avvia dalle caselle.
-
-Il tabellone viene quindi coperto da un overlay con `pointer-events: none`, che segnala lo stato senza intercettare gli eventi.
-
-![Asta in corso: overlay sul tabellone, pannello con timer e rilanci](./assets/asta.png)
-
-## Vincoli della modalità standalone
-
-Installata come PWA, l'applicazione si apre senza barra degli indirizzi e senza pulsante indietro: ogni uscita deve quindi essere prevista dall'interfaccia. L'azione `leave` fa parte del protocollo — libera il posto in lobby ed è il ritiro volontario a partita iniziata — e il codice stanza è sempre visibile in testata.
-
-Su mobile i controlli di turno sono resi in una barra fissa tramite portal React, con un test end-to-end che ne verifica l'aggancio: un contenitore mancante la farebbe sparire senza errori a compile time. Il gioco offline non è supportato e non è implementabile, essendo il motore lato server; il service worker garantisce solo l'avvio dell'applicazione, che in assenza di rete mostra il banner di riconnessione.
-
-<div class="flex items-start justify-center gap-4">
-  <Image src={mobilePlancia} alt="Layout mobile: tabellone, pannelli, barra dei controlli di turno" width={250} densities={[2]} class="h-auto w-1/2 max-w-[250px]" />
-  <Image src={mobileAsta} alt="Asta su mobile: pannello dedicato e overlay sul tabellone" width={250} densities={[2]} class="h-auto w-1/2 max-w-[250px]" />
 </div>
 
-## Contenuto e identità visiva
+Il regolamento completo è consultabile dalla home, prima della partita. Trattandosi di una variante, alcune caselle non si scoprirebbero se non atterrandoci sopra.
 
-Il tabellone è contenuto originale e non un re-skin: i gruppi colore seguono una progressione tematica, le partecipate occupano le posizioni delle stazioni, le concessioni quelle delle società. Le 32 carte sono scritte nello stesso registro ("Il vigile vuole il caffè: paga €15"). Il vincolo editoriale è che il riferimento sia il fenomeno e non le persone: nelle 40 caselle e nelle 32 carte non compare alcun nome di persona reale.
+Nella sala d'attesa si sceglie il proprio nome e il proprio inchiostro tra gli 8 disponibili. Gli inchiostri occupati sono spenti e portano il nome di chi li ha presi. Ogni inchiostro ha anche un nome (Sanguigna, Verde valore, Indaco) e una lettera di serie sulla pedina, così l'identità del giocatore resta leggibile anche senza distinguere i colori. Da qui si condivide l'invito, con il foglio di condivisione nativo sui dispositivi touch e gli appunti altrove, e l'host avvia la partita, che richiede almeno due giocatori.
 
-L'identità visiva deriva da un unico asset vettoriale, una marca da bollo. Da `bollo.svg` sono generati favicon, icona dell'applicazione con variante maskable e immagine di anteprima; i PNG sono prodotti da uno script, non ridisegnati.
+<div class="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start">
+  <Image src={home} alt="Home: nome, creazione della stanza, ingresso con codice, regolamento" width={250} densities={[2]} class="h-auto w-[250px] shrink-0" />
+  <Image src={lobby} alt="Sala d'attesa: nome, scelta dell'inchiostro, elenco giocatori, invito, avvio" width={250} densities={[2]} class="h-auto w-[250px] shrink-0" />
+</div>
 
-![Carta Blitz: il tema è nei testi, non in un tema grafico sovrapposto](./assets/carta.png)
+La sala d'attesa è anche l'unico punto in cui l'applicazione propone di installarsi, perché è il solo momento in cui si è fermi ad aspettare. Se il dispositivo non sa installarla, o l'ha già fatto, la riga non esiste.
 
-## Fuori scope
+## Il tabellone
 
-- Nessun account, classifica o statistica tra partite. Il registro partite su D1, con dashboard Grafana privata, è strumentazione interna.
-- Regolamento non configurabile: l'azione `updateSettings` è stata rimossa dal protocollo, non nascosta nell'interfaccia.
-- Nessuna promozione da spettatore a giocatore a partita iniziata, nessun recupero di stanze eliminate.
-- Contrasto colori non ancora misurato su render reale: i valori sono calcolati dai token.
+Le 40 caselle stanno in una griglia sempre quadrata, che rimpicciolisce invece di andare a capo. Al centro c'è il quadrante di gioco: di chi è il turno, la liquidità di chi sta giocando, i dadi, la richiesta in corso e il registro degli eventi. Il registro tiene le ultime 30 righe di partita e porta anche i messaggi di chat, marcati con l'inchiostro del mittente.
+
+Su schermo stretto il layout cambia parecchio: i pannelli scendono sotto il tabellone e i controlli di turno si spostano in una barra fissa in fondo, con l'azione primaria a destra, sotto il pollice.
+
+<div class="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start">
+  <Image src={centro} alt="Quadrante centrale: turno, liquidità, dadi, registro eventi e chat" width={480} densities={[2]} class="h-auto w-full max-w-[480px] sm:shrink-0" />
+  <Image src={tabellone} alt="Layout su schermo stretto: tabellone, pannelli sotto, barra dei controlli di turno" width={250} densities={[2]} class="h-auto w-[250px] shrink-0" />
+</div>
+
+Sul tabellone un giocatore è identificato da tre attributi insieme: colore, lettera di serie e scostamento della pedina dentro la casella. Il limite di 8 posti viene da qui. Il nono giocatore avrebbe una pedina indistinguibile, quindi il server rifiuta il posto, e chi arriva dopo entra come spettatore, con stato e chat in sola lettura.
+
+## La casella
+
+Ogni casella si apre in un popover che dice cosa è, quanto rende e di chi è. Per le strade c'è la tabella completa degli affitti (base, da 1 a 4 case, hotel) più prezzo del titolo e costo della casa. Per le altre caselle c'è la riga che ne spiega l'effetto: rendita delle partecipate a scaglioni (€25 / €50 / €100 / €200), pedaggio delle concessioni pari al tiro dei dadi ×4 e ×10 con entrambe, malloppo accumulato sulla Latitanza. Se la proprietà è tua, il popover porta anche le azioni su quella proprietà.
+
+<div class="flex justify-center">
+  <Image src={casella} alt="Popover della casella: serie, proprietario, azioni, tabella degli affitti" width={281} densities={[2]} class="h-auto w-full max-w-[400px]" />
+</div>
+
+## Il turno
+
+Il turno è una macchina a stati, e in ogni stato è disponibile una sola azione primaria: tirare i dadi, tirare ancora dopo un doppio, chiudere il turno. In prigione si aggiungono la cauzione da €50 e la carta di uscita, se la si possiede. Atterrando su una casella libera compare la richiesta di acquisto, con le due sole risposte possibili: comprare, oppure rifiutare e mandarla all'asta. Se la liquidità non basta, l'applicazione dice di quanto.
+
+<div class="overflow-x-auto">
+
+| Stato | Tempo | Cosa fa il server allo scadere |
+| --- | --- | --- |
+| `preRoll` | 60 s | Tira i dadi |
+| `buyPrompt` | 30 s | Rifiuta l'acquisto, e il titolo va all'asta |
+| `postRoll` | 60 s | Chiude il turno |
+| `debt` | 120 s | Tenta il pagamento; se i fondi non bastano, dichiara bancarotta |
+
+</div>
+
+## Le carte
+
+I due mazzi sono Blitz (le probabilità) e Favori (gli imprevisti), 16 carte ciascuno. La carta pescata compare come sovrapposizione sul tabellone, resta per il tempo di lettura e si toglie da sola. Le sovrapposizioni si accatastano se ne arrivano più d'una, e i click passano tutt'intorno.
+
+Il server trasmette lo stato completo, con le posizioni già finali, insieme alla lista degli eventi della transizione. Applicando il solo stato, la pesca della carta e lo spostamento in prigione risulterebbero simultanei. Il client esegue quindi un replay temporizzato: prima la pedina, poi la carta, poi la prigione, e alla fine risincronizza le posizioni su quelle ricevute.
+
+## L'asta
+
+Il titolo rifiutato va all'asta, e l'asta interrompe il turno. Il tabellone viene coperto da un velo che segnala lo stato senza intercettare gli eventi, perché è proprio durante l'asta che serve liquidare proprietà per fare cassa, operazione che si avvia dalle caselle.
+
+Il pannello porta l'offerta corrente, chi è in testa, il prezzo di listino come metro di paragone, e una barra che si svuota verso la scadenza: 10 secondi per aprire, 6 secondi dopo ogni rilancio. I tre rilanci rapidi sono cifre fisse (+10, +25, +50) invece di percentuali, che su un titolo da €60 darebbero due volte lo stesso importo. Il campo libero accetta l'offerta netta invece del rialzo, e rifiuta con un messaggio esplicito sia l'offerta troppo bassa sia quella oltre la propria liquidità. «Passo» ritira dall'asta. Su schermo stretto il pannello si porta in vista da solo quando l'asta parte.
+
+<div class="flex justify-center">
+  <Image src={asta} alt="Pannello dell'asta: offerta corrente, listino, barra del tempo, rilanci rapidi e storico" width={331} densities={[2]} class="h-auto w-full max-w-[400px]" />
+</div>
+
+## Le proprietà
+
+Il pannello elenca le proprie proprietà come celle: serie, nome, case o hotel, e la dicitura IPOTECA su quelle ipotecate. Selezionando una cella compaiono sotto le azioni per quella proprietà.
+
+<div class="overflow-x-auto">
+
+| Azione | Quando ha senso |
+| --- | --- |
+| Costruisci | Strada con meno di 5 edifici |
+| Vendi casa | Strada con almeno una casa |
+| Ipoteca | Proprietà non ipotecata |
+| Riscatta | Proprietà ipotecata |
+| Vendi alla banca | Sempre |
+
+</div>
+
+Un'azione che la regola non consente resta visibile e spenta, con il motivo scritto accanto, perché un pulsante che sparisce si legge come una funzione inesistente. Il motivo viene dai predicati del motore, così l'interfaccia non riscrive la regola per conto suo; quando invece la regola è soddisfatta ma il momento del turno è sbagliato, il messaggio è «Non in questo momento del turno». Su touch il motivo si ottiene toccando, perché il tooltip non esiste.
+
+Dall'intestazione dello stesso pannello si dichiara la bancarotta volontaria, a due tocchi.
+
+## Gli scambi
+
+Uno scambio si compone scegliendo il giocatore e riempiendo i due lati con contante, proprietà e carte di uscita di prigione. Le proposte in arrivo aprono il dettaglio e restano elencate finché non si concludono, quelle in uscita si annullano. La proposta ricevuta è letta dal punto di vista di chi la riceve: «tu ricevi» in alto, «tu dai» sotto.
+
+Poiché su schermo stretto la proposta arriva sotto la piega e ha un tempo, l'arrivo è annunciato anche da una notifica e da un avviso sonoro. Gli scambi non sono legali durante un'asta.
+
+## Chi è al tavolo
+
+L'elenco dei giocatori raccoglie lo stato di ognuno: timbro d'inchiostro, nome, host, prigione, carte di uscita, disconnessione, e la liquidità sempre nell'ultima colonna. In fondo c'è il Malloppo, cioè quanto tasse e mazzette hanno accumulato in attesa di chi atterra sulla Latitanza.
+
+Da qui partono due azioni. Il voto di espulsione compare sulle righe degli altri, richiede due tocchi e deve essere unanime tra i giocatori ancora in gioco, con il conteggio visibile accanto al nome. Sulla propria riga, al suo posto, c'è «Continua su un altro dispositivo», che copia negli appunti un link personale. Quel link contiene il posto e vale come credenziale al portatore, quindi non passa dal foglio di condivisione nativo, e l'avviso che lo accompagna dice di mandarlo solo a sé stessi.
+
+## La chat
+
+La chat sta in una colonna a destra sui monitor e in un foglio che sale dal basso su schermo stretto, trascinabile tra due altezze e chiudibile con un doppio tocco sulla maniglia. I messaggi consecutivi dello stesso mittente stanno in un blocco unico, con l'ora e la marca dell'inchiostro di chi scrive. Il colore marca il blocco, perché applicarlo al testo lo porterebbe sotto il contrasto minimo.
+
+Sui monitor si scrive iniziando a digitare, senza cliccare il campo, a meno che non si stia già navigando un altro controllo con il Tab. Ogni messaggio compare anche nel registro al centro del tabellone, così su schermo stretto si rilegge senza riaprire il foglio.
+
+<div class="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start">
+  <Image src={chat} alt="Chat come colonna a destra, sui monitor" width={331} densities={[2]} class="h-auto w-full max-w-[400px] sm:shrink-0" />
+  <Image src={chatMobile} alt="Chat come foglio trascinabile su schermo stretto" width={250} densities={[2]} class="h-auto w-[250px] shrink-0" />
+</div>
+
+## Il debito e la bancarotta
+
+Quando si deve più di quanto si ha, la partita entra in uno stato di debito: il quadrante dice quanto e a chi, e indica dove trovare i soldi. Le due azioni dello stato sono pagare e dichiarare bancarotta. Restano disponibili anche le operazioni di liquidazione (ipoteca, vendita di case, vendita alla banca), legali in qualunque stato e anche fuori dal proprio turno.
+
+Allo scadere dei 120 secondi il server tenta il pagamento e, se i fondi non bastano, esegue la bancarotta. Chi fallisce resta in stanza con un banner che lo dichiara fuori dal giro, continua a vedere la partita e a scrivere in chat, e compare nella classifica finale con il nome barrato.
+
+## Fine partita
+
+A partita finita il quadrante mostra la classifica per patrimonio finale, definito come contante più quanto la banca darebbe per titoli ed edifici. Le uscite sono due: «Rigioca con questi giocatori», che riporta la stanza alla sala d'attesa con gli stessi giocatori e il tabellone pulito, e la chiusura che torna alla home. La rivincita può chiederla chiunque fosse al tavolo, compresi i falliti.
+
+<div class="flex justify-center">
+  <Image src={fine} alt="Classifica finale per patrimonio, rivincita e chiusura" width={480} densities={[2]} class="h-auto w-full max-w-[480px]" />
+</div>
+
+## Stanza, avvisi, installazione
+
+Installata, l'applicazione si apre senza barra degli indirizzi e senza pulsante indietro, quindi ogni uscita deve esistere dentro l'interfaccia. Il menu in testata raccoglie il codice della stanza, la ricondivisione del link e l'uscita. L'uscita chiede conferma e dice cosa comporta: in sala d'attesa libera il posto, a partita iniziata è il ritiro volontario e le proprietà tornano alla banca.
+
+Accanto c'è l'interruttore degli avvisi, che gira tra suono e muto. Dove c'è un motore, il suono porta con sé la vibrazione. La scelta è salvata sul dispositivo e resta fuori dallo stato della partita.
+
+Se la connessione cade, un banner lo dice e la riconnessione riparte da sola con attesa crescente. Dopo cinque tentativi il banner offre di ricaricare e chiarisce che la partita è salva sul server.
+
+## Cosa l'applicazione non fa
+
+- Non si gioca offline, e non è implementabile: il motore è lato server. Il service worker garantisce solo che l'applicazione si apra, dove mostra il banner di riconnessione invece della pagina di errore del browser.
+- La stanza vive quanto la sessione. Senza nessuno connesso si elimina dopo 5 minuti; con qualcuno connesso ma la partita ferma, dopo 1 ora. Una partita abbandonata non si recupera.
+- I codici stanza non sono riservati: sono 6 caratteri su 32, circa un miliardo di combinazioni, e l'unicità è probabilistica per scelta.
+- Il regolamento non è configurabile. L'azione corrispondente è stata rimossa dal protocollo, quindi non esiste nemmeno per chi confeziona a mano un messaggio.
+- Non si passa da spettatore a giocatore a partita iniziata, e non esiste la promozione a fine partita.
+- Non ci sono account, classifiche o statistiche tra partite.
+- Non si gioca contro il computer: servono almeno due persone per avviare una partita.
 
 <details class="my-4 rounded-lg border border-border bg-muted/30">
-<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Stack e numeri</summary>
+<summary class="cursor-pointer px-4 py-2 font-medium hover:bg-muted/50">Glossario</summary>
 <div class="px-4 pb-4">
 
-| Pacchetto          | Contenuto                                                                              |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| `src/`             | Client React 19, Vite 8, Tailwind 4, Radix UI, store Zustand, tipografia IBM Plex        |
-| `packages/game/`   | Motore: `data/` → `rules/` → `core/` → `actions/`, con dipendenze unidirezionali         |
-| `packages/server/` | Cloudflare Worker: Durable Object per stanza, WebSocket Hibernation API, D1 per il registro |
+<div class="overflow-x-auto">
 
-Test: Vitest sul motore (aste, carte, debito, espulsione, regole, rifiuti, timeout, soak) e tre script Playwright per il montaggio delle schermate su mobile e desktop, l'autorizzazione dei posti contro un server reale e l'installabilità della PWA.
+| Termine | Significato |
+| --- | --- |
+| PWA | Applicazione web installabile: si aggiunge alla schermata Home e si apre senza barra del browser |
+| Service worker | Script che sta tra l'applicazione e la rete; qui serve solo a farla aprire senza connessione |
+| WebSocket | Connessione permanente e bidirezionale: il server può parlare senza essere interrogato |
+| Durable Object | Oggetto Cloudflare con identità e memoria proprie; qui, una stanza |
+| Stato autoritativo | Lo stato del server, l'unico che conta: il client lo riceve e non lo calcola |
+| Alarm | Sveglia che un Durable Object programma su sé stesso; qui, la scadenza del turno o l'eliminazione della stanza |
+| PRNG con seed | Generatore pseudo-casuale inizializzato da un numero: a parità di seed produce la stessa sequenza, quindi i test rigiocano dadi e mazzi |
+| Macchina a stati | Il turno come insieme finito di nodi, ciascuno con le azioni che vi sono legali |
+| Replay | Riproduzione temporizzata degli eventi ricevuti, per non mostrare causa ed effetto nello stesso istante |
+| Overlay | Strato sopra l'interfaccia; qui il velo sul tabellone durante l'asta, che non intercetta i click |
 
-Costanti di gioco: 40 caselle, 8 gruppi colore, 32 case e 12 hotel, 32 carte, 8 posti, €1500 di liquidità iniziale, codici stanza di 6 caratteri, log eventi e chat limitati a 100 elementi.
+</div>
 
 </div>
 </details>
